@@ -157,6 +157,9 @@ public sealed class PlayerWeapon : Component
 			return;
 		}
 
+		// Back from the dead: show the gun again.
+		if ( ViewModel.IsValid() && !ViewModel.GameObject.Enabled ) ViewModel.GameObject.Enabled = true;
+
 		if ( IsReloading && ShellReload )
 		{
 			UpdateShellReload();
@@ -218,6 +221,7 @@ public sealed class PlayerWeapon : Component
 
 		var shot = PlayLocal( ShootSound );
 		if ( shot.IsValid() ) shot.Pitch = Game.Random.Float( 0.95f, 1.05f );
+		ShotEffectsForOthers();
 
 		// With a view model, the flash comes out of the real barrel and rides along with the gun.
 		GameObject flash;
@@ -338,31 +342,26 @@ public sealed class PlayerWeapon : Component
 		if ( string.IsNullOrEmpty( boneName ) )
 			boneName = zombie.GetComponent<SkinnedModelRenderer>()?.GetClosestBone( tr.HitPosition )?.Name;
 
-		var wasAlive = !zombie.IsDead;
-		var damage = new DamageInfo
-		{
-			Damage = CurrentDamage,
-			Attacker = GameObject,
-			Weapon = GameObject,
-			Position = tr.HitPosition,
-			Origin = start,
-		};
+		// The hitmarker shows straight away; the host applies the damage and sends back points and kills.
+		if ( !zombie.IsDead ) TimeSinceHit = 0f;
+		zombie.ReceiveBullet( CurrentDamage, boneName, direction, tr.HitPosition, start, GetComponent<PlayerSurvivor>(), scoreHit: firstPellet );
+	}
 
-		var killed = zombie.TakeBullet( damage, boneName, direction );
-		if ( !wasAlive ) return; // Shooting corpses is for fun, not points.
+	/// <summary> Testing aid: fires one shot as if the trigger was pulled (scripts can't fake input). </summary>
+	public void TestFire() => Shoot();
 
-		TimeSinceHit = 0f;
-		var survivor = GetComponent<PlayerSurvivor>();
-		if ( killed )
-		{
-			TimeSinceKill = 0f;
-			var headshot = zombie.LastHitSegment == Segment.Head;
-			survivor?.AddPoints( headshot ? survivor.PointsPerKill * 3 / 2 : survivor.PointsPerKill );
-		}
-		else if ( firstPellet )
-		{
-			survivor?.AddPoints( survivor.PointsPerHit );
-		}
+	/// <summary> Called back from the host when one of our bullets killed something. </summary>
+	public void MarkKill() => TimeSinceKill = 0f;
+
+	/// <summary> Other players hear our shots and see the flash from roughly where we stand. </summary>
+	[Rpc.Broadcast( NetFlags.Unreliable )]
+	void ShotEffectsForOthers()
+	{
+		if ( !IsProxy ) return;
+		var at = WorldPosition + Vector3.Up * 60f;
+		if ( ShootSound is not null ) Sound.Play( ShootSound, at );
+		var flash = SpawnEffect( MuzzleFlash, at + WorldRotation.Forward * 30f, WorldRotation );
+		if ( flash.IsValid() ) flash.WorldScale = MuzzleFlashScale * 2f;
 	}
 
 	void StartReload()

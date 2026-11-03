@@ -10,6 +10,10 @@ public enum WaveState
 /// <summary>
 /// Runs the survival loop: a short break, then a wave of zombies, each wave bigger and tougher.
 /// Put one in the scene. Zombies are built in code unless a prefab is assigned.
+///
+/// Networking: the host runs the waves and spawns (networked) zombies. The state the HUD shows is
+/// synced; banners, bonuses and respawns are sent to each player. Restarting doesn't reload the scene
+/// (that would drop everyone), it clears the arena and brings every player back.
 /// </summary>
 public sealed class WaveDirector : Component
 {
@@ -45,12 +49,13 @@ public sealed class WaveDirector : Component
 	public TimeSince TimeSinceWaveStarted { get; private set; } = 999f;
 	public TimeSince TimeSinceWaveCleared { get; private set; } = 999f;
 
-	public WaveState State { get; private set; } = WaveState.Intermission;
-	public int Wave { get; private set; }
-	public int Kills { get; private set; }
+	[Sync] public WaveState State { get; set; } = WaveState.Intermission;
+	[Sync] public int Wave { get; set; }
+	[Sync] public int Kills { get; set; }
 	public int AliveCount => alive.Count;
-	public int ZombiesRemaining => toSpawn + alive.Count;
-	public float SecondsUntilNextWave => MathF.Max( 0f, nextWaveAt.Relative );
+	/// <summary> Updated by the host every frame, synced for everyone's HUD. </summary>
+	[Sync] public int ZombiesRemaining { get; set; }
+	[Sync] public float SecondsUntilNextWave { get; set; }
 
 	readonly List<Zombie> alive = new();
 	int toSpawn;
@@ -64,13 +69,17 @@ public sealed class WaveDirector : Component
 
 	protected override void OnUpdate()
 	{
+		// Anyone can ask for a restart once everybody is dead.
+		if ( State == WaveState.GameOver && Input.Pressed( "Jump" ) )
+			RequestRestart();
+
 		if ( IsProxy ) return;
 
-		if ( State == WaveState.GameOver )
-		{
-			if ( Input.Pressed( "Jump" ) ) Restart();
-			return;
-		}
+		alive.RemoveAll( z => !z.IsValid() );
+		ZombiesRemaining = toSpawn + alive.Count;
+		SecondsUntilNextWave = MathF.Max( 0f, nextWaveAt.Relative );
+
+		if ( State == WaveState.GameOver ) return;
 
 		var anyPlayers = Scene.GetAllComponents<PlayerSurvivor>().Any();
 		if ( anyPlayers && PlayerSurvivor.FindNearestAlive( Scene, WorldPosition ) is null )
@@ -95,12 +104,31 @@ public sealed class WaveDirector : Component
 		{
 			State = WaveState.Intermission;
 			nextWaveAt = IntermissionSeconds;
-			TimeSinceWaveCleared = 0f;
-			PlayToPlayer( WaveClearedSound );
+			WaveClearedEverywhere();
 
-			foreach ( var survivor in Scene.GetAllComponents<PlayerSurvivor>().Where( p => p.IsAlive ) )
-				survivor.AddPoints( WaveClearBonus * Wave );
+			// Survivors get the bonus; anyone who died comes back for the next wave.
+			var index = 0;
+			foreach ( var survivor in Scene.GetAllComponents<PlayerSurvivor>().ToList() )
+			{
+				if ( survivor.IsAlive ) survivor.RewardPoints( WaveClearBonus * Wave );
+				else survivor.Respawn( CoopNetwork.SpawnPosition( Scene, index ), fullReset: false );
+				index++;
+			}
 		}
+	}
+
+	[Rpc.Broadcast]
+	void WaveStartedEverywhere()
+	{
+		TimeSinceWaveStarted = 0f;
+		PlayToPlayer( WaveStartSound );
+	}
+
+	[Rpc.Broadcast]
+	void WaveClearedEverywhere()
+	{
+		TimeSinceWaveCleared = 0f;
+		PlayToPlayer( WaveClearedSound );
 	}
 
 	void StartWave()
@@ -109,8 +137,7 @@ public sealed class WaveDirector : Component
 		toSpawn = BaseZombies + ZombiesPerWave * (Wave - 1);
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
-		TimeSinceWaveStarted = 0f;
-		PlayToPlayer( WaveStartSound );
+		WaveStartedEverywhere();
 	}
 
 	void PlayToPlayer( SoundEvent sound )
@@ -120,11 +147,39 @@ public sealed class WaveDirector : Component
 		Sound.Play( sound, camera.IsValid() ? camera.WorldPosition : WorldPosition );
 	}
 
-	/// <summary> Reloads the current scene from scratch. </summary>
+	[Rpc.Host]
+	void RequestRestart() => Restart();
+
+	/// <summary>
+	/// Starts over without reloading the scene: clears zombies and gore, resets the waves,
+	/// and brings every player back with fresh points and upgrades.
+	/// </summary>
 	public void Restart()
 	{
-		if ( Scene.Source is not null )
-			Scene.Load( Scene.Source );
+		if ( IsProxy || State != WaveState.GameOver ) return;
+
+		foreach ( var z in Scene.GetAllComponents<Zombie>().ToList() )
+			z.GameObject.Destroy();
+		alive.Clear();
+
+		Wave = 0;
+		Kills = 0;
+		toSpawn = 0;
+		State = WaveState.Intermission;
+		nextWaveAt = FirstWaveDelay;
+		CleanupEverywhere();
+
+		var index = 0;
+		foreach ( var survivor in Scene.GetAllComponents<PlayerSurvivor>().ToList() )
+			survivor.Respawn( CoopNetwork.SpawnPosition( Scene, index++ ), fullReset: true );
+	}
+
+	/// <summary> Gibs, meat and blood are local to each machine, so everyone clears their own. </summary>
+	[Rpc.Broadcast]
+	void CleanupEverywhere()
+	{
+		foreach ( var gib in Scene.GetAllComponents<Gib>().ToList() ) gib.GameObject.Destroy();
+		foreach ( var go in Scene.GetAllObjects( true ).Where( g => g.Name == "Blood" ).ToList() ) go.Destroy();
 	}
 
 	bool TrySpawnZombie()
@@ -156,6 +211,9 @@ public sealed class WaveDirector : Component
 
 		zombie.Killed += OnZombieKilled;
 		alive.Add( zombie );
+
+		// Everyone needs to see it: network it once it's fully set up, owned by the host.
+		if ( Networking.IsActive ) zombieObject.NetworkSpawn();
 		return true;
 	}
 

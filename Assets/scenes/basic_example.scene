@@ -153,13 +153,13 @@
       "__guid": "fde76e17-1db9-4ccc-a193-897fddbc6239",
       "__version": 2,
       "Flags": 0,
-      "Name": "Player",
+      "Name": "Player Template",
       "Position": "0,0,0",
       "Rotation": "0,0,0,1",
       "Scale": "1,1,1",
       "Tags": "",
-      "Enabled": true,
-      "NetworkMode": 2,
+      "Enabled": false,
+      "NetworkMode": 0,
       "NetworkFlags": 0,
       "NetworkOrphaned": 0,
       "NetworkTransmit": true,
@@ -2725,7 +2725,7 @@
       "Scale": "1,1,1",
       "Tags": "",
       "Enabled": true,
-      "NetworkMode": 2,
+      "NetworkMode": 1,
       "NetworkFlags": 0,
       "NetworkOrphaned": 0,
       "NetworkTransmit": true,
@@ -2921,6 +2921,26 @@
               "Path": "decals/impact/flesh/decal_impact_flesh_07.decal"
             }
           ]
+        },
+        {
+          "__type": "CoopNetwork",
+          "__guid": "a328e994-5a18-442d-b709-c530d1216c0d",
+          "__enabled": true,
+          "Flags": 0,
+          "HostOnStart": true,
+          "MaxPlayers": 4,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "PlayerTemplate": {
+            "_type": "gameobject",
+            "go": "fde76e17-1db9-4ccc-a193-897fddbc6239"
+          },
+          "Privacy": "FriendsOnly",
+          "SoloFallbackSeconds": 2
         }
       ],
       "Children": []

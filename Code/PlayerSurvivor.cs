@@ -54,10 +54,69 @@ public sealed class PlayerSurvivor : Component
 		Points = StartingPoints;
 	}
 
+	float startingMaxHealth = 100f;
+
 	protected override void OnStart()
 	{
+		startingMaxHealth = Health.MaxHealth;
 		Health.Damaged += OnHurt;
 		Health.Died += OnDied;
+	}
+
+	// ---- Networked rewards and respawning ----------------------------------------------------
+	// The host decides hits, kills and wave bonuses; these run on the player's own machine,
+	// where their points and HUD live.
+
+	/// <summary> Host -> this player: your bullet hit (or killed) a zombie. </summary>
+	[Rpc.Owner]
+	public void RewardHit( bool killed, bool headshot, bool scoreHit )
+	{
+		if ( killed )
+		{
+			Weapon?.MarkKill();
+			AddPoints( headshot ? PointsPerKill * 3 / 2 : PointsPerKill );
+		}
+		else if ( scoreHit )
+		{
+			AddPoints( PointsPerHit );
+		}
+	}
+
+	/// <summary> Host -> this player: bonus points (wave cleared). </summary>
+	[Rpc.Owner]
+	public void RewardPoints( int amount ) => AddPoints( amount );
+
+	/// <summary>
+	/// Host -> this player: come back. A full reset (new game) also resets points, upgrades and max health;
+	/// otherwise (respawning between waves) you keep what you've earned.
+	/// </summary>
+	[Rpc.Owner]
+	public void Respawn( Vector3 position, bool fullReset )
+	{
+		if ( fullReset )
+		{
+			Points = StartingPoints;
+			Health.ResetTo( startingMaxHealth );
+		}
+		else
+		{
+			Health.ResetTo( Health.MaxHealth );
+		}
+
+		foreach ( var weapon in Components.GetAll<PlayerWeapon>( FindMode.EverythingInSelf ) )
+		{
+			if ( fullReset ) weapon.DamageLevel = 0;
+			weapon.RefillAmmo();
+		}
+
+		var controller = Controller;
+		if ( controller.IsValid() )
+		{
+			controller.UseInputControls = true;
+			controller.UseLookControls = true;
+			if ( controller.Body.IsValid() ) controller.Body.Velocity = Vector3.Zero;
+		}
+		WorldPosition = position;
 	}
 
 	void OnHurt( DamageInfo damage )

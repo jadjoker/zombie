@@ -2,6 +2,10 @@ using Sandbox.Citizen;
 
 /// <summary>
 /// Chases the nearest living player over the navmesh and hits them when close.
+///
+/// Networking: the host owns zombies and runs their AI. Everyone else gets the position and rotation
+/// synced, plus the velocity so they can animate them. Bullets fired on other machines are forwarded
+/// to the host, and death (ragdoll, effects) is broadcast so it plays out everywhere.
 /// </summary>
 public sealed class Zombie : Component
 {
@@ -24,6 +28,10 @@ public sealed class Zombie : Component
 	[Property, Group( "Crawler" )] public float CrawlAttackRange { get; set; } = 70f;
 
 	public bool IsDead => Health?.IsDead ?? false;
+
+	/// <summary> Host's agent velocity, synced so other machines can drive the walk animation. </summary>
+	[Sync] public Vector3 NetVelocity { get; set; }
+	[Sync] public Vector3 NetWishVelocity { get; set; }
 
 	/// <summary> Lost a leg: drags itself along on its belly until it's killed. </summary>
 	public bool IsCrawler { get; private set; }
@@ -84,6 +92,8 @@ public sealed class Zombie : Component
 		{
 			Agent.MaxSpeed = MoveSpeed * speedScale;
 			Agent.UpdateRotation = false;
+			// Only the host steers; elsewhere the synced transform moves it.
+			if ( IsProxy ) Agent.Enabled = false;
 		}
 
 		if ( Health.IsValid() )
@@ -95,7 +105,16 @@ public sealed class Zombie : Component
 
 	protected override void OnUpdate()
 	{
-		if ( IsProxy ) return;
+		UpdateHurtFlash();
+
+		if ( IsProxy )
+		{
+			// Not ours: just animate from what the host sends. If it's dead but we never saw it die
+			// (joined late, or missed the message), drop it as a corpse now.
+			if ( IsDead && !diedLocally ) DieLocal();
+			else if ( !IsDead && !diedLocally ) Animate( NetVelocity, NetWishVelocity );
+			return;
+		}
 
 		if ( IsDead )
 		{
@@ -103,8 +122,6 @@ public sealed class Zombie : Component
 				GameObject.Destroy();
 			return;
 		}
-
-		UpdateHurtFlash();
 
 		if ( nextGroan )
 		{
@@ -148,14 +165,20 @@ public sealed class Zombie : Component
 		// Crawlers keep their prone tilt even while standing still (Face slerps them down when they first fall).
 		if ( IsCrawler ) Face( WorldRotation.Forward.WithZ( 0 ) );
 
-		if ( Anim.IsValid() )
-		{
-			// The citizen has no crawl animation; its swim stroke on a body tipped flat reads as dragging itself along.
-			Anim.IsSwimming = IsCrawler;
-			Anim.WithVelocity( velocity );
-			Anim.WithWishVelocity( Agent.IsValid() ? Agent.WishVelocity : Vector3.Zero );
-			Anim.IsGrounded = true;
-		}
+		var wish = Agent.IsValid() ? Agent.WishVelocity : Vector3.Zero;
+		NetVelocity = velocity;
+		NetWishVelocity = wish;
+		Animate( velocity, wish );
+	}
+
+	void Animate( Vector3 velocity, Vector3 wish )
+	{
+		if ( !Anim.IsValid() ) return;
+		// The citizen has no crawl animation; its swim stroke on a body tipped flat reads as dragging itself along.
+		Anim.IsSwimming = IsCrawler;
+		Anim.WithVelocity( velocity );
+		Anim.WithWishVelocity( wish );
+		Anim.IsGrounded = true;
 	}
 
 	void Face( Vector3 direction )
@@ -184,9 +207,39 @@ public sealed class Zombie : Component
 	}
 
 	/// <summary>
-	/// Entry point for bullets. Works on living zombies and corpses: scales damage by hit zone,
-	/// applies it, then lets the gore system cut limbs and push the ragdoll.
-	/// Returns true if this shot killed the zombie.
+	/// A bullet hit this zombie on the shooter's machine. Runs it on the host (directly, or forwarded),
+	/// then tells the shooter about hits and kills so they get their points.
+	/// </summary>
+	public void ReceiveBullet( float damage, string boneName, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	{
+		if ( IsProxy ) BulletOnHost( damage, boneName, direction, position, origin, shooter?.GameObject, scoreHit );
+		else ApplyBullet( damage, boneName, direction, position, origin, shooter, scoreHit );
+	}
+
+	[Rpc.Owner]
+	void BulletOnHost( float damage, string boneName, Vector3 direction, Vector3 position, Vector3 origin, GameObject shooter, bool scoreHit )
+	{
+		ApplyBullet( damage, boneName, direction, position, origin, shooter?.GetComponent<PlayerSurvivor>(), scoreHit );
+	}
+
+	void ApplyBullet( float damage, string boneName, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	{
+		var wasAlive = !IsDead;
+		var info = new DamageInfo { Damage = damage, Position = position, Origin = origin, Attacker = shooter?.GameObject };
+		var killed = TakeBullet( info, boneName, direction );
+
+		FlashEverywhere();
+		if ( wasAlive && shooter.IsValid() )
+			shooter.RewardHit( killed, lastHitSegment == Segment.Head, scoreHit );
+	}
+
+	/// <summary> Hit flash on every machine (cosmetic, so it can be dropped under load). </summary>
+	[Rpc.Broadcast( NetFlags.Unreliable )]
+	void FlashEverywhere() => timeSinceHurt = 0f;
+
+	/// <summary>
+	/// Applies a bullet on the host: scales damage by hit zone, applies it, then lets the gore system
+	/// cut limbs and push the ragdoll. Returns true if this shot killed the zombie.
 	/// </summary>
 	public bool TakeBullet( DamageInfo damage, string boneName, Vector3 direction )
 	{
@@ -247,8 +300,22 @@ public sealed class Zombie : Component
 		handle.Volume = volume;
 	}
 
+	/// <summary> On the host when health runs out: count the kill, then play the death everywhere. </summary>
 	void OnDied()
 	{
+		Killed?.Invoke( this );
+		DieEverywhere();
+	}
+
+	bool diedLocally;
+
+	[Rpc.Broadcast]
+	void DieEverywhere() => DieLocal();
+
+	void DieLocal()
+	{
+		if ( diedLocally ) return;
+		diedLocally = true;
 		timeSinceDeath = 0f;
 		foreach ( var (renderer, tint) in visible )
 		{
@@ -280,7 +347,5 @@ public sealed class Zombie : Component
 			ragdoll.Renderer = Renderer;
 			ragdoll.Model = Renderer.Model;
 		}
-
-		Killed?.Invoke( this );
 	}
 }

@@ -1,25 +1,55 @@
 /// <summary>
 /// Hit points for anything that can be hurt: players and zombies.
 /// Anything that deals damage just calls OnDamage on it.
+///
+/// Networking: the object's owner is in charge of its health (the host for zombies, each player
+/// for themselves). Damage dealt on another machine is forwarded to the owner, and the owner's
+/// values are synced to everyone. Without a network it all just runs locally.
 /// </summary>
 public sealed class Health : Component, Component.IDamageable
 {
-	[Property] public float MaxHealth { get; set; } = 100f;
+	[Property, Sync] public float MaxHealth { get; set; } = 100f;
 
-	public float Current { get; private set; }
-	public bool IsDead { get; private set; }
+	[Sync] public float Current { get; set; }
+	[Sync] public bool IsDead { get; set; }
 	public float Fraction => MaxHealth > 0 ? Current / MaxHealth : 0f;
 	public TimeSince TimeSinceDamaged { get; private set; } = 999f;
 
+	/// <summary> Fired on the owner when damage lands. </summary>
 	public event System.Action<DamageInfo> Damaged;
+	/// <summary> Fired once on the owner when health runs out. </summary>
 	public event System.Action Died;
+
+	bool started;
 
 	protected override void OnStart()
 	{
-		Current = MaxHealth;
+		if ( IsProxy || started ) return;
+		started = true;
+		if ( Current <= 0f && !IsDead ) Current = MaxHealth;
 	}
 
 	public void OnDamage( in DamageInfo damage )
+	{
+		if ( IsDead || damage.Damage <= 0f ) return;
+
+		// Not ours: ask the owner to take it.
+		if ( IsProxy )
+		{
+			DamageOnOwner( damage.Damage, damage.Position, damage.Origin, damage.Attacker );
+			return;
+		}
+
+		Apply( damage );
+	}
+
+	[Rpc.Owner]
+	void DamageOnOwner( float amount, Vector3 position, Vector3 origin, GameObject attacker )
+	{
+		Apply( new DamageInfo { Damage = amount, Position = position, Origin = origin, Attacker = attacker } );
+	}
+
+	void Apply( DamageInfo damage )
 	{
 		if ( IsDead || damage.Damage <= 0f ) return;
 
@@ -48,11 +78,13 @@ public sealed class Health : Component, Component.IDamageable
 		Current = MaxHealth;
 	}
 
-	/// <summary> Sets a new max and fills up to it. Used by the spawner to scale zombies per wave. </summary>
+	/// <summary> Sets a new max and fills up to it. Used by the spawner, and to bring players back. </summary>
 	public void ResetTo( float maxHealth )
 	{
+		started = true;
 		MaxHealth = maxHealth;
 		Current = maxHealth;
 		IsDead = false;
+		TimeSinceDamaged = 999f;
 	}
 }

@@ -3,6 +3,10 @@
 /// The body is split into segments (see BodySegments). Cutting a segment takes it and everything
 /// below it off as a physics gib; the zombie shrinks those bones away (bone override while alive,
 /// frozen ragdoll bodies once dead). Enough overkill bursts the whole body into separate pieces.
+///
+/// Networking: the host keeps the damage numbers and makes every decision (including the random ones).
+/// Each decision is broadcast, and every machine builds the visuals itself: gibs, blood and meat are
+/// local, so pieces may land slightly differently for each player, but the same things come off.
 /// </summary>
 public sealed class ZombieGore : Component
 {
@@ -27,6 +31,15 @@ public sealed class ZombieGore : Component
 
 	public BodySegments Map { get; private set; }
 	public bool Exploded { get; private set; }
+
+	/// <summary>
+	/// Host's record of what's gone, synced so late joiners (and anyone who missed a broadcast)
+	/// catch up: one bit per cut segment, plus whether it burst and whether the jaw is torn out.
+	/// </summary>
+	[Sync] public int CutMask { get; set; }
+	[Sync] public bool NetExploded { get; set; }
+	[Sync] public bool NetJawGone { get; set; }
+	TimeSince timeSinceCatchUp;
 	public IReadOnlySet<Segment> Attached => attached;
 	public bool IsCut( Segment s ) => !attached.Contains( s );
 
@@ -69,14 +82,12 @@ public sealed class ZombieGore : Component
 	TimeSince timeSinceDrip;
 
 	/// <summary> Visible damage that builds up as a torso or head segment takes hits. </summary>
-	void Progress( Segment segment, Vector3 position, Vector3 direction, float ratio )
+	/// <param name="ratio"> Damage against the segment's split threshold. </param>
+	/// <param name="hurt"> Damage against the zombie's health. Torso stages use this, so they happen while it's still on its feet. </param>
+	void Progress( Segment segment, Vector3 position, Vector3 direction, float ratio, float hurt )
 	{
 		var isHead = segment == Segment.Head;
 		if ( !isHead && !Map.IsTorso( segment ) ) return;
-
-		// Torso stages are measured against the zombie's health (not the much higher split threshold),
-		// so they happen while it's still on its feet.
-		var hurt = damage.GetValueOrDefault( segment ) / MathF.Max( 1f, referenceHealth );
 
 		AddWound( segment, position, direction, MathX.Clamp( 1.2f + ratio * 0.8f, 1.2f, 2.2f ) );
 		var gore = Gore;
@@ -85,6 +96,7 @@ public sealed class ZombieGore : Component
 		if ( isHead && !jawGone && ratio >= 0.45f )
 		{
 			jawGone = true;
+			if ( !IsProxy ) NetJawGone = true;
 			TearJaw();
 			var mouth = Citizen.SceneModel.GetBoneWorldTransform( "head" ).Position + Vector3.Down * 3f;
 			gore?.Burst( mouth, direction, 1.2f );
@@ -198,7 +210,7 @@ public sealed class ZombieGore : Component
 		var isCorpse = Health?.IsDead ?? false;
 		var onCorpse = isCorpse && !killingShot;
 
-		pendingImpulse = (position, direction * BulletImpulse * (killingShot ? 2.5f : 1f));
+		PushEverywhere( position, direction * BulletImpulse * (killingShot ? 2.5f : 1f) );
 		if ( onCorpse ) corpseDamage += amount * CorpseMultiplier;
 
 		// Full gib: one huge shot, or a corpse that keeps getting shot.
@@ -206,7 +218,7 @@ public sealed class ZombieGore : Component
 		var shredded = corpseDamage >= referenceHealth * (gore?.ExplodeCorpseDamage ?? 3.2f);
 		if ( bigShot || shredded )
 		{
-			Explode( position, direction );
+			ExplodeEverywhere( position, direction );
 			return true;
 		}
 
@@ -216,7 +228,7 @@ public sealed class ZombieGore : Component
 		if ( timeSinceChunk > 0.12f && Game.Random.Float() < (torsoHit ? TorsoChunkChance : segment == Segment.Head ? 0f : LimbChunkChance) )
 		{
 			timeSinceChunk = 0f;
-			gore?.ThrowChunk( position, direction );
+			ChunkEverywhere( position, direction );
 		}
 
 		// The pelvis is the root and can't come off; shots there go towards splitting at the waist.
@@ -233,7 +245,7 @@ public sealed class ZombieGore : Component
 		var threshold = scale * def.HealthFraction;
 
 		// Damage shows on the body before anything comes off: wounds, a torn-out jaw, spilled guts.
-		Progress( segment, position, direction, damage[segment] / threshold );
+		ProgressEverywhere( segment, position, direction, damage[segment] / threshold, damage[segment] / MathF.Max( 1f, referenceHealth ) );
 
 		var overkill = killingShot && goreAmount >= threshold * 0.5f;
 		if ( damage[segment] < threshold && !overkill ) return false;
@@ -249,9 +261,38 @@ public sealed class ZombieGore : Component
 		return true;
 	}
 
+	// ---- Broadcasts: host decides, everyone shows ------------------------------------------
+
+	[Rpc.Broadcast( NetFlags.Unreliable )]
+	void PushEverywhere( Vector3 position, Vector3 impulse ) => pendingImpulse = (position, impulse);
+
+	[Rpc.Broadcast( NetFlags.Unreliable )]
+	void ChunkEverywhere( Vector3 position, Vector3 direction ) => Gore?.ThrowChunk( position, direction );
+
+	[Rpc.Broadcast]
+	void ProgressEverywhere( Segment segment, Vector3 position, Vector3 direction, float ratio, float hurt )
+	{
+		if ( Map is null ) return;
+		Progress( segment, position, direction, ratio, hurt );
+	}
+
+	[Rpc.Broadcast]
+	void CutEverywhere( Segment segment, Vector3 hitPosition, Vector3 direction, bool burstHead ) => CutLocal( segment, hitPosition, direction, burstHead );
+
+	[Rpc.Broadcast]
+	void ExplodeEverywhere( Vector3 position, Vector3 direction ) => ExplodeLocal( position, direction );
+
 	// ---- Cutting ----------------------------------------------------------
 
+	/// <summary> Takes a segment (and everything below it) off. Only the host decides; everyone sees it. </summary>
 	public void Cut( Segment segment, Vector3 hitPosition, Vector3 direction )
+	{
+		if ( IsProxy || Map is null || segment == Segment.Pelvis || !attached.Contains( segment ) ) return;
+		var burstHead = segment == Segment.Head && Game.Random.Float() < HeadBurstChance;
+		CutEverywhere( segment, hitPosition, direction, burstHead );
+	}
+
+	void CutLocal( Segment segment, Vector3 hitPosition, Vector3 direction, bool burstHead, bool quiet = false )
 	{
 		if ( Map is null || segment == Segment.Pelvis || !attached.Contains( segment ) ) return;
 
@@ -259,10 +300,10 @@ public sealed class ZombieGore : Component
 		var def = Map.Defs[segment];
 		var piece = Map.Subtree( segment, attached );
 
-		var gib = SpawnGib( piece, direction, fling: 1f, allowMidAirSplit: true );
+		var gib = quiet ? null : SpawnGib( piece, direction, fling: 1f, allowMidAirSplit: true );
 
 		// A head either falls off or bursts.
-		if ( segment == Segment.Head && gib.IsValid() && Game.Random.Float() < HeadBurstChance )
+		if ( burstHead && gib.IsValid() )
 		{
 			var at = gib.WorldPosition;
 			gib.Pulverize( at, direction );
@@ -275,6 +316,7 @@ public sealed class ZombieGore : Component
 		attached.ExceptWith( piece );
 		cutRoots.Add( segment );
 		PinMeshOnlyBones( piece, def.RootBone );
+		if ( !IsProxy ) CutMask = MaskOf( BodySegments.All.Where( s => !attached.Contains( s ) ) );
 
 		if ( Ragdoll.IsValid() && Ragdoll.PhysicsWereCreated )
 		{
@@ -288,7 +330,7 @@ public sealed class ZombieGore : Component
 		}
 
 		var stump = StumpPosition( def );
-		var gore = Gore;
+		var gore = quiet ? null : Gore;
 		gore?.Burst( stump, -direction, 1.3f );
 		gore?.Burst( stump, Vector3.Up, 1f );
 		gore?.Spray( stump, direction, 5 );
@@ -318,15 +360,25 @@ public sealed class ZombieGore : Component
 		}
 	}
 
-	/// <summary> Bursts every remaining piece of the body apart at once. </summary>
+	/// <summary> Bursts every remaining piece of the body apart at once. Only the host decides; everyone sees it. </summary>
 	public void Explode( Vector3 position, Vector3 direction )
+	{
+		if ( IsProxy || Exploded || Map is null ) return;
+		ExplodeEverywhere( position, direction );
+	}
+
+	void ExplodeLocal( Vector3 position, Vector3 direction, bool quiet = false )
 	{
 		if ( Exploded || Map is null ) return;
 		Exploded = true;
+		if ( !IsProxy ) NetExploded = true;
 
 		var center = Citizen.SceneModel.GetBoneWorldTransform( "spine_0" ).Position;
-		foreach ( var s in attached.ToList() )
-			SpawnGib( new HashSet<Segment> { s }, direction, fling: 1.8f, allowMidAirSplit: false, burstFrom: center );
+		if ( !quiet )
+		{
+			foreach ( var s in attached.ToList() )
+				SpawnGib( new HashSet<Segment> { s }, direction, fling: 1.8f, allowMidAirSplit: false, burstFrom: center );
+		}
 		attached.Clear();
 
 		// Hide what's left of the zombie and stop it catching bullets.
@@ -343,7 +395,7 @@ public sealed class ZombieGore : Component
 			}
 		}
 
-		var gore = Gore;
+		var gore = quiet ? null : Gore;
 		gore?.Burst( center, direction, 2.2f );
 		gore?.Burst( center, Vector3.Up, 1.8f );
 		gore?.Burst( center, -direction, 1.5f );
@@ -358,6 +410,7 @@ public sealed class ZombieGore : Component
 
 	void Kill( Vector3 position, Vector3 direction )
 	{
+		if ( IsProxy ) return;
 		if ( Health is { IsDead: false } health )
 		{
 			health.OnDamage( new DamageInfo
@@ -440,9 +493,43 @@ public sealed class ZombieGore : Component
 
 	// ---- Per frame --------------------------------------------------------
 
+	static int MaskOf( IEnumerable<Segment> segments ) => segments.Aggregate( 0, ( m, s ) => m | (1 << (int)s) );
+
+	/// <summary> Brings this machine's copy in line with the host's record, quietly. </summary>
+	void CatchUp()
+	{
+		if ( NetExploded && !Exploded )
+		{
+			ExplodeLocal( WorldPosition, WorldRotation.Forward, quiet: true );
+			return;
+		}
+
+		if ( NetJawGone && !jawGone )
+		{
+			jawGone = true;
+			TearJaw();
+		}
+
+		// Cut the topmost missing piece of each branch; its subtree goes with it.
+		foreach ( var s in BodySegments.All )
+		{
+			var hostCut = (CutMask & (1 << (int)s)) != 0;
+			if ( !hostCut || !attached.Contains( s ) ) continue;
+			var parent = Map.Defs[s].Parent;
+			var parentCut = parent is { } ps && (CutMask & (1 << (int)ps)) != 0;
+			if ( !parentCut ) CutLocal( s, WorldPosition, WorldRotation.Forward, burstHead: false, quiet: true );
+		}
+	}
+
 	protected override void OnUpdate()
 	{
 		if ( Map is null ) return;
+
+		if ( IsProxy && timeSinceCatchUp > 0.5f )
+		{
+			timeSinceCatchUp = 0f;
+			CatchUp();
+		}
 
 		if ( Health is { IsDead: true } && !sawDeath )
 		{

@@ -690,7 +690,7 @@
           "Flags": 0,
           "AimShoulderOffset": "55,22,2",
           "FollowHandRotation": true,
-          "GunAngleOffset": "-5,44,-2",
+          "GunAngleOffset": "0,0,0",
           "HandAttachment": "hold_R",
           "HeadBodyGroup": 2,
           "OnComponentDestroy": null,

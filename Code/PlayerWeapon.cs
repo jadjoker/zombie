@@ -4,7 +4,7 @@
 /// </summary>
 public sealed class PlayerWeapon : Component
 {
-	[Property, Group( "Stats" )] public float Damage { get; set; } = 20f;
+	[Property, Group( "Stats" )] public float Damage { get; set; } = 34f;
 	[Property, Group( "Stats" )] public float FireRate { get; set; } = 8f;
 	[Property, Group( "Stats" )] public float Range { get; set; } = 5000f;
 	[Property, Group( "Stats" )] public float SpreadDegrees { get; set; } = 1.2f;

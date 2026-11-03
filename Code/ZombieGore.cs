@@ -81,7 +81,7 @@ public sealed class ZombieGore : Component
 		var gore = Gore;
 
 		// Head: the first solid hit tears the jaw out and wrecks the face.
-		if ( isHead && !jawGone && ratio >= 0.3f )
+		if ( isHead && !jawGone && ratio >= 0.45f )
 		{
 			jawGone = true;
 			TearJaw();
@@ -93,7 +93,7 @@ public sealed class ZombieGore : Component
 		}
 
 		// Belly: a badly hurt gut spills open while it keeps walking.
-		if ( segment == Segment.Belly && !gutsSpilled && hurt >= 0.25f )
+		if ( segment == Segment.Belly && !gutsSpilled && hurt >= 0.4f )
 		{
 			gutsSpilled = true;
 			var belly = Citizen.SceneModel.GetBoneWorldTransform( "spine_0" ).Position;
@@ -103,7 +103,7 @@ public sealed class ZombieGore : Component
 		}
 
 		// Chest: ribs tear out.
-		if ( segment == Segment.Chest && !ribsTorn && hurt >= 0.25f )
+		if ( segment == Segment.Chest && !ribsTorn && hurt >= 0.4f )
 		{
 			ribsTorn = true;
 			var chest = Citizen.SceneModel.GetBoneWorldTransform( "spine_2" ).Position;

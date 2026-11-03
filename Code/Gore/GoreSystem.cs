@@ -13,7 +13,7 @@ public sealed class GoreSystem : Component
 	/// <summary> Chance a limb cut happens one joint higher than where it was hit. </summary>
 	[Property, Group( "Gibs" )] public float CutHigherChance { get; set; } = 0.25f;
 	/// <summary> Corpse damage, as a multiple of the zombie's health, that bursts it into every piece. </summary>
-	[Property, Group( "Gibs" )] public float ExplodeCorpseDamage { get; set; } = 1.6f;
+	[Property, Group( "Gibs" )] public float ExplodeCorpseDamage { get; set; } = 3.2f;
 	/// <summary> A single shot this big (times health) bursts the zombie outright. </summary>
 	[Property, Group( "Gibs" )] public float ExplodeSingleShot { get; set; } = 1.4f;
 

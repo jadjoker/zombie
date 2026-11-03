@@ -15,7 +15,11 @@ public sealed class ZombieGore : Component
 	/// </summary>
 	[Property] public float LimbToughness { get; set; } = 70f;
 	/// <summary> Chance a torso hit knocks a chunk of flesh loose. </summary>
-	[Property] public float TorsoChunkChance { get; set; } = 0.4f;
+	[Property] public float TorsoChunkChance { get; set; } = 0.55f;
+	/// <summary> When a head comes off, the chance it bursts instead of falling. </summary>
+	[Property] public float HeadBurstChance { get; set; } = 0.5f;
+	/// <summary> Most wound decals one zombie carries; the oldest go first. </summary>
+	[Property] public int MaxWounds { get; set; } = 14;
 	[Property] public float LimbChunkChance { get; set; } = 0.15f;
 	/// <summary> Corpses come apart this much more easily. </summary>
 	[Property] public float CorpseMultiplier { get; set; } = 2f;
@@ -52,6 +56,115 @@ public sealed class ZombieGore : Component
 	{
 		referenceHealth = Health?.MaxHealth ?? 100f;
 		Map = new BodySegments( Citizen.Model, Mesh?.Model );
+
+		// Bone objects let wounds ride along on the animated body.
+		Citizen.CreateBoneObjects = true;
+	}
+
+	// ---- Progressive damage -------------------------------------------------
+
+	readonly Queue<GameObject> wounds = new();
+	bool jawGone, gutsSpilled, ribsTorn;
+	TimeSince timeSinceDrip;
+
+	/// <summary> Visible damage that builds up as a torso or head segment takes hits. </summary>
+	void Progress( Segment segment, Vector3 position, Vector3 direction, float ratio )
+	{
+		var isHead = segment == Segment.Head;
+		if ( !isHead && !Map.IsTorso( segment ) ) return;
+
+		// Torso stages are measured against the zombie's health (not the much higher split threshold),
+		// so they happen while it's still on its feet.
+		var hurt = damage.GetValueOrDefault( segment ) / MathF.Max( 1f, referenceHealth );
+
+		AddWound( segment, position, direction, MathX.Clamp( 1.2f + ratio * 0.8f, 1.2f, 2.2f ) );
+		var gore = Gore;
+
+		// Head: the first solid hit tears the jaw out and wrecks the face.
+		if ( isHead && !jawGone && ratio >= 0.45f )
+		{
+			jawGone = true;
+			TearJaw();
+			var mouth = Citizen.SceneModel.GetBoneWorldTransform( "head" ).Position + Vector3.Down * 3f;
+			gore?.Burst( mouth, direction, 1.2f );
+			gore?.Spray( mouth, direction, 4, 160f );
+			gore?.ThrowChunk( mouth, direction );
+			AddWound( segment, position + Vector3.Down * 4f, direction, 1.4f );
+		}
+
+		// Belly: a badly hurt gut spills open while it keeps walking.
+		if ( segment == Segment.Belly && !gutsSpilled && hurt >= 0.4f )
+		{
+			gutsSpilled = true;
+			var belly = Citizen.SceneModel.GetBoneWorldTransform( "spine_0" ).Position;
+			gore?.ThrowMeat( belly, direction, 2, organs: true );
+			gore?.Burst( belly, direction, 1.5f );
+			gore?.Spray( belly, Vector3.Down, 5, 120f, 0.8f, 1.6f );
+		}
+
+		// Chest: ribs tear out.
+		if ( segment == Segment.Chest && !ribsTorn && hurt >= 0.4f )
+		{
+			ribsTorn = true;
+			var chest = Citizen.SceneModel.GetBoneWorldTransform( "spine_2" ).Position;
+			gore?.ThrowChunk( chest, direction );
+			gore?.ThrowChunk( chest, direction + Vector3.Up );
+			gore?.Burst( chest, direction, 1.4f );
+		}
+	}
+
+	/// <summary> A blood stain with a flesh wound on top, stuck to the nearest bone so it moves with the body. </summary>
+	void AddWound( Segment segment, Vector3 position, Vector3 direction, float size )
+	{
+		var gore = Gore;
+		var citizen = Citizen;
+		if ( gore is null || !citizen.IsValid() || direction.IsNearlyZero() ) return;
+
+		var bones = segment switch
+		{
+			Segment.Head => new[] { "head" },
+			Segment.Chest => new[] { "spine_2", "neck_0", "clavicle_L", "clavicle_R" },
+			_ => new[] { "spine_0", "spine_1", "pelvis" },
+		};
+		var bone = bones
+			.Select( b => citizen.GetBoneObject( b ) )
+			.Where( b => b.IsValid() )
+			.OrderBy( b => b.WorldPosition.DistanceSquared( position ) )
+			.FirstOrDefault();
+		if ( bone is null ) return;
+
+		var dir = direction.Normal;
+		void Stamp( List<DecalDefinition> set, float scale )
+		{
+			if ( set.Count == 0 ) return;
+			var go = new GameObject( bone, true, "Wound" );
+			go.WorldPosition = position - dir * 14f;
+			go.WorldRotation = Rotation.LookAt( dir ) * Rotation.FromRoll( Game.Random.Float( 0f, 360f ) );
+			var decal = go.AddComponent<Decal>();
+			decal.Decals = new() { Game.Random.FromList( set ) };
+			decal.Size = new Vector2( 1f, 1f );
+			decal.Scale = scale;
+			decal.Depth = 24f;
+			wounds.Enqueue( go );
+		}
+
+		Stamp( gore.BloodDecals, size * Game.Random.Float( 1.0f, 1.3f ) );
+		Stamp( gore.WoundDecals, size * Game.Random.Float( 0.4f, 0.55f ) );
+
+		while ( wounds.Count > MaxWounds * 2 )
+		{
+			var old = wounds.Dequeue();
+			if ( old.IsValid() ) old.Destroy();
+		}
+	}
+
+	/// <summary> Collapses the mesh's jaw (teeth and mouth) into the head, leaving a ruined lower face. </summary>
+	void TearJaw()
+	{
+		var mesh = Mesh;
+		if ( !mesh.IsValid() ) return;
+		var jaw = mesh.Model.Bones.AllBones.Where( b => b.Name.StartsWith( "jaw" ) ).Select( b => b.Index ).ToArray();
+		if ( jaw.Length > 0 ) meshPins.Add( ("head", jaw) );
 	}
 
 	// ---- Hit zones --------------------------------------------------------
@@ -113,6 +226,10 @@ public sealed class ZombieGore : Component
 		var def = Map.Defs[segment];
 		var scale = torsoHit || segment == Segment.Head ? referenceHealth : MathF.Min( referenceHealth, LimbToughness );
 		var threshold = scale * def.HealthFraction;
+
+		// Damage shows on the body before anything comes off: wounds, a torn-out jaw, spilled guts.
+		Progress( segment, position, direction, damage[segment] / threshold );
+
 		var overkill = killingShot && goreAmount >= threshold * 0.5f;
 		if ( damage[segment] < threshold && !overkill ) return false;
 
@@ -137,7 +254,18 @@ public sealed class ZombieGore : Component
 		var def = Map.Defs[segment];
 		var piece = Map.Subtree( segment, attached );
 
-		SpawnGib( piece, direction, fling: 1f, allowMidAirSplit: true );
+		var gib = SpawnGib( piece, direction, fling: 1f, allowMidAirSplit: true );
+
+		// A head either falls off or bursts.
+		if ( segment == Segment.Head && gib.IsValid() && Game.Random.Float() < HeadBurstChance )
+		{
+			var at = gib.WorldPosition;
+			gib.Pulverize( at, direction );
+			Gore?.Burst( at, Vector3.Up, 1.8f );
+			Gore?.Spray( at, direction, 8, 220f, 0.6f, 1.5f );
+			Gore?.ThrowChunk( at, direction );
+			Gore?.ThrowChunk( at, Vector3.Up );
+		}
 
 		attached.ExceptWith( piece );
 		cutRoots.Add( segment );
@@ -238,11 +366,11 @@ public sealed class ZombieGore : Component
 	}
 
 	/// <summary> Captures the zombie's current pose and spawns those segments as a gib. </summary>
-	void SpawnGib( HashSet<Segment> piece, Vector3 direction, float fling, bool allowMidAirSplit, Vector3? burstFrom = null )
+	Gib SpawnGib( HashSet<Segment> piece, Vector3 direction, float fling, bool allowMidAirSplit, Vector3? burstFrom = null )
 	{
 		var visible = Visible;
 		var citizen = Citizen;
-		if ( visible?.SceneModel is null || piece.Count == 0 ) return;
+		if ( visible?.SceneModel is null || piece.Count == 0 ) return null;
 
 		var boneCount = visible.Model.Bones.AllBones.Count();
 		var meshWorld = new Transform[boneCount];
@@ -256,7 +384,7 @@ public sealed class ZombieGore : Component
 			+ Vector3.Up * Game.Random.Float( 110f, 230f )) * fling;
 		var spin = Vector3.Random * Game.Random.Float( 6f, 16f ) * fling;
 
-		Gib.CreateSkinned( Scene, Gore, Map, visible.Tint, meshWorld, caps, piece, velocity, spin, allowMidAirSplit );
+		return Gib.CreateSkinned( Scene, Gore, Map, visible.Tint, meshWorld, caps, piece, velocity, spin, allowMidAirSplit );
 	}
 
 	Vector3 StumpPosition( SegmentDef def )
@@ -315,6 +443,14 @@ public sealed class ZombieGore : Component
 		{
 			sawDeath = true;
 			timeSinceDeath = 0f;
+		}
+
+		// Badly hurt zombies leave a blood trail.
+		var badlyHurt = jawGone || gutsSpilled || ribsTorn || wounds.Count >= 6 || cutRoots.Count > 0;
+		if ( !sawDeath && badlyHurt && timeSinceDrip > 0.35f )
+		{
+			timeSinceDrip = 0f;
+			Gore?.Drip( WorldPosition + Vector3.Up * 30f + Vector3.Random.WithZ( 0 ) * 8f );
 		}
 
 		if ( sawDeath && !pooled && timeSinceDeath > 1.2f )

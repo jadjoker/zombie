@@ -64,7 +64,7 @@ public sealed class BodySegments
 			new( Segment.Pelvis,    null,                "pelvis",      new[] { "pelvis" },      9f,    true,  7f,   "leg_upper_L",   "leg_upper_R",  60f ),
 			new( Segment.Belly,     Segment.Pelvis,      "spine_0",     new[] { "spine_0" },     2.0f,  true,  8f,   "spine_0",       "spine_2",      60f ),
 			new( Segment.Chest,     Segment.Belly,       "spine_2",     new[] { "spine_2" },     1.8f,  true,  9.5f, "spine_2",       "neck_0",       60f ),
-			new( Segment.Head,      Segment.Chest,       "head",        new[] { "head" },        0.35f, true,  5.5f, "head",          "@head_top",    30f ),
+			new( Segment.Head,      Segment.Chest,       "head",        new[] { "head" },        1.0f,  true,  5.5f, "head",          "@head_top",    30f ),
 			new( Segment.UpperArmL, Segment.Chest,       "arm_upper_L", new[] { "arm_upper_L" }, 0.45f, false, 3.5f, "arm_upper_L",   "arm_lower_L",  25f ),
 			new( Segment.ForearmL,  Segment.UpperArmL,   "arm_lower_L", new[] { "arm_lower_L" }, 0.3f,  false, 3f,   "arm_lower_L",   "hand_L",       25f ),
 			new( Segment.HandL,     Segment.ForearmL,    "hand_L",      new[] { "hand_L" },      0.2f,  false, 2.5f, "hand_L",        "@hand_tip_L",  20f ),

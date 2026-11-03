@@ -406,7 +406,7 @@
           "AimSpeed": 9,
           "AimSpreadScale": 0.15,
           "BulletImpulse": 150,
-          "Damage": 34,
+          "Damage": 20,
           "DamagePerLevel": 0.25,
           "DryFireSound": {
             "Id": "6f2646af-418c-4d41-84c7-5e23041175c1",
@@ -2738,7 +2738,7 @@
           ],
           "CutHigherChance": 0.25,
           "DecalLifetime": 40,
-          "ExplodeCorpseDamage": 2.2,
+          "ExplodeCorpseDamage": 1.6,
           "ExplodeSingleShot": 1.4,
           "FadeTime": 1.2,
           "GibLifetime": 20,

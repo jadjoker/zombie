@@ -31,6 +31,19 @@ public sealed class PlayerAfflictions : Component
 	readonly List<Blot> blots = new();
 	readonly List<float> recentInk = new();
 
+	[Property, Group( "Burn" )] public float BurnDuration { get; set; } = 4f;
+	[Property, Group( "Burn" )] public float BurnDamagePerSecond { get; set; } = 8f;
+	[Property, Group( "Slow" )] public float SlowDuration { get; set; } = 3.5f;
+	/// <summary> Move speed while slowed, as a fraction. </summary>
+	[Property, Group( "Slow" )] public float SlowSpeed { get; set; } = 0.45f;
+
+	public float BurnLeft { get; private set; }
+	public float SlowLeft { get; private set; }
+	/// <summary> What the weapon multiplies move speed by (slowed or not). </summary>
+	public float SpeedScale => SlowLeft > 0f ? SlowSpeed : 1f;
+	public TimeSince TimeSinceCursed { get; private set; } = 999f;
+	public CardKind LastCurse { get; private set; }
+
 	[Sync] public bool Venomed { get; set; }
 	/// <summary> Seconds of venom left (on the owner). </summary>
 	public float VenomLeft { get; private set; }
@@ -73,7 +86,11 @@ public sealed class PlayerAfflictions : Component
 		recentInk.Add( now );
 		if ( recentInk.Count < InkHits ) return;
 		recentInk.Clear();
+		SplatInk();
+	}
 
+	void SplatInk()
+	{
 		// Fresh splatter, round the edges of the view (never dead centre).
 		InkLeft = InkDuration;
 		blots.Clear();
@@ -91,9 +108,38 @@ public sealed class PlayerAfflictions : Component
 		GetComponent<CameraJuice>()?.Shake( 0.3f );
 	}
 
+	/// <summary> Enemy (host) -> this player: one of MC61's cards hit you. </summary>
+	[Rpc.Owner]
+	public void Cursed( CardKind kind )
+	{
+		if ( Health is null || Health.IsDead ) return;
+		LastCurse = kind;
+		TimeSinceCursed = 0f;
+
+		switch ( kind )
+		{
+			case CardKind.Burn:
+				BurnLeft = BurnDuration;
+				break;
+			case CardKind.Poison:
+				VenomLeft = VenomDuration;
+				TimeSinceVenomed = 0f;
+				break;
+			case CardKind.Slow:
+				SlowLeft = SlowDuration;
+				break;
+			case CardKind.Ink:
+				SplatInk();
+				break;
+		}
+		GetComponent<CameraJuice>()?.Shake( 0.25f );
+	}
+
 	/// <summary> Wipes everything (respawning). </summary>
 	public void Clear()
 	{
+		BurnLeft = 0f;
+		SlowLeft = 0f;
 		VenomLeft = 0f;
 		InkLeft = 0f;
 		blots.Clear();
@@ -109,15 +155,19 @@ public sealed class PlayerAfflictions : Component
 		var health = Health;
 		if ( health is null || health.IsDead )
 		{
-			if ( VenomLeft > 0f || Venomed ) Clear();
+			if ( VenomLeft > 0f || BurnLeft > 0f || SlowLeft > 0f || InkLeft > 0f || Venomed ) Clear();
 			return;
 		}
 
 		if ( InkLeft > 0f ) InkLeft = MathF.Max( 0f, InkLeft - Time.Delta );
+		if ( SlowLeft > 0f ) SlowLeft = MathF.Max( 0f, SlowLeft - Time.Delta );
+		if ( BurnLeft > 0f ) BurnLeft = MathF.Max( 0f, BurnLeft - Time.Delta );
 
-		if ( VenomLeft > 0f )
+		// Venom and burn tick together.
+		var dps = (VenomLeft > 0f ? VenomDamagePerSecond : 0f) + (BurnLeft > 0f ? BurnDamagePerSecond : 0f);
+		if ( dps > 0f )
 		{
-			VenomLeft = MathF.Max( 0f, VenomLeft - Time.Delta );
+			if ( VenomLeft > 0f ) VenomLeft = MathF.Max( 0f, VenomLeft - Time.Delta );
 
 			// Tick twice a second. Self-inflicted, so the player's hurt reaction stays small.
 			tickTimer += Time.Delta;
@@ -126,7 +176,7 @@ public sealed class PlayerAfflictions : Component
 				tickTimer -= 0.5f;
 				health.OnDamage( new DamageInfo
 				{
-					Damage = VenomDamagePerSecond * 0.5f,
+					Damage = dps * 0.5f,
 					Attacker = GameObject,
 					Position = WorldPosition + Vector3.Up * 50f,
 					Origin = WorldPosition,

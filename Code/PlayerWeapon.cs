@@ -86,8 +86,10 @@ public sealed class PlayerWeapon : Component
 		if ( !controller.IsValid() ) return;
 		if ( baseWalkSpeed < 0f ) { baseWalkSpeed = controller.WalkSpeed; baseRunSpeed = controller.RunSpeed; }
 		var scale = MathX.Lerp( 1f, AimMoveSpeedScale, AimAmount );
-		controller.WalkSpeed = baseWalkSpeed * scale;
-		controller.RunSpeed = MathX.Lerp( baseRunSpeed, baseWalkSpeed * AimMoveSpeedScale, AimAmount );
+		// Curses (MC61's slow card) slow everything down.
+		var slow = GetComponent<PlayerAfflictions>()?.SpeedScale ?? 1f;
+		controller.WalkSpeed = baseWalkSpeed * scale * slow;
+		controller.RunSpeed = MathX.Lerp( baseRunSpeed, baseWalkSpeed * AimMoveSpeedScale, AimAmount ) * slow;
 	}
 
 	/// <summary> Time since a bullet hit something damageable. The HUD shows a hitmarker. </summary>

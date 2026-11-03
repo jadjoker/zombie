@@ -54,6 +54,17 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Squilien" )] public float SquilienHealthPerWave { get; set; } = 20f;
 	[Property, Group( "Squilien" )] public float SquilienSpawnHeight { get; set; } = 170f;
 
+	/// <summary> MC61 turns up every this many waves (0 = never). </summary>
+	[Property, Group( "Boss" )] public int BossEvery { get; set; } = 5;
+	[Property, Group( "Boss" )] public float BossBaseHealth { get; set; } = 2000f;
+	/// <summary> Extra health each time he comes back. </summary>
+	[Property, Group( "Boss" )] public float BossHealthPerVisit { get; set; } = 800f;
+	[Property, Group( "Boss" )] public float BossSpawnHeight { get; set; } = 160f;
+
+	/// <summary> This wave has MC61 in it. </summary>
+	[Sync] public bool BossWave { get; set; }
+	bool bossPending;
+
 	[Property, Group( "Juice" )] public SoundEvent ZombieVoice { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieAttackSound { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieDeathSound { get; set; }
@@ -110,13 +121,15 @@ public sealed class WaveDirector : Component
 			return;
 		}
 
+		if ( bossPending && TrySpawnBoss() ) bossPending = false;
+
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
 			if ( TrySpawnEnemy() ) toSpawn--;
 			timeSinceSpawn = 0f;
 		}
 
-		if ( toSpawn <= 0 && alive.Count == 0 )
+		if ( toSpawn <= 0 && !bossPending && alive.Count == 0 )
 		{
 			State = WaveState.Intermission;
 			nextWaveAt = IntermissionSeconds;
@@ -151,6 +164,8 @@ public sealed class WaveDirector : Component
 	{
 		Wave++;
 		toSpawn = BaseZombies + ZombiesPerWave * (Wave - 1);
+		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
+		bossPending = BossWave;
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
 		WaveStartedEverywhere();
@@ -180,11 +195,15 @@ public sealed class WaveDirector : Component
 			b.GameObject.Destroy();
 		foreach ( var q in Scene.GetAllComponents<Squilien>().ToList() )
 			q.GameObject.Destroy();
+		foreach ( var m in Scene.GetAllComponents<MC61>().ToList() )
+			m.GameObject.Destroy();
 		alive.Clear();
 
 		Wave = 0;
 		Kills = 0;
 		toSpawn = 0;
+		bossPending = false;
+		BossWave = false;
 		State = WaveState.Intermission;
 		nextWaveAt = FirstWaveDelay;
 		CleanupEverywhere();
@@ -211,6 +230,27 @@ public sealed class WaveDirector : Component
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		return TrySpawnZombie();
+	}
+
+	bool TrySpawnBoss()
+	{
+		if ( !TryFindSpawnPosition( out var position ) ) return false;
+
+		var visit = BossEvery > 0 ? Wave / BossEvery - 1 : 0;
+		var go = new GameObject( true, "MC61" );
+		go.WorldPosition = position + Vector3.Up * BossSpawnHeight;
+		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
+		go.AddComponent<Health>().ResetTo( BossBaseHealth + BossHealthPerVisit * visit );
+		var boss = go.AddComponent<MC61>();
+		boss.Killed += b =>
+		{
+			alive.Remove( b.GameObject );
+			Kills++;
+		};
+		alive.Add( go );
+
+		if ( Networking.IsActive ) go.NetworkSpawn();
+		return true;
 	}
 
 	bool TrySpawnSquilien()

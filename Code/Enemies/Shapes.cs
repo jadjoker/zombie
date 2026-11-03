@@ -5,8 +5,17 @@
 public static class Shapes
 {
 	static Model sphere;
+	static Model box;
 
 	public static Model Sphere => sphere ??= Model.Load( "models/dev/sphere.vmdl" );
+	public static Model Box => box ??= Model.Load( "models/dev/box.vmdl" );
+
+	/// <summary> Scale to give the box model so it's this size (x, y, z). </summary>
+	public static Vector3 BoxScale( Vector3 size )
+	{
+		var b = Box.Bounds.Size;
+		return new Vector3( size.x / MathF.Max( b.x, 0.01f ), size.y / MathF.Max( b.y, 0.01f ), size.z / MathF.Max( b.z, 0.01f ) );
+	}
 
 	/// <summary> Scale to give the sphere model so it has this radius. </summary>
 	public static float SphereScale( float radius )

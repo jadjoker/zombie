@@ -31,6 +31,74 @@ ZombieHud
 	background-image: radial-gradient( rgba( #40ff40, 0 ) 45%, rgba( #3cff20, 0.75 ) 100% );
 }
 
+.burn
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-image: radial-gradient( rgba( #ff6a00, 0 ) 45%, rgba( #ff3c00, 0.8 ) 100% );
+}
+
+.slow
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-image: radial-gradient( rgba( #60c8ff, 0 ) 50%, rgba( #a8e6ff, 0.8 ) 100% );
+}
+
+.boss
+{
+	position: absolute;
+	top: 96px;
+	left: 30%;
+	right: 30%;
+	flex-direction: column;
+	align-items: center;
+
+	.name
+	{
+		font-size: 22px;
+		font-weight: 900;
+		color: #ff4fd8;
+		letter-spacing: 4px;
+		text-shadow: 0 0 10px rgba( black, 0.8 );
+	}
+
+	.bar
+	{
+		width: 100%;
+		height: 14px;
+		background-color: rgba( black, 0.55 );
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.fill
+	{
+		height: 100%;
+		background-color: #ff2fb0;
+	}
+}
+
+.speech
+{
+	position: absolute;
+	top: 26%;
+	left: 0;
+	right: 0;
+	justify-content: center;
+	font-size: 64px;
+	font-weight: 900;
+	color: #ff4fd8;
+	text-shadow: 0 0 18px rgba( #ff00aa, 0.9 );
+	letter-spacing: 6px;
+}
+
 .ink
 {
 	position: absolute;
@@ -300,6 +368,11 @@ ZombieHud
 	&.venomed .fill
 	{
 		background-color: #5fe03a;
+	}
+
+	&.burning .caption
+	{
+		color: #ff8a3a;
 	}
 }
 

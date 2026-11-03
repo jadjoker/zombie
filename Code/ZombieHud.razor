@@ -5,6 +5,8 @@
 <root>
 	<div class="hurt" style="opacity: @HurtOpacity"></div>
 	<div class="venom" style="opacity: @VenomOpacity"></div>
+	<div class="burn" style="opacity: @BurnOpacity"></div>
+	<div class="slow" style="opacity: @SlowOpacity"></div>
 
 	@if ( InkOpacity > 0f )
 	{
@@ -39,6 +41,19 @@
 		<div class="status">@StatusText</div>
 	</div>
 
+	@if ( Boss is { } boss )
+	{
+		<div class="boss">
+			<div class="name">MC61</div>
+			<div class="bar"><div class="fill" style="width: @(boss.HealthFraction * 100f)%"></div></div>
+		</div>
+
+		@if ( boss.TimeSinceLine < 2.4f && !string.IsNullOrEmpty( boss.Line ) )
+		{
+			<div class="speech" style="opacity: @(MathX.Clamp( (2.4f - boss.TimeSinceLine) / 0.5f, 0f, 1f )); transform: scale( @(1f + MathX.Clamp( 1f - boss.TimeSinceLine / 0.2f, 0f, 1f ) * 0.5f) ) rotate( @(MathF.Sin( Time.Now * 30f ) * 2f)deg )">@boss.Line</div>
+		}
+	}
+
 	@if ( BannerOpacity > 0f )
 	{
 		<div class="banner @BannerClass" style="opacity: @BannerOpacity; transform: scale( @BannerScale )">
@@ -71,8 +86,8 @@
 		</div>
 	}
 
-	<div class="health @(HealthPercent <= 30 ? "low" : "") @(IsVenomed ? "venomed" : "")">
-		<div class="caption">@(IsVenomed ? "HEALTH   VENOM" : "HEALTH")</div>
+	<div class="health @(HealthPercent <= 30 ? "low" : "") @(IsVenomed ? "venomed" : "") @(IsBurning ? "burning" : "")">
+		<div class="caption">HEALTH@(StatusCaption)</div>
 		<div class="bar">
 			<div class="lag" style="width: @(LagPercent)%"></div>
 			<div class="fill" style="width: @(HealthPercent)%"></div>
@@ -165,6 +180,15 @@
 		}
 	}
 	bool IsVenomed => (Afflictions?.VenomLeft ?? 0f) > 0f;
+	bool IsBurning => (Afflictions?.BurnLeft ?? 0f) > 0f;
+	bool IsSlowed => (Afflictions?.SlowLeft ?? 0f) > 0f;
+	string StatusCaption => (IsVenomed ? "   VENOM" : "") + (IsBurning ? "   BURNING" : "") + (IsSlowed ? "   SLOWED" : "");
+
+	float BurnOpacity => IsBurning ? (0.3f + 0.15f * MathF.Sin( Time.Now * 11f )) * MathX.Clamp( Afflictions.BurnLeft / 0.6f, 0f, 1f ) : 0f;
+	float SlowOpacity => IsSlowed ? 0.45f * MathX.Clamp( Afflictions.SlowLeft / 0.6f, 0f, 1f ) : 0f;
+
+	/// <summary> The boss, while one is alive. </summary>
+	MC61 Boss => Scene.GetAllComponents<MC61>().FirstOrDefault( b => !b.IsDead );
 
 	// Venom: a sickly green pulse round the edges while it lasts, with a strong flash when it kicks in.
 	float VenomOpacity
@@ -192,7 +216,7 @@
 	bool BannerIsStart => Director is not null && Director.TimeSinceWaveStarted < Director.TimeSinceWaveCleared;
 	string BannerClass => BannerIsStart ? "start" : "cleared";
 	string BannerTitle => BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
-	string BannerSubtitle => BannerIsStart ? "They're coming" : "Catch your breath";
+	string BannerSubtitle => BannerIsStart ? (Director?.BossWave ?? false ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
 	float BannerOpacity => BannerAge < 0.2f ? BannerAge / 0.2f : MathX.Clamp( 1f - (BannerAge - 2f) / 0.6f, 0f, 1f );
 	float BannerScale => 1f + MathX.Clamp( 1f - BannerAge / 0.25f, 0f, 1f ) * 0.6f;
 

@@ -6,6 +6,20 @@
 	<div class="hurt" style="opacity: @HurtOpacity"></div>
 	<div class="venom" style="opacity: @VenomOpacity"></div>
 
+	@if ( InkOpacity > 0f )
+	{
+		<div class="ink" style="opacity: @InkOpacity">
+			@foreach ( var blot in Afflictions.Blots )
+			{
+				<div class="blot" style="left: @(blot.X)%; top: @(blot.Y)%; width: @(blot.Size)px; height: @(blot.Size * 0.85f)px; margin-left: @(-blot.Size / 2)px; margin-top: @(-blot.Size * 0.42f)px;"></div>
+				@foreach ( var drop in Drops( blot ) )
+				{
+					<div class="blot" style="left: @(blot.X)%; top: @(blot.Y)%; width: @(drop.Size)px; height: @(drop.Size)px; margin-left: @(drop.X)px; margin-top: @(drop.Y)px;"></div>
+				}
+			}
+		</div>
+	}
+
 	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(1f - (Weapon?.AimAmount ?? 0f))">
 		<div class="dot"></div>
 	</div>
@@ -134,6 +148,22 @@
 	}
 
 	PlayerAfflictions Afflictions => Player?.GetComponent<PlayerAfflictions>();
+
+	// Ink fades out over its last second.
+	float InkOpacity => Afflictions is { } a && a.InkLeft > 0f ? MathX.Clamp( a.InkLeft / 1f, 0f, 1f ) * 0.92f : 0f;
+
+	/// <summary> Little splatter drops around a blot (offsets from its centre, in px), the same every frame. </summary>
+	static IEnumerable<(float X, float Y, float Size)> Drops( PlayerAfflictions.Blot blot )
+	{
+		var r = new System.Random( blot.Seed );
+		for ( var d = 0; d < 4; d++ )
+		{
+			var size = blot.Size * (0.15f + (float)r.NextDouble() * 0.2f);
+			var angle = (float)r.NextDouble() * MathF.PI * 2f;
+			var dist = blot.Size * (0.45f + (float)r.NextDouble() * 0.25f);
+			yield return (MathF.Cos( angle ) * dist - size / 2f, MathF.Sin( angle ) * dist - size / 2f, size);
+		}
+	}
 	bool IsVenomed => (Afflictions?.VenomLeft ?? 0f) > 0f;
 
 	// Venom: a sickly green pulse round the edges while it lasts, with a strong flash when it kicks in.

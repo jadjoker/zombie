@@ -11,7 +11,7 @@
 /// body locally and drags it along behind the head, so only the head needs syncing. Cuts are decided on
 /// the host and broadcast; a synced mask lets late joiners catch up.
 /// </summary>
-public sealed class Bloober : Component
+public sealed class Bloober : Component, ICreature
 {
 	[Property, Group( "Body" )] public int SegmentCount { get; set; } = 9;
 	[Property, Group( "Body" )] public float HeadRadius { get; set; } = 13f;
@@ -156,7 +156,7 @@ public sealed class Bloober : Component
 
 			var go = new GameObject( true, i == 0 ? "Bloober Head" : $"Bloober Segment {i}" );
 			go.NetworkMode = NetworkMode.Never;
-			go.Tags.Add( "bloober" );
+			go.Tags.Add( "creature" );
 			go.WorldPosition = position;
 			go.WorldRotation = WorldRotation;
 
@@ -170,8 +170,8 @@ public sealed class Bloober : Component
 			collider.IsTrigger = true;
 			collider.Radius = radius * 1.1f;
 
-			var part = go.AddComponent<BlooberPart>();
-			part.Owner = this;
+			var part = go.AddComponent<CreaturePart>();
+			part.Creature = this;
 			part.Index = i;
 
 			var segment = new Segment
@@ -441,7 +441,7 @@ public sealed class Bloober : Component
 
 		// Wall ahead: slide along it and lift.
 		var look = Scene.Trace.Sphere( HeadRadius * 0.8f, position, position + direction * 70f )
-			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "bloober" )
+			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "creature" )
 			.IgnoreDynamic()
 			.Run();
 		if ( look.Hit )
@@ -453,7 +453,7 @@ public sealed class Bloober : Component
 
 		// Keep some air underneath.
 		var ground = Scene.Trace.Ray( position, position + Vector3.Down * 400f )
-			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "bloober" )
+			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "creature" )
 			.IgnoreDynamic()
 			.Run();
 		if ( ground.Hit && position.z - ground.HitPosition.z < MinAltitude + HeadRadius )
@@ -626,8 +626,8 @@ public sealed class Bloober : Component
 	void Detach( Segment segment, Vector3 push )
 	{
 		var go = segment.Go;
-		go.Tags.Remove( "bloober" );
-		go.Components.Get<BlooberPart>()?.Destroy();
+		go.Tags.Remove( "creature" );
+		go.Components.Get<CreaturePart>()?.Destroy();
 		segment.Collider?.Destroy();
 		segment.Renderer.Tint = Color.Lerp( BodyColor, BodyColor * 0.45f, segment.Hurt ).WithAlpha( 1f );
 
@@ -680,22 +680,5 @@ public sealed class Bloober : Component
 			else if ( Game.Random.Float() < 0.25f ) Burst( segment, direction, 8, 1 );
 			else Detach( segment, (direction + Vector3.Random * 0.8f).Normal * Game.Random.Float( 60f, 180f ) );
 		}
-	}
-}
-
-/// <summary>
-/// Sits on each Bloober segment so bullets know which creature, and which part of it, they hit.
-/// </summary>
-public sealed class BlooberPart : Component, IShootable
-{
-	public Bloober Owner { get; set; }
-	public int Index { get; set; }
-
-	public Component ShotOwner => Owner;
-	public bool IsDead => !Owner.IsValid() || Owner.IsDead;
-
-	public void ReceiveShot( float damage, GameObject hitObject, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
-	{
-		if ( Owner.IsValid() ) Owner.ReceiveShot( Index, damage, direction, position, origin, shooter, scoreHit );
 	}
 }

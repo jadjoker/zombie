@@ -31,6 +31,22 @@ ZombieHud
 	background-image: radial-gradient( rgba( #40ff40, 0 ) 45%, rgba( #3cff20, 0.75 ) 100% );
 }
 
+.ink
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+
+	.blot
+	{
+		position: absolute;
+		border-radius: 50%;
+		background-image: radial-gradient( rgba( #1c0a33, 0.97 ) 45%, rgba( #2a1048, 0 ) 72% );
+	}
+}
+
 .crosshair
 {
 	position: absolute;

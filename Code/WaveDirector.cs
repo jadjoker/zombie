@@ -47,6 +47,13 @@ public sealed class WaveDirector : Component
 	/// <summary> How high above the spawn point it appears. </summary>
 	[Property, Group( "Bloober" )] public float BlooberSpawnHeight { get; set; } = 90f;
 
+	/// <summary> Chance each spawn is a Squilien, once they've started. </summary>
+	[Property, Group( "Squilien" )] public float SquilienChance { get; set; } = 0.25f;
+	[Property, Group( "Squilien" )] public int SquilienFromWave { get; set; } = 1;
+	[Property, Group( "Squilien" )] public float SquilienBaseHealth { get; set; } = 90f;
+	[Property, Group( "Squilien" )] public float SquilienHealthPerWave { get; set; } = 20f;
+	[Property, Group( "Squilien" )] public float SquilienSpawnHeight { get; set; } = 170f;
+
 	[Property, Group( "Juice" )] public SoundEvent ZombieVoice { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieAttackSound { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieDeathSound { get; set; }
@@ -171,6 +178,8 @@ public sealed class WaveDirector : Component
 			z.GameObject.Destroy();
 		foreach ( var b in Scene.GetAllComponents<Bloober>().ToList() )
 			b.GameObject.Destroy();
+		foreach ( var q in Scene.GetAllComponents<Squilien>().ToList() )
+			q.GameObject.Destroy();
 		alive.Clear();
 
 		Wave = 0;
@@ -195,9 +204,35 @@ public sealed class WaveDirector : Component
 
 	bool TrySpawnEnemy()
 	{
-		if ( Wave >= BlooberFromWave && Game.Random.Float() < BlooberChance )
-			return TrySpawnBloober();
+		// One roll shared out between the creatures; whatever is left over is a zombie.
+		var roll = Game.Random.Float();
+		var squilien = Wave >= SquilienFromWave ? SquilienChance : 0f;
+		var bloober = Wave >= BlooberFromWave ? BlooberChance : 0f;
+		if ( roll < squilien ) return TrySpawnSquilien();
+		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		return TrySpawnZombie();
+	}
+
+	bool TrySpawnSquilien()
+	{
+		if ( !TryFindSpawnPosition( out var position ) ) return false;
+
+		var go = new GameObject( true, "Squilien" );
+		go.WorldPosition = position + Vector3.Up * SquilienSpawnHeight;
+		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
+
+		go.AddComponent<Health>().ResetTo( SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1) );
+		var squilien = go.AddComponent<Squilien>();
+		squilien.Hue = Game.Random.Float();
+		squilien.Killed += s =>
+		{
+			alive.Remove( s.GameObject );
+			Kills++;
+		};
+		alive.Add( go );
+
+		if ( Networking.IsActive ) go.NetworkSpawn();
+		return true;
 	}
 
 	bool TrySpawnBloober()
@@ -207,7 +242,7 @@ public sealed class WaveDirector : Component
 		var go = new GameObject( true, "Bloober" );
 		go.WorldPosition = position + Vector3.Up * BlooberSpawnHeight;
 		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
-		go.Tags.Add( "bloober" );
+		go.Tags.Add( "creature" );
 
 		go.AddComponent<Health>().ResetTo( BlooberBaseHealth + BlooberHealthPerWave * (Wave - 1) );
 		var bloober = go.AddComponent<Bloober>();

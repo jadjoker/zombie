@@ -274,7 +274,7 @@ public sealed class PlayerWeapon : Component
 			// and take whichever is nearer.
 			var creature = Scene.Trace.Ray( start, start + direction * Range )
 				.HitTriggersOnly()
-				.WithTag( "bloober" )
+				.WithTag( "creature" )
 				.Run();
 			if ( creature.Hit && (!tr.Hit || creature.Distance < tr.Distance) ) tr = creature;
 

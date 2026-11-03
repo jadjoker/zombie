@@ -171,7 +171,7 @@ public sealed class GoreSystem : Component
 	public (Vector3 Position, Vector3 Normal)? TraceWorld( Vector3 from, Vector3 to )
 	{
 		var tr = Scene.Trace.Ray( from, to )
-			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "bloober" )
+			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "creature" )
 			.IgnoreDynamic()
 			.Run();
 		if ( !tr.Hit ) return null;

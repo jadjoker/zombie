@@ -115,6 +115,43 @@ ZombieHud
 	}
 }
 
+.stamina
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -45px;
+	margin-top: 34px;
+	width: 90px;
+	justify-content: center;
+
+	.pip
+	{
+		width: 26px;
+		height: 5px;
+		margin: 0 2px;
+		background-color: rgba( black, 0.45 );
+		border-radius: 3px;
+		overflow: hidden;
+	}
+
+	.fill
+	{
+		height: 100%;
+		background-color: rgba( #9fdcff, 0.75 );
+	}
+
+	.pip.full .fill
+	{
+		background-color: #ffffff;
+	}
+
+	&.empty .pip
+	{
+		background-color: rgba( #ff3030, 0.6 );
+	}
+}
+
 .crosshair
 {
 	position: absolute;

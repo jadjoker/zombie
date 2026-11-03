@@ -85,6 +85,12 @@ public sealed class PlayerWeapon : Component
 		// Slow the player while aiming; remember the original speeds the first time through.
 		if ( !controller.IsValid() ) return;
 		if ( baseWalkSpeed < 0f ) { baseWalkSpeed = controller.WalkSpeed; baseRunSpeed = controller.RunSpeed; }
+		// The movement kit owns the base speed (always running; Alt walks).
+		if ( GetComponent<PlayerMovement>() is { } movement )
+		{
+			baseRunSpeed = movement.MoveSpeed;
+			baseWalkSpeed = movement.MoveSpeed * 0.45f;
+		}
 		var scale = MathX.Lerp( 1f, AimMoveSpeedScale, AimAmount );
 		// Curses (MC61's slow card) slow everything down.
 		var slow = GetComponent<PlayerAfflictions>()?.SpeedScale ?? 1f;

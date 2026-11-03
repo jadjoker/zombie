@@ -22,6 +22,17 @@
 		</div>
 	}
 
+	@if ( Movement is { } move && StaminaOpacity > 0f )
+	{
+		<div class="stamina @(move.TimeSinceOutOfStamina < 0.35f ? "empty" : "")" style="opacity: @StaminaOpacity">
+			@for ( var i = 0; i < move.MaxStamina; i++ )
+			{
+				var fill = MathX.Clamp( move.Stamina - i, 0f, 1f );
+				<div class="pip @(fill >= 1f ? "full" : "")"><div class="fill" style="width: @(fill * 100f)%"></div></div>
+			}
+		</div>
+	}
+
 	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(1f - (Weapon?.AimAmount ?? 0f))">
 		<div class="dot"></div>
 	</div>
@@ -163,6 +174,21 @@
 	}
 
 	PlayerAfflictions Afflictions => Player?.GetComponent<PlayerAfflictions>();
+	PlayerMovement Movement => Player?.GetComponent<PlayerMovement>();
+
+	// Stamina pips show while they're refilling (or you tried to spend one you didn't have), then fade.
+	float staminaShown;
+	float StaminaOpacity
+	{
+		get
+		{
+			var m = Movement;
+			if ( m is null ) return 0f;
+			var wanted = m.Stamina < m.MaxStamina - 0.01f || m.TimeSinceOutOfStamina < 0.6f ? 1f : 0f;
+			staminaShown = MathX.Approach( staminaShown, wanted, Time.Delta * (wanted > 0f ? 8f : 1.5f) );
+			return staminaShown;
+		}
+	}
 
 	// Ink fades out over its last second.
 	float InkOpacity => Afflictions is { } a && a.InkLeft > 0f ? MathX.Clamp( a.InkLeft / 1f, 0f, 1f ) * 0.92f : 0f;

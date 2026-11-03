@@ -75,7 +75,10 @@ public sealed class ViewModel : Component
 		Gun.Set( "move_y", Vector3.Dot( velocity, controller.EyeAngles.ToRotation().Right ) );
 		Gun.Set( "move_z", controller.Velocity.z );
 		Gun.Set( "b_grounded", !controller.IsAirborne );
-		Gun.Set( "b_sprint", Input.Down( "Run" ) && speed > 150f && !(weapon?.IsReloading ?? false) && !(weapon?.IsAiming ?? false) );
+		// Gun tucks in during the fast moves (dash, slide, momentum).
+		var movement = controller.GetComponent<PlayerMovement>();
+		var rushing = movement is not null && (movement.IsDashing || movement.IsSliding) && speed > 150f;
+		Gun.Set( "b_sprint", rushing && !(weapon?.IsReloading ?? false) && !(weapon?.IsAiming ?? false) );
 
 		if ( weapon.IsValid() )
 			Gun.Set( "b_empty", weapon.Ammo <= 0 );

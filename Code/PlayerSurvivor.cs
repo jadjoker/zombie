@@ -104,6 +104,7 @@ public sealed class PlayerSurvivor : Component
 		}
 
 		GetComponent<PlayerAfflictions>()?.Clear();
+		GetComponent<PlayerMovement>()?.ResetStamina();
 
 		foreach ( var weapon in Components.GetAll<PlayerWeapon>( FindMode.EverythingInSelf ) )
 		{

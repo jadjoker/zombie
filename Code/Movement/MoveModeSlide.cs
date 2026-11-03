@@ -1,9 +1,9 @@
 using Sandbox.Movement;
 
 /// <summary>
-/// Ground movement while sliding. Reuses the walk mode's ground handling (sticking, steps, friction),
-/// but instead of walking toward your input it feeds in the slide's decaying momentum.
-/// Takes over whenever PlayerMovement says a slide is active.
+/// Ground movement during a slide, dash or momentum carry. Reuses the walk mode's ground handling
+/// (sticking, steps), but instead of walking toward your input it feeds in PlayerMovement's velocity.
+/// Takes over whenever PlayerMovement says one of those moves is active.
 /// </summary>
 public sealed class MoveModeSlide : MoveModeWalk
 {
@@ -12,12 +12,12 @@ public sealed class MoveModeSlide : MoveModeWalk
 	public override int Score( PlayerController controller )
 	{
 		var movement = Movement;
-		return movement.IsValid() && movement.IsSliding ? 1000 : -1000;
+		return movement.IsValid() && movement.OverridesGround ? 1000 : -1000;
 	}
 
 	public override Vector3 UpdateMove( Rotation eyes, Vector3 input )
 	{
 		var movement = Movement;
-		return movement.IsValid() ? movement.SlideVelocity : base.UpdateMove( eyes, input );
+		return movement.IsValid() ? movement.GroundVelocity : base.UpdateMove( eyes, input );
 	}
 }

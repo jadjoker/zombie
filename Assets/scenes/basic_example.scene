@@ -503,7 +503,11 @@
           "WorldModel": {
             "Id": "0ec6ecb8-00fc-0000-ba00-000000000000",
             "Path": "models/weapons/sbox_assault_m4a1/w_m4a1.vmdl"
-          }
+          },
+          "WorldModelAngles": "0,0,0",
+          "WorldModelGrip": "-4.19999981,0,3",
+          "WorldModelLeftHand": "8.5,2.20000005,3",
+          "WorldModelLeftHandAngles": "-5.4000001,-70.5999985,11.1999998"
         },
         {
           "__type": "CameraJuice",
@@ -660,7 +664,11 @@
           "WorldModel": {
             "Id": "f1b8972c-e858-4be9-8b29-8311d47d2dcf",
             "Path": "models/weapons/sbox_shotgun_spaghellim4/w_spaghellim4.vmdl"
-          }
+          },
+          "WorldModelAngles": "0,0,0",
+          "WorldModelGrip": "-7,0,3.5",
+          "WorldModelLeftHand": "6.19999981,2.4000001,1.60000002",
+          "WorldModelLeftHandAngles": "-5.4000001,-70.5999985,11.1999998"
         },
         {
           "__type": "WeaponInventory",
@@ -681,14 +689,18 @@
           "__enabled": true,
           "Flags": 0,
           "AimShoulderOffset": "55,22,2",
+          "FollowHandRotation": true,
+          "GunAngleOffset": "-5,44,-2",
           "HandAttachment": "hold_R",
+          "HeadBodyGroup": 2,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "ShoulderOffset": "95,26,4"
+          "ShoulderOffset": "95,26,4",
+          "SkinMaterialGroup": "skin_light"
         }
       ],
       "Children": [

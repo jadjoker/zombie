@@ -101,6 +101,16 @@ public sealed class PlayerWeapon : Component
 
 	/// <summary> The gun as seen in hand in third person, and by other players. </summary>
 	[Property, Group( "Third Person" )] public Model WorldModel { get; set; }
+	/// <summary> Where the pistol grip sits in the gun model, so it lands in the hand (the model's origin isn't at the grip). </summary>
+	[Property, Group( "Third Person" )] public Vector3 WorldModelGrip { get; set; } = new( -4.2f, 0f, 3f );
+	/// <summary>
+	/// Where the left hand (wrist bone) goes on the gun, in the gun model's space, so it holds the
+	/// handguard or pump. Zero leaves the left hand to the animation.
+	/// </summary>
+	[Property, Group( "Third Person" )] public Vector3 WorldModelLeftHand { get; set; } = new( 8.5f, 2.2f, 3f );
+	[Property, Group( "Third Person" )] public Angles WorldModelLeftHandAngles { get; set; } = new( -5.4f, -70.6f, 11.2f );
+	/// <summary> Extra angle tweak for the gun in hand. </summary>
+	[Property, Group( "Third Person" )] public Angles WorldModelAngles { get; set; } = Angles.Zero;
 	[Property, Group( "Third Person" )] public Sandbox.Citizen.CitizenAnimationHelper.HoldTypes HoldType { get; set; } = Sandbox.Citizen.CitizenAnimationHelper.HoldTypes.Rifle;
 
 	PlayerAppearance Appearance => GetComponent<PlayerAppearance>();

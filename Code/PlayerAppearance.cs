@@ -21,6 +21,12 @@ public sealed class PlayerAppearance : Component
 	/// </summary>
 	[Property] public Angles GunAngleOffset { get; set; } = Angles.Zero;
 
+	/// <summary>
+	/// True: the gun takes the hand's own angle, so it sits in both hands the way the hold animation
+	/// was made. False: it points straight along the body's facing instead.
+	/// </summary>
+	[Property] public bool FollowHandRotation { get; set; } = true;
+
 	/// <summary> Skin set on the body, matched to the light-skinned first-person arms. Empty leaves it alone. </summary>
 	[Property, Group( "Look" )] public string SkinMaterialGroup { get; set; } = "skin_light";
 	/// <summary> Which male head to use (0-4). Head 3 (index 2) is the light-skinned one. -1 leaves it alone. </summary>
@@ -32,6 +38,7 @@ public sealed class PlayerAppearance : Component
 	SkinnedModelRenderer Body => Controller?.Renderer;
 
 	readonly Dictionary<PlayerWeapon, GameObject> worldGuns = new();
+	Transform? leftHandTarget;
 
 	/// <summary> True when this machine should see the body and the gun in hand. </summary>
 	public bool ShowsBody => IsProxy || (Controller?.ThirdPerson ?? false);
@@ -78,6 +85,10 @@ public sealed class PlayerAppearance : Component
 		body.Set( "holdtype", (int)(held?.HoldType ?? CitizenAnimationHelper.HoldTypes.None) );
 		body.Set( "holdtype_handedness", 0 );
 
+		// Left hand onto the handguard (worked out last frame, after the gun was placed).
+		if ( show && leftHandTarget is Transform target ) body.SetIk( "hand_left", target );
+		else body.ClearIk( "hand_left" );
+
 		// Our own over-the-shoulder camera, tightening in while aiming.
 		var controller = Controller;
 		if ( !IsProxy && controller.IsValid() && controller.ThirdPerson )
@@ -117,15 +128,28 @@ public sealed class PlayerAppearance : Component
 		if ( !body.IsValid() ) return;
 		if ( body.GetAttachment( HandAttachment ) is not Transform hand ) return;
 
-		var facing = body.WorldRotation.Forward.WithZ( 0 ).Normal;
-		var pitch = IsProxy ? 0f : (Controller?.EyeAngles.pitch ?? 0f) * 0.85f;
-		var rotation = new Angles( pitch, Rotation.LookAt( facing ).Yaw(), 0f ).ToRotation() * GunAngleOffset.ToRotation();
-
-		foreach ( var gun in worldGuns.Values )
+		Rotation rotation;
+		if ( FollowHandRotation )
+		{
+			rotation = hand.Rotation * GunAngleOffset.ToRotation();
+		}
+		else
+		{
+			var facing = body.WorldRotation.Forward.WithZ( 0 ).Normal;
+			var pitch = IsProxy ? 0f : (Controller?.EyeAngles.pitch ?? 0f) * 0.85f;
+			rotation = new Angles( pitch, Rotation.LookAt( facing ).Yaw(), 0f ).ToRotation() * GunAngleOffset.ToRotation();
+		}
+		leftHandTarget = null;
+		foreach ( var (weapon, gun) in worldGuns )
 		{
 			if ( !gun.IsValid() || !gun.Enabled ) continue;
-			gun.WorldPosition = hand.Position;
-			gun.WorldRotation = rotation;
+			// Turn the gun, then slide it so its grip (not the model's origin) lands in the palm.
+			var gunRotation = rotation * weapon.WorldModelAngles.ToRotation();
+			gun.WorldRotation = gunRotation;
+			gun.WorldPosition = hand.Position - gunRotation * weapon.WorldModelGrip;
+
+			if ( !weapon.WorldModelLeftHand.IsNearZeroLength )
+				leftHandTarget = gun.WorldTransform.ToWorld( new Transform( weapon.WorldModelLeftHand, weapon.WorldModelLeftHandAngles.ToRotation() ) );
 		}
 	}
 

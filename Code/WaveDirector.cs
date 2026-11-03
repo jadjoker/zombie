@@ -39,6 +39,14 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Spawning" )] public float MinSpawnDistance { get; set; } = 700f;
 	[Property, Group( "Spawning" )] public float MaxSpawnDistance { get; set; } = 1600f;
 
+	/// <summary> Chance each spawn is a Bloober instead of a zombie, once Bloobers have started. </summary>
+	[Property, Group( "Bloober" )] public float BlooberChance { get; set; } = 0.4f;
+	[Property, Group( "Bloober" )] public int BlooberFromWave { get; set; } = 1;
+	[Property, Group( "Bloober" )] public float BlooberBaseHealth { get; set; } = 120f;
+	[Property, Group( "Bloober" )] public float BlooberHealthPerWave { get; set; } = 25f;
+	/// <summary> How high above the spawn point it appears. </summary>
+	[Property, Group( "Bloober" )] public float BlooberSpawnHeight { get; set; } = 90f;
+
 	[Property, Group( "Juice" )] public SoundEvent ZombieVoice { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieAttackSound { get; set; }
 	[Property, Group( "Juice" )] public SoundEvent ZombieDeathSound { get; set; }
@@ -57,7 +65,8 @@ public sealed class WaveDirector : Component
 	[Sync] public int ZombiesRemaining { get; set; }
 	[Sync] public float SecondsUntilNextWave { get; set; }
 
-	readonly List<Zombie> alive = new();
+	/// <summary> Every enemy still alive this wave (zombies and creatures). </summary>
+	readonly List<GameObject> alive = new();
 	int toSpawn;
 	TimeUntil nextWaveAt;
 	TimeSince timeSinceSpawn;
@@ -96,7 +105,7 @@ public sealed class WaveDirector : Component
 
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
-			if ( TrySpawnZombie() ) toSpawn--;
+			if ( TrySpawnEnemy() ) toSpawn--;
 			timeSinceSpawn = 0f;
 		}
 
@@ -160,6 +169,8 @@ public sealed class WaveDirector : Component
 
 		foreach ( var z in Scene.GetAllComponents<Zombie>().ToList() )
 			z.GameObject.Destroy();
+		foreach ( var b in Scene.GetAllComponents<Bloober>().ToList() )
+			b.GameObject.Destroy();
 		alive.Clear();
 
 		Wave = 0;
@@ -180,6 +191,37 @@ public sealed class WaveDirector : Component
 	{
 		foreach ( var gib in Scene.GetAllComponents<Gib>().ToList() ) gib.GameObject.Destroy();
 		foreach ( var go in Scene.GetAllObjects( true ).Where( g => g.Name == "Blood" ).ToList() ) go.Destroy();
+	}
+
+	bool TrySpawnEnemy()
+	{
+		if ( Wave >= BlooberFromWave && Game.Random.Float() < BlooberChance )
+			return TrySpawnBloober();
+		return TrySpawnZombie();
+	}
+
+	bool TrySpawnBloober()
+	{
+		if ( !TryFindSpawnPosition( out var position ) ) return false;
+
+		var go = new GameObject( true, "Bloober" );
+		go.WorldPosition = position + Vector3.Up * BlooberSpawnHeight;
+		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
+		go.Tags.Add( "bloober" );
+
+		go.AddComponent<Health>().ResetTo( BlooberBaseHealth + BlooberHealthPerWave * (Wave - 1) );
+		var bloober = go.AddComponent<Bloober>();
+		// Picked here so it goes out with the network spawn and everyone builds the same colours and shape.
+		bloober.Hue = Game.Random.Float();
+		bloober.Killed += b =>
+		{
+			alive.Remove( b.GameObject );
+			Kills++;
+		};
+		alive.Add( go );
+
+		if ( Networking.IsActive ) go.NetworkSpawn();
+		return true;
 	}
 
 	bool TrySpawnZombie()
@@ -210,7 +252,7 @@ public sealed class WaveDirector : Component
 		zombieObject.GetComponent<Health>()?.ResetTo( BaseHealth + HealthPerWave * (Wave - 1) );
 
 		zombie.Killed += OnZombieKilled;
-		alive.Add( zombie );
+		alive.Add( zombieObject );
 
 		// Everyone needs to see it: network it once it's fully set up, owned by the host.
 		if ( Networking.IsActive ) zombieObject.NetworkSpawn();
@@ -219,7 +261,7 @@ public sealed class WaveDirector : Component
 
 	void OnZombieKilled( Zombie zombie )
 	{
-		alive.Remove( zombie );
+		alive.Remove( zombie.GameObject );
 		Kills++;
 	}
 

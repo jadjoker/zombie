@@ -270,6 +270,14 @@ public sealed class PlayerWeapon : Component
 				.WithoutTags( "zombieblocker" )
 				.Run();
 
+			// Floating creatures are triggers (so nothing snags on them): look for them separately
+			// and take whichever is nearer.
+			var creature = Scene.Trace.Ray( start, start + direction * Range )
+				.HitTriggersOnly()
+				.WithTag( "bloober" )
+				.Run();
+			if ( creature.Hit && (!tr.Hit || creature.Distance < tr.Distance) ) tr = creature;
+
 			if ( tr.Hit ) HandleHit( tr, start, direction );
 		}
 
@@ -293,6 +301,17 @@ public sealed class PlayerWeapon : Component
 		if ( zombie.IsValid() )
 		{
 			HitZombie( zombie, tr, start, direction );
+			return;
+		}
+
+		// Creatures that handle bullets themselves (Bloober segments...).
+		var shootable = tr.GameObject.IsValid() ? tr.GameObject.Components.Get<IShootable>( FindMode.EverythingInSelfAndAncestors ) : null;
+		if ( shootable is not null && shootable.ShotOwner.IsValid() )
+		{
+			var firstPellet = zombiesHitThisShot.Add( shootable.ShotOwner );
+			if ( firstPellet ) PlayAt( HitFleshSound, tr.HitPosition );
+			if ( !shootable.IsDead ) TimeSinceHit = 0f;
+			shootable.ReceiveShot( CurrentDamage, tr.GameObject, direction, tr.HitPosition, start, GetComponent<PlayerSurvivor>(), scoreHit: firstPellet );
 			return;
 		}
 
@@ -348,8 +367,8 @@ public sealed class PlayerWeapon : Component
 		TimeSinceHit = 0f;
 	}
 
-	/// <summary> Zombies already hit by this shot: a shotgun blast plays one hit sound and scores once per zombie. </summary>
-	readonly HashSet<Zombie> zombiesHitThisShot = new();
+	/// <summary> Enemies already hit by this shot: a shotgun blast plays one hit sound and scores once per enemy. </summary>
+	readonly HashSet<Component> zombiesHitThisShot = new();
 
 	void HitZombie( Zombie zombie, SceneTraceResult tr, Vector3 start, Vector3 direction )
 	{

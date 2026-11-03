@@ -21,6 +21,16 @@ ZombieHud
 	background-image: radial-gradient( rgba( #a00000, 0 ) 40%, rgba( #b00000, 0.9 ) 100% );
 }
 
+.venom
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-image: radial-gradient( rgba( #40ff40, 0 ) 45%, rgba( #3cff20, 0.75 ) 100% );
+}
+
 .crosshair
 {
 	position: absolute;
@@ -264,6 +274,16 @@ ZombieHud
 	&.low .caption
 	{
 		color: #ff3b3b;
+	}
+
+	&.venomed .caption
+	{
+		color: #6dff4a;
+	}
+
+	&.venomed .fill
+	{
+		background-color: #5fe03a;
 	}
 }
 

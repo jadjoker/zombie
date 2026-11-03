@@ -103,6 +103,8 @@ public sealed class PlayerSurvivor : Component
 			Health.ResetTo( Health.MaxHealth );
 		}
 
+		GetComponent<PlayerAfflictions>()?.Clear();
+
 		foreach ( var weapon in Components.GetAll<PlayerWeapon>( FindMode.EverythingInSelf ) )
 		{
 			if ( fullReset ) weapon.DamageLevel = 0;
@@ -122,6 +124,13 @@ public sealed class PlayerSurvivor : Component
 	void OnHurt( DamageInfo damage )
 	{
 		if ( IsProxy ) return;
+
+		// Our own afflictions ticking (venom): just a nudge, no sound or view kick every tick.
+		if ( damage.Attacker == GameObject )
+		{
+			GetComponent<CameraJuice>()?.Shake( 0.08f );
+			return;
+		}
 
 		GetComponent<CameraJuice>()?.Shake( HurtShake );
 		if ( HurtSound is not null ) Sound.Play( HurtSound, damage.Position );

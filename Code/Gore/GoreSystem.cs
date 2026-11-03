@@ -23,6 +23,9 @@ public sealed class GoreSystem : Component
 	[Property, Group( "Blood" )] public float DecalLifetime { get; set; } = 40f;
 	[Property, Group( "Blood" )] public int MaxDecals { get; set; } = 200;
 
+	/// <summary> Grey splatters, tinted per creature, for the colourful alien goo. </summary>
+	[Property, Group( "Goo" )] public List<DecalDefinition> GooDecals { get; set; } = new();
+
 	[Property, Group( "Meat" )] public List<Model> OrganModels { get; set; } = new();
 	[Property, Group( "Meat" )] public List<Model> MeatModels { get; set; } = new();
 
@@ -85,6 +88,11 @@ public sealed class GoreSystem : Component
 	public void Splat( Vector3 position, Vector3 normal, float scale, bool wound = false )
 	{
 		var set = wound && WoundDecals.Count > 0 ? WoundDecals : BloodDecals;
+		PlaceDecal( set, position, normal, scale, null );
+	}
+
+	void PlaceDecal( List<DecalDefinition> set, Vector3 position, Vector3 normal, float scale, Color? tint )
+	{
 		if ( set.Count == 0 ) return;
 
 		var go = new GameObject( true, "Blood" );
@@ -97,6 +105,7 @@ public sealed class GoreSystem : Component
 		decal.Scale = scale;
 		decal.Depth = 10f;
 		decal.Transient = true;
+		if ( tint is Color c ) decal.ColorTint = c;
 		go.AddComponent<SelfDestruct>().Lifetime = DecalLifetime;
 
 		decals.Enqueue( go );
@@ -107,11 +116,62 @@ public sealed class GoreSystem : Component
 		}
 	}
 
+	// ---- Goo (alien creatures) -----------------------------------------------
+
+	/// <summary> A goo splatter in the creature's colour. Falls back to blood if no goo decals are set. </summary>
+	public void GooSplat( Vector3 position, Vector3 normal, float scale, Color color )
+	{
+		if ( GooDecals.Count == 0 ) { Splat( position, normal, scale ); return; }
+		PlaceDecal( GooDecals, position, normal, scale, color );
+	}
+
+	/// <summary> Sprays goo from a point: splatters wherever the drops land. </summary>
+	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f )
+	{
+		for ( var i = 0; i < drops; i++ )
+		{
+			var dir = (direction.Normal + Vector3.Random * 0.7f + Vector3.Down * Game.Random.Float( 0.2f, 0.9f )).Normal;
+			if ( TraceWorld( origin, origin + dir * reach ) is { } hit )
+				GooSplat( hit.Position, hit.Normal, Game.Random.Float( sizeMin, sizeMax ), color );
+		}
+	}
+
+	public void GooDrip( Vector3 position, Color color )
+	{
+		if ( TraceWorld( position, position + Vector3.Down * 200f ) is { } hit )
+			GooSplat( hit.Position, hit.Normal, Game.Random.Float( 0.25f, 0.55f ), color );
+	}
+
+	/// <summary> A burst of glowing goo droplets flying out of a wound. </summary>
+	public void GooBurst( Vector3 position, Vector3 direction, Color color, int count = 10, float speed = 260f, float size = 1f )
+	{
+		for ( var i = 0; i < count; i++ )
+		{
+			var velocity = (direction.Normal * 0.8f + Vector3.Random).Normal * speed * Game.Random.Float( 0.4f, 1.2f ) + Vector3.Up * Game.Random.Float( 30f, 140f );
+			GooDroplet.Spawn( Scene, position, velocity, color, size * Game.Random.Float( 0.6f, 1.4f ) );
+		}
+	}
+
+	/// <summary> A small solid blob knocked off a creature: bounces around and can be shot to bits. </summary>
+	public Gib ThrowBlob( Vector3 origin, Vector3 direction, Color color, Color goo, float radius )
+	{
+		var velocity = (direction.Normal + Vector3.Random * 0.7f).Normal * Game.Random.Float( 100f, 220f ) + Vector3.Up * Game.Random.Float( 70f, 170f );
+		var go = new GameObject( true, "Blob" );
+		go.WorldPosition = origin;
+		go.WorldRotation = Rotation.Random;
+		var skin = new GameObject( go, true, "Skin" );
+		skin.WorldScale = new Vector3( Game.Random.Float( 0.8f, 1.3f ), Game.Random.Float( 0.7f, 1.1f ), Game.Random.Float( 0.6f, 1f ) ) * Shapes.SphereScale( radius );
+		var renderer = skin.AddComponent<ModelRenderer>();
+		renderer.Model = Shapes.Sphere;
+		renderer.Tint = color;
+		return Gib.Attach( go, this, radius, 12f, 1.5f, velocity, goo );
+	}
+
 	/// <summary> Traces against static world geometry only (not zombies, gibs, players or effects). </summary>
 	public (Vector3 Position, Vector3 Normal)? TraceWorld( Vector3 from, Vector3 to )
 	{
 		var tr = Scene.Trace.Ray( from, to )
-			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel" )
+			.WithoutTags( "zombie", "zombieblocker", "gib", "player", "viewmodel", "bloober" )
 			.IgnoreDynamic()
 			.Run();
 		if ( !tr.Hit ) return null;

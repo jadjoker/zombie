@@ -4,6 +4,7 @@
 
 <root>
 	<div class="hurt" style="opacity: @HurtOpacity"></div>
+	<div class="venom" style="opacity: @VenomOpacity"></div>
 
 	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(1f - (Weapon?.AimAmount ?? 0f))">
 		<div class="dot"></div>
@@ -56,8 +57,8 @@
 		</div>
 	}
 
-	<div class="health @(HealthPercent <= 30 ? "low" : "")">
-		<div class="caption">HEALTH</div>
+	<div class="health @(HealthPercent <= 30 ? "low" : "") @(IsVenomed ? "venomed" : "")">
+		<div class="caption">@(IsVenomed ? "HEALTH   VENOM" : "HEALTH")</div>
 		<div class="bar">
 			<div class="lag" style="width: @(LagPercent)%"></div>
 			<div class="fill" style="width: @(HealthPercent)%"></div>
@@ -132,6 +133,22 @@
 		}
 	}
 
+	PlayerAfflictions Afflictions => Player?.GetComponent<PlayerAfflictions>();
+	bool IsVenomed => (Afflictions?.VenomLeft ?? 0f) > 0f;
+
+	// Venom: a sickly green pulse round the edges while it lasts, with a strong flash when it kicks in.
+	float VenomOpacity
+	{
+		get
+		{
+			var a = Afflictions;
+			if ( a is null || a.VenomLeft <= 0f ) return 0f;
+			var kick = MathX.Clamp( 1f - a.TimeSinceVenomed / 0.6f, 0f, 1f ) * 0.5f;
+			var pulse = 0.28f + 0.12f * MathF.Sin( Time.Now * 7f );
+			return MathF.Max( kick, pulse ) * MathX.Clamp( a.VenomLeft / 0.8f, 0f, 1f );
+		}
+	}
+
 	// Big centre banner for "WAVE 3" and "WAVE CLEARED".
 	float BannerAge
 	{
@@ -157,9 +174,9 @@
 			if ( d is null ) return "";
 			return d.State switch
 			{
-				WaveState.Intermission when d.Wave == 0 => $"Zombies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",
+				WaveState.Intermission when d.Wave == 0 => $"Enemies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",
 				WaveState.Intermission => $"Next wave in {MathF.Ceiling( d.SecondsUntilNextWave )}",
-				WaveState.Fighting => $"{d.ZombiesRemaining} zombies left",
+				WaveState.Fighting => $"{d.ZombiesRemaining} enemies left",
 				_ => "",
 			};
 		}

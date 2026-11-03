@@ -16,6 +16,9 @@ public sealed class Gib : Component
 	Dictionary<Segment, (Vector3 From, Vector3 To)> capsLocal;
 	HashSet<Segment> members = new();
 
+	/// <summary> Set for alien creature pieces: they leak this colour of goo instead of blood. </summary>
+	Color? goo;
+
 	SkinnedModelRenderer renderer;
 	Rigidbody body;
 	float health;
@@ -83,6 +86,28 @@ public sealed class Gib : Component
 		gib.body.MassOverride = 3f;
 		gib.body.Velocity = velocity;
 		gib.body.AngularVelocity = Vector3.Random * 15f;
+		gib.Begin();
+		return gib;
+	}
+
+	/// <summary>
+	/// Turns an object that already has its visuals (a creature segment, a blob) into a loose physics
+	/// piece: a ball collider, a rigidbody, and the usual gib life (fade, splats, shoot it to bits).
+	/// </summary>
+	public static Gib Attach( GameObject go, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor )
+	{
+		go.Tags.Add( "gib" );
+		var collider = go.AddComponent<SphereCollider>();
+		collider.Radius = radius;
+
+		var gib = go.AddComponent<Gib>();
+		gib.gore = gore;
+		gib.health = health;
+		gib.goo = gooColor;
+		gib.body = go.AddComponent<Rigidbody>();
+		gib.body.MassOverride = mass;
+		gib.body.Velocity = velocity;
+		gib.body.AngularVelocity = Vector3.Random * 12f;
 		gib.Begin();
 		return gib;
 	}
@@ -209,8 +234,16 @@ public sealed class Gib : Component
 		var physics = body?.PhysicsBody;
 		physics?.ApplyImpulseAt( position, direction * impulse * physics.Mass );
 
-		gore?.Burst( position, -direction, 0.5f );
-		gore?.Spray( position, direction, 1, 120f, 0.3f, 0.7f );
+		if ( goo is Color c )
+		{
+			gore?.GooBurst( position, -direction, c, 5, 180f, 0.7f );
+			gore?.GooSpray( position, direction, 1, c, 120f, 0.3f, 0.7f );
+		}
+		else
+		{
+			gore?.Burst( position, -direction, 0.5f );
+			gore?.Spray( position, direction, 1, 120f, 0.3f, 0.7f );
+		}
 
 		health -= damage;
 		if ( health > 0f ) return;
@@ -268,6 +301,14 @@ public sealed class Gib : Component
 	/// <summary> Blows the piece apart into a spray of blood (and sometimes a scrap of meat). </summary>
 	public void Pulverize( Vector3 position, Vector3 direction )
 	{
+		if ( goo is Color c )
+		{
+			gore?.GooBurst( position, direction, c, 14, 300f, 1.2f );
+			gore?.GooSpray( position, direction, 5, c, 200f, 0.5f, 1.4f );
+			GameObject.Destroy();
+			return;
+		}
+
 		gore?.Burst( position, direction, 1.2f );
 		gore?.Spray( position, direction, 5, 200f, 0.5f, 1.4f );
 
@@ -317,7 +358,8 @@ public sealed class Gib : Component
 		if ( age < 2f && speed > 200f && lastDrip > 0.11f )
 		{
 			lastDrip = 0f;
-			gore.Drip( WorldPosition );
+			if ( goo is Color c ) gore.GooDrip( WorldPosition, c );
+			else gore.Drip( WorldPosition );
 		}
 
 		// A sudden stop means it hit something: splat.
@@ -325,7 +367,10 @@ public sealed class Gib : Component
 		{
 			splats++;
 			if ( gore.TraceWorld( WorldPosition + Vector3.Up * 10f, WorldPosition + Vector3.Down * 60f ) is { } hit )
-				gore.Splat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ) );
+			{
+				if ( goo is Color c ) gore.GooSplat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ), c );
+				else gore.Splat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ) );
+			}
 		}
 
 		lastSpeed = speed;

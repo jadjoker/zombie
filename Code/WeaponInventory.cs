@@ -8,6 +8,8 @@ public sealed class WeaponInventory : Component
 	[Property] public float SwitchCooldown { get; set; } = 0.25f;
 
 	public PlayerWeapon Current { get; private set; }
+	/// <summary> Slot of the weapon in hand, synced so other players see the right gun. </summary>
+	[Sync] public int CurrentSlot { get; set; } = 1;
 	public IReadOnlyList<PlayerWeapon> Weapons => weapons;
 
 	readonly List<PlayerWeapon> weapons = new();
@@ -57,5 +59,6 @@ public sealed class WeaponInventory : Component
 		foreach ( var w in weapons )
 			w.Enabled = w == weapon;
 		Current = weapon;
+		if ( !IsProxy ) CurrentSlot = weapon.Slot;
 	}
 }

@@ -99,6 +99,13 @@ public sealed class PlayerWeapon : Component
 	TimeUntil reloadFinished;
 	bool magInPlayed;
 
+	/// <summary> The gun as seen in hand in third person, and by other players. </summary>
+	[Property, Group( "Third Person" )] public Model WorldModel { get; set; }
+	[Property, Group( "Third Person" )] public Sandbox.Citizen.CitizenAnimationHelper.HoldTypes HoldType { get; set; } = Sandbox.Citizen.CitizenAnimationHelper.HoldTypes.Rifle;
+
+	PlayerAppearance Appearance => GetComponent<PlayerAppearance>();
+	bool InThirdPerson => GetComponent<PlayerController>()?.ThirdPerson ?? false;
+
 	[Property, Group( "View Model" )] public Model ViewModelGun { get; set; }
 	[Property, Group( "View Model" )] public Model ViewModelArms { get; set; }
 
@@ -157,8 +164,8 @@ public sealed class PlayerWeapon : Component
 			return;
 		}
 
-		// Back from the dead: show the gun again.
-		if ( ViewModel.IsValid() && !ViewModel.GameObject.Enabled ) ViewModel.GameObject.Enabled = true;
+		// The first-person gun only shows in first person (and comes back after a respawn).
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson;
 
 		if ( IsReloading && ShellReload )
 		{
@@ -224,8 +231,12 @@ public sealed class PlayerWeapon : Component
 		ShotEffectsForOthers();
 
 		// With a view model, the flash comes out of the real barrel and rides along with the gun.
-		GameObject flash;
-		if ( ViewModel.IsValid() )
+		GameObject flash = null;
+		if ( InThirdPerson && Appearance.IsValid() )
+		{
+			Appearance.PlayFire( this, MuzzleFlash, MuzzleFlashScale * 2f );
+		}
+		else if ( ViewModel.IsValid() )
 		{
 			ViewModel.Fire();
 			var barrel = ViewModel.Muzzle();
@@ -360,14 +371,21 @@ public sealed class PlayerWeapon : Component
 		if ( !IsProxy ) return;
 		var at = WorldPosition + Vector3.Up * 60f;
 		if ( ShootSound is not null ) Sound.Play( ShootSound, at );
-		var flash = SpawnEffect( MuzzleFlash, at + WorldRotation.Forward * 30f, WorldRotation );
-		if ( flash.IsValid() ) flash.WorldScale = MuzzleFlashScale * 2f;
+		Appearance?.PlayFire( this, MuzzleFlash, MuzzleFlashScale * 2f );
+	}
+
+	/// <summary> Other players see us reload; we see it ourselves in third person. </summary>
+	[Rpc.Broadcast]
+	void ReloadEffectsEverywhere()
+	{
+		if ( IsProxy || InThirdPerson ) Appearance?.PlayReload();
 	}
 
 	void StartReload()
 	{
 		if ( IsReloading || Ammo >= MagazineSize || Reserve <= 0 ) return;
 		IsReloading = true;
+		ReloadEffectsEverywhere();
 
 		if ( ShellReload )
 		{

@@ -74,26 +74,29 @@ public sealed class BuyStation : Component, Component.IPressable
 	/// <summary> Stops you paying for something that would do nothing, like ammo when you're full. </summary>
 	bool CanUse( PlayerSurvivor buyer )
 	{
-		var weapon = buyer.Weapon;
 		return Kind switch
 		{
-			BuyStationKind.Ammo => weapon.IsValid() && (weapon.Ammo < weapon.MagazineSize || weapon.Reserve < weapon.StartingReserve),
+			BuyStationKind.Ammo => AllWeapons( buyer ).Any( w => w.Ammo < w.MagazineSize || w.Reserve < w.StartingReserve ),
 			_ => true,
 		};
 	}
+
+	/// <summary> Every gun the player carries, including the holstered ones. </summary>
+	static IEnumerable<PlayerWeapon> AllWeapons( PlayerSurvivor buyer ) =>
+		buyer.Components.GetAll<PlayerWeapon>( FindMode.EverythingInSelf );
 
 	void Apply( PlayerSurvivor buyer )
 	{
 		switch ( Kind )
 		{
 			case BuyStationKind.Ammo:
-				buyer.Weapon?.RefillAmmo();
+				foreach ( var w in AllWeapons( buyer ) ) w.RefillAmmo();
 				break;
 			case BuyStationKind.Health:
 				buyer.Health.IncreaseMax( HealthPerPurchase );
 				break;
 			case BuyStationKind.Damage:
-				if ( buyer.Weapon.IsValid() ) buyer.Weapon.DamageLevel++;
+				foreach ( var w in AllWeapons( buyer ) ) w.DamageLevel++;
 				break;
 		}
 	}

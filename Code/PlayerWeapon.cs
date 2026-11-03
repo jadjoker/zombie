@@ -1,6 +1,7 @@
 /// <summary>
-/// A hitscan rifle: hold Attack1 to fire, R to reload.
-/// Sounds and effects are set in the inspector so the scene tracks which packages it uses.
+/// A hitscan gun: Attack1 fires, R reloads, Attack2 aims. One component per weapon on the player;
+/// WeaponInventory enables one at a time. Pellets above 1 makes it a shotgun, and ShellReload loads
+/// one shell at a time. Sounds and effects are set in the inspector so the scene tracks which packages it uses.
 /// </summary>
 public sealed class PlayerWeapon : Component
 {
@@ -14,6 +15,17 @@ public sealed class PlayerWeapon : Component
 	[Property, Group( "Stats" )] public float ReloadTime { get; set; } = 1.6f;
 	/// <summary> Speed change given to loose physics objects a bullet hits. </summary>
 	[Property, Group( "Stats" )] public float BulletImpulse { get; set; } = 150f;
+	/// <summary> Traces per shot. Above 1 it's a shotgun; Damage is per pellet. </summary>
+	[Property, Group( "Stats" )] public int Pellets { get; set; } = 1;
+	/// <summary> Hold to keep firing (rifle) or click per shot (shotgun). </summary>
+	[Property, Group( "Stats" )] public bool Automatic { get; set; } = true;
+	/// <summary> Load one round at a time (shotgun) instead of swapping a magazine. Firing interrupts it. </summary>
+	[Property, Group( "Stats" )] public bool ShellReload { get; set; } = false;
+	[Property, Group( "Stats" )] public float ShellTime { get; set; } = 0.5f;
+
+	[Property, Group( "Weapon" )] public string DisplayName { get; set; } = "Rifle";
+	/// <summary> Number key that selects it, and its order when scrolling. </summary>
+	[Property, Group( "Weapon" )] public int Slot { get; set; } = 1;
 
 	[Property, Group( "Sounds" )] public SoundEvent ShootSound { get; set; }
 	[Property, Group( "Sounds" )] public SoundEvent MagOutSound { get; set; }
@@ -40,12 +52,13 @@ public sealed class PlayerWeapon : Component
 	/// <summary> Fills the magazine and the reserve back to their starting amounts. </summary>
 	public void RefillAmmo()
 	{
+		ammoInitialised = true;
 		Ammo = MagazineSize;
 		Reserve = Math.Max( Reserve, StartingReserve );
 		IsReloading = false;
 	}
 	public bool IsReloading { get; private set; }
-	public float ReloadProgress => IsReloading ? reloadFinished.Fraction : 0f;
+	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : reloadFinished.Fraction;
 
 	[Property, Group( "Aiming" )] public float AimFovScale { get; set; } = 0.7f;
 	[Property, Group( "Aiming" )] public float AimSpreadScale { get; set; } = 0.15f;
@@ -91,10 +104,35 @@ public sealed class PlayerWeapon : Component
 
 	public ViewModel ViewModel { get; private set; }
 
+	bool ammoInitialised;
+
 	protected override void OnStart()
 	{
+		if ( ammoInitialised ) return;
+		ammoInitialised = true;
 		Ammo = MagazineSize;
 		Reserve = StartingReserve;
+	}
+
+	protected override void OnEnabled()
+	{
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = true;
+	}
+
+	/// <summary> Holstered: hide the gun, drop any reload, and give back the walking speed aiming took. </summary>
+	protected override void OnDisabled()
+	{
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = false;
+		CancelReload();
+
+		var controller = GetComponent<PlayerController>();
+		if ( controller.IsValid() && baseWalkSpeed >= 0f )
+		{
+			controller.WalkSpeed = baseWalkSpeed;
+			controller.RunSpeed = baseRunSpeed;
+		}
+		IsAiming = false;
+		AimAmount = 0f;
 	}
 
 	/// <summary> The camera isn't always ready when we start, so build the view model on demand. </summary>
@@ -119,7 +157,11 @@ public sealed class PlayerWeapon : Component
 			return;
 		}
 
-		if ( IsReloading )
+		if ( IsReloading && ShellReload )
+		{
+			UpdateShellReload();
+		}
+		else if ( IsReloading )
 		{
 			// Mag in plays a bit before the reload ends, so the sound lines up with ammo appearing.
 			if ( !magInPlayed && reloadFinished.Fraction > 0.55f )
@@ -136,7 +178,12 @@ public sealed class PlayerWeapon : Component
 		if ( Input.Pressed( "Reload" ) )
 			StartReload();
 
-		if ( Input.Down( "Attack1" ) && !IsReloading && TimeSinceShot >= 1f / FireRate )
+		// Firing interrupts a shell-by-shell reload, as long as there's something loaded.
+		if ( ShellReload && IsReloading && Input.Pressed( "Attack1" ) && Ammo > 0 )
+			CancelReload();
+
+		var wantsFire = Automatic ? Input.Down( "Attack1" ) : Input.Pressed( "Attack1" );
+		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )
 		{
 			if ( Ammo > 0 )
 			{
@@ -167,8 +214,6 @@ public sealed class PlayerWeapon : Component
 		var camRot = camera.WorldRotation;
 		var start = camera.WorldPosition;
 		var spread = MathF.Tan( (SpreadDegrees * MathX.Lerp( 1f, AimSpreadScale, AimAmount )).DegreeToRadian() );
-		var direction = (camRot.Forward + Vector3.Random * spread).Normal;
-		var end = start + direction * Range;
 		var muzzle = start + camRot.Forward * 24f + camRot.Down * 7f + camRot.Right * 7f;
 
 		var shot = PlayLocal( ShootSound );
@@ -188,14 +233,20 @@ public sealed class PlayerWeapon : Component
 		}
 		if ( flash.IsValid() ) flash.WorldScale = MuzzleFlashScale;
 
-		// Hitboxes give us the exact body part; the zombie's movement capsule is skipped so it can't eat shots.
-		var tr = Scene.Trace.Ray( start, end )
-			.IgnoreGameObjectHierarchy( GameObject )
-			.UseHitboxes()
-			.WithoutTags( "zombieblocker" )
-			.Run();
+		// Each pellet traces on its own. Hitboxes give the exact body part; the zombie's movement capsule
+		// is skipped so it can't eat shots.
+		zombiesHitThisShot.Clear();
+		for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
+		{
+			var direction = (camRot.Forward + Vector3.Random * spread).Normal;
+			var tr = Scene.Trace.Ray( start, start + direction * Range )
+				.IgnoreGameObjectHierarchy( GameObject )
+				.UseHitboxes()
+				.WithoutTags( "zombieblocker" )
+				.Run();
 
-		if ( tr.Hit ) HandleHit( tr, start, direction );
+			if ( tr.Hit ) HandleHit( tr, start, direction );
+		}
 
 		var juice = GetComponent<CameraJuice>();
 		juice?.Shake( ShakePerShot );
@@ -272,10 +323,14 @@ public sealed class PlayerWeapon : Component
 		TimeSinceHit = 0f;
 	}
 
+	/// <summary> Zombies already hit by this shot: a shotgun blast plays one hit sound and scores once per zombie. </summary>
+	readonly HashSet<Zombie> zombiesHitThisShot = new();
+
 	void HitZombie( Zombie zombie, SceneTraceResult tr, Vector3 start, Vector3 direction )
 	{
+		var firstPellet = zombiesHitThisShot.Add( zombie );
 		SpawnEffect( ImpactFlesh, tr.HitPosition, Rotation.LookAt( -direction ) );
-		PlayAt( HitFleshSound, tr.HitPosition );
+		if ( firstPellet ) PlayAt( HitFleshSound, tr.HitPosition );
 
 		// Hitbox bone while alive; on a ragdoll each body is a GameObject named after its bone.
 		var boneName = tr.Hitbox?.Bone?.Name;
@@ -304,7 +359,7 @@ public sealed class PlayerWeapon : Component
 			var headshot = zombie.LastHitSegment == Segment.Head;
 			survivor?.AddPoints( headshot ? survivor.PointsPerKill * 3 / 2 : survivor.PointsPerKill );
 		}
-		else
+		else if ( firstPellet )
 		{
 			survivor?.AddPoints( survivor.PointsPerHit );
 		}
@@ -314,10 +369,51 @@ public sealed class PlayerWeapon : Component
 	{
 		if ( IsReloading || Ammo >= MagazineSize || Reserve <= 0 ) return;
 		IsReloading = true;
+
+		if ( ShellReload )
+		{
+			firstShell = Ammo == 0;
+			nextShell = ShellTime * 1.2f;
+			ViewModel?.ShellReloadBegin();
+			return;
+		}
+
 		magInPlayed = false;
 		reloadFinished = ReloadTime;
 		PlayLocal( MagOutSound );
 		ViewModel?.Reload( ReloadTime );
+	}
+
+	TimeUntil nextShell;
+	bool firstShell;
+
+	/// <summary> Loads one shell per ShellTime until full, out of reserve, or interrupted by firing. </summary>
+	void UpdateShellReload()
+	{
+		if ( Ammo >= MagazineSize || Reserve <= 0 ) { EndShellReload(); return; }
+		if ( !nextShell ) return;
+
+		Ammo++;
+		Reserve--;
+		PlayLocal( MagInSound );
+		ViewModel?.InsertShell( firstShell );
+		firstShell = false;
+		nextShell = ShellTime;
+
+		if ( Ammo >= MagazineSize || Reserve <= 0 ) EndShellReload();
+	}
+
+	void EndShellReload()
+	{
+		IsReloading = false;
+		ViewModel?.ShellReloadEnd();
+	}
+
+	void CancelReload()
+	{
+		if ( !IsReloading ) return;
+		if ( ShellReload ) EndShellReload();
+		else IsReloading = false;
 	}
 
 	void FinishReload()

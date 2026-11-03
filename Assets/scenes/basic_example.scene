@@ -405,9 +405,11 @@
           "AimRecoilScale": 0.55,
           "AimSpeed": 9,
           "AimSpreadScale": 0.15,
+          "Automatic": true,
           "BulletImpulse": 150,
           "Damage": 34,
           "DamagePerLevel": 0.25,
+          "DisplayName": "Rifle",
           "DryFireSound": {
             "Id": "6f2646af-418c-4d41-84c7-5e23041175c1",
             "Path": "sounds/player_use_fail.sound"
@@ -450,14 +452,18 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
+          "Pellets": 1,
           "Range": 5000,
           "Recoil": 0.6,
           "ReloadTime": 1.6,
           "ShakePerShot": 0.12,
+          "ShellReload": false,
+          "ShellTime": 0.5,
           "ShootSound": {
             "Id": "d79a92ef-2249-46f6-9d42-dc589e62a5db",
             "Path": "sound/vidya/weapons/smg/smg_shoot.sound"
           },
+          "Slot": 1,
           "SpreadDegrees": 1.2,
           "StartingReserve": 180,
           "ViewModelArms": {
@@ -543,6 +549,96 @@
           "Priority": 0,
           "StepDownHeight": 18,
           "StepUpHeight": 18
+        },
+        {
+          "__type": "PlayerWeapon",
+          "__guid": "c4cebd6d-6fb0-43e9-84f3-40ccbf2f2218",
+          "__enabled": false,
+          "Flags": 0,
+          "AimFovScale": 0.8,
+          "AimMoveSpeedScale": 0.6,
+          "AimRecoilScale": 0.7,
+          "AimSpeed": 9,
+          "AimSpreadScale": 0.6,
+          "Automatic": false,
+          "BulletImpulse": 120,
+          "Damage": 14,
+          "DamagePerLevel": 0.25,
+          "DisplayName": "Shotgun",
+          "DryFireSound": {
+            "Id": "6f2646af-418c-4d41-84c7-5e23041175c1",
+            "Path": "sounds/player_use_fail.sound"
+          },
+          "FireRate": 1.4,
+          "FovKickPerShot": 4,
+          "HitFleshSound": {
+            "Id": "e1191c50-8d32-4e75-9097-f23bc19ff00a",
+            "Path": "sounds/impacts/bullets/impact-bullet-flesh.sound"
+          },
+          "HitWorldSound": {
+            "Id": "dddfc962-94b0-4a5c-bfd1-ba806e495732",
+            "Path": "sounds/impacts/bullets/impact-bullet-concrete.sound"
+          },
+          "ImpactFlesh": {
+            "_type": "gameobject",
+            "prefab": "particles/surfaces/impact.flesh.mist.prefab"
+          },
+          "ImpactWorld": {
+            "_type": "gameobject",
+            "prefab": "particles/surfaces/impact.generic.prefab"
+          },
+          "MagazineSize": 6,
+          "MagInSound": {
+            "Id": "48eae087-f122-45e3-bb49-002a2644275d",
+            "Path": "sound/vidya/weapons/reload_mag_in.sound"
+          },
+          "MagOutSound": null,
+          "MuzzleFlash": {
+            "_type": "gameobject",
+            "prefab": "prefabs/weapon_effects/shotgun_muzzleflash.prefab"
+          },
+          "MuzzleFlashScale": 0.45,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Pellets": 9,
+          "Range": 2600,
+          "Recoil": 3.5,
+          "ReloadTime": 1.6,
+          "ShakePerShot": 0.45,
+          "ShellReload": true,
+          "ShellTime": 0.5,
+          "ShootSound": {
+            "Id": "e072d63b-b76b-4d2a-9e6a-0bd309ad3fca",
+            "Path": "sound/vidya/weapons/shotgun/shotgun_shoot.sound"
+          },
+          "Slot": 2,
+          "SpreadDegrees": 5.5,
+          "StartingReserve": 42,
+          "ViewModelArms": {
+            "Id": "0843ef28-00fc-0000-c400-000000000000",
+            "Path": "models/first_person/v_first_person_arms_human.vmdl"
+          },
+          "ViewModelGun": {
+            "Id": "11f490ef-08ee-4148-824f-44d232e7f5e8",
+            "Path": "models/weapons/sbox_shotgun_spaghellim4/v_spaghellim4.vmdl"
+          }
+        },
+        {
+          "__type": "WeaponInventory",
+          "__guid": "98f74c3a-1186-4d48-aa39-0c497bd27e6f",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "SwitchCooldown": 0.25
         }
       ],
       "Children": [
@@ -3497,14 +3593,17 @@
     "facepunch.rifle_muzzleflash#76090",
     "facepunch.rightfootgibcap#109934",
     "facepunch.rightleggibcap#109935",
+    "facepunch.shotgun_muzzleflash#76091",
     "facepunch.tornarmgib#109943",
     "facepunch.tornhandgib#109944",
     "facepunch.torntorsogib#109945",
     "facepunch.v_first_person_arms_human#441536",
     "facepunch.v_m4a1#442780",
+    "facepunch.v_spaghellim4#442823",
     "facepunch.zombiemale#135790",
     "vidya.reload-mag-in#241528",
     "vidya.reload-mag-out#241530",
+    "vidya.shotgun-shoot#241537",
     "vidya.smg-shoot#241536"
   ],
   "__version": 3

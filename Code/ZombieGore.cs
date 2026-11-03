@@ -65,6 +65,7 @@ public sealed class ZombieGore : Component
 
 	readonly Queue<GameObject> wounds = new();
 	bool jawGone, gutsSpilled, ribsTorn;
+	TimeSince timeSinceChunk = 999f;
 	TimeSince timeSinceDrip;
 
 	/// <summary> Visible damage that builds up as a torso or head segment takes hits. </summary>
@@ -211,8 +212,12 @@ public sealed class ZombieGore : Component
 
 		// Flesh gets knocked loose as you shoot, so there's gore with every burst, not just at the end.
 		var torsoHit = Map.IsTorso( segment );
-		if ( Game.Random.Float() < (torsoHit ? TorsoChunkChance : segment == Segment.Head ? 0f : LimbChunkChance) )
+		// Rate-limited per zombie, so a shotgun's pellets don't throw a chunk each.
+		if ( timeSinceChunk > 0.12f && Game.Random.Float() < (torsoHit ? TorsoChunkChance : segment == Segment.Head ? 0f : LimbChunkChance) )
+		{
+			timeSinceChunk = 0f;
 			gore?.ThrowChunk( position, direction );
+		}
 
 		// The pelvis is the root and can't come off; shots there go towards splitting at the waist.
 		if ( segment == Segment.Pelvis ) segment = Segment.Belly;

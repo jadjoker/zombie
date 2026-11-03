@@ -91,6 +91,11 @@ public sealed class ViewModel : Component
 		Gun.Set( "b_reload", true );
 	}
 
+	/// <summary> Shell-by-shell reload (shotgun): open, push shells, close. </summary>
+	public void ShellReloadBegin() => Gun?.Set( "b_reloading", true );
+	public void InsertShell( bool intoEmptyGun ) => Gun?.Set( intoEmptyGun ? "b_reloading_first_shell" : "b_reloading_shell", true );
+	public void ShellReloadEnd() => Gun?.Set( "b_reloading", false );
+
 	/// <summary> World transform of the gun's muzzle, for the flash. Falls back to the camera. </summary>
 	public Transform Muzzle()
 	{

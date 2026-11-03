@@ -62,12 +62,13 @@ public sealed class Gib : Component
 	}
 
 	/// <summary> Spawns a loose organ or meat chunk. Its model is centred on the given point. </summary>
-	public static Gib CreateProp( Scene scene, GoreSystem gore, Model model, Vector3 position, Rotation rotation, Vector3 velocity )
+	public static Gib CreateProp( Scene scene, GoreSystem gore, Model model, Vector3 position, Rotation rotation, Vector3 velocity, float scale = 1f )
 	{
 		var go = new GameObject( true, $"Meat ({model.ResourceName})" );
 		go.Tags.Add( "gib" );
 		go.WorldPosition = position;
 		go.WorldRotation = rotation;
+		go.WorldScale = scale;
 
 		// These models are authored where they'd sit on a body, so pull them back to the origin.
 		var mesh = new GameObject( go, true, "Mesh" );

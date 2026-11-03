@@ -192,14 +192,18 @@ public sealed class Zombie : Component
 	{
 		var gore = GetComponent<ZombieGore>();
 		var segment = gore?.SegmentForBone( boneName ) ?? Segment.Chest;
-		damage.Damage *= gore?.DamageMultiplier( segment ) ?? 1f;
 		lastHitSegment = segment;
+
+		// The multiplier is how much a hit hurts the zombie overall (limb shots hurt less, so you can
+		// strip limbs before it drops). The gore system works from the raw bullet, so limbs still come off.
+		var raw = damage.Damage;
+		damage.Damage *= gore?.DamageMultiplier( segment ) ?? 1f;
 
 		var wasAlive = !IsDead;
 		if ( wasAlive ) Health?.OnDamage( damage );
 		var killed = wasAlive && IsDead;
 
-		gore?.AddDamage( segment, damage.Damage, damage.Position, direction, killed );
+		gore?.AddDamage( segment, raw, damage.Position, direction, killed );
 		return killed;
 	}
 

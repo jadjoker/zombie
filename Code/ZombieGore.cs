@@ -7,7 +7,16 @@
 public sealed class ZombieGore : Component
 {
 	[Property] public float HeadshotMultiplier { get; set; } = 2.5f;
-	[Property] public float LimbMultiplier { get; set; } = 0.8f;
+	/// <summary> How much limb hits hurt the zombie overall. Low, so you can strip limbs before it drops. </summary>
+	[Property] public float LimbMultiplier { get; set; } = 0.5f;
+	/// <summary>
+	/// Damage scale for arms and legs coming off. Fixed rather than tied to zombie health,
+	/// so tougher zombies take longer to kill but still lose limbs just as easily.
+	/// </summary>
+	[Property] public float LimbToughness { get; set; } = 70f;
+	/// <summary> Chance a torso hit knocks a chunk of flesh loose. </summary>
+	[Property] public float TorsoChunkChance { get; set; } = 0.4f;
+	[Property] public float LimbChunkChance { get; set; } = 0.15f;
 	/// <summary> Corpses come apart this much more easily. </summary>
 	[Property] public float CorpseMultiplier { get; set; } = 2f;
 	[Property] public float BulletImpulse { get; set; } = 180f;
@@ -87,15 +96,24 @@ public sealed class ZombieGore : Component
 			return true;
 		}
 
+		// Flesh gets knocked loose as you shoot, so there's gore with every burst, not just at the end.
+		var torsoHit = Map.IsTorso( segment );
+		if ( Game.Random.Float() < (torsoHit ? TorsoChunkChance : segment == Segment.Head ? 0f : LimbChunkChance) )
+			gore?.ThrowChunk( position, direction );
+
 		// The pelvis is the root and can't come off; shots there go towards splitting at the waist.
 		if ( segment == Segment.Pelvis ) segment = Segment.Belly;
 		if ( !attached.Contains( segment ) ) return false;
 
-		damage[segment] = damage.GetValueOrDefault( segment ) + amount * (onCorpse ? CorpseMultiplier : 1f);
+		// Headshots hit the head's own toughness harder, so one still takes it off.
+		var goreAmount = segment == Segment.Head ? amount * HeadshotMultiplier : amount;
+		damage[segment] = damage.GetValueOrDefault( segment ) + goreAmount * (onCorpse ? CorpseMultiplier : 1f);
 
+		// Limbs use a fixed toughness; head and torso scale with the zombie's health, so splits stay finishers.
 		var def = Map.Defs[segment];
-		var threshold = referenceHealth * def.HealthFraction;
-		var overkill = killingShot && amount >= threshold * 0.5f;
+		var scale = torsoHit || segment == Segment.Head ? referenceHealth : MathF.Min( referenceHealth, LimbToughness );
+		var threshold = scale * def.HealthFraction;
+		var overkill = killingShot && goreAmount >= threshold * 0.5f;
 		if ( damage[segment] < threshold && !overkill ) return false;
 
 		// Variety: sometimes the limb gives way one joint higher than where it was hit.

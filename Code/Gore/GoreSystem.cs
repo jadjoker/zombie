@@ -120,6 +120,16 @@ public sealed class GoreSystem : Component
 
 	// ---- Meat -------------------------------------------------------------
 
+	/// <summary> A small chunk of flesh knocked out by a bullet. </summary>
+	public void ThrowChunk( Vector3 origin, Vector3 direction )
+	{
+		if ( MeatModels.Count == 0 ) return;
+		var model = Game.Random.FromList( MeatModels );
+		var velocity = (direction.Normal + Vector3.Random * 0.6f).Normal * Game.Random.Float( 90f, 190f ) + Vector3.Up * Game.Random.Float( 60f, 150f );
+		Gib.CreateProp( Scene, this, model, origin, Rotation.Random, velocity, Game.Random.Float( 0.3f, 0.55f ) );
+		Burst( origin, direction, 0.7f );
+	}
+
 	/// <summary> Throws loose organs or meat chunks out from a wound. </summary>
 	public void ThrowMeat( Vector3 origin, Vector3 direction, int count, bool organs )
 	{

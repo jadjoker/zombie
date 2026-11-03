@@ -1,0 +1,183 @@
+@using Sandbox;
+@using Sandbox.UI;
+@inherits PanelComponent
+
+<root>
+	<div class="hurt" style="opacity: @HurtOpacity"></div>
+
+	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(1f - (Weapon?.AimAmount ?? 0f))">
+		<div class="dot"></div>
+	</div>
+
+	@if ( HitmarkerOpacity > 0f )
+	{
+		<div class="hitmarker @(IsKillMarker ? "kill" : "")" style="opacity: @HitmarkerOpacity; transform: scale( @HitmarkerScale ) rotate( 45deg )">
+			<div class="arm up"></div>
+			<div class="arm down"></div>
+			<div class="arm left"></div>
+			<div class="arm right"></div>
+		</div>
+	}
+
+	<div class="top">
+		<div class="wave">WAVE @(Director?.Wave ?? 0)</div>
+		<div class="status">@StatusText</div>
+	</div>
+
+	@if ( BannerOpacity > 0f )
+	{
+		<div class="banner @BannerClass" style="opacity: @BannerOpacity; transform: scale( @BannerScale )">
+			<div class="big">@BannerTitle</div>
+			<div class="small">@BannerSubtitle</div>
+		</div>
+	}
+
+	<div class="kills">
+		<div class="count" style="transform: scale( @KillPop )">@(Director?.Kills ?? 0)</div>
+		<div class="caption">KILLS</div>
+	</div>
+
+	<div class="points @(PointsDenied ? "denied" : "")">
+		<div class="value">@(Player?.Points ?? 0)</div>
+		@if ( GainOpacity > 0f )
+		{
+			<div class="gain" style="opacity: @GainOpacity; transform: translateY( @(GainRise)px )">+@Player.LastGain</div>
+		}
+	</div>
+
+	@if ( HoveredStation is { } station )
+	{
+		<div class="prompt @(CanAffordStation ? "" : "cant")">
+			<div class="key">E</div>
+			<div class="text">
+				<div class="title">@station.Title  @(station.SoldOut ? "Sold out" : $"{station.CurrentCost}")</div>
+				<div class="desc">@station.Description</div>
+			</div>
+		</div>
+	}
+
+	<div class="health @(HealthPercent <= 30 ? "low" : "")">
+		<div class="caption">HEALTH</div>
+		<div class="bar">
+			<div class="lag" style="width: @(LagPercent)%"></div>
+			<div class="fill" style="width: @(HealthPercent)%"></div>
+		</div>
+	</div>
+
+	<div class="ammo @(LowAmmo ? "low" : "")">
+		<div class="row">
+			<div class="mag">@(Weapon?.Ammo ?? 0)</div>
+			<div class="reserve">/ @(Weapon?.Reserve ?? 0)</div>
+		</div>
+		@if ( Weapon?.IsReloading ?? false )
+		{
+			<div class="reload"><div class="fill" style="width: @(ReloadPercent)%"></div></div>
+		}
+	</div>
+
+	@if ( Director?.State == WaveState.GameOver )
+	{
+		<div class="gameover">
+			<div class="title">YOU DIED</div>
+			<div class="detail">Survived to wave @Director.Wave with @Director.Kills kills</div>
+			<div class="detail">Press JUMP to try again</div>
+		</div>
+	}
+</root>
+
+@code
+{
+	WaveDirector Director => Scene.Get<WaveDirector>();
+	PlayerSurvivor Player => Scene.GetAllComponents<PlayerSurvivor>().FirstOrDefault( p => !p.IsProxy );
+	PlayerWeapon Weapon => Player?.Weapon;
+
+	float lagHealth = 100f;
+	int lastKills;
+	TimeSince timeSinceKillCount = 999f;
+
+	BuyStation HoveredStation => Player?.Controller?.Hovered as BuyStation;
+	bool CanAffordStation => HoveredStation is { } s && !s.SoldOut && (Player?.Points ?? 0) >= s.CurrentCost;
+	bool PointsDenied => (Player?.TimeSinceDenied ?? 999f) < 0.4f;
+	float GainAge => Player?.TimeSinceGain ?? 999f;
+	float GainOpacity => MathX.Clamp( 1f - (GainAge - 0.5f) / 0.4f, 0f, 1f );
+	float GainRise => -MathF.Min( GainAge, 0.9f ) * 30f;
+
+	int HealthPercent => (int)MathF.Round( (Player?.Health?.Fraction ?? 0f) * 100f );
+	int LagPercent => (int)MathF.Round( lagHealth );
+	int ReloadPercent => (int)MathF.Round( (Weapon?.ReloadProgress ?? 0f) * 100f );
+	bool LowAmmo => Weapon is not null && !Weapon.IsReloading && Weapon.Ammo <= Weapon.MagazineSize / 4;
+
+	// Crosshair blooms out a little each shot.
+	float CrosshairScale => 1f + MathX.Clamp( 1f - (Weapon?.TimeSinceShot ?? 999f) / 0.12f, 0f, 1f ) * 1.2f;
+
+	bool IsKillMarker => (Weapon?.TimeSinceKill ?? 999f) < 0.35f;
+	float HitmarkerAge => IsKillMarker ? Weapon.TimeSinceKill : (Weapon?.TimeSinceHit ?? 999f);
+	float HitmarkerOpacity => MathX.Clamp( 1f - HitmarkerAge / (IsKillMarker ? 0.35f : 0.18f), 0f, 1f );
+	float HitmarkerScale => (IsKillMarker ? 1.5f : 1f) * (1.3f - 0.3f * HitmarkerOpacity);
+
+	float KillPop => 1f + MathX.Clamp( 1f - timeSinceKillCount / 0.25f, 0f, 1f ) * 0.5f;
+
+	float HurtOpacity
+	{
+		get
+		{
+			var health = Player?.Health;
+			if ( health is null ) return 0f;
+			if ( health.IsDead ) return 0.6f;
+			var flash = MathX.Clamp( 0.5f - health.TimeSinceDamaged, 0f, 0.5f );
+			// Low health: a slow pulse at the edges of the screen.
+			var low = health.Fraction < 0.3f ? (0.15f + 0.1f * MathF.Sin( Time.Now * 6f )) : 0f;
+			return MathF.Max( flash, low );
+		}
+	}
+
+	// Big centre banner for "WAVE 3" and "WAVE CLEARED".
+	float BannerAge
+	{
+		get
+		{
+			var d = Director;
+			if ( d is null ) return 999f;
+			return MathF.Min( d.TimeSinceWaveStarted, d.TimeSinceWaveCleared );
+		}
+	}
+	bool BannerIsStart => Director is not null && Director.TimeSinceWaveStarted < Director.TimeSinceWaveCleared;
+	string BannerClass => BannerIsStart ? "start" : "cleared";
+	string BannerTitle => BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
+	string BannerSubtitle => BannerIsStart ? "They're coming" : "Catch your breath";
+	float BannerOpacity => BannerAge < 0.2f ? BannerAge / 0.2f : MathX.Clamp( 1f - (BannerAge - 2f) / 0.6f, 0f, 1f );
+	float BannerScale => 1f + MathX.Clamp( 1f - BannerAge / 0.25f, 0f, 1f ) * 0.6f;
+
+	string StatusText
+	{
+		get
+		{
+			var d = Director;
+			if ( d is null ) return "";
+			return d.State switch
+			{
+				WaveState.Intermission when d.Wave == 0 => $"Zombies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",
+				WaveState.Intermission => $"Next wave in {MathF.Ceiling( d.SecondsUntilNextWave )}",
+				WaveState.Fighting => $"{d.ZombiesRemaining} zombies left",
+				_ => "",
+			};
+		}
+	}
+
+	protected override void OnUpdate()
+	{
+		// The pale "lag" bar drains behind the real health bar so hits read clearly.
+		var target = Player?.Health is { } h ? h.Fraction * 100f : 0f;
+		lagHealth = target > lagHealth ? target : MathX.Lerp( lagHealth, target, Time.Delta * 3f );
+
+		var kills = Director?.Kills ?? 0;
+		if ( kills != lastKills )
+		{
+			lastKills = kills;
+			timeSinceKillCount = 0f;
+		}
+	}
+
+	// Rebuild every frame: most of the HUD is animated.
+	protected override int BuildHash() => System.HashCode.Combine( Time.Now );
+}

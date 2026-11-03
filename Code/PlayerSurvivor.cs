@@ -1,0 +1,116 @@
+/// <summary>
+/// Player side of the survival game: regenerating health, and locking controls on death.
+/// Sits next to the PlayerController.
+/// </summary>
+public sealed class PlayerSurvivor : Component
+{
+	[Property] public float RegenDelay { get; set; } = 4f;
+	[Property] public float RegenPerSecond { get; set; } = 20f;
+	[Property, Group( "Juice" )] public SoundEvent HurtSound { get; set; }
+	[Property, Group( "Juice" )] public SoundEvent DeathSound { get; set; }
+	[Property, Group( "Juice" )] public float HurtShake { get; set; } = 0.5f;
+
+	[RequireComponent] public Health Health { get; set; }
+	public PlayerController Controller => GetComponent<PlayerController>();
+	public PlayerWeapon Weapon => GetComponent<PlayerWeapon>();
+	public bool IsAlive => Health.IsValid() && !Health.IsDead;
+
+	[Property, Group( "Points" )] public int StartingPoints { get; set; } = 500;
+	[Property, Group( "Points" )] public int PointsPerHit { get; set; } = 10;
+	[Property, Group( "Points" )] public int PointsPerKill { get; set; } = 60;
+
+	/// <summary> Currency for buy stations. </summary>
+	public int Points { get; private set; }
+	/// <summary> The most recent gain, for the HUD's "+60" popup. </summary>
+	public int LastGain { get; private set; }
+	public TimeSince TimeSinceGain { get; private set; } = 999f;
+	public TimeSince TimeSinceDenied { get; private set; } = 999f;
+
+	public void AddPoints( int amount )
+	{
+		if ( amount <= 0 ) return;
+		Points += amount;
+
+		// Gains within a moment of each other stack into one popup.
+		LastGain = TimeSinceGain < 0.6f ? LastGain + amount : amount;
+		TimeSinceGain = 0f;
+	}
+
+	/// <summary> Spends points if there are enough. Returns false (and flashes the counter) if not. </summary>
+	public bool TrySpend( int cost )
+	{
+		if ( Points < cost )
+		{
+			TimeSinceDenied = 0f;
+			return false;
+		}
+
+		Points -= cost;
+		return true;
+	}
+
+	protected override void OnAwake()
+	{
+		Points = StartingPoints;
+	}
+
+	protected override void OnStart()
+	{
+		Health.Damaged += OnHurt;
+		Health.Died += OnDied;
+	}
+
+	void OnHurt( DamageInfo damage )
+	{
+		if ( IsProxy ) return;
+
+		GetComponent<CameraJuice>()?.Shake( HurtShake );
+		if ( HurtSound is not null ) Sound.Play( HurtSound, damage.Position );
+
+		// Knock the view away from whoever hit us.
+		var controller = Controller;
+		if ( controller.IsValid() )
+			controller.EyeAngles += new Angles( -3f, Game.Random.Float( -4f, 4f ), 0f );
+	}
+
+	protected override void OnUpdate()
+	{
+		if ( IsProxy || !IsAlive ) return;
+
+		if ( Health.TimeSinceDamaged > RegenDelay )
+			Health.Heal( RegenPerSecond * Time.Delta );
+	}
+
+	void OnDied()
+	{
+		var controller = Controller;
+		if ( controller.IsValid() )
+		{
+			controller.UseInputControls = false;
+			controller.UseLookControls = false;
+			controller.WishVelocity = Vector3.Zero;
+		}
+
+		if ( DeathSound is not null ) Sound.Play( DeathSound, WorldPosition + Vector3.Up * 60f );
+		GetComponent<CameraJuice>()?.Shake( 1f );
+	}
+
+	public static PlayerSurvivor FindNearestAlive( Scene scene, Vector3 position )
+	{
+		PlayerSurvivor best = null;
+		var bestDist = float.MaxValue;
+
+		foreach ( var player in scene.GetAllComponents<PlayerSurvivor>() )
+		{
+			if ( !player.IsAlive ) continue;
+			var dist = player.WorldPosition.DistanceSquared( position );
+			if ( dist < bestDist )
+			{
+				bestDist = dist;
+				best = player;
+			}
+		}
+
+		return best;
+	}
+}

@@ -1,0 +1,6 @@
+# Normalise line endings in the repo; check out with the platform default.
+* text=auto
+*.png binary
+*.jpg binary
+*.vmdl_c binary
+*.shader_c binary

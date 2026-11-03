@@ -1,0 +1,342 @@
+ZombieHud
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	font-family: Poppins;
+	color: white;
+	text-shadow: 0 2px 4px rgba( black, 0.8 );
+}
+
+.hurt
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-image: radial-gradient( rgba( #a00000, 0 ) 40%, rgba( #b00000, 0.9 ) 100% );
+}
+
+.crosshair
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 6px;
+	height: 6px;
+	margin-left: -3px;
+	margin-top: -3px;
+
+	.dot
+	{
+		width: 100%;
+		height: 100%;
+		border-radius: 50%;
+		background-color: rgba( white, 0.9 );
+	}
+}
+
+.hitmarker
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 40px;
+	height: 40px;
+	margin-left: -20px;
+	margin-top: -20px;
+
+	.arm
+	{
+		position: absolute;
+		background-color: white;
+	}
+
+	.up { left: 19px; top: 0; width: 2px; height: 12px; }
+	.down { left: 19px; bottom: 0; width: 2px; height: 12px; }
+	.left { top: 19px; left: 0; width: 12px; height: 2px; }
+	.right { top: 19px; right: 0; width: 12px; height: 2px; }
+
+	&.kill .arm
+	{
+		background-color: #ff3b3b;
+	}
+}
+
+.top
+{
+	position: absolute;
+	top: 32px;
+	left: 0;
+	right: 0;
+	flex-direction: column;
+	align-items: center;
+
+	.wave
+	{
+		font-size: 44px;
+		font-weight: 800;
+		color: #c8ff7a;
+	}
+
+	.status
+	{
+		font-size: 20px;
+		opacity: 0.85;
+	}
+}
+
+.banner
+{
+	position: absolute;
+	top: 28%;
+	left: 0;
+	right: 0;
+	flex-direction: column;
+	align-items: center;
+
+	.big
+	{
+		font-size: 110px;
+		font-weight: 900;
+	}
+
+	.small
+	{
+		font-size: 26px;
+		opacity: 0.85;
+		margin-top: -10px;
+	}
+
+	&.start .big { color: #ff4a3a; }
+	&.cleared .big { color: #c8ff7a; }
+}
+
+.kills
+{
+	position: absolute;
+	top: 32px;
+	right: 40px;
+	flex-direction: column;
+	align-items: flex-end;
+
+	.count
+	{
+		font-size: 40px;
+		font-weight: 800;
+	}
+
+	.caption
+	{
+		font-size: 14px;
+		font-weight: 700;
+		opacity: 0.7;
+	}
+}
+
+.points
+{
+	position: absolute;
+	left: 40px;
+	bottom: 84px;
+	align-items: flex-end;
+
+	.value
+	{
+		font-size: 36px;
+		font-weight: 800;
+		color: #ffd24a;
+	}
+
+	.gain
+	{
+		position: absolute;
+		left: 0;
+		bottom: 44px;
+		font-size: 22px;
+		font-weight: 800;
+		color: #ffe58a;
+	}
+
+	&.denied .value
+	{
+		color: #ff3b3b;
+	}
+}
+
+.prompt
+{
+	position: absolute;
+	left: 50%;
+	top: 58%;
+	width: 420px;
+	margin-left: -210px;
+	justify-content: center;
+	align-items: center;
+	padding: 10px 16px;
+	border-radius: 8px;
+	background-color: rgba( black, 0.55 );
+
+	.key
+	{
+		width: 36px;
+		height: 36px;
+		margin-right: 12px;
+		border-radius: 6px;
+		background-color: white;
+		color: black;
+		font-size: 20px;
+		font-weight: 800;
+		justify-content: center;
+		align-items: center;
+		text-shadow: none;
+	}
+
+	.text
+	{
+		flex-direction: column;
+	}
+
+	.title
+	{
+		font-size: 22px;
+		font-weight: 800;
+		color: #ffd24a;
+	}
+
+	.desc
+	{
+		font-size: 16px;
+		opacity: 0.8;
+	}
+
+	&.cant .title
+	{
+		color: #ff6a5a;
+	}
+}
+
+.health
+{
+	position: absolute;
+	left: 40px;
+	bottom: 40px;
+	flex-direction: column;
+	width: 320px;
+
+	.caption
+	{
+		font-size: 16px;
+		font-weight: 700;
+		opacity: 0.8;
+	}
+
+	.bar
+	{
+		height: 16px;
+		background-color: rgba( black, 0.5 );
+		border-radius: 4px;
+		overflow: hidden;
+	}
+
+	.lag
+	{
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 100%;
+		background-color: rgba( white, 0.6 );
+	}
+
+	.fill
+	{
+		position: absolute;
+		top: 0;
+		left: 0;
+		height: 100%;
+		background-color: #e8443a;
+	}
+
+	&.low .caption
+	{
+		color: #ff3b3b;
+	}
+}
+
+.ammo
+{
+	position: absolute;
+	right: 40px;
+	bottom: 36px;
+	flex-direction: column;
+	align-items: flex-end;
+
+	.row
+	{
+		align-items: flex-end;
+	}
+
+	.mag
+	{
+		font-size: 48px;
+		font-weight: 800;
+	}
+
+	.reserve
+	{
+		font-size: 24px;
+		opacity: 0.7;
+		margin-left: 8px;
+		margin-bottom: 8px;
+	}
+
+	.reload
+	{
+		width: 160px;
+		height: 6px;
+		border-radius: 3px;
+		background-color: rgba( black, 0.5 );
+		overflow: hidden;
+
+		.fill
+		{
+			height: 100%;
+			background-color: white;
+		}
+	}
+
+	&.low .mag
+	{
+		color: #ff6a3a;
+	}
+}
+
+.gameover
+{
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	background-color: rgba( black, 0.5 );
+
+	.title
+	{
+		font-size: 96px;
+		font-weight: 900;
+		color: #ff3b3b;
+	}
+
+	.detail
+	{
+		font-size: 24px;
+		margin-top: 8px;
+	}
+}

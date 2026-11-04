@@ -400,6 +400,7 @@ public sealed class ZombieGore : Component
 		gore?.Burst( center, Vector3.Up, 1.8f );
 		gore?.Burst( center, -direction, 1.5f );
 		gore?.Spray( center, direction, 14, 260f, 0.7f, 2f );
+		gore?.Spray( center, direction, 10, 480f, 0.8f, 2.2f, sag: 0.15f ); // across the wall behind
 		gore?.Spray( center, Vector3.Up, 6, 200f );
 		gore?.ThrowMeat( center, direction, Game.Random.Int( 2, 3 ), organs: true );
 		gore?.ThrowMeat( center, direction, Game.Random.Int( 2, 4 ), organs: false );

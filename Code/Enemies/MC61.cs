@@ -114,6 +114,7 @@ public sealed class MC61 : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
 
@@ -742,6 +743,7 @@ public sealed class MC61 : Component, ICreature
 		if ( IsDead ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Torso;
 		lastShotDirection = direction;
+		lastShotPointBlank = (position - origin).Length < CreatureGore.OverkillRange;
 
 		if ( State == Mode.Dance ) damage *= DanceDamageScale;
 		var part = parts[index];
@@ -925,18 +927,19 @@ public sealed class MC61 : Component, ICreature
 	{
 		timeSinceDeath = 0f;
 		Killed?.Invoke( this );
-		DieEverywhere( lastShotDirection );
+		DieEverywhere( lastShotDirection, lastShotPointBlank );
 	}
 
 	[Rpc.Broadcast]
-	void DieEverywhere( Vector3 direction ) => DieLocal( direction, quiet: false );
+	void DieEverywhere( Vector3 direction, bool overkill ) => DieLocal( direction, quiet: false, overkill );
 
 	/// <summary> The head bursts in rainbow goo, cards everywhere, and the rest of him falls apart. </summary>
-	void DieLocal( Vector3 direction, bool quiet )
+	void DieLocal( Vector3 direction, bool quiet, bool overkill = false )
 	{
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
+		var overkillAt = parts[Head].Go.WorldPosition;
 		if ( !rig.IsValid() ) return;
 
 		if ( quiet ) { rig.Destroy(); return; }
@@ -945,6 +948,7 @@ public sealed class MC61 : Component, ICreature
 		beamCore?.Destroy();
 		aimLine?.Destroy();
 
+		if ( overkill ) CreatureGore.Overkill( Scene, overkillAt, direction, Skin, Goo, 1.6f * Size );
 		var headAt = parts[Head].Go.WorldPosition + Vector3.Up * 18f * Size;
 		for ( var k = 0; k < 6; k++ ) gore?.GooBurst( headAt, direction + Vector3.Up, Goo, 10, 380f, 1.6f );
 		gore?.GooSpray( headAt, Vector3.Down, 8, Goo, 300f, 0.8f, 1.8f );

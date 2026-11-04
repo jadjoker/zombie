@@ -92,6 +92,7 @@ public sealed class Squilien : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
 
@@ -441,6 +442,7 @@ public sealed class Squilien : Component, ICreature
 		var piece = Find( index );
 		if ( piece is null || piece.Gone ) piece = bell;
 		lastShotDirection = direction;
+		lastShotPointBlank = (position - origin).Length < CreatureGore.OverkillRange;
 
 		var isBell = piece == bell;
 		var cut = false;
@@ -594,24 +596,28 @@ public sealed class Squilien : Component, ICreature
 	{
 		timeSinceDeath = 0f;
 		Killed?.Invoke( this );
-		DieEverywhere( lastShotDirection );
+		DieEverywhere( lastShotDirection, lastShotPointBlank );
 	}
 
 	[Rpc.Broadcast]
-	void DieEverywhere( Vector3 direction ) => DieLocal( direction, quiet: false );
+	void DieEverywhere( Vector3 direction, bool overkill ) => DieLocal( direction, quiet: false, overkill );
 
 	/// <summary> The bell bursts in a cloud of ink and goo; the tentacles fall. </summary>
-	void DieLocal( Vector3 direction, bool quiet )
+	void DieLocal( Vector3 direction, bool quiet, bool overkill = false )
 	{
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
+		var overkillAt = bell.Position;
+
+		if ( overkill && !quiet ) CreatureGore.Overkill( Scene, overkillAt, direction, BodyColor, GooColor, 1.2f );
 
 		foreach ( var piece in all )
 		{
 			if ( piece.Gone ) continue;
 			piece.Gone = true;
 			if ( quiet ) { piece.Go.Destroy(); continue; }
+			if ( overkill && piece != bell && Game.Random.Float() < 0.5f ) { Burst( piece, direction, 4, 0 ); continue; }
 
 			if ( piece == bell )
 			{

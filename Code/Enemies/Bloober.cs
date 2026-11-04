@@ -114,6 +114,7 @@ public sealed class Bloober : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
 
@@ -520,6 +521,7 @@ public sealed class Bloober : Component, ICreature
 		}
 
 		lastShotDirection = direction;
+		lastShotPointBlank = (position - origin).Length < CreatureGore.OverkillRange;
 		var segment = segments[index];
 		var amount = damage * (Puffed ? PuffDamageScale : 1f);
 		var headshot = index == 0;
@@ -676,18 +678,21 @@ public sealed class Bloober : Component, ICreature
 	{
 		timeSinceDeath = 0f;
 		Killed?.Invoke( this );
-		DieEverywhere( lastShotDirection );
+		DieEverywhere( lastShotDirection, lastShotPointBlank );
 	}
 
 	[Rpc.Broadcast]
-	void DieEverywhere( Vector3 direction ) => DieLocal( direction, quiet: false );
+	void DieEverywhere( Vector3 direction, bool overkill ) => DieLocal( direction, quiet: false, overkill );
 
 	/// <summary> The head pops; the body tumbles out of the air in pieces, some bursting as they go. </summary>
-	void DieLocal( Vector3 direction, bool quiet )
+	void DieLocal( Vector3 direction, bool quiet, bool overkill = false )
 	{
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
+		var overkillAt = segments[0].Position;
+
+		if ( overkill && !quiet ) CreatureGore.Overkill( Scene, overkillAt, direction, BodyColor, GooColor );
 
 		foreach ( var segment in segments )
 		{
@@ -697,7 +702,8 @@ public sealed class Bloober : Component, ICreature
 			if ( quiet ) { segment.Go.Destroy(); continue; }
 
 			if ( segment.Index == 0 ) Burst( segment, direction, 22, 3 );
-			else if ( Game.Random.Float() < 0.25f ) Burst( segment, direction, 8, 1 );
+			// An overkill bursts most of the body; a normal kill drops it in pieces.
+			else if ( Game.Random.Float() < (overkill ? 0.7f : 0.25f) ) Burst( segment, direction, 8, 1 );
 			else Detach( segment, (direction + Vector3.Random * 0.8f).Normal * Game.Random.Float( 60f, 180f ) );
 		}
 	}

@@ -68,6 +68,7 @@ public sealed class JunkCrab : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	bool lastShotPointBlank;
 	float gait;
 
 	// ---- Setup ------------------------------------------------------------
@@ -395,6 +396,7 @@ public sealed class JunkCrab : Component, ICreature
 		if ( IsDead ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
 		lastShotDirection = direction;
+		lastShotPointBlank = (position - origin).Length < CreatureGore.OverkillRange;
 		var part = parts[index];
 		var crit = index is EyeL or EyeR;
 
@@ -563,24 +565,26 @@ public sealed class JunkCrab : Component, ICreature
 		timeSinceDeath = 0f;
 		agent?.Stop();
 		Killed?.Invoke( this );
-		DieEverywhere( lastShotDirection );
+		DieEverywhere( lastShotDirection, lastShotPointBlank );
 	}
 
 	[Rpc.Broadcast]
-	void DieEverywhere( Vector3 direction ) => DieLocal( direction, quiet: false );
+	void DieEverywhere( Vector3 direction, bool overkill ) => DieLocal( direction, quiet: false, overkill );
 
 	/// <summary> The shell cracks open in a burst of goo; barrel, claws and legs scatter. </summary>
-	void DieLocal( Vector3 direction, bool quiet )
+	void DieLocal( Vector3 direction, bool quiet, bool overkill = false )
 	{
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
+		var overkillAt = parts[Body].Go.WorldPosition;
 		if ( agent.IsValid() ) agent.Enabled = false;
 		foreach ( var c in GetComponentsInChildren<Collider>( true, true ) ) c.Enabled = false;
 		if ( !rig.IsValid() ) return;
 		if ( quiet ) { rig.Destroy(); return; }
 
 		var at = parts[Body].Go.WorldPosition;
+		if ( overkill ) CreatureGore.Overkill( Scene, overkillAt, direction, shellColor, gooColor, Size );
 		for ( var k = 0; k < 2; k++ ) gore?.GooBurst( at, direction + Vector3.Up, gooColor, 12, 320f, 1.3f );
 		gore?.GooSpray( at, direction, 6, gooColor, 240f, 0.7f, 1.5f );
 		for ( var b = 0; b < 2; b++ ) gore?.ThrowBlob( at, direction, shellColor, gooColor, 4f * Size );
@@ -593,8 +597,13 @@ public sealed class JunkCrab : Component, ICreature
 			Detach( part, (direction + Vector3.Random + Vector3.Up).Normal * Game.Random.Float( 120f, 260f ), spin: 20f );
 		}
 
-		// The body itself: a cracked shell left on the floor.
-		if ( Has( Body ) ) { MarkGone( Body ); Detach( parts[Body], direction * 60f ); }
+		// The body itself: a cracked shell left on the floor (or, point-blank, nothing left at all).
+		if ( Has( Body ) )
+		{
+			MarkGone( Body );
+			if ( overkill ) parts[Body].Go.Destroy();
+			else Detach( parts[Body], direction * 60f );
+		}
 		rig.Destroy();
 	}
 }

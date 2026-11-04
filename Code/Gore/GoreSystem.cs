@@ -59,6 +59,8 @@ public sealed class GoreSystem : Component
 
 	public void Burst( Vector3 position, Vector3 direction, float scale = 1f )
 	{
+		// Big bursts are flesh tearing: make them sound wet.
+		if ( scale >= 1.2f ) Squelch( position, scale / 1.8f, MathX.Lerp( 1.1f, 0.75f, MathX.Clamp( (scale - 1.2f) / 1f, 0f, 1f ) ) );
 		if ( !BloodBurst.IsValid() ) return;
 		var fx = BloodBurst.Clone( position, Rotation.LookAt( direction.IsNearlyZero() ? Vector3.Up : direction ) );
 		fx.WorldScale = scale;
@@ -66,12 +68,13 @@ public sealed class GoreSystem : Component
 	}
 
 	/// <summary> Sprays blood from a point: decals wherever the droplets land on the world. </summary>
-	public void Spray( Vector3 origin, Vector3 direction, int drops, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f )
+	/// <param name="sag"> How much the drops fall on the way (1 = arcs to the floor, 0 = flies straight at walls). </param>
+	public void Spray( Vector3 origin, Vector3 direction, int drops, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{
 		for ( var i = 0; i < drops; i++ )
 		{
 			// A cone around the direction, pulled down by gravity.
-			var dir = (direction.Normal + Vector3.Random * 0.7f + Vector3.Down * Game.Random.Float( 0.2f, 0.9f )).Normal;
+			var dir = (direction.Normal + Vector3.Random * 0.7f + Vector3.Down * Game.Random.Float( 0.2f, 0.9f ) * sag).Normal;
 			if ( TraceWorld( origin, origin + dir * reach ) is { } hit )
 				Splat( hit.Position, hit.Normal, Game.Random.Float( sizeMin, sizeMax ) );
 		}
@@ -151,11 +154,12 @@ public sealed class GoreSystem : Component
 	}
 
 	/// <summary> Sprays goo from a point: splatters wherever the drops land. </summary>
-	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f )
+	/// <param name="sag"> How much the drops fall on the way (1 = arcs to the floor, 0 = flies straight at walls). </param>
+	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{
 		for ( var i = 0; i < drops; i++ )
 		{
-			var dir = (direction.Normal + Vector3.Random * 0.7f + Vector3.Down * Game.Random.Float( 0.2f, 0.9f )).Normal;
+			var dir = (direction.Normal + Vector3.Random * 0.7f + Vector3.Down * Game.Random.Float( 0.2f, 0.9f ) * sag).Normal;
 			if ( TraceWorld( origin, origin + dir * reach ) is { } hit )
 				GooSplat( hit.Position, hit.Normal, Game.Random.Float( sizeMin, sizeMax ), color );
 		}

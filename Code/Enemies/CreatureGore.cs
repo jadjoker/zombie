@@ -126,6 +126,37 @@ public static class CreatureGore
 		return stump;
 	}
 
+	/// <summary> Kills from closer than this (shotgun to the face) are overkills. </summary>
+	public const float OverkillRange = 220f;
+
+	/// <summary>
+	/// A point-blank kill: the creature blows apart much harder. A big blast of goo, extra chunks of
+	/// flesh, a splatter thrown across whatever's behind it, and a jolt for anyone standing close.
+	/// </summary>
+	public static void Overkill( Scene scene, Vector3 at, Vector3 direction, Color skin, Color goo, float scale = 1f )
+	{
+		var gore = GoreSystem.Get( scene );
+		if ( gore is null ) return;
+		direction = direction.IsNearlyZero() ? Vector3.Up : direction.Normal;
+
+		for ( var i = 0; i < 3; i++ )
+			gore.GooBurst( at, (direction + Vector3.Random * 0.7f).Normal, goo, 12, 420f, 1.4f * scale );
+		// Flat and far, so it paints the wall behind as well as the floor.
+		gore.GooSpray( at, direction, 14, goo, 520f, 0.9f, 2.4f, sag: 0.15f );
+		gore.GooSpray( at, Vector3.Down, 4, goo, 200f, 1.2f, 2.4f );
+		var blobs = Game.Random.Int( 3, 5 );
+		for ( var i = 0; i < blobs; i++ )
+			gore.ThrowBlob( at, (direction + Vector3.Random * 0.9f + Vector3.Up * 0.4f).Normal, skin, goo, Game.Random.Float( 2.5f, 4.5f ) * scale );
+		gore.Squelch( at, 1.4f, 0.7f );
+
+		// Feel it if you're close.
+		foreach ( var player in scene.GetAllComponents<PlayerSurvivor>() )
+		{
+			if ( player.IsProxy || player.WorldPosition.Distance( at ) > 350f ) continue;
+			player.GetComponent<CameraJuice>()?.Shake( 0.25f );
+		}
+	}
+
 	/// <summary> A quick squash-and-wobble on a part that just got hit. Blobby things should jiggle. </summary>
 	public static void Jiggle( GameObject part, float strength = 1f )
 	{

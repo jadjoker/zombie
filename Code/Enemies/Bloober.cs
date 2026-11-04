@@ -114,6 +114,7 @@ public sealed class Bloober : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	TimeSince bleedTimer;
 	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
@@ -266,6 +267,11 @@ public sealed class Bloober : Component, ICreature
 		}
 
 		if ( diedLocally ) return;
+
+		// Badly hurt: it leaks as it slithers.
+		var leaking = segments.Where( s => !s.Gone ).ToList();
+		if ( leaking.Count > 0 && health.IsValid() )
+			CreatureGore.BleedTrail( Scene, Game.Random.FromList( leaking ).Position, GooColor, health.Fraction, ref bleedTimer );
 
 		var targetPuff = Puffed ? 1f : 0f;
 		puff = MathX.Approach( puff, targetPuff, Time.Delta * (Puffed ? 6f : 2.5f) );

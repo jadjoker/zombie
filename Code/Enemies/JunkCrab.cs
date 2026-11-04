@@ -68,6 +68,7 @@ public sealed class JunkCrab : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	TimeSince bleedTimer;
 	bool lastShotPointBlank;
 	float gait;
 
@@ -237,6 +238,8 @@ public sealed class JunkCrab : Component, ICreature
 		if ( diedLocally || !rig.IsValid() ) return;
 		rig.WorldPosition = WorldPosition;
 		rig.WorldRotation = WorldRotation;
+		if ( Has( Body ) && health.IsValid() )
+			CreatureGore.BleedTrail( Scene, parts[Body].Go.WorldPosition, gooColor, health.Fraction, ref bleedTimer );
 		Animate();
 		Tint();
 	}

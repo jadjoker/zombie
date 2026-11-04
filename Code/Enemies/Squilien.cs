@@ -92,6 +92,7 @@ public sealed class Squilien : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	TimeSince bleedTimer;
 	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
@@ -245,6 +246,9 @@ public sealed class Squilien : Component, ICreature
 		}
 
 		if ( diedLocally ) return;
+
+		if ( health.IsValid() && !bell.Gone )
+			CreatureGore.BleedTrail( Scene, bell.Position + Vector3.Down * BellRadius * 0.4f, GooColor, health.Fraction, ref bleedTimer );
 
 		if ( PulseCount != seenPulses )
 		{

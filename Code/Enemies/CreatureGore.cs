@@ -161,6 +161,24 @@ public static class CreatureGore
 		}
 	}
 
+	/// <summary>
+	/// A badly hurt creature leaks: goo drips under it as it goes, faster the closer it is to death.
+	/// Call every frame with its health fraction and a timer it keeps.
+	/// </summary>
+	public static void BleedTrail( Scene scene, Vector3 at, Color goo, float healthFraction, ref TimeSince timer )
+	{
+		if ( healthFraction > 0.6f || healthFraction <= 0f ) return;
+		var interval = MathX.Lerp( 0.1f, 0.5f, healthFraction / 0.6f );
+		if ( timer < interval ) return;
+		timer = 0f;
+		var gore = GoreSystem.Get( scene );
+		if ( gore is null ) return;
+		var drop = at + Vector3.Random.WithZ( 0 ) * 6f;
+		gore.GooDrip( drop, goo );
+		if ( Game.Random.Float() < 0.5f )
+			GooDroplet.Spawn( scene, drop, Vector3.Down * 30f, goo, Game.Random.Float( 0.7f, 1.3f ) );
+	}
+
 	/// <summary> A severed piece keeps spasming for a while: little hops and flips that die down. </summary>
 	public static void Twitch( GameObject piece, float seconds = 3f, float strength = 1f )
 	{

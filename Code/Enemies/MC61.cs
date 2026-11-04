@@ -114,6 +114,7 @@ public sealed class MC61 : Component, ICreature
 	bool diedLocally;
 	TimeSince timeSinceDeath;
 	Vector3 lastShotDirection = Vector3.Forward;
+	TimeSince bleedTimer;
 	bool lastShotPointBlank;
 
 	// ---- Setup ------------------------------------------------------------
@@ -293,6 +294,8 @@ public sealed class MC61 : Component, ICreature
 
 		rig.WorldPosition = WorldPosition;
 		rig.WorldRotation = WorldRotation;
+		if ( Has( Torso ) && health.IsValid() )
+			CreatureGore.BleedTrail( Scene, parts[Torso].Go.WorldPosition, Goo, health.Fraction, ref bleedTimer );
 		Animate();
 		DrawBeam();
 		Tint();

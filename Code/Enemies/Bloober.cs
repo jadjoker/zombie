@@ -580,6 +580,11 @@ public sealed class Bloober : Component, ICreature
 		var segment = segments[index];
 		segment.Flash = 0f;
 		segment.Hurt = MathF.Max( segment.Hurt, hurt );
+		if ( !segment.Gone )
+		{
+			CreatureGore.AddWound( segment.Go, position, direction, BodyColor, GooColor, segment.Radius * 0.45f );
+			CreatureGore.Jiggle( segment.Go );
+		}
 
 		gore?.GooBurst( position, -direction, GooColor, 6, 220f, 0.8f );
 		gore?.GooSpray( position, direction, 2, GooColor, 180f, 0.4f, 0.9f );
@@ -597,6 +602,21 @@ public sealed class Bloober : Component, ICreature
 	void CutLocal( int index, Vector3 direction, bool quiet )
 	{
 		if ( index <= 0 || index >= segments.Count ) return;
+
+		// A raw, oozing end on the snake where it was cut, and a matching cap on the tail piece.
+		if ( !quiet && !segments[index].Gone )
+		{
+			var front = segments[index - 1];
+			var cut = segments[index];
+			var outward = (cut.Position - front.Position).Normal;
+			if ( !front.Gone ) CreatureGore.AddStump( front.Go, front.Position + outward * front.Radius * 0.85f, outward, front.Radius * 0.8f, BodyColor, GooColor );
+			if ( index + 1 < segments.Count && !segments[index + 1].Gone )
+			{
+				var tail = segments[index + 1];
+				var back = (cut.Position - tail.Position).Normal;
+				CreatureGore.AddStump( tail.Go, tail.Position + back * tail.Radius * 0.85f, back, tail.Radius * 0.8f, BodyColor, GooColor, 2.5f );
+			}
+		}
 
 		for ( var i = index; i < segments.Count; i++ )
 		{

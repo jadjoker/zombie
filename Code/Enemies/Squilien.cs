@@ -510,6 +510,11 @@ public sealed class Squilien : Component, ICreature
 		if ( piece is null ) return;
 		piece.Flash = 0f;
 		piece.Hurt = MathF.Max( piece.Hurt, hurt );
+		if ( !piece.Gone )
+		{
+			CreatureGore.AddWound( piece.Go, position, direction, BodyColor, GooColor, piece == bell ? BellRadius * 0.3f : piece.Radius * 1.1f );
+			CreatureGore.Jiggle( piece.Go, piece == bell ? 1.2f : 0.8f );
+		}
 
 		gore?.GooBurst( position, -direction, GooColor, 6, 220f, 0.8f );
 		gore?.GooSpray( position, direction, 2, GooColor, 180f, 0.4f, 0.9f );
@@ -525,6 +530,17 @@ public sealed class Squilien : Component, ICreature
 	{
 		foreach ( var (tentacle, from) in Below( index ).ToList() )
 		{
+			// An oozing stub where the tentacle snapped: on the piece above, or the bell itself.
+			if ( !quiet && !tentacle.Pieces[from].Gone )
+			{
+				var cut = tentacle.Pieces[from];
+				var above = from > 0 ? tentacle.Pieces[from - 1] : null;
+				var joint = above is not null ? above.Position : Anchor( tentacle );
+				var outward = (cut.Position - joint).Normal;
+				if ( above is not null && !above.Gone ) CreatureGore.AddStump( above.Go, joint, outward, above.Radius * 1.2f, BodyColor, GooColor, 4f );
+				else if ( above is null && !bell.Gone ) CreatureGore.AddStump( bell.Go, joint, outward, TentacleRadius * 1.3f, BodyColor, GooColor, 4f );
+			}
+
 			for ( var i = from; i < tentacle.Pieces.Count; i++ )
 			{
 				var piece = tentacle.Pieces[i];

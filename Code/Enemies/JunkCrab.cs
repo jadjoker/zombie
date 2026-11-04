@@ -460,12 +460,18 @@ public sealed class JunkCrab : Component, ICreature
 
 		if ( index == Barrel )
 		{
+			CreatureGore.Jiggle( part.Go, 0.5f );
 			// Metal: sparks of glowing waste rather than goo.
 			gore?.GooBurst( position, -direction, new Color( 0.5f, 1f, 0.2f ) * 2f, 5, 260f, 0.6f );
 			return;
 		}
 		gore?.GooBurst( position, -direction, gooColor, 6, 220f, 0.8f );
 		gore?.GooSpray( position, direction, 2, gooColor, 180f, 0.4f, 0.9f );
+		if ( !part.Gone )
+		{
+			CreatureGore.AddWound( part.Go, position, direction, shellColor, gooColor, (index == Body ? 3f : 2f) * Size );
+			CreatureGore.Jiggle( part.Go, index == Body ? 0.7f : 1f );
+		}
 		if ( chip && index == Body ) gore?.ThrowBlob( position, -direction, shellColor, gooColor, 3f * Size );
 	}
 
@@ -485,6 +491,15 @@ public sealed class JunkCrab : Component, ICreature
 		if ( quiet ) { part.Go.Destroy(); return; }
 
 		var at = part.Go.WorldPosition;
+		if ( index != Barrel )
+		{
+			// Raw stump on the crab where it came off, and a cap on the piece that flew.
+			var parent = part.Parent >= 0 ? parts[part.Parent] : null;
+			var outward = parent is not null ? (at - parent.Go.WorldPosition).Normal : Vector3.Up;
+			var radius = (index is EyeL or EyeR ? 1.8f : index is ArmL or ArmR or PincerL or PincerR ? 4f : 2.8f) * Size;
+			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f );
+			if ( index is not EyeL and not EyeR ) CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f );
+		}
 		if ( index == Barrel )
 		{
 			// Pops off its back and clangs away, leaking glowing waste.

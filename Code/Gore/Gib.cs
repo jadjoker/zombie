@@ -27,6 +27,7 @@ public sealed class Gib : Component
 	TimeSince fadeStarted;
 	Vector3 scaleBeforeFade;
 	TimeUntil? pendingSplit;
+	bool pooled;
 	TimeSince lastDrip;
 	float lastSpeed;
 	int splats;
@@ -295,6 +296,7 @@ public sealed class Gib : Component
 
 		gore?.Burst( joint, direction, 0.8f );
 		gore?.Spray( joint, direction, 3, 160f );
+		gore?.Squelch( joint, 0.8f );
 		if ( map.IsTorso( at ) || map.IsTorso( root ) ) gore?.ThrowMeat( joint, direction, 1, organs: true );
 	}
 
@@ -311,6 +313,7 @@ public sealed class Gib : Component
 
 		gore?.Burst( position, direction, 1.2f );
 		gore?.Spray( position, direction, 5, 200f, 0.5f, 1.4f );
+		gore?.Squelch( position, 1f, 0.9f );
 
 		var torso = !IsProp && members.Any( map.IsTorso );
 		if ( !IsProp && Game.Random.Float() < (torso ? 0.9f : 0.4f) )
@@ -371,6 +374,16 @@ public sealed class Gib : Component
 				if ( goo is Color c ) gore.GooSplat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ), c );
 				else gore.Splat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ) );
 			}
+			gore.Squelch( WorldPosition, MathX.Clamp( lastSpeed / 600f, 0.2f, 1f ) * MathX.Clamp( (body?.MassOverride ?? 3f) / 6f, 0.4f, 1f ), 1.1f );
+		}
+
+		// Come to rest: a creature piece leaves a puddle of its goo underneath.
+		if ( goo is Color pool && !pooled && age > 0.5f && speed < 15f )
+		{
+			pooled = true;
+			var size = MathX.Clamp( (body?.MassOverride ?? 2f) / 3f, 0.6f, 2.4f );
+			if ( gore.TraceWorld( WorldPosition + Vector3.Up * 5f, WorldPosition + Vector3.Down * 40f ) is { } floor )
+				gore.GooSplat( floor.Position, floor.Normal, Game.Random.Float( 0.9f, 1.3f ) * size, pool );
 		}
 
 		lastSpeed = speed;

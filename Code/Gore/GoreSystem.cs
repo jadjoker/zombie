@@ -23,6 +23,12 @@ public sealed class GoreSystem : Component
 	[Property, Group( "Blood" )] public float DecalLifetime { get; set; } = 40f;
 	[Property, Group( "Blood" )] public int MaxDecals { get; set; } = 200;
 
+	/// <summary> Wet squelch for parts tearing off, bodies bursting and heavy chunks landing. </summary>
+	[Property, Group( "Sound" )] public SoundEvent SplatSound { get; set; }
+	[Property, Group( "Sound" )] public float SplatVolume { get; set; } = 0.55f;
+	/// <summary> Most squelches per tenth of a second, so a shotgun blast doesn't stack twenty. </summary>
+	[Property, Group( "Sound" )] public int MaxSplatsPerTick { get; set; } = 3;
+
 	/// <summary> Grey splatters, tinted per creature, for the colourful alien goo. </summary>
 	[Property, Group( "Goo" )] public List<DecalDefinition> GooDecals { get; set; } = new();
 
@@ -116,6 +122,25 @@ public sealed class GoreSystem : Component
 		}
 	}
 
+	// ---- Sound ------------------------------------------------------------
+
+	TimeSince splatWindow;
+	int splatsThisWindow;
+
+	/// <summary> A wet squelch at a point, pitched a little at random. Rate-limited. </summary>
+	public void Squelch( Vector3 position, float loudness = 1f, float pitch = 1f )
+	{
+		if ( SplatSound is null || loudness <= 0.05f ) return;
+		if ( splatWindow > 0.1f ) { splatWindow = 0f; splatsThisWindow = 0; }
+		if ( splatsThisWindow >= MaxSplatsPerTick ) return;
+		splatsThisWindow++;
+
+		var handle = Sound.Play( SplatSound, position );
+		if ( !handle.IsValid() ) return;
+		handle.Volume = SplatVolume * MathX.Clamp( loudness, 0f, 1.5f );
+		handle.Pitch = pitch * Game.Random.Float( 0.85f, 1.15f );
+	}
+
 	// ---- Goo (alien creatures) -----------------------------------------------
 
 	/// <summary> A goo splatter in the creature's colour. Falls back to blood if no goo decals are set. </summary>
@@ -145,6 +170,9 @@ public sealed class GoreSystem : Component
 	/// <summary> A burst of glowing goo droplets flying out of a wound. </summary>
 	public void GooBurst( Vector3 position, Vector3 direction, Color color, int count = 10, float speed = 260f, float size = 1f )
 	{
+		// Big bursts are something tearing or popping: make it sound wet.
+		if ( count >= 10 ) Squelch( position, MathX.Clamp( count / 16f, 0.5f, 1.2f ), MathX.Lerp( 1.15f, 0.8f, MathX.Clamp( size / 1.6f, 0f, 1f ) ) );
+
 		for ( var i = 0; i < count; i++ )
 		{
 			var velocity = (direction.Normal * 0.8f + Vector3.Random).Normal * speed * Game.Random.Float( 0.4f, 1.2f ) + Vector3.Up * Game.Random.Float( 30f, 140f );

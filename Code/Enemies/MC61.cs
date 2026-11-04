@@ -810,6 +810,11 @@ public sealed class MC61 : Component, ICreature
 		part.Hurt = MathF.Max( part.Hurt, hurt * 0.8f );
 
 		var goo = Goo;
+		if ( !part.Gone && part.Renderers.Count > 0 )
+		{
+			CreatureGore.AddWound( part.Go, position, direction, part.Renderers[0].Tint, goo, index is Torso or Head ? 4f : 2.5f );
+			if ( index != Eye ) CreatureGore.Jiggle( part.Go, index is Head ? 0.8f : 0.6f );
+		}
 		gore?.GooBurst( position, -direction, goo, 7, 240f, 1f );
 		gore?.GooSpray( position, direction, 2, goo, 200f, 0.5f, 1f );
 		if ( chip && index is Torso or Head )
@@ -832,6 +837,7 @@ public sealed class MC61 : Component, ICreature
 		if ( quiet ) { part.Go.Destroy(); return; }
 
 		var at = part.Go.WorldPosition;
+		AddStumps( part, index == Eye ? 0.5f : 1f );
 		for ( var k = 0; k < 3; k++ ) gore?.GooBurst( at, direction, Goo, 6, 300f, 1.2f );
 		gore?.GooSpray( at, direction, 4, Goo, 240f, 0.6f, 1.3f );
 
@@ -860,6 +866,19 @@ public sealed class MC61 : Component, ICreature
 		// Losing the arm with the case also loses the case trick.
 		if ( (mask & (1 << Case)) != 0 ) CardConfetti( at );
 		Detach( part, direction * Game.Random.Float( 80f, 180f ) + Vector3.Up * 80f );
+	}
+
+	/// <summary> Raw stumps on both sides of a cut: on what he keeps, and on the piece that flies off. </summary>
+	void AddStumps( Part part, float scale )
+	{
+		if ( part.Index == Hat || part.Index == Case ) return;
+		var parent = part.Parent >= 0 ? parts[part.Parent] : null;
+		var joint = part.Go.WorldPosition;
+		var outward = parent is not null ? (joint - parent.Go.WorldPosition).Normal : Vector3.Up;
+		var radius = (part.Index is ArmL or ArmR or ForearmL or ForearmR ? 5.5f : part.Index is LegL or LegR or ShinL or ShinR ? 6.5f : 7f) * Size * scale;
+		var skin = part.Renderers.Count > 0 ? part.Renderers[0].Tint : Tux;
+		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, joint, outward, radius, skin, Goo );
+		if ( part.Index != Eye ) CreatureGore.AddStump( part.Go, joint, -outward, radius, skin, Goo, 2f );
 	}
 
 	void CardConfetti( Vector3 at )

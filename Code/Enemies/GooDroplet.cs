@@ -10,8 +10,20 @@ public sealed class GooDroplet : Component
 	float lifetime;
 	TimeSince age;
 
+	/// <summary> Most droplets in flight at once; past this, new ones are skipped (the splats still happen). </summary>
+	public const int MaxLive = 350;
+	static int live;
+	static int spawnsSinceRecount;
+
 	public static void Spawn( Scene scene, Vector3 position, Vector3 velocity, Color color, float size )
 	{
+		// Every so often, recount the real number so the cap can never get stuck.
+		if ( ++spawnsSinceRecount > 60 )
+		{
+			spawnsSinceRecount = 0;
+			live = scene.GetAllComponents<GooDroplet>().Count();
+		}
+		if ( live >= MaxLive ) return;
 		var go = new GameObject( true, "Goo" );
 		go.NetworkMode = NetworkMode.Never;
 		go.WorldPosition = position;
@@ -27,7 +39,10 @@ public sealed class GooDroplet : Component
 		drop.size = size;
 		drop.lifetime = Game.Random.Float( 0.45f, 0.8f );
 		drop.age = 0f;
+		live++;
 	}
+
+	protected override void OnDestroy() => live = Math.Max( 0, live - 1 );
 
 	protected override void OnUpdate()
 	{

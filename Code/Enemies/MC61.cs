@@ -902,12 +902,18 @@ public sealed class MC61 : Component, ICreature
 		var go = part.Go;
 		go.SetParent( null, true );
 		foreach ( var p in go.Components.GetAll<CreaturePart>( FindMode.EverythingInSelfAndDescendants ).ToList() ) p.Destroy();
-		foreach ( var c in go.Components.GetAll<Collider>( FindMode.EverythingInSelfAndDescendants ).ToList() ) c.Destroy();
+		// Keep the capsule hit shapes, made solid, so a leg tumbles and lies like a leg (not a ball).
+		var solids = 0;
+		foreach ( var c in go.Components.GetAll<Collider>( FindMode.EverythingInSelfAndDescendants ).ToList() )
+		{
+			if ( c is CapsuleCollider capsule ) { capsule.IsTrigger = false; solids++; }
+			else c.Destroy();
+		}
 		foreach ( var o in go.GetAllObjects( true ) ) o.Tags.Remove( "creature" );
 
 		var bounds = go.GetBounds();
 		var radius = MathX.Clamp( bounds.Size.Length * 0.25f, 4f, 30f );
-		var gib = Gib.Attach( go, gore, radius, 40f, 6f, part.Velocity * 0.4f + push, Goo );
+		var gib = Gib.Attach( go, gore, radius, 40f, 6f, part.Velocity * 0.4f + push, Goo, addCollider: solids == 0 );
 		var body = go.Components.Get<Rigidbody>();
 		if ( body.IsValid() ) body.AngularVelocity = Vector3.Random * spin;
 	}

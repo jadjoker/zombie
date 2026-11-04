@@ -539,12 +539,18 @@ public sealed class JunkCrab : Component, ICreature
 		var go = part.Go;
 		go.SetParent( null, true );
 		foreach ( var p in go.Components.GetAll<CreaturePart>( FindMode.EverythingInSelfAndDescendants ).ToList() ) p.Destroy();
-		foreach ( var c in go.Components.GetAll<Collider>( FindMode.EverythingInSelfAndDescendants ).ToList() ) c.Destroy();
+		// Keep the capsule hit shapes, made solid, so a leg tumbles and lies like a leg (not a ball).
+		var solids = 0;
+		foreach ( var c in go.Components.GetAll<Collider>( FindMode.EverythingInSelfAndDescendants ).ToList() )
+		{
+			if ( c is CapsuleCollider capsule ) { capsule.IsTrigger = false; solids++; }
+			else c.Destroy();
+		}
 		foreach ( var o in go.GetAllObjects( true ) ) o.Tags.Remove( "creature" );
 
 		var bounds = go.GetBounds();
 		var radius = MathX.Clamp( bounds.Size.Length * 0.25f, 2.5f, 20f );
-		Gib.Attach( go, gore, radius, 15f, 2f, part.Velocity * 0.4f + push, gooColor );
+		Gib.Attach( go, gore, radius, 15f, 2f, part.Velocity * 0.4f + push, gooColor, addCollider: solids == 0 );
 		var rb = go.Components.Get<Rigidbody>();
 		if ( rb.IsValid() ) rb.AngularVelocity = Vector3.Random * spin;
 	}

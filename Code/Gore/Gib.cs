@@ -95,11 +95,15 @@ public sealed class Gib : Component
 	/// Turns an object that already has its visuals (a creature segment, a blob) into a loose physics
 	/// piece: a ball collider, a rigidbody, and the usual gib life (fade, splats, shoot it to bits).
 	/// </summary>
-	public static Gib Attach( GameObject go, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor )
+	/// <param name="addCollider"> False when the object already has the solid colliders it should tumble with. </param>
+	public static Gib Attach( GameObject go, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor, bool addCollider = true )
 	{
 		go.Tags.Add( "gib" );
-		var collider = go.AddComponent<SphereCollider>();
-		collider.Radius = radius;
+		if ( addCollider )
+		{
+			var collider = go.AddComponent<SphereCollider>();
+			collider.Radius = radius;
+		}
 
 		var gib = go.AddComponent<Gib>();
 		gib.gore = gore;

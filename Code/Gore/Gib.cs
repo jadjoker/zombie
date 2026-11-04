@@ -375,6 +375,8 @@ public sealed class Gib : Component
 				else gore.Splat( hit.Position, hit.Normal, Game.Random.Float( 0.7f, 1.4f ) );
 			}
 			gore.Squelch( WorldPosition, MathX.Clamp( lastSpeed / 600f, 0.2f, 1f ) * MathX.Clamp( (body?.MassOverride ?? 3f) / 6f, 0.4f, 1f ), 1.1f );
+			// Creature pieces are soft: they wobble when they land.
+			if ( goo is not null ) CreatureGore.Jiggle( GameObject, MathX.Clamp( lastSpeed / 400f, 0.4f, 1.6f ) );
 		}
 
 		// Come to rest: a creature piece leaves a puddle of its goo underneath.

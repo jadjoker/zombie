@@ -44,6 +44,40 @@ public sealed class PlayerAfflictions : Component
 	public TimeSince TimeSinceCursed { get; private set; } = 999f;
 	public CardKind LastCurse { get; private set; }
 
+	/// <summary> A splash of goo on the camera: where (percent of screen), how big (px), what colour, when. </summary>
+	public readonly record struct ScreenDrip( float X, float Y, float Size, Color Color, float Born, float Slide );
+	/// <summary> How long goo stays on the screen. </summary>
+	public const float DripLife = 1.8f;
+	readonly List<ScreenDrip> drips = new();
+	/// <summary> Goo currently on the screen (this machine only). </summary>
+	public IReadOnlyList<ScreenDrip> Drips
+	{
+		get
+		{
+			var now = Time.Now;
+			drips.RemoveAll( d => now - d.Born > DripLife );
+			return drips;
+		}
+	}
+
+	/// <summary>
+	/// Something burst right in front of you: splashes of its goo on the camera that slide down and
+	/// fade. Local and cosmetic, called on the machine whose player was close.
+	/// </summary>
+	public void Splattered( Color color, int count )
+	{
+		if ( IsProxy ) return;
+		var now = Time.Now;
+		for ( var i = 0; i < count; i++ )
+		{
+			// Mostly round the middle and upper half, where it's dramatic but you can still see past it.
+			var x = Game.Random.Float( 12f, 88f );
+			var y = Game.Random.Float( 8f, 70f );
+			drips.Add( new ScreenDrip( x, y, Game.Random.Float( 40f, 140f ), color, now - Game.Random.Float( 0f, 0.1f ), Game.Random.Float( 6f, 18f ) ) );
+		}
+		while ( drips.Count > 24 ) drips.RemoveAt( 0 );
+	}
+
 	[Sync] public bool Venomed { get; set; }
 	/// <summary> Seconds of venom left (on the owner). </summary>
 	public float VenomLeft { get; private set; }

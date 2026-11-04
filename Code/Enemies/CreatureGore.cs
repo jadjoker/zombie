@@ -149,11 +149,15 @@ public static class CreatureGore
 			gore.ThrowBlob( at, (direction + Vector3.Random * 0.9f + Vector3.Up * 0.4f).Normal, skin, goo, Game.Random.Float( 2.5f, 4.5f ) * scale );
 		gore.Squelch( at, 1.4f, 0.7f );
 
-		// Feel it if you're close.
+		// Feel it if you're close; right up close it gets on the camera.
 		foreach ( var player in scene.GetAllComponents<PlayerSurvivor>() )
 		{
-			if ( player.IsProxy || player.WorldPosition.Distance( at ) > 350f ) continue;
+			if ( player.IsProxy ) continue;
+			var distance = (player.WorldPosition + Vector3.Up * 60f).Distance( at );
+			if ( distance > 350f ) continue;
 			player.GetComponent<CameraJuice>()?.Shake( 0.25f );
+			if ( distance < 260f )
+				player.GetComponent<PlayerAfflictions>()?.Splattered( goo, distance < 150f ? 7 : 4 );
 		}
 	}
 

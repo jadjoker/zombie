@@ -5,6 +5,34 @@
 <root>
 	<div class="hurt" style="opacity: @HurtOpacity"></div>
 	<div class="venom" style="opacity: @VenomOpacity"></div>
+
+	@if ( Afflictions is { } splat && splat.Drips.Count > 0 )
+	{
+		<div class="splatter">
+			@foreach ( var drip in splat.Drips )
+			{
+				var age = Time.Now - drip.Born;
+				var fade = MathX.Clamp( 1f - (age - 0.6f) / (PlayerAfflictions.DripLife - 0.6f), 0f, 1f );
+				var pop = MathX.Clamp( age / 0.06f, 0.3f, 1f );
+				var size = drip.Size * pop;
+				var slide = MathF.Max( 0f, age - 0.25f ) * drip.Slide;
+				var c = drip.Color;
+				var rgb = $"{(int)(c.r * 255)}, {(int)(c.g * 255)}, {(int)(c.b * 255)}";
+				var blob = $"radial-gradient( rgba( {rgb}, 0.92 ) 48%, rgba( {rgb}, 0 ) 64% )";
+				@* The streak it leaves running down the lens. *@
+				@if ( slide > 0.3f )
+				{
+					<div class="drip" style="left: @(drip.X)%; top: @(drip.Y)%; width: @(size * 0.28f)px; height: @(slide)%; margin-left: @(-size * 0.14f)px; opacity: @(fade * 0.55f); border-radius: 40px; background-image: linear-gradient( to bottom, rgba( @rgb, 0 ), rgba( @rgb, 0.8 ) );"></div>
+				}
+				<div class="drip" style="left: @(drip.X)%; top: @(drip.Y + slide)%; width: @(size)px; height: @(size * (1f + slide * 0.03f))px; margin-left: @(-size / 2)px; margin-top: @(-size / 2)px; opacity: @(fade * 0.85f); background-image: @blob;"></div>
+				@* A few flecks thrown off round it. *@
+				@foreach ( var fleck in Flecks( drip ) )
+				{
+					<div class="drip" style="left: @(drip.X)%; top: @(drip.Y)%; width: @(fleck.Size)px; height: @(fleck.Size)px; margin-left: @(fleck.X - fleck.Size / 2)px; margin-top: @(fleck.Y - fleck.Size / 2)px; opacity: @(fade * 0.8f); background-image: @blob;"></div>
+				}
+			}
+		</div>
+	}
 	<div class="burn" style="opacity: @BurnOpacity"></div>
 	<div class="slow" style="opacity: @SlowOpacity"></div>
 
@@ -187,6 +215,19 @@
 			var wanted = m.Stamina < m.MaxStamina - 0.01f || m.TimeSinceOutOfStamina < 0.6f ? 1f : 0f;
 			staminaShown = MathX.Approach( staminaShown, wanted, Time.Delta * (wanted > 0f ? 8f : 1.5f) );
 			return staminaShown;
+		}
+	}
+
+	/// <summary> Small flecks round a goo splash, the same every frame for that splash. </summary>
+	static IEnumerable<(float X, float Y, float Size)> Flecks( PlayerAfflictions.ScreenDrip drip )
+	{
+		var r = new System.Random( (int)(drip.Born * 1000f) ^ (int)(drip.X * 37f) );
+		var count = 3 + r.Next( 0, 3 );
+		for ( var i = 0; i < count; i++ )
+		{
+			var angle = (float)r.NextDouble() * MathF.PI * 2f;
+			var dist = drip.Size * (0.5f + (float)r.NextDouble() * 0.6f);
+			yield return (MathF.Cos( angle ) * dist, MathF.Sin( angle ) * dist, drip.Size * (0.1f + (float)r.NextDouble() * 0.18f));
 		}
 	}
 

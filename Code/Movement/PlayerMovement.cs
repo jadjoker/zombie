@@ -178,6 +178,17 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		if ( onGround ) AirJumpsLeft = AirJumps;
 		if ( mantle is not null ) { wasOnGround = onGround; return; }
 
+		// Anchor snapped: you're swimming. Only the dash still works (in 3D).
+		if ( IsFloating )
+		{
+			EndGroundMode( handBack: false );
+			if ( Input.Pressed( "Run" ) || testDash ) FloatDash();
+			testDash = false;
+			testJump = false;
+			wasOnGround = onGround;
+			return;
+		}
+
 		var jumpPressed = Input.Pressed( "Jump" ) || testJump;
 		var dashPressed = Input.Pressed( "Run" ) || testDash;
 		testJump = false;
@@ -240,6 +251,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 	protected override void OnFixedUpdate()
 	{
 		if ( !CanAct ) return;
+		if ( IsFloating ) return;
 		var controller = Controller;
 		var body = Body;
 
@@ -344,6 +356,23 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		GetComponent<CameraJuice>()?.Shake( 0.12f );
 		Puff( WorldPosition, 0.9f );
 		Play( JumpSound, 1f );
+	}
+
+	/// <summary> True while the anchor is off and the player is swimming. </summary>
+	public bool IsFloating => MoveModeFloat.Active( Scene ) && (GetComponent<PlayerSurvivor>()?.IsAlive ?? true);
+
+	/// <summary> A burst wherever you're swimming (or looking), which the water then eases back out. </summary>
+	void FloatDash()
+	{
+		if ( timeSinceDash < DashTime + 0.05f ) return;
+		if ( !TrySpend() ) return;
+		var swim = GetComponent<MoveModeFloat>()?.WishSwim() ?? Vector3.Zero;
+		dashDirection = swim.IsNearlyZero() ? Controller.EyeAngles.ToRotation().Forward : swim.Normal;
+		timeSinceDash = 0f;
+		dashFromGround = false;
+		Body.Velocity = dashDirection * AirDashSpeed * 1.1f;
+		Kick( fov: 7f );
+		GetComponent<CameraJuice>()?.Shake( 0.06f );
 	}
 
 	// ---- Momentum carry -------------------------------------------------------------

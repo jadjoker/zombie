@@ -241,8 +241,10 @@
 	}
 	bool BannerIsStart => Director is not null && Director.TimeSinceWaveStarted < Director.TimeSinceWaveCleared;
 	string BannerClass => BannerIsStart ? "start" : "cleared";
-	string BannerTitle => BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
-	string BannerSubtitle => BannerIsStart ? (Director?.BossWave ?? false ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
+	bool FloatStart => BannerIsStart && (Director?.FloatRound ?? false);
+	string BannerTitle => FloatStart ? "ANCHOR SNAPPED" : BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
+	string BannerSubtitle => FloatStart ? $"Wave {Director?.Wave}: you're floating. Jump to rise, crouch to sink"
+		: BannerIsStart ? (Director?.BossWave ?? false ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
 	float BannerOpacity => BannerAge < 0.2f ? BannerAge / 0.2f : MathX.Clamp( 1f - (BannerAge - 2f) / 0.6f, 0f, 1f );
 	float BannerScale => 1f + MathX.Clamp( 1f - BannerAge / 0.25f, 0f, 1f ) * 0.6f;
 

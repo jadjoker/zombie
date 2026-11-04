@@ -61,6 +61,11 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Boss" )] public float BossHealthPerVisit { get; set; } = 800f;
 	[Property, Group( "Boss" )] public float BossSpawnHeight { get; set; } = 160f;
 
+	/// <summary> Every this many waves the anchor snaps: everyone floats, and only floating creatures come (0 = never). </summary>
+	[Property, Group( "Anchor" )] public int AnchorSnapEvery { get; set; } = 4;
+	/// <summary> The anchor is off this wave: players swim in 3D. </summary>
+	[Sync] public bool FloatRound { get; set; }
+
 	/// <summary> This wave has MC61 in it. </summary>
 	[Sync] public bool BossWave { get; set; }
 	bool bossPending;
@@ -133,6 +138,7 @@ public sealed class WaveDirector : Component
 		{
 			State = WaveState.Intermission;
 			nextWaveAt = IntermissionSeconds;
+			FloatRound = false; // anchor back on: everyone sinks to the floor
 			WaveClearedEverywhere();
 
 			// Survivors get the bonus; anyone who died comes back for the next wave.
@@ -165,6 +171,7 @@ public sealed class WaveDirector : Component
 		Wave++;
 		toSpawn = BaseZombies + ZombiesPerWave * (Wave - 1);
 		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
+		FloatRound = AnchorSnapEvery > 0 && Wave % AnchorSnapEvery == 0;
 		bossPending = BossWave;
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
@@ -204,6 +211,7 @@ public sealed class WaveDirector : Component
 		toSpawn = 0;
 		bossPending = false;
 		BossWave = false;
+		FloatRound = false;
 		State = WaveState.Intermission;
 		nextWaveAt = FirstWaveDelay;
 		CleanupEverywhere();
@@ -227,6 +235,14 @@ public sealed class WaveDirector : Component
 		var roll = Game.Random.Float();
 		var squilien = Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = Wave >= BlooberFromWave ? BlooberChance : 0f;
+		// Zombies can't swim: an anchor-snapped round is all floaters, in the same proportions.
+		if ( FloatRound )
+		{
+			var total = MathF.Max( 0.01f, squilien + bloober );
+			if ( squilien + bloober <= 0.01f ) { squilien = 0.4f; bloober = 0.6f; total = 1f; }
+			squilien /= total;
+			bloober /= total;
+		}
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		return TrySpawnZombie();

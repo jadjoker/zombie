@@ -234,6 +234,7 @@ public sealed class Gib : Component
 
 		var physics = body?.PhysicsBody;
 		physics?.ApplyImpulseAt( position, direction * impulse * physics.Mass );
+		if ( goo is not null ) CreatureGore.Jiggle( GameObject, 1.2f );
 
 		if ( goo is Color c )
 		{

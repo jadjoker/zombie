@@ -114,7 +114,15 @@ public sealed class GoreSystem : Component
 		decal.Scale = scale;
 		decal.Depth = 10f;
 		decal.Transient = true;
-		if ( tint is Color c ) decal.ColorTint = c;
+		if ( tint is Color c )
+		{
+			// Goo goes on bright and wet, then dries darker.
+			var wet = Color.Lerp( c, Color.White, 0.25f );
+			decal.ColorTint = wet;
+			var dry = go.AddComponent<GooDry>();
+			dry.Wet = wet;
+			dry.Dry = Color.Lerp( c, Color.Black, 0.35f );
+		}
 		go.AddComponent<SelfDestruct>().Lifetime = DecalLifetime;
 
 		decals.Enqueue( go );

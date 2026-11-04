@@ -54,6 +54,12 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Squilien" )] public float SquilienHealthPerWave { get; set; } = 20f;
 	[Property, Group( "Squilien" )] public float SquilienSpawnHeight { get; set; } = 170f;
 
+	/// <summary> Chance each spawn is a Junk Crab (ground creature), once they've started. </summary>
+	[Property, Group( "Junk Crab" )] public float CrabChance { get; set; } = 0.3f;
+	[Property, Group( "Junk Crab" )] public int CrabFromWave { get; set; } = 1;
+	[Property, Group( "Junk Crab" )] public float CrabBaseHealth { get; set; } = 70f;
+	[Property, Group( "Junk Crab" )] public float CrabHealthPerWave { get; set; } = 15f;
+
 	/// <summary> MC61 turns up every this many waves (0 = never). </summary>
 	[Property, Group( "Boss" )] public int BossEvery { get; set; } = 5;
 	[Property, Group( "Boss" )] public float BossBaseHealth { get; set; } = 2000f;
@@ -204,6 +210,8 @@ public sealed class WaveDirector : Component
 			q.GameObject.Destroy();
 		foreach ( var m in Scene.GetAllComponents<MC61>().ToList() )
 			m.GameObject.Destroy();
+		foreach ( var c in Scene.GetAllComponents<JunkCrab>().ToList() )
+			c.GameObject.Destroy();
 		alive.Clear();
 
 		Wave = 0;
@@ -243,9 +251,49 @@ public sealed class WaveDirector : Component
 			squilien /= total;
 			bloober /= total;
 		}
+		var crab = Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
+		if ( roll < squilien + bloober + crab ) return TrySpawnCrab();
 		return TrySpawnZombie();
+	}
+
+	bool TrySpawnCrab()
+	{
+		if ( !TryFindSpawnPosition( out var position ) ) return false;
+
+		var size = Game.Random.Float( 0.9f, 1.25f );
+		var go = new GameObject( true, "Junk Crab" );
+		go.WorldPosition = position;
+		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
+
+		// Body-blocking capsule on a child, tagged so bullets skip it and hit the parts instead.
+		var blocker = new GameObject( go, true, "Blocker" );
+		blocker.Tags.Add( "zombieblocker" );
+		var capsule = blocker.AddComponent<CapsuleCollider>();
+		capsule.Start = Vector3.Up * 12f * size;
+		capsule.End = Vector3.Up * 20f * size;
+		capsule.Radius = 18f * size;
+
+		var agent = go.AddComponent<NavMeshAgent>();
+		agent.Height = 30f * size;
+		agent.Radius = 20f * size;
+		agent.Acceleration = 900f;
+
+		go.AddComponent<Health>().ResetTo( CrabBaseHealth + CrabHealthPerWave * (Wave - 1) );
+		var crab = go.AddComponent<JunkCrab>();
+		crab.Hue = Game.Random.Float();
+		crab.Size = size;
+		crab.MoveSpeed = MathF.Min( TopSpeed, 200f + SpeedPerWave * (Wave - 1) );
+		crab.Killed += c =>
+		{
+			alive.Remove( c.GameObject );
+			Kills++;
+		};
+		alive.Add( go );
+
+		if ( Networking.IsActive ) go.NetworkSpawn();
+		return true;
 	}
 
 	bool TrySpawnBoss()

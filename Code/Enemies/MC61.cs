@@ -868,6 +868,7 @@ public sealed class MC61 : Component, ICreature
 		// Losing the arm with the case also loses the case trick.
 		if ( (mask & (1 << Case)) != 0 ) CardConfetti( at );
 		Detach( part, direction * Game.Random.Float( 80f, 180f ) + Vector3.Up * 80f );
+		CreatureGore.Twitch( part.Go, Game.Random.Float( 2f, 3.5f ), 1.2f );
 	}
 
 	/// <summary> Raw stumps on both sides of a cut: on what he keeps, and on the piece that flies off. </summary>

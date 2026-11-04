@@ -573,6 +573,7 @@ public sealed class Squilien : Component, ICreature
 		go.Components.Get<SphereCollider>()?.Destroy();
 		piece.Renderer.Tint = Color.Lerp( BodyColor, BodyColor * 0.45f, piece.Hurt ).WithAlpha( 1f );
 		Gib.Attach( go, gore, MathF.Max( 2f, piece.Radius ), 12f, 1.5f, piece.Velocity * 0.4f + push, GooColor );
+		CreatureGore.Twitch( go, Game.Random.Float( 2f, 4f ), 0.7f );
 	}
 
 	void CatchUp()

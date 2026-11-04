@@ -521,6 +521,7 @@ public sealed class JunkCrab : Component, ICreature
 		gore?.GooBurst( at, direction, gooColor, 10, 260f, 1f );
 		gore?.GooSpray( at, direction, 3, gooColor, 200f, 0.5f, 1.1f );
 		Detach( part, direction * Game.Random.Float( 80f, 160f ) + Vector3.Up * 120f );
+		CreatureGore.Twitch( part.Go, Game.Random.Float( 2.5f, 4.5f ), 0.8f );
 	}
 
 	void MarkGone( int index )

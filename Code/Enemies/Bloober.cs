@@ -655,6 +655,7 @@ public sealed class Bloober : Component, ICreature
 
 		var velocity = segment.Velocity * 0.4f + push + Vector3.Up * Game.Random.Float( 40f, 120f );
 		Gib.Attach( go, gore, segment.Radius, 25f, 4f, velocity, GooColor );
+		CreatureGore.Twitch( go, Game.Random.Float( 3f, 5f ), 1.1f );
 	}
 
 	/// <summary> On proxies: apply any cuts or a death we never got the message for. </summary>

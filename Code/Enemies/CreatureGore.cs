@@ -161,6 +161,15 @@ public static class CreatureGore
 		}
 	}
 
+	/// <summary> A severed piece keeps spasming for a while: little hops and flips that die down. </summary>
+	public static void Twitch( GameObject piece, float seconds = 3f, float strength = 1f )
+	{
+		if ( !piece.IsValid() ) return;
+		var twitch = piece.Components.Get<Twitch>() ?? piece.AddComponent<Twitch>();
+		twitch.Seconds = seconds;
+		twitch.Strength = strength;
+	}
+
 	/// <summary> A quick squash-and-wobble on a part that just got hit. Blobby things should jiggle. </summary>
 	public static void Jiggle( GameObject part, float strength = 1f )
 	{
@@ -178,6 +187,41 @@ public static class CreatureGore
 		r.Model = Shapes.Sphere;
 		r.Tint = color;
 		r.RenderType = ModelRenderer.ShadowRenderType.Off;
+	}
+}
+
+/// <summary>
+/// Makes a loose creature piece spasm: random little hops, flips and twists, weaker and rarer as it
+/// runs down. Only while it's resting on something, so it doesn't fly about in mid-air.
+/// </summary>
+public sealed class Twitch : Component
+{
+	public float Seconds { get; set; } = 3f;
+	public float Strength { get; set; } = 1f;
+
+	TimeSince age;
+	TimeUntil next;
+
+	protected override void OnStart()
+	{
+		age = 0f;
+		next = Game.Random.Float( 0.25f, 0.5f );
+	}
+
+	protected override void OnFixedUpdate()
+	{
+		if ( age > Seconds ) { Destroy(); return; }
+		if ( !next ) return;
+
+		var life = 1f - age / Seconds;
+		next = Game.Random.Float( 0.15f, 0.45f ) / MathF.Max( 0.3f, life );
+
+		var body = Components.Get<Rigidbody>();
+		if ( !body.IsValid() || body.Velocity.Length > 120f ) return; // still flying
+
+		var kick = Strength * life;
+		body.Velocity += (Vector3.Up * Game.Random.Float( 90f, 190f ) + Vector3.Random.WithZ( 0 ) * 60f) * kick;
+		body.AngularVelocity += Vector3.Random * 14f * kick;
 	}
 }
 

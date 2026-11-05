@@ -166,19 +166,15 @@ public sealed class Bloober : Component, ICreature
 
 			var skin = new GameObject( go, true, "Skin" );
 			var renderer = skin.AddComponent<ModelRenderer>();
-			renderer.Model = Shapes.Sphere;
+			// Sculpted in Blender at the size of the sphere it replaces (Tools/blender/bloober.py),
+			// so all the scaling and puffing below works on it unchanged.
+			renderer.Model = Model.Load( i == 0 ? "models/creatures/bloober/head.vmdl" : $"models/creatures/bloober/segment{i % 2}.vmdl" );
+			if ( renderer.Model is null || renderer.Model.IsError ) renderer.Model = Shapes.Sphere;
 			renderer.Tint = BodyColor;
 
 			// A paler belly underneath, and the colour drifting a little along the body toward the tail.
 			var shade = Shapes.Hsv( hue + t * 0.07f, 0.85f - t * 0.1f, 0.36f - t * 0.06f );
 			renderer.Tint = shade;
-			var belly = new GameObject( skin, true, "Belly" );
-			belly.LocalPosition = new Vector3( 0, 0, -Shapes.Sphere.Bounds.Size.z * 0.17f );
-			belly.LocalScale = new Vector3( 0.92f, 0.82f, 0.62f );
-			var bellyRenderer = belly.AddComponent<ModelRenderer>();
-			bellyRenderer.Model = Shapes.Sphere;
-			bellyRenderer.Tint = Color.Lerp( shade, new Color( 0.75f, 0.68f, 0.55f ), 0.14f );
-			Shapes.Skin( bellyRenderer );
 			Shapes.Skin( renderer );
 
 			// Bullets find it through a trigger, so players and physics never snag on the snake.
@@ -255,13 +251,7 @@ public sealed class Bloober : Component, ICreature
 			white.Model = Shapes.Sphere;
 			white.Tint = new Color( 0.04f, 0.02f, 0.03f );
 
-			var brow = new GameObject( head.Go, true, "Brow" );
-			brow.LocalPosition = eye.LocalPosition + new Vector3( r * 0.08f, side * r * 0.02f, r * 0.2f );
-			brow.LocalRotation = new Angles( 0, 0, side * 24f ).ToRotation();
-			brow.LocalScale = new Vector3( 0.25f, 0.42f, 0.1f ) * Shapes.SphereScale( r );
-			var browRenderer = brow.AddComponent<ModelRenderer>();
-			browRenderer.Model = Shapes.Sphere;
-			browRenderer.Tint = Color.Lerp( BodyColor, Color.Black, 0.75f );
+			// (Brow ridges are part of the sculpted head now.)
 
 			var pupil = new GameObject( head.Go, true, "Pupil" );
 			pupil.LocalPosition = eye.LocalPosition + new Vector3( r * 0.17f, side * r * 0.02f, 0f );
@@ -413,8 +403,9 @@ public sealed class Bloober : Component, ICreature
 		if ( segment.Mouth.IsValid() )
 		{
 			var open = Ease( mouthOpen );
-			segment.Mouth.LocalPosition = new Vector3( r * Stretch * 0.92f, 0f, -r * 0.1f );
-			segment.Mouth.LocalScale = new Vector3( 0.25f, 0.62f, MathX.Lerp( 0.12f, 0.6f, open ) ) * Shapes.SphereScale( r );
+			// A dark slit along the jaw line that gapes when it bites.
+			segment.Mouth.LocalPosition = new Vector3( r * Stretch * 0.86f, 0f, -r * 0.2f );
+			segment.Mouth.LocalScale = new Vector3( 0.2f, 0.5f, MathX.Lerp( 0.07f, 0.45f, open ) ) * Shapes.SphereScale( r );
 		}
 
 		// Keep the bullet trigger roughly the skin's size without rebuilding it every frame.

@@ -47,8 +47,8 @@ public sealed class MC61 : Component, ICreature
 
 	[Property, Group( "Damage" )] public float EyeMultiplier { get; set; } = 2.5f;
 	[Property, Group( "Damage" )] public float TorsoMultiplier { get; set; } = 0.6f;
-	[Property, Group( "Damage" )] public float LimbMultiplier { get; set; } = 0.35f;
-	[Property, Group( "Damage" )] public float LimbHealth { get; set; } = 160f;
+	[Property, Group( "Damage" )] public float LimbMultiplier { get; set; } = 0.15f;
+	[Property, Group( "Damage" )] public float LimbHealth { get; set; } = 110f;
 	[Property, Group( "Damage" )] public float HatHealth { get; set; } = 40f;
 	[Property, Group( "Damage" )] public float CaseHealth { get; set; } = 150f;
 	[Property, Group( "Damage" )] public float EyeHealth { get; set; } = 350f;
@@ -158,6 +158,21 @@ public sealed class MC61 : Component, ICreature
 		Sphere( eye, new Vector3( 5f, 0, 0 ), new Vector3( 1.2f, 2.8f, 2.8f ), Color.Black );
 		Sphere( eye, new Vector3( 5.4f, 1.6f, 2.2f ), new Vector3( 0.6f, 1f, 1f ), Color.White );
 		Trigger( eye, new Vector3( 0, 0, -1 ), new Vector3( 0, 0, 1 ), 9f );
+
+		// A big toothy grin, a cocked brow over the eye, and rosy cheeks.
+		Sphere( head, new Vector3( 15.5f, 0, 8.5f ), new Vector3( 3f, 8.5f, 3.4f ), new Color( 0.2f, 0.03f, 0.08f ) );
+		Sphere( head, new Vector3( 16.6f, 0, 10.6f ), new Vector3( 1.6f, 7f, 1.2f ), Glove ); // teeth
+		Sphere( head, new Vector3( 16.4f, 0, 6.9f ), new Vector3( 1.4f, 4f, 1.4f ), new Color( 1f, 0.4f, 0.55f ) ); // tongue
+		Sphere( head, new Vector3( 15.2f, 10.5f, 14f ), new Vector3( 1.5f, 3f, 2.2f ), new Color( 1f, 0.55f, 0.75f ) );
+		Sphere( head, new Vector3( 15.2f, -10.5f, 14f ), new Vector3( 1.5f, 3f, 2.2f ), new Color( 1f, 0.55f, 0.75f ) );
+		var brow = new GameObject( head.Go, true, "Shape" );
+		brow.LocalPosition = new Vector3( 15.5f, 0, 32.5f );
+		brow.LocalRotation = new Angles( 0, 0, 12f ).ToRotation();
+		brow.LocalScale = new Vector3( 2.2f, 10f, 1.6f ) * Shapes.SphereScale( 1f );
+		var browRenderer = brow.AddComponent<ModelRenderer>();
+		browRenderer.Model = Shapes.Sphere;
+		browRenderer.Tint = Tux;
+		head.Renderers.Add( (browRenderer, Tux) );
 
 		var hat = AddPart( Hat, Head, head.Go, "Hat", new Vector3( -1, 0, 35f ), new Angles( 0, 0, 9f ), HatHealth );
 		Box( hat, new Vector3( 0, 0, 1 ), new Vector3( 34f, 34f, 2f ), Tux );

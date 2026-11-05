@@ -35,11 +35,11 @@ public sealed class Squilien : Component, ICreature
 	[Property, Group( "Ink" )] public float InkGravity { get; set; } = 300f;
 	[Property, Group( "Ink" )] public float InkDamage { get; set; } = 8f;
 
-	[Property, Group( "Damage" )] public float TentacleHealth { get; set; } = 18f;
+	[Property, Group( "Damage" )] public float TentacleHealth { get; set; } = 12f;
 	/// <summary> Bell hits hurt the whole creature this much. </summary>
-	[Property, Group( "Damage" )] public float BellMultiplier { get; set; } = 1.3f;
+	[Property, Group( "Damage" )] public float BellMultiplier { get; set; } = 1.1f;
 	/// <summary> Tentacle hits hurt the whole creature this much (they mostly snap tentacles). </summary>
-	[Property, Group( "Damage" )] public float TentacleMultiplier { get; set; } = 0.3f;
+	[Property, Group( "Damage" )] public float TentacleMultiplier { get; set; } = 0.12f;
 	[Property, Group( "Damage" )] public float ChipChance { get; set; } = 0.35f;
 
 	[Sync] public float Hue { get; set; } = -1f;
@@ -148,6 +148,25 @@ public sealed class Squilien : Component, ICreature
 			var glint = AddDot( bellGo, (dir + new Vector3( 0.05f, 0f, 0.12f )).Normal, BellRadius * 1.04f, BellRadius * 0.06f, Color.White );
 			glint.Name = "Glint";
 		}
+
+		// A frilly skirt round the rim of the bell, and a soft glow-spot crown on top.
+		var frill = Color.Lerp( BodyColor, Color.White, 0.3f );
+		for ( var k = 0; k < 12; k++ )
+		{
+			var a = k * MathF.PI * 2f / 12f;
+			var bump = new GameObject( bellGo, true, "Frill" );
+			bump.LocalPosition = new Vector3( MathF.Cos( a ) * BellRadius * 0.86f, MathF.Sin( a ) * BellRadius * 0.86f, -BellRadius * 0.3f );
+			bump.LocalScale = new Vector3( 0.32f, 0.32f, 0.2f ) * Shapes.SphereScale( BellRadius );
+			var fr = bump.AddComponent<ModelRenderer>();
+			fr.Model = Shapes.Sphere;
+			fr.Tint = frill;
+		}
+		var crownGlow = new GameObject( bellGo, true, "Crown" );
+		crownGlow.LocalPosition = new Vector3( -BellRadius * 0.15f, 0, BellRadius * 0.62f );
+		crownGlow.LocalScale = new Vector3( 0.45f, 0.45f, 0.18f ) * Shapes.SphereScale( BellRadius );
+		var cg = crownGlow.AddComponent<ModelRenderer>();
+		cg.Model = Shapes.Sphere;
+		cg.Tint = Color.Lerp( GooColor, Color.White, 0.35f ) * 1.4f;
 
 		// Tentacles hang in a ring under the bell.
 		var count = Math.Clamp( Tentacles, 1, 7 );

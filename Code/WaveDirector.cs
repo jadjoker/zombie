@@ -42,7 +42,7 @@ public sealed class WaveDirector : Component
 	/// <summary> Chance each spawn is a Bloober instead of a zombie, once Bloobers have started. </summary>
 	[Property, Group( "Bloober" )] public float BlooberChance { get; set; } = 0.4f;
 	[Property, Group( "Bloober" )] public int BlooberFromWave { get; set; } = 1;
-	[Property, Group( "Bloober" )] public float BlooberBaseHealth { get; set; } = 120f;
+	[Property, Group( "Bloober" )] public float BlooberBaseHealth { get; set; } = 160f;
 	[Property, Group( "Bloober" )] public float BlooberHealthPerWave { get; set; } = 25f;
 	/// <summary> How high above the spawn point it appears. </summary>
 	[Property, Group( "Bloober" )] public float BlooberSpawnHeight { get; set; } = 90f;
@@ -50,14 +50,14 @@ public sealed class WaveDirector : Component
 	/// <summary> Chance each spawn is a Squilien, once they've started. </summary>
 	[Property, Group( "Squilien" )] public float SquilienChance { get; set; } = 0.25f;
 	[Property, Group( "Squilien" )] public int SquilienFromWave { get; set; } = 1;
-	[Property, Group( "Squilien" )] public float SquilienBaseHealth { get; set; } = 90f;
+	[Property, Group( "Squilien" )] public float SquilienBaseHealth { get; set; } = 130f;
 	[Property, Group( "Squilien" )] public float SquilienHealthPerWave { get; set; } = 20f;
 	[Property, Group( "Squilien" )] public float SquilienSpawnHeight { get; set; } = 170f;
 
 	/// <summary> Chance each spawn is a Junk Crab (ground creature), once they've started. </summary>
 	[Property, Group( "Junk Crab" )] public float CrabChance { get; set; } = 0.3f;
 	[Property, Group( "Junk Crab" )] public int CrabFromWave { get; set; } = 1;
-	[Property, Group( "Junk Crab" )] public float CrabBaseHealth { get; set; } = 70f;
+	[Property, Group( "Junk Crab" )] public float CrabBaseHealth { get; set; } = 130f;
 	[Property, Group( "Junk Crab" )] public float CrabHealthPerWave { get; set; } = 15f;
 
 	/// <summary> MC61 turns up every this many waves (0 = never). </summary>

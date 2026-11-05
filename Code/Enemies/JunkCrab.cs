@@ -18,12 +18,16 @@ public sealed class JunkCrab : Component, ICreature
 	[Property, Group( "Attack" )] public float AttackCooldown { get; set; } = 1.1f;
 
 	[Property, Group( "Damage" )] public float BarrelHealth { get; set; } = 80f;
-	[Property, Group( "Damage" )] public float LimbHealth { get; set; } = 28f;
+	[Property, Group( "Damage" )] public float LimbHealth { get; set; } = 20f;
 	[Property, Group( "Damage" )] public float EyeHealth { get; set; } = 20f;
 	/// <summary> Body damage once the barrel's gone. </summary>
 	[Property, Group( "Damage" )] public float SoftMultiplier { get; set; } = 1.6f;
-	[Property, Group( "Damage" )] public float EyeMultiplier { get; set; } = 2f;
-	[Property, Group( "Damage" )] public float LimbMultiplier { get; set; } = 0.35f;
+	[Property, Group( "Damage" )] public float EyeMultiplier { get; set; } = 0.6f;
+	/// <summary> How much a limb hit hurts the whole crab. Low, so you can strip it before it dies. </summary>
+	[Property, Group( "Damage" )] public float LimbMultiplier { get; set; } = 0.15f;
+
+	/// <summary> Wear a dumped waste barrel as armour on its back. Off for now. </summary>
+	[Property, Group( "Body" )] public bool WearsBarrel { get; set; } = false;
 
 	[Sync] public float Hue { get; set; } = -1f;
 	[Sync] public float Size { get; set; } = 1f;
@@ -108,11 +112,37 @@ public sealed class JunkCrab : Component, ICreature
 		Sphere( body, Vector3.Zero, new Vector3( 15f, 19f, 8.5f ), shellColor );
 		Sphere( body, new Vector3( 0, 0, -3.5f ), new Vector3( 13.5f, 17f, 5f ), bellyColor );
 		Sphere( body, new Vector3( 13.5f, 0, -1f ), new Vector3( 2.5f, 6f, 1.6f ), new Color( 0.15f, 0.02f, 0.05f ) ); // mouth
-		// Flat like the body, so it doesn't swallow shots aimed at the barrel on top.
+		Sphere( body, new Vector3( 14.2f, 0, -1.4f ), new Vector3( 1.2f, 3.2f, 0.7f ), new Color( 1f, 0.45f, 0.55f ) ); // tongue
+
+		// Shell detail: a darker crown, a ridged rim, and knobbly bumps.
+		var crown = Color.Lerp( shellColor, Color.Black, 0.22f );
+		var knob = Color.Lerp( shellColor, Color.White, 0.25f );
+		Sphere( body, new Vector3( -1f, 0, 3.2f ), new Vector3( 11f, 14.5f, 5.6f ), crown );
+		Sphere( body, new Vector3( 0, 0, -0.5f ), new Vector3( 15.6f, 19.6f, 3.2f ), Color.Lerp( shellColor, Color.Black, 0.1f ) );
+		var bumps = new System.Random( (int)(hue * 9973f) );
+		for ( var k = 0; k < 7; k++ )
+		{
+			var a = (float)bumps.NextDouble() * MathF.PI * 2f;
+			var d = 3f + (float)bumps.NextDouble() * 7f;
+			var at = new Vector3( MathF.Cos( a ) * d * 0.8f - 1f, MathF.Sin( a ) * d, 9.2f - d * 0.3f );
+			var r = 1.3f + (float)bumps.NextDouble() * 1.4f;
+			Sphere( body, at, new Vector3( r, r, r * 0.7f ), knob );
+		}
+		// Cheek spots by the eyes.
+		Sphere( body, new Vector3( 12f, 9f, 1.5f ), new Vector3( 1.2f, 2.4f, 1.6f ), Color.Lerp( shellColor, Color.White, 0.45f ) );
+		Sphere( body, new Vector3( 12f, -9f, 1.5f ), new Vector3( 1.2f, 2.4f, 1.6f ), Color.Lerp( shellColor, Color.White, 0.45f ) );
+
+		// Flat like the body, so it doesn't swallow shots aimed at things on top of it.
 		Trigger( body, new Vector3( -7, -8, -1 ), new Vector3( -7, 8, -1 ), 8f );
 		Trigger( body, new Vector3( 5, -8, -1 ), new Vector3( 5, 8, -1 ), 8f );
 
-		// The barrel: a dumped drum of alien waste, glowing band and all.
+		if ( WearsBarrel ) BuildBarrel( body, hue );
+		BuildLimbs( body );
+	}
+
+	/// <summary> The barrel: a dumped drum of alien waste, glowing band and all. </summary>
+	void BuildBarrel( Part body, float hue )
+	{
 		var barrel = AddPart( Barrel, Body, body.Go, "Barrel", new Vector3( -2f, 0, 7f ), new Angles( 0, 0, 90 ), BarrelHealth );
 		var drum = Shapes.Hsv( 0.48f + hue * 0.1f, 0.6f, 0.75f );
 		Box( barrel, new Vector3( 0, 0, 0 ), new Vector3( 18f, 15f, 26f ), drum );
@@ -120,7 +150,10 @@ public sealed class JunkCrab : Component, ICreature
 		Box( barrel, new Vector3( 0, 0, 12.5f ), new Vector3( 17f, 14f, 1.5f ), new Color( 0.75f, 0.75f, 0.8f ) );
 		Box( barrel, new Vector3( 0, 0, -12.5f ), new Vector3( 17f, 14f, 1.5f ), new Color( 0.75f, 0.75f, 0.8f ) );
 		Trigger( barrel, new Vector3( 0, 0, -12 ), new Vector3( 0, 0, 12 ), 11f );
+	}
 
+	void BuildLimbs( Part body )
+	{
 		// Eyes on stalks.
 		foreach ( var (index, side) in new[] { (EyeL, 1f), (EyeR, -1f) } )
 		{
@@ -128,6 +161,8 @@ public sealed class JunkCrab : Component, ICreature
 			Sphere( eye, new Vector3( 0, 0, 5f ), new Vector3( 1.3f, 1.3f, 5.5f ), bellyColor );
 			Sphere( eye, new Vector3( 0, 0, 11f ), new Vector3( 3.4f, 3.4f, 3.4f ), Color.White );
 			Sphere( eye, new Vector3( 2.6f, 0, 11.5f ), new Vector3( 1.2f, 1.8f, 1.8f ), Color.Black );
+			Sphere( eye, new Vector3( 3.3f, 0.6f, 12.3f ), new Vector3( 0.4f, 0.55f, 0.55f ), Color.White ); // glint
+			Sphere( eye, new Vector3( 0.4f, 0, 13.2f ), new Vector3( 3.5f, 3.5f, 1.2f ), Color.Lerp( shellColor, Color.Black, 0.2f ) ); // lid
 			Trigger( eye, new Vector3( 0, 0, 3 ), new Vector3( 0, 0, 12 ), 4f );
 		}
 
@@ -141,6 +176,8 @@ public sealed class JunkCrab : Component, ICreature
 			var p = AddPart( pincer, arm, a.Go, side > 0 ? "Pincer L" : "Pincer R", new Vector3( 14f, 0, 0 ), new Angles( 0, -side * 40f, 0 ), LimbHealth );
 			Sphere( p, new Vector3( 5f, 0, 0 ), new Vector3( 7f, 4.5f, 5.5f ), shellColor );
 			Sphere( p, new Vector3( 13f, 0, -2f ), new Vector3( 6f, 2.2f, 1.8f ), shellColor );
+			Sphere( p, new Vector3( 5f, 0, 1.5f ), new Vector3( 5f, 3.6f, 3.2f ), Color.Lerp( shellColor, Color.White, 0.3f ) ); // lighter palm
+			Sphere( p, new Vector3( 14.5f, 0, -0.6f ), new Vector3( 3.5f, 1.4f, 0.8f ), Color.Lerp( shellColor, Color.Black, 0.35f ) ); // dark tip
 			var jaw = new GameObject( p.Go, true, "Jaw" );
 			jaw.LocalPosition = new Vector3( 9f, 0, 2f );
 			Sphere( jaw, p, new Vector3( 5f, 0, 0.8f ), new Vector3( 6f, 2f, 1.6f ), shellColor );
@@ -156,6 +193,8 @@ public sealed class JunkCrab : Component, ICreature
 			var leg = AddPart( FirstLeg + i, Body, body.Go, $"Leg {i}", new Vector3( 6f - row * 7f, side * 15f, -1f ), new Angles( 0, side * (75f + row * 22f), 0 ), LimbHealth );
 			Sphere( leg, new Vector3( 7f, 0, 3f ), new Vector3( 8f, 2.2f, 2.2f ), shellColor );
 			Sphere( leg, new Vector3( 17f, 0, -5f ), new Vector3( 2f, 2f, 9f ), shellColor );
+			Sphere( leg, new Vector3( 15f, 0, 3f ), new Vector3( 2.6f, 2.6f, 2.6f ), Color.Lerp( shellColor, Color.White, 0.2f ) ); // knee
+			Sphere( leg, new Vector3( 17f, 0, -12f ), new Vector3( 1.4f, 1.4f, 3.2f ), Color.Lerp( shellColor, Color.Black, 0.4f ) ); // dark tip
 			Trigger( leg, new Vector3( 1, 0, 2 ), new Vector3( 17, 0, -10 ), 4f );
 		}
 
@@ -405,7 +444,7 @@ public sealed class JunkCrab : Component, ICreature
 
 		var multiplier = index switch
 		{
-			Body => Has( Barrel ) ? 1f : SoftMultiplier,
+			Body => WearsBarrel && !Has( Barrel ) ? SoftMultiplier : 1f,
 			Barrel => 0.25f,
 			EyeL or EyeR => EyeMultiplier,
 			_ => LimbMultiplier,

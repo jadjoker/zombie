@@ -38,11 +38,11 @@ public sealed class Bloober : Component, ICreature
 	[Property, Group( "Bite" )] public float LungeTime { get; set; } = 0.3f;
 	[Property, Group( "Bite" )] public float RetreatTime { get; set; } = 0.75f;
 
-	[Property, Group( "Damage" )] public float SegmentHealth { get; set; } = 40f;
+	[Property, Group( "Damage" )] public float SegmentHealth { get; set; } = 28f;
 	/// <summary> Head hits hurt the whole creature this much. </summary>
 	[Property, Group( "Damage" )] public float HeadMultiplier { get; set; } = 2.2f;
 	/// <summary> Body hits hurt the whole creature this much (they mostly chew through segments). </summary>
-	[Property, Group( "Damage" )] public float BodyMultiplier { get; set; } = 0.5f;
+	[Property, Group( "Damage" )] public float BodyMultiplier { get; set; } = 0.25f;
 	/// <summary> Chance a hit knocks a little blob of flesh loose. </summary>
 	[Property, Group( "Damage" )] public float ChipChance { get; set; } = 0.4f;
 
@@ -91,6 +91,7 @@ public sealed class Bloober : Component, ICreature
 		public Vector3 Velocity;
 		public TimeSince Flash = 99f;
 		public float ColliderPuff = -1f;
+		public Color Shade;
 		public readonly List<Spot> Spots = new();
 		public GameObject Mouth;
 	}
@@ -167,6 +168,16 @@ public sealed class Bloober : Component, ICreature
 			renderer.Model = Shapes.Sphere;
 			renderer.Tint = BodyColor;
 
+			// A paler belly underneath, and the colour drifting a little along the body toward the tail.
+			var shade = Shapes.Hsv( hue + t * 0.07f, 0.72f - t * 0.1f, 1f );
+			renderer.Tint = shade;
+			var belly = new GameObject( skin, true, "Belly" );
+			belly.LocalPosition = new Vector3( 0, 0, -Shapes.Sphere.Bounds.Size.z * 0.17f );
+			belly.LocalScale = new Vector3( 0.92f, 0.82f, 0.62f );
+			var bellyRenderer = belly.AddComponent<ModelRenderer>();
+			bellyRenderer.Model = Shapes.Sphere;
+			bellyRenderer.Tint = Color.Lerp( shade, Color.White, 0.55f );
+
 			// Bullets find it through a trigger, so players and physics never snag on the snake.
 			var collider = go.AddComponent<SphereCollider>();
 			collider.IsTrigger = true;
@@ -186,6 +197,7 @@ public sealed class Bloober : Component, ICreature
 				Radius = radius,
 				Health = SegmentHealth,
 				Position = position,
+				Shade = shade,
 			};
 
 			// Dark spots scattered over the skin (kept off the head's face).
@@ -206,7 +218,24 @@ public sealed class Bloober : Component, ICreature
 			}
 
 			if ( i == 0 ) BuildFace( segment );
+			if ( i == count - 1 ) BuildTail( segment );
 			segments.Add( segment );
+		}
+	}
+
+	/// <summary> A little forked fin on the end of the tail. </summary>
+	void BuildTail( Segment tail )
+	{
+		var r = tail.Radius;
+		foreach ( var side in new[] { -1f, 1f } )
+		{
+			var fin = new GameObject( tail.Go, true, "Fin" );
+			fin.LocalPosition = new Vector3( -r * 1.5f, side * r * 0.5f, r * 0.2f );
+			fin.LocalRotation = new Angles( -10, side * 30f, 0 ).ToRotation();
+			fin.LocalScale = new Vector3( 1.3f, 0.35f, 0.7f ) * Shapes.SphereScale( r );
+			var f = fin.AddComponent<ModelRenderer>();
+			f.Model = Shapes.Sphere;
+			f.Tint = Color.Lerp( SpotColor, BodyColor, 0.4f );
 		}
 	}
 
@@ -222,6 +251,14 @@ public sealed class Bloober : Component, ICreature
 			var white = eye.AddComponent<ModelRenderer>();
 			white.Model = Shapes.Sphere;
 			white.Tint = Color.White;
+
+			var brow = new GameObject( head.Go, true, "Brow" );
+			brow.LocalPosition = eye.LocalPosition + new Vector3( r * 0.05f, side * r * 0.02f, r * 0.3f );
+			brow.LocalRotation = new Angles( 0, 0, -side * 18f ).ToRotation();
+			brow.LocalScale = new Vector3( 0.25f, 0.42f, 0.1f ) * Shapes.SphereScale( r );
+			var browRenderer = brow.AddComponent<ModelRenderer>();
+			browRenderer.Model = Shapes.Sphere;
+			browRenderer.Tint = SpotColor;
 
 			var pupil = new GameObject( head.Go, true, "Pupil" );
 			pupil.LocalPosition = eye.LocalPosition + new Vector3( r * 0.22f, side * r * 0.04f, 0f );
@@ -323,7 +360,7 @@ public sealed class Bloober : Component, ICreature
 		segment.Skin.LocalScale = new Vector3( Stretch, 1f, 1f ) * Shapes.SphereScale( r );
 
 		// Hit flash, and a darker, sicker colour the more hurt it is.
-		var baseColor = Color.Lerp( BodyColor, BodyColor * 0.45f, segment.Hurt );
+		var baseColor = Color.Lerp( segment.Shade, segment.Shade * 0.45f, segment.Hurt );
 		var flash = MathX.Clamp( 1f - segment.Flash / 0.1f, 0f, 1f );
 		segment.Renderer.Tint = Color.Lerp( baseColor.WithAlpha( 1f ), Color.White * 3f, flash );
 

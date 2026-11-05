@@ -71,10 +71,11 @@ public sealed class MC61 : Component, ICreature
 	const int Torso = 0, Head = 1, Eye = 2, Hat = 3, ArmL = 4, ForearmL = 5, ArmR = 6, ForearmR = 7, Case = 8, LegL = 9, ShinL = 10, LegR = 11, ShinR = 12;
 
 	static readonly Color Tux = new( 0.06f, 0.06f, 0.09f );
-	static readonly Color Skin = new( 0.78f, 0.62f, 1f );
+	static readonly Color Skin = new( 0.42f, 0.47f, 0.4f ); // sickly
 	static readonly Color Glove = new( 0.97f, 0.97f, 1f );
-	static readonly Color Iris = new( 1f, 0.15f, 0.75f );
-	static readonly Color BeamColor = new( 1f, 0.25f, 0.85f );
+	static readonly Color Iris = new( 1f, 0.12f, 0.08f );
+	static readonly Color Sclera = new( 1f, 0.86f, 0.8f ); // bloodshot
+	static readonly Color BeamColor = new( 1f, 0.22f, 0.12f );
 
 	sealed class Part
 	{
@@ -153,7 +154,7 @@ public sealed class MC61 : Component, ICreature
 		Trigger( head, new Vector3( 0, 0, 9 ), new Vector3( 0, 0, 27 ), 18f );
 
 		var eye = AddPart( Eye, Head, head.Go, "Eye", new Vector3( 15.5f, 0, 21f ), Angles.Zero, EyeHealth );
-		Sphere( eye, Vector3.Zero, new Vector3( 5f, 9.5f, 9.5f ), Glove );
+		Sphere( eye, Vector3.Zero, new Vector3( 5f, 9.5f, 9.5f ), Sclera );
 		Sphere( eye, new Vector3( 3.6f, 0, 0 ), new Vector3( 2f, 5.5f, 5.5f ), Iris );
 		Sphere( eye, new Vector3( 5f, 0, 0 ), new Vector3( 1.2f, 2.8f, 2.8f ), Color.Black );
 		Sphere( eye, new Vector3( 5.4f, 1.6f, 2.2f ), new Vector3( 0.6f, 1f, 1f ), Color.White );
@@ -161,10 +162,17 @@ public sealed class MC61 : Component, ICreature
 
 		// A big toothy grin, a cocked brow over the eye, and rosy cheeks.
 		Sphere( head, new Vector3( 15.5f, 0, 8.5f ), new Vector3( 3f, 8.5f, 3.4f ), new Color( 0.2f, 0.03f, 0.08f ) );
-		Sphere( head, new Vector3( 16.6f, 0, 10.6f ), new Vector3( 1.6f, 7f, 1.2f ), Glove ); // teeth
-		Sphere( head, new Vector3( 16.4f, 0, 6.9f ), new Vector3( 1.4f, 4f, 1.4f ), new Color( 1f, 0.4f, 0.55f ) ); // tongue
-		Sphere( head, new Vector3( 15.2f, 10.5f, 14f ), new Vector3( 1.5f, 3f, 2.2f ), new Color( 1f, 0.55f, 0.75f ) );
-		Sphere( head, new Vector3( 15.2f, -10.5f, 14f ), new Vector3( 1.5f, 3f, 2.2f ), new Color( 1f, 0.55f, 0.75f ) );
+		// Jagged teeth all along the grin, top and bottom.
+		var tooth = new Color( 0.9f, 0.86f, 0.7f );
+		for ( var i = 0; i < 9; i++ )
+		{
+			var y = (i - 4f) * 1.8f;
+			var curve = MathF.Abs( y ) * 0.06f;
+			Sphere( head, new Vector3( 17.2f - curve, y, 11.2f + curve ), new Vector3( 0.6f, 0.7f, 1.8f ), tooth );
+			if ( i % 2 == 0 ) Sphere( head, new Vector3( 17f - curve, y + 0.9f, 6.4f + curve ), new Vector3( 0.6f, 0.7f, 1.6f ), tooth );
+		}
+		// Dark bags under the eye.
+		Sphere( head, new Vector3( 15.6f, 0, 13.6f ), new Vector3( 1.6f, 8.5f, 1.4f ), Color.Lerp( Skin, Color.Black, 0.45f ) );
 		var brow = new GameObject( head.Go, true, "Shape" );
 		brow.LocalPosition = new Vector3( 15.5f, 0, 32.5f );
 		brow.LocalRotation = new Angles( 0, 0, 12f ).ToRotation();
@@ -247,6 +255,7 @@ public sealed class MC61 : Component, ICreature
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = Shapes.Sphere;
 		r.Tint = color;
+		Shapes.Skin( r );
 		part?.Renderers.Add( (r, color) );
 	}
 

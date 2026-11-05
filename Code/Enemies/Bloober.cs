@@ -127,8 +127,9 @@ public sealed class Bloober : Component, ICreature
 
 		if ( !IsProxy && Hue < 0f ) Hue = Game.Random.Float();
 		var hue = Hue < 0f ? 0.85f : Hue;
-		BodyColor = Shapes.Hsv( hue, 0.72f, 1f );
-		SpotColor = Shapes.Hsv( hue + 0.5f, 0.85f, 0.35f );
+		// Deep-sea predator: a dark, rich body with glowing spots.
+		BodyColor = Shapes.Hsv( hue, 0.85f, 0.36f );
+		SpotColor = Shapes.Glow( hue + 0.45f, 2.2f );
 		GooColor = Shapes.Hsv( hue + 0.18f, 0.95f, 1f );
 
 		heading = WorldRotation.Forward;
@@ -169,14 +170,16 @@ public sealed class Bloober : Component, ICreature
 			renderer.Tint = BodyColor;
 
 			// A paler belly underneath, and the colour drifting a little along the body toward the tail.
-			var shade = Shapes.Hsv( hue + t * 0.07f, 0.72f - t * 0.1f, 1f );
+			var shade = Shapes.Hsv( hue + t * 0.07f, 0.85f - t * 0.1f, 0.36f - t * 0.06f );
 			renderer.Tint = shade;
 			var belly = new GameObject( skin, true, "Belly" );
 			belly.LocalPosition = new Vector3( 0, 0, -Shapes.Sphere.Bounds.Size.z * 0.17f );
 			belly.LocalScale = new Vector3( 0.92f, 0.82f, 0.62f );
 			var bellyRenderer = belly.AddComponent<ModelRenderer>();
 			bellyRenderer.Model = Shapes.Sphere;
-			bellyRenderer.Tint = Color.Lerp( shade, Color.White, 0.55f );
+			bellyRenderer.Tint = Color.Lerp( shade, new Color( 0.75f, 0.68f, 0.55f ), 0.14f );
+			Shapes.Skin( bellyRenderer );
+			Shapes.Skin( renderer );
 
 			// Bullets find it through a trigger, so players and physics never snag on the snake.
 			var collider = go.AddComponent<SphereCollider>();
@@ -247,32 +250,66 @@ public sealed class Bloober : Component, ICreature
 		{
 			var eye = new GameObject( head.Go, true, "Eye" );
 			eye.LocalPosition = new Vector3( r * 0.75f * Stretch, side * r * 0.45f, r * 0.5f );
-			eye.LocalScale = Shapes.SphereScale( r * 0.32f );
+			eye.LocalScale = Shapes.SphereScale( r * 0.22f );
 			var white = eye.AddComponent<ModelRenderer>();
 			white.Model = Shapes.Sphere;
-			white.Tint = Color.White;
+			white.Tint = new Color( 0.04f, 0.02f, 0.03f );
+			Shapes.Skin( white );
 
 			var brow = new GameObject( head.Go, true, "Brow" );
-			brow.LocalPosition = eye.LocalPosition + new Vector3( r * 0.05f, side * r * 0.02f, r * 0.3f );
-			brow.LocalRotation = new Angles( 0, 0, -side * 18f ).ToRotation();
+			brow.LocalPosition = eye.LocalPosition + new Vector3( r * 0.08f, side * r * 0.02f, r * 0.2f );
+			brow.LocalRotation = new Angles( 0, 0, side * 24f ).ToRotation();
 			brow.LocalScale = new Vector3( 0.25f, 0.42f, 0.1f ) * Shapes.SphereScale( r );
 			var browRenderer = brow.AddComponent<ModelRenderer>();
 			browRenderer.Model = Shapes.Sphere;
-			browRenderer.Tint = SpotColor;
+			browRenderer.Tint = Color.Lerp( BodyColor, Color.Black, 0.75f );
 
 			var pupil = new GameObject( head.Go, true, "Pupil" );
-			pupil.LocalPosition = eye.LocalPosition + new Vector3( r * 0.22f, side * r * 0.04f, 0f );
-			pupil.LocalScale = Shapes.SphereScale( r * 0.15f );
+			pupil.LocalPosition = eye.LocalPosition + new Vector3( r * 0.17f, side * r * 0.02f, 0f );
+			pupil.LocalScale = new Vector3( 0.3f, 1f, 0.75f ) * Shapes.SphereScale( r * 0.14f );
 			var black = pupil.AddComponent<ModelRenderer>();
 			black.Model = Shapes.Sphere;
-			black.Tint = Color.Black;
+			black.Tint = SpotColor * 1.3f; // glowing iris
+
+			var slit = new GameObject( head.Go, true, "Slit" );
+			slit.LocalPosition = eye.LocalPosition + new Vector3( r * 0.21f, side * r * 0.02f, 0f );
+			slit.LocalScale = new Vector3( 0.2f, 0.18f, 0.85f ) * Shapes.SphereScale( r * 0.13f );
+			var slitRenderer = slit.AddComponent<ModelRenderer>();
+			slitRenderer.Model = Shapes.Sphere;
+			slitRenderer.Tint = Color.Black;
 		}
 
 		var mouth = new GameObject( head.Go, true, "Mouth" );
 		var mouthRenderer = mouth.AddComponent<ModelRenderer>();
 		mouthRenderer.Model = Shapes.Sphere;
-		mouthRenderer.Tint = new Color( 0.12f, 0.02f, 0.06f );
+		mouthRenderer.Tint = new Color( 0.05f, 0f, 0.015f );
 		head.Mouth = mouth;
+
+		// Fangs: a row hanging down over the mouth and a few pointing up from below.
+		var tooth = new Color( 0.92f, 0.88f, 0.76f );
+		for ( var i = 0; i < 6; i++ )
+		{
+			var y = (i - 2.5f) / 2.5f * r * 0.42f;
+			Fang( head, new Vector3( r * Stretch * 0.86f, y, -r * 0.02f ), new Angles( 0, 0, 0 ), r * (i is 0 or 5 ? 0.3f : 0.2f), tooth );
+		}
+		for ( var i = 0; i < 4; i++ )
+		{
+			var y = (i - 1.5f) / 1.5f * r * 0.32f;
+			Fang( head, new Vector3( r * Stretch * 0.82f, y, -r * 0.3f ), new Angles( 180, 0, 0 ), r * 0.17f, tooth );
+		}
+	}
+
+	void Fang( Segment head, Vector3 at, Angles angles, float length, Color color )
+	{
+		var fang = new GameObject( head.Go, true, "Fang" );
+		fang.LocalPosition = at;
+		fang.LocalRotation = angles.ToRotation();
+		fang.LocalScale = new Vector3( 0.22f, 0.22f, 1f ) * Shapes.SphereScale( length );
+		fang.LocalPosition += fang.LocalRotation * Vector3.Down * length * 0.6f;
+		var f = fang.AddComponent<ModelRenderer>();
+		f.Model = Shapes.Sphere;
+		f.Tint = color;
+		Shapes.Skin( f );
 	}
 
 	protected override void OnDestroy()

@@ -87,8 +87,8 @@ public sealed class JunkCrab : Component, ICreature
 		if ( !IsProxy && Hue < 0f ) Hue = Game.Random.Float();
 		var hue = Hue < 0f ? 0.05f : Hue;
 		// Crab colours: reds, oranges and hot pinks, with a toxic barrel on top.
-		shellColor = Shapes.Hsv( MathX.Lerp( -0.08f, 0.1f, hue ), 0.85f, 1f );
-		bellyColor = Shapes.Hsv( MathX.Lerp( -0.05f, 0.12f, hue ), 0.35f, 1f );
+		shellColor = Shapes.Hsv( MathX.Lerp( -0.08f, 0.1f, hue ), 0.9f, 0.42f );
+		bellyColor = Shapes.Hsv( MathX.Lerp( -0.05f, 0.12f, hue ), 0.45f, 0.6f );
 		gooColor = Shapes.Hsv( 0.3f + hue * 0.1f, 1f, 1f );
 		sideSign = hue < 0.5f ? 1f : -1f;
 
@@ -112,11 +112,23 @@ public sealed class JunkCrab : Component, ICreature
 		Sphere( body, Vector3.Zero, new Vector3( 15f, 19f, 8.5f ), shellColor );
 		Sphere( body, new Vector3( 0, 0, -3.5f ), new Vector3( 13.5f, 17f, 5f ), bellyColor );
 		Sphere( body, new Vector3( 13.5f, 0, -1f ), new Vector3( 2.5f, 6f, 1.6f ), new Color( 0.15f, 0.02f, 0.05f ) ); // mouth
-		Sphere( body, new Vector3( 14.2f, 0, -1.4f ), new Vector3( 1.2f, 3.2f, 0.7f ), new Color( 1f, 0.45f, 0.55f ) ); // tongue
+		// Mandibles hooking in front of the mouth.
+		foreach ( var side in new[] { -1f, 1f } )
+		{
+			var mandible = new GameObject( body.Go, true, "Shape" );
+			mandible.LocalPosition = new Vector3( 15f, side * 2.6f, -2f );
+			mandible.LocalRotation = new Angles( 0, -side * 35f, 0 ).ToRotation();
+			mandible.LocalScale = new Vector3( 3.4f, 0.8f, 0.8f ) * Shapes.SphereScale( 1f );
+			var mr = mandible.AddComponent<ModelRenderer>();
+			mr.Model = Shapes.Sphere;
+			mr.Tint = Color.Lerp( shellColor, Color.Black, 0.5f );
+			Shapes.Skin( mr );
+			body.Renderers.Add( (mr, mr.Tint) );
+		}
 
 		// Shell detail: a darker crown, a ridged rim, and knobbly bumps.
 		var crown = Color.Lerp( shellColor, Color.Black, 0.22f );
-		var knob = Color.Lerp( shellColor, Color.White, 0.25f );
+		var knob = Color.Lerp( shellColor, Color.Black, 0.45f );
 		Sphere( body, new Vector3( -1f, 0, 3.2f ), new Vector3( 11f, 14.5f, 5.6f ), crown );
 		Sphere( body, new Vector3( 0, 0, -0.5f ), new Vector3( 15.6f, 19.6f, 3.2f ), Color.Lerp( shellColor, Color.Black, 0.1f ) );
 		var bumps = new System.Random( (int)(hue * 9973f) );
@@ -125,12 +137,9 @@ public sealed class JunkCrab : Component, ICreature
 			var a = (float)bumps.NextDouble() * MathF.PI * 2f;
 			var d = 3f + (float)bumps.NextDouble() * 7f;
 			var at = new Vector3( MathF.Cos( a ) * d * 0.8f - 1f, MathF.Sin( a ) * d, 9.2f - d * 0.3f );
-			var r = 1.3f + (float)bumps.NextDouble() * 1.4f;
-			Sphere( body, at, new Vector3( r, r, r * 0.7f ), knob );
+			var r = 1f + (float)bumps.NextDouble() * 1.1f;
+			Sphere( body, at + Vector3.Up * r, new Vector3( r * 0.6f, r * 0.6f, r * 2f ), knob ); // spikes
 		}
-		// Cheek spots by the eyes.
-		Sphere( body, new Vector3( 12f, 9f, 1.5f ), new Vector3( 1.2f, 2.4f, 1.6f ), Color.Lerp( shellColor, Color.White, 0.45f ) );
-		Sphere( body, new Vector3( 12f, -9f, 1.5f ), new Vector3( 1.2f, 2.4f, 1.6f ), Color.Lerp( shellColor, Color.White, 0.45f ) );
 
 		// Flat like the body, so it doesn't swallow shots aimed at things on top of it.
 		Trigger( body, new Vector3( -7, -8, -1 ), new Vector3( -7, 8, -1 ), 8f );
@@ -159,9 +168,9 @@ public sealed class JunkCrab : Component, ICreature
 		{
 			var eye = AddPart( index, Body, body.Go, side > 0 ? "Eye L" : "Eye R", new Vector3( 11f, side * 5f, 5f ), new Angles( -10, 0, -side * 12 ), EyeHealth );
 			Sphere( eye, new Vector3( 0, 0, 5f ), new Vector3( 1.3f, 1.3f, 5.5f ), bellyColor );
-			Sphere( eye, new Vector3( 0, 0, 11f ), new Vector3( 3.4f, 3.4f, 3.4f ), Color.White );
-			Sphere( eye, new Vector3( 2.6f, 0, 11.5f ), new Vector3( 1.2f, 1.8f, 1.8f ), Color.Black );
-			Sphere( eye, new Vector3( 3.3f, 0.6f, 12.3f ), new Vector3( 0.4f, 0.55f, 0.55f ), Color.White ); // glint
+			// Beady black eyes with a glowing red pupil.
+			Sphere( eye, new Vector3( 0, 0, 11f ), new Vector3( 2.6f, 2.6f, 2.6f ), new Color( 0.05f, 0.03f, 0.03f ) );
+			Sphere( eye, new Vector3( 2.2f, 0, 11.2f ), new Vector3( 0.6f, 1f, 1f ), new Color( 1f, 0.12f, 0.04f ) );
 			Sphere( eye, new Vector3( 0.4f, 0, 13.2f ), new Vector3( 3.5f, 3.5f, 1.2f ), Color.Lerp( shellColor, Color.Black, 0.2f ) ); // lid
 			Trigger( eye, new Vector3( 0, 0, 3 ), new Vector3( 0, 0, 12 ), 4f );
 		}
@@ -226,6 +235,7 @@ public sealed class JunkCrab : Component, ICreature
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = Shapes.Sphere;
 		r.Tint = color;
+		Shapes.Skin( r );
 		part.Renderers.Add( (r, color) );
 	}
 

@@ -104,8 +104,8 @@ public sealed class Squilien : Component, ICreature
 
 		if ( !IsProxy && Hue < 0f ) Hue = Game.Random.Float();
 		var hue = Hue < 0f ? 0.5f : Hue;
-		BodyColor = Shapes.Hsv( hue, 0.65f, 1f );
-		SpotColor = Shapes.Hsv( hue + 0.08f, 0.7f, 0.55f );
+		BodyColor = Shapes.Hsv( hue, 0.85f, 0.38f );
+		SpotColor = Shapes.Glow( hue + 0.5f, 2.2f );
 		GooColor = Shapes.Hsv( hue + 0.35f, 0.95f, 1f );
 		InkColor = Shapes.Hsv( 0.76f, 0.75f, 0.28f );
 
@@ -145,18 +145,19 @@ public sealed class Squilien : Component, ICreature
 			var dir = new Vector3( 0.82f, side * 0.38f, -0.05f ).Normal;
 			var eye = AddDot( bellGo, dir, BellRadius, BellRadius * 0.3f, new Color( 0.04f, 0.02f, 0.06f ) );
 			eye.LocalScale = new Vector3( 0.12f, 0.24f, 0.36f ) * Shapes.SphereScale( BellRadius );
-			var glint = AddDot( bellGo, (dir + new Vector3( 0.05f, 0f, 0.12f )).Normal, BellRadius * 1.04f, BellRadius * 0.06f, Color.White );
+			var glint = AddDot( bellGo, (dir + new Vector3( 0.05f, 0f, 0.12f )).Normal, BellRadius * 1.04f, BellRadius * 0.07f, Shapes.Glow( Hue + 0.5f, 3f ) );
 			glint.Name = "Glint";
 		}
 
 		// A frilly skirt round the rim of the bell, and a soft glow-spot crown on top.
-		var frill = Color.Lerp( BodyColor, Color.White, 0.3f );
+		var frill = Shapes.Glow( hue + 0.5f, 1.5f );
 		for ( var k = 0; k < 12; k++ )
 		{
 			var a = k * MathF.PI * 2f / 12f;
 			var bump = new GameObject( bellGo, true, "Frill" );
 			bump.LocalPosition = new Vector3( MathF.Cos( a ) * BellRadius * 0.86f, MathF.Sin( a ) * BellRadius * 0.86f, -BellRadius * 0.3f );
-			bump.LocalScale = new Vector3( 0.32f, 0.32f, 0.2f ) * Shapes.SphereScale( BellRadius );
+			bump.LocalPosition += Vector3.Down * BellRadius * 0.12f;
+			bump.LocalScale = new Vector3( 0.14f, 0.14f, 0.34f ) * Shapes.SphereScale( BellRadius ); // a fringe of short spines
 			var fr = bump.AddComponent<ModelRenderer>();
 			fr.Model = Shapes.Sphere;
 			fr.Tint = frill;
@@ -208,6 +209,7 @@ public sealed class Squilien : Component, ICreature
 		var renderer = skin.AddComponent<ModelRenderer>();
 		renderer.Model = Shapes.Sphere;
 		renderer.Tint = BodyColor;
+		Shapes.Skin( renderer );
 
 		var collider = go.AddComponent<SphereCollider>();
 		collider.IsTrigger = true;

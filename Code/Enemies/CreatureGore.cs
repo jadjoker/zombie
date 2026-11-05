@@ -16,23 +16,29 @@ public static class CreatureGore
 	public static (Vector3 Position, Vector3 Normal, GameObject Shape)? SkinHit( GameObject part, Vector3 origin, Vector3 direction )
 	{
 		if ( !part.IsValid() ) return null;
-		var radius = Shapes.Sphere.Bounds.Size.x * 0.5f;
-		var center = Shapes.Sphere.Bounds.Center;
 		(Vector3, Vector3, GameObject)? best = null;
 		var bestDistance = float.MaxValue;
 
 		foreach ( var renderer in part.Components.GetAll<ModelRenderer>( FindMode.EnabledInSelfAndDescendants ) )
 		{
-			if ( renderer.Model != Shapes.Sphere ) continue;
+			if ( renderer.Model is null ) continue;
 			var go = renderer.GameObject;
 			if ( go.Name is "Gore" ) continue; // wounds and stumps aren't skin
 			// Don't reach into child parts (an arm's shapes belong to the arm, not the body).
 			if ( go != part && go.Components.Get<CreaturePart>( FindMode.InAncestors ) is { } owner && owner.GameObject != part ) continue;
 
-			// Into the shape's own space, where it's a plain sphere.
+			// Treat the shape as the ellipsoid that fits its bounds (exact for the blob spheres,
+			// close enough for sculpted parts), and work in its own space where that's a unit sphere.
+			var bounds = renderer.Model.Bounds;
+			var center = bounds.Center;
+			var extent = bounds.Size * 0.5f * (renderer.Model == Shapes.Sphere ? 1f : 0.92f);
+			if ( extent.x < 0.01f || extent.y < 0.01f || extent.z < 0.01f ) continue;
 			var tx = go.WorldTransform;
-			var o = tx.PointToLocal( origin ) - center;
-			var d = tx.PointToLocal( origin + direction ) - center - o;
+			var lo = tx.PointToLocal( origin ) - center;
+			var ld = tx.PointToLocal( origin + direction ) - center - lo;
+			var o = new Vector3( lo.x / extent.x, lo.y / extent.y, lo.z / extent.z );
+			var d = new Vector3( ld.x / extent.x, ld.y / extent.y, ld.z / extent.z );
+			const float radius = 1f;
 			var a = Vector3.Dot( d, d );
 			if ( a < 1e-6f ) continue;
 			var b = 2f * Vector3.Dot( o, d );
@@ -43,14 +49,15 @@ public static class CreatureGore
 			if ( t < 0f ) t = (-b + MathF.Sqrt( disc )) / (2f * a);
 			if ( t < 0f ) continue;
 
-			var local = o + d * t;
+			var unit = o + d * t;
+			var local = new Vector3( unit.x * extent.x, unit.y * extent.y, unit.z * extent.z );
 			var world = tx.PointToWorld( local + center );
 			var distance = world.DistanceSquared( origin );
 			if ( distance >= bestDistance ) continue;
 
-			// The normal of a squashed sphere: push the local normal back out through the scale.
+			// Normal of the ellipsoid, pushed back out through its scale into world space.
 			var scale = go.WorldScale;
-			var n = local.Normal;
+			var n = new Vector3( unit.x / extent.x, unit.y / extent.y, unit.z / extent.z );
 			var normal = (go.WorldRotation * new Vector3( n.x / MathF.Max( scale.x, 1e-4f ), n.y / MathF.Max( scale.y, 1e-4f ), n.z / MathF.Max( scale.z, 1e-4f ) )).Normal;
 			bestDistance = distance;
 			best = (world, normal, go);

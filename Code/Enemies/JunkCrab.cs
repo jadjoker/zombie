@@ -109,30 +109,14 @@ public sealed class JunkCrab : Component, ICreature
 		rig.WorldScale = Size;
 
 		var body = AddPart( Body, -1, rig, "Body", new Vector3( 0, 0, 14 ), Angles.Zero, 0f );
-		Sphere( body, Vector3.Zero, new Vector3( 15f, 19f, 8.5f ), shellColor );
-		Sphere( body, new Vector3( 0, 0, -3.5f ), new Vector3( 13.5f, 17f, 5f ), bellyColor );
-		Sphere( body, new Vector3( 13.5f, 0, -1f ), new Vector3( 2.5f, 6f, 1.6f ), new Color( 0.15f, 0.02f, 0.05f ) ); // mouth
+		// The sculpted carapace (spiked, ridged rim, plated belly), modelled in Blender.
+		Sculpt( body, "body", shellColor );
+		Sphere( body, new Vector3( 16.6f, 0, -1.8f ), new Vector3( 1.4f, 4.6f, 1.3f ), new Color( 0.12f, 0.02f, 0.04f ) ); // mouth
 		// Mandibles hooking in front of the mouth.
 		foreach ( var side in new[] { -1f, 1f } )
 		{
-			var mr = ShapeMeshes.AddSpindle( body.Go, "Shape", new Vector3( 13.5f, side * 3f, -2f ), Rotation.FromYaw( side * 25f ).Forward, new Vector3( 0, -side, 0 ), 1f, 6.5f, 0f, 0.45f, Color.Lerp( shellColor, Color.Black, 0.5f ) );
+			var mr = ShapeMeshes.AddSpindle( body.Go, "Shape", new Vector3( 16.2f, side * 3f, -2.6f ), Rotation.FromYaw( side * 25f ).Forward, new Vector3( 0, -side, 0 ), 1f, 6.5f, 0f, 0.45f, Color.Lerp( shellColor, Color.Black, 0.5f ) );
 			body.Renderers.Add( (mr, mr.Tint) );
-		}
-
-		// Shell detail: a darker crown, a ridged rim, and knobbly bumps.
-		var crown = Color.Lerp( shellColor, Color.Black, 0.22f );
-		var knob = Color.Lerp( shellColor, Color.Black, 0.45f );
-		Sphere( body, new Vector3( -1f, 0, 3.2f ), new Vector3( 11f, 14.5f, 5.6f ), crown );
-		Sphere( body, new Vector3( 0, 0, -0.5f ), new Vector3( 15.6f, 19.6f, 3.2f ), Color.Lerp( shellColor, Color.Black, 0.1f ) );
-		var bumps = new System.Random( (int)(hue * 9973f) );
-		for ( var k = 0; k < 7; k++ )
-		{
-			var a = (float)bumps.NextDouble() * MathF.PI * 2f;
-			var d = 3f + (float)bumps.NextDouble() * 7f;
-			var at = new Vector3( MathF.Cos( a ) * d * 0.8f - 1f, MathF.Sin( a ) * d, 9.2f - d * 0.3f );
-			var r = 1f + (float)bumps.NextDouble() * 1.1f;
-			var outward = at.WithZ( 0 ).IsNearlyZero() ? Vector3.Forward : at.WithZ( 0 ).Normal;
-			Spike( body, at, (Vector3.Up + outward * 0.45f).Normal, outward, r * 0.55f, r * 2.8f, 0f, 0.2f, knob, false ); // spikes
 		}
 
 		// Flat like the body, so it doesn't swallow shots aimed at things on top of it.
@@ -161,7 +145,7 @@ public sealed class JunkCrab : Component, ICreature
 		foreach ( var (index, side) in new[] { (EyeL, 1f), (EyeR, -1f) } )
 		{
 			var eye = AddPart( index, Body, body.Go, side > 0 ? "Eye L" : "Eye R", new Vector3( 11f, side * 5f, 5f ), new Angles( -10, 0, -side * 12 ), EyeHealth );
-			Sphere( eye, new Vector3( 0, 0, 5f ), new Vector3( 1.3f, 1.3f, 5.5f ), bellyColor );
+			Sculpt( eye, "eyestalk", bellyColor );
 			// Beady black eyes with a glowing red pupil.
 			Sphere( eye, new Vector3( 0, 0, 11f ), new Vector3( 2.6f, 2.6f, 2.6f ), new Color( 0.05f, 0.03f, 0.03f ) );
 			Sphere( eye, new Vector3( 2.2f, 0, 11.2f ), new Vector3( 0.6f, 1f, 1f ), new Color( 1f, 0.12f, 0.04f ) );
@@ -173,17 +157,14 @@ public sealed class JunkCrab : Component, ICreature
 		foreach ( var (arm, pincer, side) in new[] { (ArmL, PincerL, 1f), (ArmR, PincerR, -1f) } )
 		{
 			var a = AddPart( arm, Body, body.Go, side > 0 ? "Arm L" : "Arm R", new Vector3( 10f, side * 13f, 0f ), new Angles( 0, side * 35f, 0 ), LimbHealth );
-			Sphere( a, new Vector3( 7f, 0, 0 ), new Vector3( 8f, 3.2f, 3.2f ), shellColor );
+			Sculpt( a, "arm", shellColor );
 			Trigger( a, new Vector3( 1, 0, 0 ), new Vector3( 13, 0, 0 ), 4.5f );
 
 			var p = AddPart( pincer, arm, a.Go, side > 0 ? "Pincer L" : "Pincer R", new Vector3( 14f, 0, 0 ), new Angles( 0, -side * 40f, 0 ), LimbHealth );
-			Sphere( p, new Vector3( 5f, 0, 0 ), new Vector3( 7f, 4.5f, 5.5f ), shellColor );
-			Sphere( p, new Vector3( 13f, 0, -2f ), new Vector3( 6f, 2.2f, 1.8f ), shellColor );
-			Sphere( p, new Vector3( 5f, 0, 1.5f ), new Vector3( 5f, 3.6f, 3.2f ), Color.Lerp( shellColor, Color.White, 0.3f ) ); // lighter palm
-			Spike( p, new Vector3( 11f, 0, -1.5f ), Vector3.Forward, Vector3.Up, 1.7f, 8f, 0f, 0.25f, Color.Lerp( shellColor, Color.Black, 0.35f ), false ); // hooked tip
+			Sculpt( p, "pincer", shellColor );
 			var jaw = new GameObject( p.Go, true, "Jaw" );
-			jaw.LocalPosition = new Vector3( 9f, 0, 2f );
-			Sphere( jaw, p, new Vector3( 5f, 0, 0.8f ), new Vector3( 6f, 2f, 1.6f ), shellColor );
+			jaw.LocalPosition = new Vector3( 9.5f, 0, 1.6f );
+			Sculpt( p, "jaw", Color.Lerp( shellColor, Color.Black, 0.15f ), jaw );
 			if ( side > 0 ) jawL = jaw; else jawR = jaw;
 			Trigger( p, new Vector3( 1, 0, 0 ), new Vector3( 15, 0, 0 ), 6f );
 		}
@@ -194,14 +175,23 @@ public sealed class JunkCrab : Component, ICreature
 			var side = i < 3 ? 1f : -1f;
 			var row = i % 3;
 			var leg = AddPart( FirstLeg + i, Body, body.Go, $"Leg {i}", new Vector3( 6f - row * 7f, side * 15f, -1f ), new Angles( 0, side * (75f + row * 22f), 0 ), LimbHealth );
-			Spike( leg, new Vector3( 0, 0, 2f ), new Vector3( 1f, 0, 0.08f ), Vector3.Up, 2.6f, 16f, 0.7f, 0f, shellColor, true );                 // thigh
-			Sphere( leg, new Vector3( 15f, 0, 3f ), new Vector3( 2.6f, 2.6f, 2.6f ), Color.Lerp( shellColor, Color.White, 0.2f ) );                  // knee
-			Spike( leg, new Vector3( 15.5f, 0, 3f ), new Vector3( 0.22f, 0, -1f ), Vector3.Forward, 2.3f, 17f, 0f, 0.12f, Color.Lerp( shellColor, Color.Black, 0.15f ), true ); // pointed shin
+			Sculpt( leg, "leg", shellColor );
 			Trigger( leg, new Vector3( 1, 0, 2 ), new Vector3( 17, 0, -10 ), 4f );
 		}
 
 		foreach ( var part in parts )
 			if ( part is not null ) part.Rest = part.Go.LocalRotation;
+	}
+
+	/// <summary> A part model sculpted in Blender (models/creatures/crab), tinted, scaled skin, flashing with the part. </summary>
+	void Sculpt( Part part, string model, Color color, GameObject parent = null )
+	{
+		var go = new GameObject( parent ?? part.Go, true, "Shape" );
+		var r = go.AddComponent<ModelRenderer>();
+		r.Model = Model.Load( $"models/creatures/crab/{model}.vmdl" );
+		r.Tint = color;
+		Shapes.Skin( r );
+		part.Renderers.Add( (r, color) );
 	}
 
 	/// <summary> A code-built spindle (spike, claw, tapered limb) on a part, tinted and flashing with it. </summary>

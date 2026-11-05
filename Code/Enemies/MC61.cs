@@ -141,16 +141,14 @@ public sealed class MC61 : Component, ICreature
 
 		// Torso: black tux with a white shirt front and a red bow tie.
 		var torso = AddPart( Torso, -1, rig, "Torso", Vector3.Zero, Angles.Zero, LimbHealth );
-		Sphere( torso, new Vector3( 0, 0, 0 ), new Vector3( 12f, 16f, 21f ), Tux );
-		Sphere( torso, new Vector3( 8.5f, 0, 5f ), new Vector3( 4f, 7f, 13f ), Glove );
-		Sphere( torso, new Vector3( 12f, -3f, 17f ), new Vector3( 2f, 3.2f, 2.4f ), new Color( 0.9f, 0.05f, 0.1f ) );
-		Sphere( torso, new Vector3( 12f, 3f, 17f ), new Vector3( 2f, 3.2f, 2.4f ), new Color( 0.9f, 0.05f, 0.1f ) );
-		Sphere( torso, new Vector3( 12.5f, 0, 17f ), new Vector3( 1.6f, 1.6f, 1.6f ), new Color( 0.6f, 0.02f, 0.05f ) );
+		Sculpt( torso, "torso_jacket", Tux );
+		Sculpt( torso, "torso_shirt", Glove );
+		Sculpt( torso, "torso_bowtie", new Color( 0.9f, 0.05f, 0.1f ) );
 		Trigger( torso, new Vector3( 0, 0, -14 ), new Vector3( 0, 0, 14 ), 14f );
 
 		// Big round head, one huge eye, top hat.
 		var head = AddPart( Head, Torso, torso.Go, "Head", new Vector3( 0, 0, 20 ), Angles.Zero, 0f );
-		Sphere( head, new Vector3( 0, 0, 18 ), new Vector3( 20f, 20f, 20f ), Skin );
+		Sculpt( head, "head", Skin );
 		Trigger( head, new Vector3( 0, 0, 9 ), new Vector3( 0, 0, 27 ), 18f );
 
 		var eye = AddPart( Eye, Head, head.Go, "Eye", new Vector3( 15.5f, 0, 21f ), Angles.Zero, EyeHealth );
@@ -161,20 +159,18 @@ public sealed class MC61 : Component, ICreature
 		Trigger( eye, new Vector3( 0, 0, -1 ), new Vector3( 0, 0, 1 ), 9f );
 
 		// A big toothy grin, a cocked brow over the eye, and rosy cheeks.
-		Sphere( head, new Vector3( 15.5f, 0, 8.5f ), new Vector3( 3f, 8.5f, 3.4f ), new Color( 0.2f, 0.03f, 0.08f ) );
+		Sphere( head, new Vector3( 14.2f, 0, 8.6f ), new Vector3( 2.6f, 8.4f, 3.2f ), new Color( 0.2f, 0.03f, 0.08f ) );
 		// Jagged teeth all along the grin, top and bottom.
 		var tooth = new Color( 0.9f, 0.86f, 0.7f );
 		for ( var i = 0; i < 9; i++ )
 		{
 			var y = (i - 4f) * 1.8f;
 			var curve = MathF.Abs( y ) * 0.06f;
-			Tooth( head, new Vector3( 17.2f - curve, y, 12.6f + curve ), Vector3.Down, 2.6f, tooth );
-			if ( i % 2 == 0 ) Tooth( head, new Vector3( 17f - curve, y + 0.9f, 5f + curve ), Vector3.Up, 2.2f, tooth );
+			Tooth( head, new Vector3( 18.6f - curve, y, 12.3f + curve ), Vector3.Down, 2.6f, tooth );
+			if ( i % 2 == 0 ) Tooth( head, new Vector3( 18.4f - curve, y + 0.9f, 5.2f + curve ), Vector3.Up, 2.2f, tooth );
 		}
-		// Dark bags under the eye.
-		Sphere( head, new Vector3( 15.6f, 0, 13.6f ), new Vector3( 1.6f, 8.5f, 1.4f ), Color.Lerp( Skin, Color.Black, 0.45f ) );
 		var brow = new GameObject( head.Go, true, "Shape" );
-		brow.LocalPosition = new Vector3( 15.5f, 0, 32.5f );
+		brow.LocalPosition = new Vector3( 19.6f, 0, 34f );
 		brow.LocalRotation = new Angles( 0, 0, 12f ).ToRotation();
 		brow.LocalScale = new Vector3( 2.2f, 10f, 1.6f ) * Shapes.SphereScale( 1f );
 		var browRenderer = brow.AddComponent<ModelRenderer>();
@@ -183,44 +179,44 @@ public sealed class MC61 : Component, ICreature
 		head.Renderers.Add( (browRenderer, Tux) );
 
 		var hat = AddPart( Hat, Head, head.Go, "Hat", new Vector3( -1, 0, 35f ), new Angles( 0, 0, 9f ), HatHealth );
-		Box( hat, new Vector3( 0, 0, 1 ), new Vector3( 34f, 34f, 2f ), Tux );
-		Box( hat, new Vector3( 0, 0, 4 ), new Vector3( 22.5f, 22.5f, 5f ), new Color( 0.85f, 0.05f, 0.15f ) );
-		Box( hat, new Vector3( 0, 0, 14 ), new Vector3( 22f, 22f, 24f ), Tux );
+		Sculpt( hat, "hat_body", Tux );
+		Sculpt( hat, "hat_band", new Color( 0.85f, 0.05f, 0.15f ) );
 		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 24 ), 13f );
 
 		// Arms: black sleeves, white gloves. The right hand carries the briefcase.
 		foreach ( var (upper, lower, side) in new[] { (ArmL, ForearmL, 1f), (ArmR, ForearmR, -1f) } )
 		{
 			var arm = AddPart( upper, Torso, torso.Go, side > 0 ? "Arm L" : "Arm R", new Vector3( 0, side * 17f, 12f ), new Angles( 0, 0, -side * 12f ), LimbHealth );
-			Sphere( arm, new Vector3( 0, 0, -10 ), new Vector3( 5.5f, 5.5f, 12f ), Tux );
+			Sculpt( arm, "arm_sleeve", Tux );
 			Trigger( arm, Vector3.Zero, new Vector3( 0, 0, -20 ), 6.5f );
 
 			var fore = AddPart( lower, upper, arm.Go, side > 0 ? "Forearm L" : "Forearm R", new Vector3( 0, 0, -20 ), Angles.Zero, LimbHealth );
-			Sphere( fore, new Vector3( 0, 0, -9 ), new Vector3( 5f, 5f, 10.5f ), Tux );
-			Sphere( fore, new Vector3( 0, 0, -18 ), new Vector3( 5.4f, 5.4f, 2.5f ), Glove );
-			Sphere( fore, new Vector3( 0, 0, -23 ), new Vector3( 5.2f, 5.2f, 5.6f ), Glove );
+			Sculpt( fore, "forearm_sleeve", Tux );
+			Sculpt( fore, "forearm_cuff", Glove );
+			Sculpt( fore, side > 0 ? "glove_l" : "glove_r", Glove );
 			Trigger( fore, Vector3.Zero, new Vector3( 0, 0, -26 ), 6f );
 		}
 
 		var briefcase = AddPart( Case, ForearmR, parts[ForearmR].Go, "Briefcase", new Vector3( 0, 0, -27f ), Angles.Zero, CaseHealth );
-		Box( briefcase, new Vector3( 0, 0, -1.5f ), new Vector3( 4f, 7f, 2.5f ), Tux ); // handle
-		Box( briefcase, new Vector3( 0, 0, -11f ), new Vector3( 7f, 24f, 15f ), new Color( 0.32f, 0.16f, 0.07f ) );
-		Box( briefcase, new Vector3( 0, 0, -4.2f ), new Vector3( 7.4f, 24.4f, 1.4f ), new Color( 0.85f, 0.7f, 0.2f ) );
+		var leather = new Color( 0.32f, 0.16f, 0.07f );
+		Sculpt( briefcase, "case_body", leather );
+		Sculpt( briefcase, "case_handle", Tux );
+		Sculpt( briefcase, "case_metal", new Color( 0.85f, 0.7f, 0.2f ) );
 		lid = new GameObject( briefcase.Go, true, "Lid" );
 		lid.LocalPosition = new Vector3( 3.6f, 0, -4f );
-		Box( briefcase, new Vector3( 0, 0, -11f ), new Vector3( 1f, 23f, 14f ), new Color( 0.32f, 0.16f, 0.07f ), lid );
+		Sculpt( briefcase, "case_lid", leather, lid );
 		Trigger( briefcase, new Vector3( 0, 0, -4 ), new Vector3( 0, 0, -18 ), 9f );
 
 		// Legs: white trousers, black shoes, dangling as he floats.
 		foreach ( var (upper, lower, side) in new[] { (LegL, ShinL, 1f), (LegR, ShinR, -1f) } )
 		{
 			var leg = AddPart( upper, Torso, torso.Go, side > 0 ? "Leg L" : "Leg R", new Vector3( 0, side * 7f, -18f ), Angles.Zero, LimbHealth );
-			Sphere( leg, new Vector3( 0, 0, -11 ), new Vector3( 6.5f, 6.5f, 13f ), Glove );
+			Sculpt( leg, "leg_trouser", Glove );
 			Trigger( leg, Vector3.Zero, new Vector3( 0, 0, -22 ), 7f );
 
 			var shin = AddPart( lower, upper, leg.Go, side > 0 ? "Shin L" : "Shin R", new Vector3( 0, 0, -22 ), Angles.Zero, LimbHealth );
-			Sphere( shin, new Vector3( 0, 0, -10 ), new Vector3( 5.8f, 5.8f, 12f ), Glove );
-			Sphere( shin, new Vector3( 3.5f, 0, -21 ), new Vector3( 8f, 5f, 3.5f ), Tux );
+			Sculpt( shin, "shin_trouser", Glove );
+			Sculpt( shin, "shoe", Tux );
 			Trigger( shin, Vector3.Zero, new Vector3( 0, 0, -23 ), 6.5f );
 		}
 
@@ -259,14 +255,12 @@ public sealed class MC61 : Component, ICreature
 		part?.Renderers.Add( (r, color) );
 	}
 
-	void Box( Part part, Vector3 at, Vector3 size, Color color, GameObject parent = null )
+	/// <summary> A Blender-sculpted piece (models/creatures/mc61), modelled in the part's own space. </summary>
+	void Sculpt( Part part, string model, Color color, GameObject parent = null )
 	{
 		var go = new GameObject( parent ?? part.Go, true, "Shape" );
-		var scale = Shapes.BoxScale( size );
-		go.LocalPosition = at - Shapes.Box.Bounds.Center * scale;
-		go.LocalScale = scale;
 		var r = go.AddComponent<ModelRenderer>();
-		r.Model = Shapes.Box;
+		r.Model = Model.Load( $"models/creatures/mc61/{model}.vmdl" );
 		r.Tint = color;
 		part.Renderers.Add( (r, color) );
 	}

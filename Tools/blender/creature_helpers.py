@@ -93,3 +93,50 @@ def export(o, creature, part):
                              apply_scale_options='FBX_SCALE_NONE', axis_forward='X', axis_up='Z', bake_space_transform=True,
                              object_types={'MESH'}, mesh_smooth_type='FACE')
     return len(o.data.polygons)
+
+
+# ---- Crisp shapes (clothes trims, hats, cases): no remesh, just bevelled primitives joined.
+
+def box(name, center, size, bevel=0.0):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=center)
+    o = bpy.context.active_object
+    o.name = name
+    o.scale = size
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    if bevel > 0:
+        b = o.modifiers.new("bevel", 'BEVEL')
+        b.width = bevel
+        b.segments = 3
+        bpy.ops.object.modifier_apply(modifier="bevel")
+    return o
+
+
+def cyl(name, center, r_bottom, r_top, depth, verts=32):
+    bpy.ops.mesh.primitive_cone_add(vertices=verts, radius1=r_bottom, radius2=r_top, depth=depth, location=center)
+    o = bpy.context.active_object
+    o.name = name
+    return o
+
+
+def assemble(objs, name, smooth=True, subdivide=0):
+    """Join pieces as they are (keeps crisp edges); optional subdivision to round them off."""
+    bpy.ops.object.select_all(action='DESELECT')
+    for o in objs:
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = objs[0]
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.join()
+    o = bpy.context.active_object
+    o.name = name
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    if subdivide:
+        s = o.modifiers.new("subd", 'SUBSURF')
+        s.levels = subdivide
+        bpy.ops.object.modifier_apply(modifier="subd")
+    if smooth:
+        bpy.ops.object.shade_smooth()
+    bpy.ops.object.mode_set(mode='EDIT')
+    bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02)
+    bpy.ops.object.mode_set(mode='OBJECT')
+    return o

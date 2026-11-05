@@ -1,5 +1,5 @@
 # usage: mkvmdl.sh <creature> <part>  -> writes Assets/models/creatures/<creature>/<part>.vmdl
-c=$1; p=$2
+c=$1; p=$2; m=${3:-scales}
 cat > "/c/Users/smitt/Documents/zombie_survival/Assets/models/creatures/$c/$p.vmdl" <<VMDL
 <!-- kv3 encoding:text:version{e21c7f3c-8a33-41c5-9977-a76d3a32aa0d} format:modeldoc29:version{3cec427c-1b0e-4d48-a90a-0436f33a6041} -->
 {
@@ -16,7 +16,7 @@ cat > "/c/Users/smitt/Documents/zombie_survival/Assets/models/creatures/$c/$p.vm
 						_class = "DefaultMaterialGroup"
 						remaps = [  ]
 						use_global_default = true
-						global_default_material = "materials/creature/scales.vmat"
+						global_default_material = "materials/creature/$m.vmat"
 					},
 				]
 			},

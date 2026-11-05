@@ -1,0 +1,20 @@
+name: Playtest note
+description: Jot down feedback from a play session
+labels: ["playtest"]
+body:
+  - type: textarea
+    id: note
+    attributes:
+      label: What happened or what did you think?
+      description: Bugs, feel, ideas, anything. Rough is fine.
+    validations:
+      required: true
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind
+      options: [Bug, Feels bad, Feels good, Idea, Balance]
+  - type: input
+    id: where
+    attributes:
+      label: Scene, wave or enemy (optional)

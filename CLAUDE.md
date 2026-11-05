@@ -12,9 +12,10 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
 
 ## Layout
 - `Code/` game code. Enemies in `Code/Enemies` (shared ICreature, CreaturePart, CreatureGore), movement in `Code/Movement`.
-- `Assets/` models, materials, scenes (`scenes/basic_example.scene` is the main one).
-- `Tools/blender/` Blender scripts: `creature_helpers.py`, one script per creature, `arena.py`, `mkvmdl.sh` / `mkvmdl_any.sh` write .vmdl files.
-- `Tools/arena_dressing.cs` rebuilds the arena decoration (editor script, not compiled into the game).
+- `Assets/` models, materials, scenes. Scenes: `scenes/water_level.scene` (underwater), `scenes/forest.scene` (outdoor clearing), `scenes/indoor.scene` (interior, the startup scene).
+- `Tools/blender/` Blender scripts: `creature_helpers.py`, one script per creature, `arena.py`, `forest.py`, `indoor.py`, `mkvmdl.sh` / `mkvmdl_any.sh` write .vmdl files.
+- Editor dressing scripts (not compiled into the game): `Tools/arena_dressing.cs`, `Tools/forest_dressing.cs`, `Tools/indoor_dressing.cs`.
+- In-game dev menu: press `P` (`Code/DevMenu.razor`).
 
 ## Editor tooling
 - sbox-cli: `C:/Program Files (x86)/Steam/steamapps/common/sbox/bin/managed/sbox-cli.exe`
@@ -26,3 +27,8 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
 - 1 Blender unit = 1 s&box unit. Export FBX via `export()` in creature_helpers.py; the .vmdl uses import_rotation [0, -90, 0]
   and a default material so nothing shows missing-texture checkers.
 - Each shootable part is its own model pivoted at its joint, so chunking code doesn't change.
+
+## Backlog
+- Work items live in GitHub Issues (github.com/jadjoker/zombie/issues), tracked on the project board "Risk of Copyright Backlog" (github.com/users/jadjoker/projects/1).
+- Check open issues before starting work, and note the issue number in commits ("Fixes #12").
+- CLI: `"C:/Program Files/GitHub CLI/gh.exe"` (`issue list`, `issue create`). Labels: bug, enemy, map, weapon, movement, art, idea, needs-testing.

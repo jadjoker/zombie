@@ -1,0 +1,20 @@
+name: Idea
+description: A feature, enemy, weapon or map idea
+labels: ["idea"]
+body:
+  - type: textarea
+    id: idea
+    attributes:
+      label: What's the idea?
+      description: Rough is fine.
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options: [Enemy, Weapon, Map, Movement, Art, Sound, Other]
+  - type: textarea
+    id: why
+    attributes:
+      label: Why would it be fun? (optional)

@@ -154,13 +154,9 @@ public sealed class Squilien : Component, ICreature
 		for ( var k = 0; k < 12; k++ )
 		{
 			var a = k * MathF.PI * 2f / 12f;
-			var bump = new GameObject( bellGo, true, "Frill" );
-			bump.LocalPosition = new Vector3( MathF.Cos( a ) * BellRadius * 0.86f, MathF.Sin( a ) * BellRadius * 0.86f, -BellRadius * 0.3f );
-			bump.LocalPosition += Vector3.Down * BellRadius * 0.12f;
-			bump.LocalScale = new Vector3( 0.14f, 0.14f, 0.34f ) * Shapes.SphereScale( BellRadius ); // a fringe of short spines
-			var fr = bump.AddComponent<ModelRenderer>();
-			fr.Model = Shapes.Sphere;
-			fr.Tint = frill;
+			var outward = new Vector3( MathF.Cos( a ), MathF.Sin( a ), 0f );
+			var rim = outward * BellRadius * 0.86f + Vector3.Down * BellRadius * 0.3f;
+			ShapeMeshes.AddSpindle( bellGo, "Frill", rim, (Vector3.Down + outward * 0.55f).Normal, outward, BellRadius * 0.07f, BellRadius * 0.5f, 0f, 0.3f, frill ); // a fringe of curved spines
 		}
 		var crownGlow = new GameObject( bellGo, true, "Crown" );
 		crownGlow.LocalPosition = new Vector3( -BellRadius * 0.15f, 0, BellRadius * 0.62f );
@@ -209,7 +205,7 @@ public sealed class Squilien : Component, ICreature
 		var renderer = skin.AddComponent<ModelRenderer>();
 		renderer.Model = Shapes.Sphere;
 		renderer.Tint = BodyColor;
-		Shapes.Skin( renderer );
+		Shapes.Skin( renderer, "slime" );
 
 		var collider = go.AddComponent<SphereCollider>();
 		collider.IsTrigger = true;

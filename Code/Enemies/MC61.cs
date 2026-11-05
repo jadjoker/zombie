@@ -168,8 +168,8 @@ public sealed class MC61 : Component, ICreature
 		{
 			var y = (i - 4f) * 1.8f;
 			var curve = MathF.Abs( y ) * 0.06f;
-			Sphere( head, new Vector3( 17.2f - curve, y, 11.2f + curve ), new Vector3( 0.6f, 0.7f, 1.8f ), tooth );
-			if ( i % 2 == 0 ) Sphere( head, new Vector3( 17f - curve, y + 0.9f, 6.4f + curve ), new Vector3( 0.6f, 0.7f, 1.6f ), tooth );
+			Tooth( head, new Vector3( 17.2f - curve, y, 12.6f + curve ), Vector3.Down, 2.6f, tooth );
+			if ( i % 2 == 0 ) Tooth( head, new Vector3( 17f - curve, y + 0.9f, 5f + curve ), Vector3.Up, 2.2f, tooth );
 		}
 		// Dark bags under the eye.
 		Sphere( head, new Vector3( 15.6f, 0, 13.6f ), new Vector3( 1.6f, 8.5f, 1.4f ), Color.Lerp( Skin, Color.Black, 0.45f ) );
@@ -255,7 +255,7 @@ public sealed class MC61 : Component, ICreature
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = Shapes.Sphere;
 		r.Tint = color;
-		Shapes.Skin( r );
+		// MC61 keeps smooth skin: textured, he read as a stone statue.
 		part?.Renderers.Add( (r, color) );
 	}
 
@@ -268,6 +268,13 @@ public sealed class MC61 : Component, ICreature
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = Shapes.Box;
 		r.Tint = color;
+		part.Renderers.Add( (r, color) );
+	}
+
+	/// <summary> A sharp code-built tooth on a part. </summary>
+	void Tooth( Part part, Vector3 at, Vector3 direction, float length, Color color )
+	{
+		var r = ShapeMeshes.AddSpindle( part.Go, "Shape", at, direction, Vector3.Forward, length * 0.28f, length, 0f, 0.1f, color );
 		part.Renderers.Add( (r, color) );
 	}
 

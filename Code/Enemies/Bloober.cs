@@ -254,7 +254,6 @@ public sealed class Bloober : Component, ICreature
 			var white = eye.AddComponent<ModelRenderer>();
 			white.Model = Shapes.Sphere;
 			white.Tint = new Color( 0.04f, 0.02f, 0.03f );
-			Shapes.Skin( white );
 
 			var brow = new GameObject( head.Go, true, "Brow" );
 			brow.LocalPosition = eye.LocalPosition + new Vector3( r * 0.08f, side * r * 0.02f, r * 0.2f );
@@ -301,15 +300,10 @@ public sealed class Bloober : Component, ICreature
 
 	void Fang( Segment head, Vector3 at, Angles angles, float length, Color color )
 	{
-		var fang = new GameObject( head.Go, true, "Fang" );
-		fang.LocalPosition = at;
-		fang.LocalRotation = angles.ToRotation();
-		fang.LocalScale = new Vector3( 0.22f, 0.22f, 1f ) * Shapes.SphereScale( length );
-		fang.LocalPosition += fang.LocalRotation * Vector3.Down * length * 0.6f;
-		var f = fang.AddComponent<ModelRenderer>();
-		f.Model = Shapes.Sphere;
-		f.Tint = color;
-		Shapes.Skin( f );
+		// A real fang: thick at the gum, curving back to a sharp point.
+		var dir = angles.ToRotation() * Vector3.Down;
+		ShapeMeshes.AddSpindle( head.Go, "Fang", at, dir, Vector3.Backward, length * 0.24f, length * 1.25f, 0f, 0.3f, color );
+
 	}
 
 	protected override void OnDestroy()

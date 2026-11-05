@@ -29,12 +29,18 @@ public static class Shapes
 	public static Material Wet => wet ??= Material.Load( "materials/shine.vmat" );
 	public static bool UseWetSkin = true;
 
-	/// <summary> Gives a creature renderer the wet look (if the material's available). </summary>
-	public static void Skin( ModelRenderer renderer )
+	static readonly Dictionary<string, Material> skins = new();
+
+	/// <summary>
+	/// Gives a creature renderer a textured skin: "scales" (plates with grooves) or "slime" (fine bumps).
+	/// The textures are light grey, so the renderer's tint still sets the colour.
+	/// </summary>
+	public static void Skin( ModelRenderer renderer, string kind = "scales" )
 	{
-		// The only glossy core material reads as chrome, not wet flesh, so this is off for now.
-		// Kept as the one place to switch creature skin material later.
-		return;
+		if ( renderer is null ) return;
+		if ( !skins.TryGetValue( kind, out var material ) || material is null )
+			skins[kind] = material = Material.Load( $"materials/creature/{kind}.vmat" );
+		if ( material is not null && !material.IsError ) renderer.MaterialOverride = material;
 	}
 
 	/// <summary> A glowing colour: bright enough to bloom. </summary>

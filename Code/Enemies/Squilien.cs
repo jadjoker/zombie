@@ -203,7 +203,10 @@ public sealed class Squilien : Component, ICreature
 
 		var skin = new GameObject( go, true, "Skin" );
 		var renderer = skin.AddComponent<ModelRenderer>();
-		renderer.Model = Shapes.Sphere;
+		// Sculpted in Blender at the size of the sphere it replaces (Tools/blender/squilien.py),
+		// so the bell's squeeze and the tentacles' stretching work on it unchanged.
+		renderer.Model = Model.Load( index == 0 ? "models/creatures/squilien/bell.vmdl" : "models/creatures/squilien/tentacle.vmdl" );
+		if ( renderer.Model is null || renderer.Model.IsError ) renderer.Model = Shapes.Sphere;
 		renderer.Tint = BodyColor;
 		Shapes.Skin( renderer, "slime" );
 

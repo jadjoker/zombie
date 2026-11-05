@@ -1,9 +1,9 @@
 /// <summary>
-/// The movement kit on top of the PlayerController, inspired by Deadlock's: you always move at full
-/// speed, Shift dashes, and a small pool of stamina pips pays for dashes and air jumps. Jump straight
-/// out of a ground dash for a long dash-jump; crouch at speed to slide (faster downhill); jump at a
-/// ledge to mantle up onto it; kick off walls. Momentum never snaps: fast landings and dash ends ease
-/// back down to run speed.
+/// The movement kit on top of the PlayerController, inspired by Deadlock's: you always run, hold Shift
+/// to sprint for as long as you like, and a small pool of stamina pips pays for air jumps. Crouch at
+/// speed to slide (faster downhill); jump at a ledge to mantle up onto it; kick off walls. Momentum
+/// never snaps: fast landings ease back down to your run (or sprint) speed.
+/// (The old Shift dash code is still here, reachable only through the TestPressDash hook.)
 ///
 /// Camera feel sells it: speed FOV, dash kick, slide lean, wall-kick roll, landing dip.
 /// Sits on the player next to the controller and MoveModeSlide (which drives the ground while a dash,
@@ -59,6 +59,11 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 
 	/// <summary> Base move speed (always running, like Deadlock). Alt walks. </summary>
 	[Property, Group( "Speed" )] public float MoveSpeed { get; set; } = 320f;
+	/// <summary> Holding Shift: an endless sprint, no stamina. </summary>
+	[Property, Group( "Speed" )] public float SprintSpeed { get; set; } = 470f;
+	public bool IsSprinting => Input.Down( "Run" ) && !IsProxy;
+	/// <summary> The speed you settle back to after a fast move: sprint speed while Shift is held. </summary>
+	float TopSpeed => IsSprinting ? SprintSpeed : MoveSpeed;
 	/// <summary> Seconds to ease from a fast landing or dash back down to run speed. </summary>
 	[Property, Group( "Speed" )] public float MomentumCarryTime { get; set; } = 0.45f;
 	[Property, Group( "Speed" )] public float MaxHorizontalSpeed { get; set; } = 900f;
@@ -129,12 +134,12 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		var controller = Controller;
 		if ( !controller.IsValid() ) return;
 
-		// Always full speed (Shift is the dash now); Alt walks.
+		// Run by default; hold Shift to sprint (as long as you like).
 		controller.CoyoteTime = 0.12f;
-		controller.RunByDefault = true;
-		controller.AltMoveButton = "walk";
-		controller.RunSpeed = MoveSpeed;
-		controller.WalkSpeed = MoveSpeed * 0.45f;
+		controller.RunByDefault = false;
+		controller.AltMoveButton = "Run";
+		controller.RunSpeed = SprintSpeed;
+		controller.WalkSpeed = MoveSpeed;
 
 		AirJumpsLeft = AirJumps;
 		Stamina = MaxStamina;
@@ -182,7 +187,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		if ( IsFloating )
 		{
 			EndGroundMode( handBack: false );
-			if ( Input.Pressed( "Run" ) || testDash ) FloatDash();
+			if ( testDash ) FloatDash();
 			testDash = false;
 			testJump = false;
 			wasOnGround = onGround;
@@ -190,7 +195,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		}
 
 		var jumpPressed = Input.Pressed( "Jump" ) || testJump;
-		var dashPressed = Input.Pressed( "Run" ) || testDash;
+		var dashPressed = testDash; // Shift is a held sprint now; dashes only via test hooks.
 		testJump = false;
 		testDash = false;
 
@@ -234,7 +239,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		if ( OverridesGround && !onGround ) EndGroundMode();
 
 		// Landing faster than a run eases down instead of snapping to run speed.
-		if ( justLanded && Ground == GroundMode.None && HorizontalSpeed > MoveSpeed + 40f )
+		if ( justLanded && Ground == GroundMode.None && HorizontalSpeed > TopSpeed + 40f )
 			StartCarry( Controller.Velocity.WithZ( 0 ) );
 
 		wasOnGround = onGround;
@@ -380,7 +385,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 	void StartCarry( Vector3 velocity )
 	{
 		carryFrom = velocity.Length;
-		if ( carryFrom <= MoveSpeed + 10f ) { EndGroundMode(); return; }
+		if ( carryFrom <= TopSpeed + 10f ) { EndGroundMode(); return; }
 		SetGroundMode( GroundMode.Carry, velocity );
 	}
 
@@ -388,7 +393,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 	{
 		// Ease from the speed you had down to run speed, steering toward your input.
 		var t = MathX.Clamp( timeSinceGroundMode / MathF.Max( 0.05f, MomentumCarryTime ), 0f, 1f );
-		var speed = MathX.Lerp( carryFrom, MoveSpeed, 1f - (1f - t) * (1f - t) );
+		var speed = MathX.Lerp( carryFrom, TopSpeed, 1f - (1f - t) * (1f - t) );
 		var wish = Controller.WishVelocity.WithZ( 0 );
 		var direction = GroundVelocity.Normal;
 		if ( wish.IsNearlyZero() ) speed *= 1f - t * 0.6f; // letting go of the keys bleeds speed faster

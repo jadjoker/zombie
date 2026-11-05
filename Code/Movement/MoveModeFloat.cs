@@ -42,7 +42,9 @@ public sealed class MoveModeFloat : MoveMode
 		var wish = eyes.Forward * move.x + eyes.Left * move.y;
 		if ( Input.Down( "Jump" ) ) wish += Vector3.Up;
 		if ( Input.Down( "Duck" ) ) wish += Vector3.Down;
-		return wish.IsNearlyZero() ? Vector3.Zero : wish.Normal * SwimSpeed;
+		// Holding sprint swims faster too.
+		var speed = Input.Down( "Run" ) ? SwimSpeed * 1.45f : SwimSpeed;
+		return wish.IsNearlyZero() ? Vector3.Zero : wish.Normal * speed;
 	}
 
 	public override Vector3 UpdateMove( Rotation eyes, Vector3 input ) => WishSwim();

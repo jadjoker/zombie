@@ -532,7 +532,7 @@ public sealed class MC61 : Component, ICreature
 		for ( var f = 0; f < 4; f++ )
 		{
 			var rot = new Rotation[3];
-			rot[0] = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan ) * Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3] );
+			rot[0] = Rotation.FromAxis( Vector3.Forward, hand.Side * (f - 1.5f) * fan ) * Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3] );   // index sits next to the thumb on both hands
 			rot[1] = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + 1] );
 			rot[2] = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + 2] );
 			ApplyChain( hand, model, f * 3, 3, rot );

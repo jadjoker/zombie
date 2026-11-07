@@ -8,16 +8,18 @@ import bmesh
 from mathutils import Vector
 
 C = "mc61g"
-FZ = 9.2                                    # knuckle height
-FY = (-3.9, -1.3, 1.3, 3.9)                 # finger roots across the hand
-FS = (0.93, 1.0, 0.95, 0.8)                 # finger length scale: index, middle, ring, pinky
-SEG = (3.7, 3.1, 2.7)                       # proximal, middle, distal lengths (before FS)
-R0 = (1.3, 1.18, 1.06, 0.88)                   # radius at the joints 0, 1, 2 and the tip
-THUMB_BASE = 4.0                            # thumb root offset across the palm (times side)
-THUMB_Z = 4.2
+# A natural glove hand: a flat palm that narrows to the wrist, long tapering fingers on an arched knuckle line,
+# a thumb that grows from low on the palm side, soft tendon ridges on the back. Finger order: index, middle, ring, pinky.
+FYB = (3.6, 1.2, -1.2, -3.45)             # finger roots across the hand (times side: the index sits next to the thumb)
+FZS = (8.6, 9.0, 8.7, 8.0)                 # knuckle heights: middle highest, pinky lowest
+FS = (0.95, 1.0, 0.95, 0.78)                # finger length scale
+SEG = (4.5, 3.0, 2.5)                       # proximal, middle, distal lengths (before FS)
+R0 = (1.12, 1.02, 0.92, 0.8)                # radius at the joints 0, 1, 2 and the tip
+THUMB_BASE = 3.0                            # thumb root offset across the palm (times side)
+THUMB_Z = 3.8
 THUMB_SPLAY = math.radians(38)
-T_SEG = (3.5, 3.0)
-T_R = (1.45, 1.3, 1.05)
+T_SEG = (3.6, 2.9)
+T_R = (1.35, 1.15, 0.92)
 
 
 def smooth01(x, a, b):
@@ -25,9 +27,9 @@ def smooth01(x, a, b):
     return t * t * (3 - 2 * t)
 
 
-def finger_joints(i):
+def finger_joints(i, side):
     s = FS[i]
-    j0 = Vector((0, FY[i], FZ))
+    j0 = Vector((0, side * FYB[i], FZS[i]))
     j1 = j0 + Vector((0, 0, SEG[0] * s))
     j2 = j1 + Vector((0, 0, SEG[1] * s))
     tip = j2 + Vector((0, 0, SEG[2] * s))
@@ -35,31 +37,73 @@ def finger_joints(i):
 
 
 def thumb_joints(side):
-    t0 = Vector((0, side * THUMB_BASE, THUMB_Z))
+    t0 = Vector((0.5, side * THUMB_BASE, THUMB_Z))
     d = Vector((0, side * math.sin(THUMB_SPLAY), math.cos(THUMB_SPLAY)))
     t1 = t0 + d * T_SEG[0]
     tip = t1 + d * T_SEG[1]
     return t0, t1, tip, d
 
 
+MB_K = 0.574   # a metaball's visible radius is this times its influence radius (stiffness 2, threshold 0.6)
+
+
 def build_mesh(side):
+    """One metaball field for the whole glove, so palm, fingers, thumb and wrist melt into each other with no seams,
+    corners or shelves (a voxel union of primitives always left creases where they met)."""
     clear()
-    # A slimmer, flatter palm that narrows toward the wrist (it read as swollen before).
-    p = [ellipsoid("palm", (0, 0, 6.4), (2.0, 5.0, 4.4), 40),
-         ellipsoid("heel", (0, 0, 2.6), (1.9, 3.5, 2.6), 32),
-         cyl("cuff", (0, 0, -1.2), 3.1, 3.4, 3.6, verts=40),
-         ellipsoid("cuffrim", (0, 0, -3.0), (3.4, 3.4, 0.7), 32)]   # no knuckle shelf: fingers grow straight out of the palm
+    mb = bpy.data.metaballs.new("glove")
+    mb.resolution = 0.09; mb.render_resolution = 0.09; mb.threshold = 0.6
+
+    def blob(c, r):                      # ellipsoid with visible radii r
+        e = mb.elements.new(type='ELLIPSOID'); e.co = c; e.radius = 1.0 / MB_K; e.stiffness = 2.0
+        e.size_x, e.size_y, e.size_z = r
+        return e
+
+    def capsule(a, b, r):                # a rounded rod from a to b with visible radius r
+        a, b = Vector(a), Vector(b)
+        e = mb.elements.new(type='CAPSULE'); e.co = (a + b) / 2; e.radius = r / MB_K; e.stiffness = 2.0
+        e.size_x = (b - a).length / 2
+        e.rotation = Vector((1, 0, 0)).rotation_difference((b - a).normalized())
+        return e
+
+    def rod(a, b, r0, r1, flat=1.0):     # a smooth tapered rod: a dense chain of balls (each joint bulged when built from capsules)
+        a, b = Vector(a), Vector(b)
+        L = (b - a).length
+        t = 0.0
+        while True:
+            r = r0 + (r1 - r0) * min(t / L, 1.0)
+            e = mb.elements.new(type='ELLIPSOID'); e.co = a + (b - a) * min(t / L, 1.0)
+            e.radius = r / (MB_K * 1.33); e.stiffness = 2.0
+            e.size_x, e.size_y, e.size_z = flat, 1.0, 1.0
+            if t >= L: break
+            t = min(L, t + 0.25 * r)
+
+    # palm: flat and wide at the knuckles, narrowing to the wrist; the back is slightly domed
+    blob((0, 0, 6.4), (0.95, 3.6, 2.2))
+    blob((0, 0, 4.3), (0.95, 3.1, 2.0))
+    blob((-0.15, 0, 5.4), (1.0, 2.8, 2.6))
+    capsule((0, side * 3.3, 7.2), (0, side * -3.0, 7.2), 0.95)        # knuckle bar the fingers grow from
+    blob((0, 0, 1.6), (1.25, 2.6, 1.9))                               # wrist
+    for k in range(9):                                                # glove cuff: a short flared tube
+        z = -3.0 + k * 0.4
+        blob((0, 0, z), (1.75 + 0.08 * (8 - k) / 8, 2.75 + 0.12 * (8 - k) / 8, 0.45))
+    blob((0.45, side * -2.3, 3.6), (0.75, 1.3, 2.2))                  # heel pad under the pinky
     for i in range(4):
-        j0, j1, j2, tip = finger_joints(i)
-        rad = [r * (1.0 if i < 3 else 0.88) for r in R0]
-        p += [tube("f", (j0.x, j0.y, j0.z - 2.2), j1, rad[0], rad[1], verts=20), ellipsoid("k", j1, (rad[1],) * 3, 16),
-              tube("f", j1, j2, rad[1], rad[2], verts=20), ellipsoid("k", j2, (rad[2],) * 3, 16),
-              tube("f", j2, tip, rad[2], rad[3], verts=20), ellipsoid("t", tip, (rad[3],) * 3, 16)]
+        j0, j1, j2, tip = finger_joints(i, side)
+        r = [x * (1.0 if i < 3 else 0.88) for x in R0]
+        rod((0, j0.y * 0.92, j0.z - 1.8), tip - Vector((0, 0, r[3] * 0.6)), r[0], r[3], flat=0.92)
+        # soft tendon ridge on the back of the hand
+        capsule((-0.85, side * FYB[i] * 0.4, 3.2), (-0.85, side * FYB[i] * 0.9, j0.z - 1.0), 0.32)
     t0, t1, tip, d = thumb_joints(side)
-    p += [ellipsoid("thumbpad", (0.4, side * 3.6, 4.6), (1.6, 1.9, 2.3), 24),
-          tube("t", t0 - d * 0.6, t1, T_R[0], T_R[1], verts=20), ellipsoid("k", t1, (T_R[1],) * 3, 16),
-          tube("t", t1, tip, T_R[1], T_R[2], verts=20), ellipsoid("t", tip, (T_R[2],) * 3, 16)]
-    return fuse(p, f"mc61_hand_{'l' if side > 0 else 'r'}", voxel=0.11, smooth=6, decimate=0.1)
+    blob((0.35, side * 2.2, 4.0), (0.95, 1.5, 2.1))                   # thenar pad, the meat at the thumb's base
+    rod(t0 - d * 0.6, tip - d * (T_R[2] * 0.6), T_R[0], T_R[2], flat=0.9)
+    obj = bpy.data.objects.new("glove", mb)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.ops.object.select_all(action='DESELECT')
+    obj.select_set(True); bpy.context.view_layer.objects.active = obj
+    bpy.ops.object.convert(target='MESH')
+    obj = bpy.context.active_object
+    return fuse([obj], f"mc61_hand_{'l' if side > 0 else 'r'}", voxel=0.2, smooth=2)   # even quads, no decimate: long decimated triangles spanning a joint fold into sheets when the finger bends
 
 
 BONES = ["wrist"] + [f"f{i}_{j}" for i in range(4) for j in range(3)] + ["th_0", "th_1"]
@@ -68,29 +112,26 @@ BONES = ["wrist"] + [f"f{i}_{j}" for i in range(4) for j in range(3)] + ["th_0",
 def weights_for(v, side):
     """Smooth skin weights: no hard region edges anywhere (hard edges tear when a finger bends), blended in y between
     neighbouring fingers, along each finger's length at its joints, and between palm and finger at the knuckle line."""
-    # --- fingers ---
-    infl = [math.exp(-((v.y - FY[i]) / 1.5) ** 2) for i in range(4)]
+    infl = [math.exp(-((v.y - side * FYB[i]) / 1.4) ** 2) for i in range(4)]
     total = sum(infl)
     fingerw = {}
-    blend = 0.0
     if total > 1e-4:
-        z = v.z - FZ
-        sm0 = smooth01(z, -3.2, 2.2)
-        blend = sm0 * min(1.0, total * 1.6)
+        reach = min(1.0, total * 1.6)
         for i in range(4):
             share = infl[i] / total
             s_ = FS[i]
-            sm1 = smooth01(z, SEG[0] * s_ - 1.4, SEG[0] * s_ + 1.4)
-            sm2 = smooth01(z, (SEG[0] + SEG[1]) * s_ - 1.3, (SEG[0] + SEG[1]) * s_ + 1.3)
+            z = v.z - FZS[i]
+            blend = smooth01(z, -3.0, 2.0) * reach
+            sm1 = smooth01(z, SEG[0] * s_ - 1.3, SEG[0] * s_ + 1.3)
+            sm2 = smooth01(z, (SEG[0] + SEG[1]) * s_ - 1.2, (SEG[0] + SEG[1]) * s_ + 1.2)
             fingerw[f"f{i}_0"] = share * blend * (1 - sm1)
             fingerw[f"f{i}_1"] = share * blend * sm1 * (1 - sm2)
             fingerw[f"f{i}_2"] = share * blend * sm1 * sm2
-    # --- thumb ---
     t0, t1, tip, d = thumb_joints(side)
     rel = v - t0
     along = rel.dot(d)
     radial = (rel - d * along).length
-    tb = math.exp(-(radial / 2.1) ** 2) * smooth01(side * v.y, 2.4, 3.8) * smooth01(along, -2.0, 1.3)
+    tb = math.exp(-(radial / 2.0) ** 2) * smooth01(side * v.y, 2.0, 3.6) * smooth01(along, -1.8, 1.4)
     sm1t = smooth01(along, T_SEG[0] - 0.9, T_SEG[0] + 0.9)
     w = {}
     for name, val in fingerw.items():
@@ -119,7 +160,7 @@ def make_armature(side):
 
     bone("wrist", Vector((0, 0, -2.0)), Vector((0, 0, 3.0)))
     for i in range(4):
-        j0, j1, j2, tip = finger_joints(i)
+        j0, j1, j2, tip = finger_joints(i, side)
         bone(f"f{i}_0", j0, j1, "wrist")
         bone(f"f{i}_1", j1, j2, f"f{i}_0")
         bone(f"f{i}_2", j2, tip, f"f{i}_1")
@@ -169,7 +210,7 @@ stats = {}
 stats["hand_l"] = export_hand(1)
 stats["hand_r"] = export_hand(-1)
 layout = {
-    "finger_y": list(FY), "finger_z": FZ, "finger_scale": list(FS), "finger_segs": list(SEG),
+    "finger_y_times_side": list(FYB), "finger_z": list(FZS), "finger_scale": list(FS), "finger_segs": list(SEG),
     "thumb_base": THUMB_BASE, "thumb_z": THUMB_Z, "thumb_splay_deg": math.degrees(THUMB_SPLAY), "thumb_segs": list(T_SEG),
 }
 json.dump(layout, open(r"C:/Users/smitt/Documents/zombie_survival/Assets/models/creatures/mc61g_hand_layout.json", "w"))

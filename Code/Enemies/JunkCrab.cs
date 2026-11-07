@@ -192,7 +192,7 @@ public sealed class JunkCrab : Component, ICreature
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = Model.Load( $"models/creatures/crab/{model}.vmdl" );
 		r.Tint = color;
-		Shapes.Skin( r );
+		Shapes.Skin( r, "chitin" );
 		part.Renderers.Add( (r, color) );
 	}
 
@@ -200,7 +200,7 @@ public sealed class JunkCrab : Component, ICreature
 	void Spike( Part part, Vector3 at, Vector3 direction, Vector3 up, float radius, float length, float tip, float bend, Color color, bool skin )
 	{
 		var r = ShapeMeshes.AddSpindle( part.Go, "Shape", at, direction, up, radius, length, tip, bend, color );
-		if ( skin ) Shapes.Skin( r );
+		if ( skin ) Shapes.Skin( r, "chitin" );
 		part.Renderers.Add( (r, color) );
 	}
 
@@ -229,7 +229,7 @@ public sealed class JunkCrab : Component, ICreature
 		r.Model = Shapes.Sphere;
 		r.Tint = color;
 		// Shell and legs get scales; eyes, mouth and other details stay smooth.
-		if ( color == shellColor || color == bellyColor ) Shapes.Skin( r );
+		if ( color == shellColor || color == bellyColor ) Shapes.Skin( r, "chitin" );
 		part.Renderers.Add( (r, color) );
 	}
 

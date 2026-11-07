@@ -177,7 +177,7 @@ public sealed class Bloober : Component, ICreature
 			// A paler belly underneath, and the colour drifting a little along the body toward the tail.
 			var shade = Shapes.Hsv( hue + t * 0.07f, 0.85f - t * 0.1f, 0.36f - t * 0.06f );
 			renderer.Tint = shade;
-			Shapes.Skin( renderer );
+			Shapes.Skin( renderer, "eelskin" );
 
 			// Bullets find it through a trigger, so players and physics never snag on the snake.
 			var collider = go.AddComponent<SphereCollider>();

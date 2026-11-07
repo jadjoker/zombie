@@ -32,7 +32,7 @@ public static class Shapes
 	static readonly Dictionary<string, Material> skins = new();
 
 	/// <summary>
-	/// Gives a creature renderer a textured skin: "scales" (plates with grooves) or "slime" (fine bumps).
+	/// Gives a creature renderer a textured skin: "chitin" (crab shell), "eelskin" (wet spotted skin), "slime" (fine bumps) or the old "scales" (rocky plates).
 	/// The textures are light grey, so the renderer's tint still sets the colour.
 	/// </summary>
 	public static void Skin( ModelRenderer renderer, string kind = "scales" )

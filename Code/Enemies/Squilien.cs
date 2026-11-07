@@ -233,7 +233,7 @@ public sealed class Squilien : Component, ICreature
 		renderer.Model = Model.Load( index == 0 ? "models/creatures/squilien/bell.vmdl" : "models/creatures/squilien/tentacle.vmdl" );
 		if ( renderer.Model is null || renderer.Model.IsError ) renderer.Model = Shapes.Sphere;
 		renderer.Tint = BodyColor;
-		Shapes.Skin( renderer, "slime" );
+		Shapes.Skin( renderer, "jelly" );
 
 		var collider = go.AddComponent<SphereCollider>();
 		collider.IsTrigger = true;

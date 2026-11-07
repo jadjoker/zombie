@@ -85,8 +85,48 @@ def moss():
 	save("moss_normal", normal_from(h, 8))
 
 
+# ---- Stylized set: soft, low-contrast detail that suits the smooth blobby models ----
+def soft_foliage():
+	big = norm01(fbm(501, 2, 10))
+	clumps = norm01(blur(fbm(502, 6, 30), 2))
+	lum = 0.80 + 0.10 * (big - 0.5) + 0.08 * (clumps - 0.5)
+	col = np.stack([lum, lum, lum * 0.97], -1)
+	h = 0.6 * clumps + 0.4 * big
+	save("soft_foliage_color", col)
+	save("soft_foliage_normal", normal_from(h, 3))
+	save("soft_foliage_rough", np.full((N, N), 0.85))
+
+
+def soft_bark():
+	streak = norm01(blur(band(511, 4, 40, 0.8, (0.0, 6.0)), 1.5))
+	big = norm01(fbm(512, 1, 6))
+	lum = 0.78 + 0.12 * (streak - 0.5) + 0.06 * (big - 0.5)
+	col = np.stack([lum, lum * 0.98, lum * 0.95], -1)
+	save("soft_bark_color", col)
+	save("soft_bark_normal", normal_from(streak, 4))
+	save("soft_bark_rough", np.full((N, N), 0.88))
+
+
+def soft_rock():
+	big = norm01(fbm(521, 1, 8))
+	mid = norm01(blur(fbm(522, 6, 30), 2))
+	lum = 0.78 + 0.10 * (big - 0.5) + 0.06 * (mid - 0.5)
+	col = np.stack([lum, lum * 0.99, lum * 0.96], -1)
+	save("soft_rock_color", col)
+	save("soft_rock_normal", normal_from(0.6 * big + 0.4 * mid, 4))
+	save("soft_rock_rough", np.full((N, N), 0.85))
+
+
+def soft_moss():
+	tone = norm01(fbm(531, 2, 12))
+	col = mix(rgb(0.30, 0.44, 0.14), rgb(0.40, 0.52, 0.18), tone)
+	save("soft_moss_color", col)
+	save("soft_moss_normal", normal_from(tone, 2))
+
+
 if __name__ == "__main__":
-	bark()
-	foliage()
-	rock()
-	moss()
+	soft_foliage()
+	soft_bark()
+	soft_rock()
+	soft_moss()
+	# The detailed set (bark, foliage, rock, moss) looked too noisy on the smooth models; kept for reference.

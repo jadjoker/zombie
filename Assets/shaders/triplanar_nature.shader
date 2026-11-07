@@ -81,6 +81,9 @@ PS
 
 	// Darken downward-facing surfaces (fake occlusion for canopies and bushes)
 	float g_flBottomDarken < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Variation,30/50" ); >;
+	// Stylized sky gradient: lift upward faces toward this colour (sunlit leaf tops, highlights)
+	float3 g_vTopLightColor < UiType( Color ); Default3( 1.0, 1.0, 0.8 ); UiGroup( "Variation,30/60" ); >;
+	float g_flTopLight < Default( 0.0 ); Range( 0.0, 1.0 ); UiGroup( "Variation,30/70" ); >;
 
 	float Hash31( float3 p )
 	{
@@ -156,7 +159,7 @@ PS
 
 		// Top layer on upward faces, with a noisy edge.
 		float edge = FBm( wp / 40.0 ) - 0.5;
-		float top = saturate( ( n.z - ( 1.0 - g_flTopAmount * 1.4 ) + edge * 0.5 ) * g_flTopSharpness ) * step( 0.001, g_flTopAmount );
+		float top = saturate( ( n.z - ( 1.0 - g_flTopAmount * 1.4 ) + edge * 0.15 ) * g_flTopSharpness ) * step( 0.001, g_flTopAmount );
 		float3 topCol = TriColor( g_tTopColor, wp, w, g_flTopScale );
 		float3 topN = TriNormal( g_tTopNormal, wp, n, w, g_flTopScale, 1.0 );
 
@@ -168,6 +171,8 @@ PS
 		// Fake occlusion: undersides (canopy bellies, bush bottoms) get darker.
 		float low = saturate( -n.z * 1.2 + 0.25 );
 		m.Albedo *= 1.0 - g_flBottomDarken * low * 0.6;
+		float up = saturate( n.z );
+		m.Albedo = lerp( m.Albedo, m.Albedo * g_vTopLightColor * 1.6, up * up * g_flTopLight * ( 1.0 - top ) );
 		m.AmbientOcclusion *= 1.0 - g_flBottomDarken * low * 0.5;
 
 		#if ( S_MODE_DEPTH )

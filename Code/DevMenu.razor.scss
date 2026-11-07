@@ -41,10 +41,10 @@ DevMenu
 		position: absolute;
 		left: 50%;
 		top: 50%;
-		width: 660px;
-		height: 600px;
-		margin-left: -330px;
-		margin-top: -300px;
+		width: 780px;
+		height: 680px;
+		margin-left: -390px;
+		margin-top: -340px;
 		flex-direction: column;
 		background-color: rgba( #0c1016, 0.96 );
 		border: 2px solid #2fd08a;
@@ -87,6 +87,7 @@ DevMenu
 	.section
 	{
 		flex-direction: column;
+		flex-shrink: 0;
 		margin-bottom: 12px;
 
 		.heading
@@ -103,6 +104,7 @@ DevMenu
 	.chips
 	{
 		flex-wrap: wrap;
+		flex-shrink: 0;
 	}
 
 	.chip

@@ -284,7 +284,7 @@
 	string BannerClass => BannerIsStart ? "start" : "cleared";
 	bool FloatStart => BannerIsStart && (Director?.FloatRound ?? false);
 	string BannerTitle => (Director?.OpenWorld ?? false) ? (BannerIsStart ? $"DANGER {Director?.Wave}" : "") : FloatStart ? "ANCHOR SNAPPED" : BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
-	string BannerSubtitle => (Director?.OpenWorld ?? false) ? "The ground ahead is getting worse" : FloatStart ? $"Wave {Director?.Wave}: you're floating. Jump to rise, crouch to sink"
+	string BannerSubtitle => (Director?.OpenWorld ?? false) ? (Director.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse") : FloatStart ? $"Wave {Director?.Wave}: you're floating. Jump to rise, crouch to sink"
 		: BannerIsStart ? (Director?.BossWave ?? false ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
 	float BannerOpacity => BannerAge < 0.2f ? BannerAge / 0.2f : MathX.Clamp( 1f - (BannerAge - 2f) / 0.6f, 0f, 1f );
 	float BannerScale => 1f + MathX.Clamp( 1f - BannerAge / 0.25f, 0f, 1f ) * 0.6f;
@@ -295,7 +295,7 @@
 		{
 			var d = Director;
 			if ( d is null ) return "";
-			if ( d.OpenWorld && d.State == WaveState.Fighting ) return $"{d.CellsExplored} areas explored, {d.ZombiesRemaining} enemies near";
+			if ( d.OpenWorld && d.State == WaveState.Fighting ) return d.DangerBy == WaveDirector.DangerSource.Time ? $"{(int)(d.SurvivalSeconds / 60)}:{(int)(d.SurvivalSeconds % 60):00} survived, {d.ZombiesRemaining} enemies near" : $"{d.CellsExplored} areas explored, {d.ZombiesRemaining} enemies near";
 			return d.State switch
 			{
 				WaveState.Intermission when d.Wave == 0 => $"Enemies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",

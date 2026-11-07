@@ -76,6 +76,13 @@ public sealed class WaveDirector : Component
 
 	/// <summary> On: enemies trickle in all the time and danger (shown as the "wave" number) rises with exploration. </summary>
 	[Property, Group( "Open world" )] public bool OpenWorld { get; set; }
+	public enum DangerSource { Time, Exploration }
+	/// <summary> What makes danger climb: the clock, or how far and wide players have explored. </summary>
+	[Property, Group( "Open world" )] public DangerSource DangerBy { get; set; } = DangerSource.Time;
+	/// <summary> Time mode: seconds of survival per danger level. </summary>
+	[Property, Group( "Open world" )] public float SecondsPerLevel { get; set; } = 90f;
+	/// <summary> Seconds survived in the current run (open world). </summary>
+	[Sync] public float SurvivalSeconds { get; set; }
 	/// <summary> Side of one square of ground that counts as "explored" when someone steps into it. </summary>
 	[Property, Group( "Open world" )] public float CellSize { get; set; } = 500f;
 	/// <summary> Distance from the start that adds one danger level. </summary>
@@ -135,7 +142,10 @@ public sealed class WaveDirector : Component
 		}
 		CellsExplored = visitedCells.Count;
 
-		Wave = 1 + (int)(FarthestDistance / MathF.Max( 1f, DistancePerLevel )) + (CellsExplored - 1) / Math.Max( 1, CellsPerLevel );
+		SurvivalSeconds += Time.Delta;
+		Wave = DangerBy == DangerSource.Time
+			? 1 + (int)(SurvivalSeconds / MathF.Max( 1f, SecondsPerLevel ))
+			: 1 + (int)(FarthestDistance / MathF.Max( 1f, DistancePerLevel )) + (CellsExplored - 1) / Math.Max( 1, CellsPerLevel );
 		if ( Wave > lastDanger )
 		{
 			if ( lastDanger > 0 ) WaveStartedEverywhere(); // banner and sting when the danger steps up
@@ -382,6 +392,7 @@ public sealed class WaveDirector : Component
 		visitedCells.Clear();
 		CellsExplored = 0;
 		FarthestDistance = 0f;
+		SurvivalSeconds = 0f;
 		toSpawn = 0;
 		bossPending = false;
 		BossWave = false;

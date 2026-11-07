@@ -169,14 +169,19 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] FingerScale = { 0.93f, 1.0f, 0.95f, 0.8f };   // index, middle, ring, pinky: real hands have uneven fingers
 	static readonly float[] ThumbLength = { 3.6f, 3.0f };
 
-	/// <summary> A jointed hand: the palm part plus a joint object for every finger segment. </summary>
+	/// <summary>
+	/// A hand: ONE smooth skinned mesh (palm, fingers, thumb) with a small skeleton. The code bends the bones, so every
+	/// finger curls as a continuous surface instead of stacked rigid pieces.
+	/// </summary>
 	sealed class Hand
 	{
 		public float Side;
 		public GameObject Root;
-		public readonly GameObject[][] Fingers = new GameObject[4][];
-		public readonly GameObject[] Thumb = new GameObject[ThumbLinks];
-		public readonly float[] Curl = new float[14];   // 4 fingers x 3 joints, then 2 thumb joints
+		public SkinnedModelRenderer Skin;
+		public readonly int[] Bone = new int[14];            // f0_0..f3_2 then th_0, th_1
+		public readonly Transform[] Rest = new Transform[14]; // rest pose, in the skin's own space
+		public bool Ready;
+		public readonly float[] Curl = new float[14];   // 4 fingers x 3 joints, then 2 thumb joints (degrees)
 		public float Splay = 38f;
 	}
 	readonly Hand[] hands = new Hand[2];
@@ -304,35 +309,35 @@ public sealed class MC61 : Component, ICreature
 	{
 		var part = AddPart( index, Torso, parts[Torso].Go, side > 0 ? "Hand L" : "Hand R", new Vector3( 6f, side * 36f, 18f ), Angles.Zero, HandHealth );
 		part.Go.LocalScale = HandScale;
-		Sculpt( part, side > 0 ? "palm_l" : "palm_r", Glove );
 		Trigger( part, new Vector3( 0, 0, 0 ), new Vector3( 0, 0, 13 ), 8f );
 
-		var hand = new Hand { Side = side, Root = part.Go };
+		var skinGo = new GameObject( part.Go, true, "Hand Skin" );
+		var skin = skinGo.AddComponent<SkinnedModelRenderer>();
+		skin.Model = Model.Load( side > 0 ? "models/creatures/mc61g/hand_l.vmdl" : "models/creatures/mc61g/hand_r.vmdl" );
+		skin.UseAnimGraph = false;
+		skin.Tint = Glove;
+		part.Renderers.Add( (skin, Glove) );
+
+		var hand = new Hand { Side = side, Root = part.Go, Skin = skin };
 		hands[index == HandL ? 0 : 1] = hand;
-		for ( var f = 0; f < 4; f++ )
+	}
+
+	/// <summary> Looks up the hand skeleton and remembers its rest pose, once the renderer is ready. </summary>
+	static bool PrepareHand( Hand hand )
+	{
+		if ( hand.Ready ) return true;
+		var skin = hand.Skin;
+		if ( !skin.IsValid() || skin.Model is null || skin.SceneModel is null ) return false;
+		for ( var i = 0; i < 14; i++ )
 		{
-			hand.Fingers[f] = new GameObject[FingerLinks];
-			var parent = part.Go;
-			for ( var j = 0; j < FingerLinks; j++ )
-			{
-				var joint = new GameObject( parent, true, $"Finger {f}.{j}" );
-				joint.LocalPosition = j == 0 ? new Vector3( 0, FingerY[f], FingerZ ) : new Vector3( 0, 0, FingerLinkLength );
-				joint.LocalScale = j == 0 ? FingerScale[f] : FingerTaper;   // each link a touch smaller than the one before
-				Sculpt( part, "f_seg", Glove, joint );
-				hand.Fingers[f][j] = joint;
-				parent = joint;
-			}
+			var name = i < 12 ? $"f{i / 3}_{i % 3}" : $"th_{i - 12}";
+			var bone = skin.Model.Bones.GetBone( name );
+			if ( bone is null || !skin.TryGetBoneTransform( bone, out var tx ) ) return false;
+			hand.Bone[i] = bone.Index;
+			hand.Rest[i] = skin.GameObject.WorldTransform.ToLocal( tx );
 		}
-		var thumbParent = part.Go;
-		for ( var j = 0; j < ThumbLinks; j++ )
-		{
-			var joint = new GameObject( thumbParent, true, $"Thumb {j}" );
-			joint.LocalPosition = j == 0 ? new Vector3( 0, side * 4.7f, 4.4f ) : new Vector3( 0, 0, ThumbLinkLength );
-			joint.LocalScale = j == 0 ? 1f : ThumbTaper;
-			Sculpt( part, "t_seg", Glove, joint );
-			hand.Thumb[j] = joint;
-			thumbParent = joint;
-		}
+		hand.Ready = true;
+		return true;
 	}
 
 	// ---- The live eye picture --------------------------------------------------
@@ -501,8 +506,8 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] PoseSpread = { -6, -4, -2, -2, -2, 0, -4, -2, 0, -10, -6, -2, -25, 0 };
 
 	/// <summary>
-	/// Eases a hand's every finger joint toward a pose. `ripple` sends a soft wave across the fingers so they never
-	/// look frozen; the fingertips lag the knuckles a little; `fan` spreads the fingers; `tremble` shakes them.
+	/// Eases a hand's joints toward a pose, then bends the skeleton. `ripple` sends a soft wave across the fingers so they
+	/// never look frozen; fingertips lag the knuckles a little; `fan` spreads the fingers; `tremble` shakes them.
 	/// </summary>
 	void CurlHand( Hand hand, float[] pose, float rate, float tremble, float fan, float thumbSplay, float ripple = 0f )
 	{
@@ -518,27 +523,41 @@ public sealed class MC61 : Component, ICreature
 			hand.Curl[i] = MathX.Lerp( hand.Curl[i], pose[i] + wobble + flow, k );
 		}
 		hand.Splay = MathX.Lerp( hand.Splay, thumbSplay, MathX.Clamp( Time.Delta * rate, 0f, 1f ) );
+
+		if ( !PrepareHand( hand ) ) return;
+		var model = hand.Skin.SceneModel;
+
+		// Fingers: bone m's pose is its rest pose carried through the rotations of every joint above it (about each joint's pivot).
 		for ( var f = 0; f < 4; f++ )
 		{
-			var spread = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan );
-			for ( var j = 0; j < FingerLinks; j++ )
-			{
-				var link = hand.Fingers[f][j];
-				if ( !link.IsValid() ) continue;
-				var m = FingerLinkJoint[j];
-				var angle = m >= 0 ? hand.Curl[f * 3 + m] * FingerLinkShare[j] : 0f;
-				var bend = Rotation.FromAxis( Vector3.Left, angle );
-				link.LocalRotation = j == 0 ? spread * bend : bend;
-			}
+			var rot = new Rotation[3];
+			rot[0] = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan ) * Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3] );
+			rot[1] = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + 1] );
+			rot[2] = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + 2] );
+			ApplyChain( hand, model, f * 3, 3, rot );
 		}
-		for ( var j = 0; j < ThumbLinks; j++ )
+
+		// Thumb: rests splayed 38 degrees outward; it flexes about that tilted axis.
+		var flex = Rotation.FromAxis( Vector3.Forward, -hand.Side * 38f ) * Vector3.Left;
+		var thumb = new Rotation[2];
+		thumb[0] = Rotation.FromAxis( Vector3.Forward, -hand.Side * (hand.Splay - 38f) ) * Rotation.FromAxis( flex, hand.Curl[12] );
+		thumb[1] = Rotation.FromAxis( flex, hand.Curl[13] );
+		ApplyChain( hand, model, 12, 2, thumb );
+	}
+
+	static void ApplyChain( Hand hand, SceneModel model, int first, int count, Rotation[] rot )
+	{
+		for ( var m = 0; m < count; m++ )
 		{
-			var link = hand.Thumb[j];
-			if ( !link.IsValid() ) continue;
-			var m = ThumbLinkJoint[j];
-			var angle = m >= 0 ? hand.Curl[12 + m] * ThumbLinkShare[j] : 0f;
-			var bend = Rotation.FromAxis( Vector3.Left, angle );
-			link.LocalRotation = j == 0 ? Rotation.FromAxis( Vector3.Forward, -hand.Side * hand.Splay ) * bend : bend;
+			var position = hand.Rest[first + m].Position;
+			var rotation = hand.Rest[first + m].Rotation;
+			for ( var k = m; k >= 0; k-- )
+			{
+				var pivot = hand.Rest[first + k].Position;
+				position = pivot + rot[k] * (position - pivot);
+				rotation = rot[k] * rotation;
+			}
+			model.SetBoneOverride( hand.Bone[first + m], new Transform( position, rotation ) );
 		}
 	}
 

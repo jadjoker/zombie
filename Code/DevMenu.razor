@@ -75,6 +75,8 @@
 
 	protected override void OnUpdate()
 	{
+		// Dev tool: only in the editor, never in a published build.
+		if ( !Game.IsEditor ) return;
 		if ( Input.Pressed( "DevMenu" ) ) SetOpen( !open );
 	}
 

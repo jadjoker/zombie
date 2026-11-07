@@ -235,7 +235,7 @@ public sealed class WaveDirector : Component
 		EnemyKind.Bloober => TrySpawnBloober(),
 		EnemyKind.Squilien => TrySpawnSquilien(),
 		EnemyKind.Crab => TrySpawnCrab(),
-		EnemyKind.Boss => SpawnBossWaves && TrySpawnBoss(),
+		EnemyKind.Boss => TrySpawnBoss(),
 		_ => false,
 	};
 

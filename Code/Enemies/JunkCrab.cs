@@ -391,10 +391,10 @@ public sealed class JunkCrab : Component, ICreature
 				else agent?.MoveTo( target.WorldPosition );
 			}
 
-			// Crabs go sideways: face across the way it's moving, and turn to face you up close.
+			// Always face you (it scuttles toward you claws first), unless it's blind and stumbling about.
 			var velocity = agent.IsValid() ? agent.Velocity.WithZ( 0 ) : Vector3.Zero;
-			if ( distance < 160f * Size && !Blind ) Face( toTarget, 6f );
-			else if ( velocity.Length > 10f ) Face( Rotation.FromYaw( 90f * sideSign ) * velocity, 6f );
+			if ( !Blind ) Face( toTarget, 8f );
+			else if ( velocity.Length > 10f ) Face( velocity, 6f );
 		}
 		else agent?.Stop();
 

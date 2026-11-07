@@ -1,0 +1,42 @@
+# Pre-sorts the backlog board: issues labelled bug or playtest skip Workshop and go straight to Todo.
+# Everything else is left to the board's own workflows (auto-add, new items start in Workshop).
+# Needs the PROJECT_TOKEN repo secret (a classic token with the `project` scope); without it this does nothing.
+name: Pre-sort board
+
+on:
+  issues:
+    types: [opened, labeled, reopened]
+
+jobs:
+  presort:
+    if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'playtest')
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.PROJECT_TOKEN }}
+      ISSUE_ID: ${{ github.event.issue.node_id }}
+      PROJECT_ID: PVT_kwHODErI184BqYSv
+      STATUS_FIELD: PVTSSF_lAHODErI184BqYSvzhovrtY
+      TODO: f75ad846
+    steps:
+      - name: Move to Todo
+        run: |
+          if [ -z "$GH_TOKEN" ]; then echo "No PROJECT_TOKEN secret, skipping."; exit 0; fi
+
+          set_todo() {
+            # Find this issue's card on the board, adding it if auto-add hasn't yet.
+            item=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on Issue { projectItems(first: 20) { nodes { id project { id } } } } } }' \
+              -f id="$ISSUE_ID" --jq ".data.node.projectItems.nodes[] | select(.project.id == \"$PROJECT_ID\") | .id")
+            if [ -z "$item" ]; then
+              item=$(gh api graphql -f query='mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: {projectId: $p, contentId: $c}) { item { id } } }' \
+                -f p="$PROJECT_ID" -f c="$ISSUE_ID" --jq '.data.addProjectV2ItemById.item.id')
+            fi
+            gh api graphql -f query='mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) { updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: $f, value: {singleSelectOptionId: $o}}) { projectV2Item { id } } }' \
+              -f p="$PROJECT_ID" -f i="$item" -f f="$STATUS_FIELD" -f o="$TODO" > /dev/null
+            echo "Card $item set to Todo"
+          }
+
+          # The board's own "item added -> Workshop" rule can land after us, so set it, wait, and set it again.
+          sleep 15
+          set_todo
+          sleep 30
+          set_todo

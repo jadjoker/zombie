@@ -7,6 +7,10 @@ on:
   issues:
     types: [opened, labeled, reopened]
 
+concurrency:
+  group: presort-${{ github.event.issue.number }}
+  cancel-in-progress: true
+
 jobs:
   presort:
     if: contains(github.event.issue.labels.*.name, 'bug') || contains(github.event.issue.labels.*.name, 'playtest')
@@ -23,13 +27,8 @@ jobs:
           if [ -z "$GH_TOKEN" ]; then echo "No PROJECT_TOKEN secret, skipping."; exit 0; fi
 
           set_todo() {
-            # Find this issue's card on the board, adding it if auto-add hasn't yet.
-            item=$(gh api graphql -f query='query($id: ID!) { node(id: $id) { ... on Issue { projectItems(first: 20) { nodes { id project { id } } } } } }' \
-              -f id="$ISSUE_ID" --jq ".data.node.projectItems.nodes[] | select(.project.id == \"$PROJECT_ID\") | .id")
-            if [ -z "$item" ]; then
-              item=$(gh api graphql -f query='mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: {projectId: $p, contentId: $c}) { item { id } } }' \
-                -f p="$PROJECT_ID" -f c="$ISSUE_ID" --jq '.data.addProjectV2ItemById.item.id')
-            fi
+            # Adding returns the existing card if it's already on the board.
+            item=$(gh api graphql -f query='mutation($p: ID!, $c: ID!) { addProjectV2ItemById(input: {projectId: $p, contentId: $c}) { item { id } } }'               -f p="$PROJECT_ID" -f c="$ISSUE_ID" --jq '.data.addProjectV2ItemById.item.id')
             gh api graphql -f query='mutation($p: ID!, $i: ID!, $f: ID!, $o: String!) { updateProjectV2ItemFieldValue(input: {projectId: $p, itemId: $i, fieldId: $f, value: {singleSelectOptionId: $o}}) { projectV2Item { id } } }' \
               -f p="$PROJECT_ID" -f i="$item" -f f="$STATUS_FIELD" -f o="$TODO" > /dev/null
             echo "Card $item set to Todo"

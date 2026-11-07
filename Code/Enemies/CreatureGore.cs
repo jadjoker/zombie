@@ -22,6 +22,16 @@ public static class CreatureGore
 	public static (Vector3 Position, Vector3 Normal, GameObject Shape)? SkinHit( GameObject part, Vector3 origin, Vector3 direction )
 	{
 		if ( !part.IsValid() ) return null;
+
+		// Exact: trace the part's real render mesh, so the wound sits right where the bullet met the skin.
+		var exact = part.Scene.Trace.Ray( origin, origin + direction.Normal * 160f )
+			.UseRenderMeshes( true ).UsePhysicsWorld( false )
+			.WithoutTags( "gore", "viewmodel", "player" )
+			.Run();
+		if ( exact.Hit && exact.GameObject.IsValid() && BelongsTo( exact.GameObject, part ) )
+			return (exact.HitPosition, exact.Normal, exact.GameObject);
+
+		// Fallback: the ellipsoid that fits each blob shape.
 		(Vector3, Vector3, GameObject)? best = null;
 		var bestDistance = float.MaxValue;
 
@@ -71,6 +81,14 @@ public static class CreatureGore
 		return best;
 	}
 
+	/// <summary> True if `go` is one of `part`'s own shapes (not a child part's, and not gore). </summary>
+	static bool BelongsTo( GameObject go, GameObject part )
+	{
+		if ( go.Name is "Gore" ) return false;
+		if ( go != part && !go.IsDescendant( part ) ) return false;
+		return go == part || go.Components.Get<CreaturePart>( FindMode.InAncestors ) is not { } owner || owner.GameObject == part;
+	}
+
 	/// <summary>
 	/// A bullet wound on a part's skin: a dark, wet crater with bright goo in the middle, a little
 	/// bigger each time the same spot is hit again. Sticks to the part as it moves.
@@ -78,37 +96,63 @@ public static class CreatureGore
 	public static void AddWound( GameObject part, Vector3 hitPosition, Vector3 direction, Color skin, Color goo, float size )
 	{
 		if ( !part.IsValid() ) return;
-		var origin = hitPosition - direction.Normal * 60f;
-		if ( SkinHit( part, origin, direction.Normal ) is not { } hit ) return;
+		direction = direction.Normal;
+		var origin = hitPosition - direction * 60f;
+		if ( SkinHit( part, origin, direction ) is not { } hit ) return;
+
+		// A bullet hole is small: about half the old crater.
+		size *= 0.5f;
+		ImpactSpray( part.Scene, hit.Position, hit.Normal, direction, goo, size );
 
 		// Hitting right next to an open wound widens it instead of adding another.
 		var wounds = part.Children.Where( c => c.Name == "Wound" ).ToList();
-		var near = wounds.FirstOrDefault( w => w.WorldPosition.Distance( hit.Position ) < size * 1.2f );
+		var near = wounds.FirstOrDefault( w => w.WorldPosition.Distance( hit.Position ) < size * 1.1f );
 		if ( near is not null )
 		{
-			if ( near.LocalScale.x < 1.6f ) near.LocalScale *= 1.12f;
+			if ( near.LocalScale.x < 1.8f ) near.LocalScale *= 1.15f;
 			return;
 		}
 
 		if ( wounds.Count >= MaxWoundsPerPart ) wounds[0].Destroy();
 
 		var wound = new GameObject( part, true, "Wound" );
+		wound.Tags.Add( "gore" );
 		wound.WorldPosition = hit.Position;
 		wound.WorldRotation = Rotation.LookAt( hit.Normal ) * Rotation.FromRoll( Game.Random.Float( 0f, 360f ) );
 		var partScale = part.WorldScale.x;
 		var s = size / MathF.Max( partScale, 0.01f );
 
-		// Bruised ring flush with the skin, a dark hole inside it, wet goo in the bottom of the hole.
-		// Kept nearly flat so it reads as a hole, not a blister.
-		Blob( wound, new Vector3( -0.1f * s, 0, 0 ), new Vector3( 0.14f, 1f, 0.85f ) * s, Color.Lerp( skin, new Color( 0.25f, 0f, 0.05f ), 0.55f ) );
-		Blob( wound, new Vector3( -0.07f * s, 0, 0 ), new Vector3( 0.12f, 0.7f, 0.6f ) * s, new Color( 0.08f, 0.01f, 0.03f ) );
-		Blob( wound, new Vector3( -0.05f * s, 0.05f * s, -0.08f * s ), new Vector3( 0.11f, 0.42f, 0.36f ) * s, Color.Lerp( goo, Color.White, 0.15f ) );
+		// Flat and tight: a thin bruised rim, a dark punched hole, a wet bead of goo welling up in it.
+		// Slightly oval when the shot came in at an angle, like a real entry wound.
+		var oval = 1f + (1f - MathF.Abs( Vector3.Dot( direction, hit.Normal ) )) * 0.6f;
+		Blob( wound, new Vector3( -0.05f * s, 0, 0 ), new Vector3( 0.05f, 1f * oval, 0.9f ) * s, Color.Lerp( skin, Color.Black, 0.45f ) );
+		Blob( wound, new Vector3( -0.03f * s, 0, 0 ), new Vector3( 0.07f, 0.6f * oval, 0.55f ) * s, Color.Lerp( goo, Color.Black, 0.75f ) );
+		Blob( wound, new Vector3( -0.01f * s, 0.08f * s, -0.1f * s ), new Vector3( 0.09f, 0.32f, 0.4f ) * s, Color.Lerp( goo, Color.Black, 0.2f ) );
 
-		// A short ooze running down from it.
+		// A thin trickle running out of it.
 		var drip = wound.AddComponent<GooOoze>();
 		drip.Color = goo;
 		drip.Lifetime = Game.Random.Float( 1.5f, 3f );
-		drip.Interval = 0.35f;
+		drip.Interval = 0.3f;
+	}
+
+	/// <summary>
+	/// The splash of a bullet going in: a fine fan of goo kicked back off the skin toward the shooter,
+	/// plus a few drops blown out along the bullet's path.
+	/// </summary>
+	public static void ImpactSpray( Scene scene, Vector3 at, Vector3 normal, Vector3 direction, Color goo, float size )
+	{
+		var reflect = direction - 2f * Vector3.Dot( direction, normal ) * normal;
+		var back = (normal * 0.8f + reflect * 0.5f).Normal;
+		var drops = Game.Random.Int( 5, 9 );
+		for ( var i = 0; i < drops; i++ )
+		{
+			var dir = (back + Vector3.Random * 0.45f).Normal;
+			GooDroplet.Spawn( scene, at + normal * 1.5f, dir * Game.Random.Float( 110f, 280f ), goo, Game.Random.Float( 0.3f, 0.65f ) );
+		}
+		// Through-and-through: a little goes on out with the bullet.
+		for ( var i = 0; i < 3; i++ )
+			GooDroplet.Spawn( scene, at + direction * size * 2f, (direction + Vector3.Random * 0.25f).Normal * Game.Random.Float( 250f, 420f ), goo, Game.Random.Float( 0.35f, 0.7f ) );
 	}
 
 	/// <summary>
@@ -130,11 +174,17 @@ public static class CreatureGore
 
 		if ( dripSeconds > 0f )
 		{
+			// Arterial spray first: pulsing jets with the heartbeat, weaker on the piece that came off.
+			var jet = stump.AddComponent<GooJet>();
+			jet.Color = goo;
+			jet.Lifetime = MathX.Clamp( dripSeconds * 0.45f, 1f, 2.8f );
+			jet.Strength = MathX.Clamp( radius / 5f, 0.5f, 1.6f ) * (dripSeconds < 3f ? 0.55f : 1f);
+
+			// Then it just runs and drips.
 			var drip = stump.AddComponent<GooOoze>();
 			drip.Color = goo;
 			drip.Lifetime = dripSeconds;
-			drip.Interval = 0.12f;
-			drip.Spurt = true;
+			drip.Interval = 0.14f;
 		}
 		return stump;
 	}
@@ -212,6 +262,7 @@ public static class CreatureGore
 	static void Blob( GameObject parent, Vector3 at, Vector3 radii, Color color )
 	{
 		var go = new GameObject( parent, true, "Gore" );
+		go.Tags.Add( "gore" );
 		go.LocalPosition = at;
 		go.LocalScale = radii * Shapes.SphereScale( 1f );
 		var r = go.AddComponent<ModelRenderer>();
@@ -333,5 +384,43 @@ public sealed class GooOoze : Component
 			return;
 		}
 		GooDroplet.Spawn( Scene, at + Vector3.Random * 1.5f, Vector3.Down * 20f + Vector3.Random * 10f, Color, Game.Random.Float( 0.6f, 1.2f ) );
+	}
+}
+
+/// <summary>
+/// Arterial spray from a fresh stump: a tight stream of goo that surges with each heartbeat, arcing out
+/// and pattering down, weakening as it bleeds out. Follows the stump as the creature moves.
+/// </summary>
+public sealed class GooJet : Component
+{
+	public Color Color { get; set; }
+	public float Lifetime { get; set; } = 2.4f;
+	public float Strength { get; set; } = 1f;
+
+	TimeSince age;
+	float owed;
+
+	protected override void OnStart() => age = 0f;
+
+	protected override void OnUpdate()
+	{
+		if ( age > Lifetime ) { Destroy(); return; }
+		var life = 1f - age / Lifetime;
+
+		// Heartbeat: a hard surge, then a thin weak stream until the next one.
+		var phase = (age * 2.2f) % 1f;
+		var surge = phase < 0.25f ? MathF.Sin( phase / 0.25f * MathF.PI ) : 0f;
+		var flow = 0.25f + surge * 0.75f;
+
+		owed += 260f * flow * Strength * (0.3f + 0.7f * life) * Time.Delta;
+		var outward = WorldRotation.Forward;
+		var speed = (160f + 300f * surge) * (0.45f + 0.55f * life) * MathF.Sqrt( Strength );
+		while ( owed >= 1f )
+		{
+			owed -= 1f;
+			var dir = (outward + Vector3.Random * (0.035f + 0.06f * (1f - surge))).Normal;
+			GooDroplet.Spawn( Scene, WorldPosition + dir * Game.Random.Float( 0f, 2f ), dir * speed * Game.Random.Float( 0.85f, 1.1f ), Color,
+				Game.Random.Float( 0.45f, 0.95f ) * MathF.Sqrt( Strength ), 1.8f );
+		}
 	}
 }

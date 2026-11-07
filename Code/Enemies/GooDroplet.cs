@@ -11,11 +11,11 @@ public sealed class GooDroplet : Component
 	TimeSince age;
 
 	/// <summary> Most droplets in flight at once; past this, new ones are skipped (the splats still happen). </summary>
-	public const int MaxLive = 350;
+	public const int MaxLive = 500;
 	static int live;
 	static int spawnsSinceRecount;
 
-	public static void Spawn( Scene scene, Vector3 position, Vector3 velocity, Color color, float size )
+	public static void Spawn( Scene scene, Vector3 position, Vector3 velocity, Color color, float size, float lifeScale = 1f )
 	{
 		// Every so often, recount the real number so the cap can never get stuck.
 		if ( ++spawnsSinceRecount > 60 )
@@ -26,6 +26,7 @@ public sealed class GooDroplet : Component
 		if ( live >= MaxLive ) return;
 		var go = new GameObject( true, "Goo" );
 		go.NetworkMode = NetworkMode.Never;
+		go.Tags.Add( "gore" );
 		go.WorldPosition = position;
 		go.WorldScale = Shapes.SphereScale( size );
 		var renderer = go.AddComponent<ModelRenderer>();
@@ -37,7 +38,7 @@ public sealed class GooDroplet : Component
 		drop.velocity = velocity;
 		drop.color = color;
 		drop.size = size;
-		drop.lifetime = Game.Random.Float( 0.45f, 0.8f );
+		drop.lifetime = Game.Random.Float( 0.45f, 0.8f ) * lifeScale;
 		drop.age = 0f;
 		live++;
 	}
@@ -62,6 +63,10 @@ public sealed class GooDroplet : Component
 		WorldPosition = next;
 		var t = age / lifetime;
 		if ( t >= 1f ) { GameObject.Destroy(); return; }
-		WorldScale = Shapes.SphereScale( size * (1f - t * t) );
+		// Stretched along its flight: fast drops read as streaks, slow ones as beads.
+		var r = Shapes.SphereScale( size * (1f - t * t) );
+		var speed = velocity.Length;
+		if ( speed > 1f ) WorldRotation = Rotation.LookAt( velocity / speed );
+		WorldScale = new Vector3( r * (1f + MathF.Min( speed / 160f, 3f )), r, r );
 	}
 }

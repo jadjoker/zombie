@@ -284,8 +284,8 @@ public sealed class MC61 : Component, ICreature
 	void DrawEye( Vector2 look, float lid, float glow )
 	{
 		if ( eyeTexture is null || eyePixels is null ) return;
-		var px = look.x * 0.38f;
-		var py = look.y * 0.3f;
+		var px = look.x * 0.5f;
+		var py = look.y * 0.22f;
 		var lidEdge = 1f - 2.1f * lid;
 		for ( var y = 0; y < EyeH; y++ )
 		{
@@ -426,20 +426,27 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] PosePoint = { 4, 2, 2, 88, 98, 62, 86, 96, 60, 82, 94, 58, 30, 20 };
 	static readonly float[] PosePinch = { 52, 50, 35, 30, 28, 20, 20, 24, 18, 22, 24, 18, 40, 24 };
 	static readonly float[] PoseClaw = { 55, 40, 25, 58, 42, 26, 55, 40, 25, 50, 38, 22, 20, 25 };
+	static readonly float[] PoseRelaxed = { 18, 24, 14, 22, 28, 16, 26, 30, 18, 30, 32, 20, 10, 12 };
 	static readonly float[] PoseSpread = { -6, -4, -2, -2, -2, 0, -4, -2, 0, -10, -6, -2, -25, 0 };
 
-	/// <summary> Eases a hand's every finger joint toward a pose, with an optional tremble and finger fan. </summary>
-	void CurlHand( Hand hand, float[] pose, float rate, float tremble, float fan, float thumbSplay )
+	/// <summary>
+	/// Eases a hand's every finger joint toward a pose. `ripple` sends a soft wave across the fingers so they never
+	/// look frozen; the fingertips lag the knuckles a little; `fan` spreads the fingers; `tremble` shakes them.
+	/// </summary>
+	void CurlHand( Hand hand, float[] pose, float rate, float tremble, float fan, float thumbSplay, float ripple = 0f )
 	{
 		if ( hand is null || !hand.Root.IsValid() ) return;
 		var t = Time.Now;
-		var k = MathX.Clamp( Time.Delta * rate, 0f, 1f );
 		for ( var i = 0; i < 14; i++ )
 		{
+			var finger = i / 3;
+			var joint = i % 3;
 			var wobble = tremble * MathF.Sin( t * 31f + i * 1.7f + hand.Side * 2f );
-			hand.Curl[i] = MathX.Lerp( hand.Curl[i], pose[i] + wobble, k );
+			var flow = i < 12 ? ripple * MathF.Sin( t * 2.4f - finger * 0.8f - joint * 0.6f + hand.Side * 1.3f ) : ripple * 0.6f * MathF.Sin( t * 1.9f + hand.Side );
+			var k = MathX.Clamp( Time.Delta * rate * (1f - 0.22f * (i < 12 ? joint : 1)), 0f, 1f );
+			hand.Curl[i] = MathX.Lerp( hand.Curl[i], pose[i] + wobble + flow, k );
 		}
-		hand.Splay = MathX.Lerp( hand.Splay, thumbSplay, k );
+		hand.Splay = MathX.Lerp( hand.Splay, thumbSplay, MathX.Clamp( Time.Delta * rate, 0f, 1f ) );
 		for ( var f = 0; f < 4; f++ )
 		{
 			var spread = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan );
@@ -455,13 +462,21 @@ public sealed class MC61 : Component, ICreature
 		if ( hand.Thumb[1].IsValid() ) hand.Thumb[1].LocalRotation = Rotation.FromAxis( Vector3.Left, hand.Curl[13] );
 	}
 
-	void MoveHand( int index, Vector3 position, Rotation rotation, float rate = 7f )
+	readonly Vector3[] handVel = new Vector3[2];
+	Vector3 lastHandRigPosition;
+
+	/// <summary> Hands are springs: they overshoot a little, trail behind his movement, and settle, instead of sliding stiffly. </summary>
+	void MoveHand( int index, Vector3 position, Rotation rotation, Vector3 drift )
 	{
 		var part = parts[index];
 		if ( part is null || part.Gone || !part.Go.IsValid() ) return;
-		var k = MathX.Clamp( Time.Delta * rate, 0f, 1f );
-		part.Go.LocalPosition = Vector3.Lerp( part.Go.LocalPosition, position, k );
-		part.Go.LocalRotation = Rotation.Slerp( part.Go.LocalRotation, rotation, k );
+		var dt = MathF.Min( Time.Delta, 1f / 30f );
+		var slot = index == HandL ? 0 : 1;
+		var target = position + drift;
+		handVel[slot] += (target - part.Go.LocalPosition) * 55f * dt;
+		handVel[slot] *= MathF.Exp( -6.5f * dt );
+		part.Go.LocalPosition += handVel[slot] * dt;
+		part.Go.LocalRotation = Rotation.Slerp( part.Go.LocalRotation, rotation, MathX.Clamp( dt * 9f, 0f, 1f ) );
 	}
 
 	/// <summary> Poses the rig: idle float, charging, beam stance, card spin, or the worm. </summary>
@@ -480,33 +495,38 @@ public sealed class MC61 : Component, ICreature
 		var tailWiggle = 1f;
 		var eyeGlow = 0f;
 
-		float[] poseL = PoseWave, poseR = PoseOpen;
+		// Hands hover loosely at his sides: relaxed fingers with a soft ripple, wrists swaying, bobbing out of step.
+		float[] poseL = PoseRelaxed, poseR = PoseRelaxed;
 		var tremble = 0f;
-		var fan = 0f;
-		var thumbSplay = 38f;
-		var posL = new Vector3( 4f, 40f, 14f + MathF.Sin( t * 1.4f ) * 4f );
-		var posR = new Vector3( 8f, -38f, 26f + MathF.Sin( t * 1.4f + 1.7f ) * 4f );
-		var rotL = Rotation.FromAxis( Vector3.Forward, -28f + MathF.Sin( t * 1.1f ) * 6f ) * Rotation.FromAxis( Vector3.Up, 10f );
-		var rotR = Rotation.FromAxis( Vector3.Forward, 30f + MathF.Sin( t * 1.2f ) * 6f ) * Rotation.FromAxis( Vector3.Up, -10f );
-		var flutter = 5f;
+		var fan = 4f;
+		var ripple = 9f;
+		var thumbSplay = 34f;
+		var posL = new Vector3( 8f, 36f, 12f + MathF.Sin( t * 1.4f ) * 4f + MathF.Sin( t * 0.7f ) * 2f );
+		var posR = new Vector3( 8f, -36f, 14f + MathF.Sin( t * 1.4f + 1.9f ) * 4f + MathF.Sin( t * 0.8f + 1f ) * 2f );
+		var sway = (float f) => Rotation.FromAxis( Vector3.Left, MathF.Sin( t * 1.3f + f ) * 9f ) * Rotation.FromAxis( Vector3.Up, MathF.Cos( t * 1.1f + f * 1.4f ) * 10f );
+		var rotL = Rotation.FromAxis( Vector3.Forward, -24f + MathF.Sin( t * 1.1f ) * 7f ) * Rotation.FromAxis( Vector3.Up, 12f ) * sway( 0f );
+		var rotR = Rotation.FromAxis( Vector3.Forward, 26f + MathF.Sin( t * 1.2f ) * 7f ) * Rotation.FromAxis( Vector3.Up, -12f ) * sway( 2f );
 
 		switch ( State )
 		{
 			case Mode.Charge:
 			{
-				// Leans back, hands rising to either side of the eye, fingers hooked into claws and shaking.
+				// Leans back; hands draw out to either side at shoulder height, fingers fanned and slowly curling
+				// inward toward the eye as the charge builds, trembling harder the closer he gets.
 				torsoAngles = new Angles( -8f - st * 3f, 0, 0 );
 				headAngles = new Angles( 10f, 0, 0 );
 				bob = MathF.Sin( t * 30f ) * 0.6f * st;
 				var charge = MathX.Clamp( st / ChargeTime, 0f, 1f );
 				eyeGlow = charge * (0.85f + 0.15f * MathF.Sin( t * 20f ));
-				poseL = poseR = PoseClaw;
-				tremble = 2f + 6f * charge;
-				flutter = 0f;
-				posL = new Vector3( 14f, 30f, 38f + MathF.Sin( t * 25f ) * charge );
-				posR = new Vector3( 14f, -30f, 38f + MathF.Sin( t * 25f + 1f ) * charge );
-				rotL = Rotation.FromAxis( Vector3.Forward, -22f );
-				rotR = Rotation.FromAxis( Vector3.Forward, 22f );
+				poseL = poseR = charge < 0.5f ? PoseSpread : PoseClaw;
+				fan = 14f - 8f * charge;
+				ripple = 3f;
+				tremble = 1.5f + 5f * charge;
+				var lift = 28f + 8f * charge + MathF.Sin( t * 22f ) * charge * 0.8f;
+				posL = new Vector3( 4f, 38f + 4f * charge, lift );
+				posR = new Vector3( 4f, -38f - 4f * charge, lift );
+				rotL = Rotation.FromAxis( Vector3.Forward, -34f + 14f * charge ) * Rotation.FromAxis( Vector3.Up, 18f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 34f - 14f * charge ) * Rotation.FromAxis( Vector3.Up, -18f );
 				tailWiggle = 0.5f;
 				break;
 			}
@@ -517,15 +537,15 @@ public sealed class MC61 : Component, ICreature
 				headAngles = Angles.Zero;
 				bob = MathF.Sin( t * 45f ) * 0.8f;
 				eyeGlow = 1f;
-				// Palms thrust forward like "stop", fingers splayed and rattling.
+				// Hands held wide, palms toward the eye, fingers splayed and rattling with the beam.
 				poseL = poseR = PoseSpread;
-				tremble = 6f;
-				fan = 9f;
-				flutter = 0f;
-				posL = new Vector3( 30f, 26f, 24f );
-				posR = new Vector3( 30f, -26f, 24f );
-				rotL = Rotation.FromAxis( Vector3.Up, -8f );
-				rotR = Rotation.FromAxis( Vector3.Up, 8f );
+				tremble = 3.5f;
+				fan = 10f;
+				ripple = 0f;
+				posL = new Vector3( 12f, 34f, 30f );
+				posR = new Vector3( 12f, -34f, 30f );
+				rotL = Rotation.FromAxis( Vector3.Forward, -26f ) * Rotation.FromAxis( Vector3.Up, 24f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 26f ) * Rotation.FromAxis( Vector3.Up, -24f );
 				tailWiggle = 0.3f;
 				break;
 			}
@@ -536,7 +556,7 @@ public sealed class MC61 : Component, ICreature
 				var hold = st < 0.55f;
 				poseL = poseR = hold ? PosePinch : PoseSpread;
 				fan = hold ? 0f : 12f;
-				flutter = 0f;
+				ripple = 0f;
 				tremble = hold ? 1.5f : 0f;
 				posL = hold ? new Vector3( 22f, 9f, 14f ) : new Vector3( 8f, 38f, 22f );
 				posR = hold ? new Vector3( 22f, -9f, 14f ) : new Vector3( 8f, -38f, 22f );
@@ -555,7 +575,7 @@ public sealed class MC61 : Component, ICreature
 				headAngles = new Angles( -70f + MathF.Sin( w - 1.2f ) * 20f, 0, 0 );
 				bob = MathF.Max( 0f, MathF.Sin( w ) ) * 8f;
 				poseL = poseR = PoseWave;
-				flutter = 22f;
+				ripple = 16f;
 				posL = new Vector3( 6f, 36f, 22f + MathF.Sin( w ) * 10f );
 				posR = new Vector3( 6f, -36f, 22f + MathF.Sin( w + 2f ) * 10f );
 				rotL = Rotation.FromAxis( Vector3.Forward, MathF.Sin( w ) * 30f );
@@ -570,10 +590,14 @@ public sealed class MC61 : Component, ICreature
 		Pose( Head, headAngles );
 
 		// Hands drift to where the attack wants them; every finger eases into the pose.
-		MoveHand( HandL, posL, rotL );
-		MoveHand( HandR, posR, rotR );
-		CurlHand( hands[0], poseL, 14f, tremble + flutter * 0.4f, fan, thumbSplay );
-		CurlHand( hands[1], poseR, 14f, tremble + flutter * 0.4f, fan, thumbSplay );
+		var rigMove = (WorldPosition - lastHandRigPosition) / dt;
+		lastHandRigPosition = WorldPosition;
+		var lag = -(WorldRotation.Inverse * rigMove) * 0.06f;      // hands trail behind when he moves
+		lag = lag.Clamp( new Vector3( -14f ), new Vector3( 14f ) );
+		MoveHand( HandL, posL, rotL, lag );
+		MoveHand( HandR, posR, rotR, lag );
+		CurlHand( hands[0], poseL, 10f, tremble, fan, thumbSplay, ripple );
+		CurlHand( hands[1], poseR, 10f, tremble, fan, thumbSplay, ripple );
 
 		AnimateTail( t, dt, tailWiggle );
 		AnimateEye( t, dt, eyeGlow );
@@ -630,10 +654,13 @@ public sealed class MC61 : Component, ICreature
 		{
 			var dir = (target.WorldPosition + Vector3.Up * 50f - parts[Eye].Go.WorldPosition).Normal;
 			var localDir = parts[Head].Go.WorldRotation.Inverse * dir;
-			want = new Vector2( MathX.Clamp( localDir.y * 2.4f, -1f, 1f ), MathX.Clamp( localDir.z * 2.0f, -1f, 1f ) );
+			// By angle, not raw direction: he hovers above you, so a raw height component would pin the pupil to the bottom.
+			var yaw = MathF.Atan2( localDir.y, MathF.Max( 0.05f, localDir.x ) ).RadianToDegree();
+			var pitch = MathF.Atan2( localDir.z, MathF.Sqrt( localDir.x * localDir.x + localDir.y * localDir.y ) ).RadianToDegree();
+			want = new Vector2( MathX.Clamp( yaw / 26f, -1f, 1f ), MathX.Clamp( pitch / 60f, -0.8f, 0.8f ) );
 		}
 		else want = new Vector2( MathF.Sin( t * 0.8f ), MathF.Cos( t * 0.6f ) * 0.4f );
-		eyeLook = Vector2.Lerp( eyeLook, want, MathX.Clamp( dt * 9f, 0f, 1f ) );
+		eyeLook = Vector2.Lerp( eyeLook, want, MathX.Clamp( dt * 14f, 0f, 1f ) );
 
 		// Blinks: usually a quick one, sometimes slow or a double.
 		if ( t >= nextBlinkAt )

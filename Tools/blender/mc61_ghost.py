@@ -70,6 +70,7 @@ def lathe(name, ring_pts, segs=56):
     for i in range(segs):
         bm.faces.new((rings[0][(i + 1) % segs], rings[0][i], top))
         bm.faces.new((rings[-1][i], rings[-1][(i + 1) % segs], bot))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])   # outward normals: the game culls back faces, so inward ones look see-through
     bm.normal_update(); bm.to_mesh(me); bm.free()
     o = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(o)
@@ -252,13 +253,13 @@ def jacket():
         rows.append(row)
     for a_, b_ in zip(rows, rows[1:]):
         for i in range(N - 1):
-            bm.faces.new((a_[i], a_[i + 1], b_[i + 1], b_[i]))
+            bm.faces.new((b_[i], b_[i + 1], a_[i + 1], a_[i]))
     bm.normal_update(); bm.to_mesh(me); bm.free()
     o = bpy.data.objects.new("ghost_jacket", me)
     bpy.context.scene.collection.objects.link(o)
     bpy.context.view_layer.objects.active = o
     o.select_set(True)
-    sol = o.modifiers.new("solid", 'SOLIDIFY'); sol.thickness = 1.4; sol.offset = 1.0
+    sol = o.modifiers.new("solid", 'SOLIDIFY'); sol.thickness = 1.4; sol.offset = -1.0
     bpy.ops.object.modifier_apply(modifier="solid")
     bpy.ops.object.shade_smooth()
     return o

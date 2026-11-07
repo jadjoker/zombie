@@ -45,14 +45,14 @@ def thumb_joints(side):
 def build_mesh(side):
     clear()
     # A slimmer, flatter palm that narrows toward the wrist (it read as swollen before).
-    p = [ellipsoid("palm", (0, 0, 5.9), (2.0, 4.6, 3.9), 40),
-         ellipsoid("heel", (0.1, 0, 3.0), (2.1, 3.5, 2.6), 32),
+    p = [ellipsoid("palm", (0, 0, 6.4), (2.0, 5.0, 4.4), 40),
+         ellipsoid("heel", (0, 0, 2.6), (1.9, 3.5, 2.6), 32),
          cyl("cuff", (0, 0, -1.2), 3.1, 3.4, 3.6, verts=40),
          ellipsoid("cuffrim", (0, 0, -3.0), (3.4, 3.4, 0.7), 32)]   # no knuckle shelf: fingers grow straight out of the palm
     for i in range(4):
         j0, j1, j2, tip = finger_joints(i)
-        rad = [r * (1.0 if i < 3 else 1.0) for r in R0]
-        p += [tube("f", (j0.x, j0.y, j0.z - 0.5), j1, rad[0], rad[1], verts=20), ellipsoid("k", j1, (rad[1],) * 3, 16),
+        rad = [r * (1.0 if i < 3 else 0.88) for r in R0]
+        p += [tube("f", (j0.x, j0.y, j0.z - 2.2), j1, rad[0], rad[1], verts=20), ellipsoid("k", j1, (rad[1],) * 3, 16),
               tube("f", j1, j2, rad[1], rad[2], verts=20), ellipsoid("k", j2, (rad[2],) * 3, 16),
               tube("f", j2, tip, rad[2], rad[3], verts=20), ellipsoid("t", tip, (rad[3],) * 3, 16)]
     t0, t1, tip, d = thumb_joints(side)

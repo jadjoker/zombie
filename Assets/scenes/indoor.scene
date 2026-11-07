@@ -22,7 +22,7 @@
           "__guid": "233da939-6378-40dd-af17-b2da0860f546",
           "__enabled": true,
           "Flags": 0,
-          "BackgroundColor": "0.04,0.04,0.05,1",
+          "BackgroundColor": "0.02,0.02,0.025,1",
           "ClearFlags": "All",
           "EnablePostProcessing": true,
           "FieldOfView": 60,
@@ -59,8 +59,8 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "Strength": 0.55,
-          "Threshold": 0.85,
+          "Strength": 0.3,
+          "Threshold": 1,
           "Tint": "1,1,1,1"
         },
         {
@@ -70,14 +70,14 @@
           "Flags": 0,
           "__version": 1,
           "FalloffRange": 1,
-          "Intensity": 1.3,
+          "Intensity": 1,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "Radius": 10,
+          "Radius": 32,
           "ThinCompensation": 5
         },
         {
@@ -86,16 +86,16 @@
           "__enabled": true,
           "Flags": 0,
           "Center": "0.5,0.5",
-          "Color": "0.01,0.06,0.1,1",
-          "Intensity": 0.1,
+          "Color": "0,0,0,1",
+          "Intensity": 0.28,
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "Roundness": 1,
-          "Smoothness": 0.8
+          "Roundness": 0.6,
+          "Smoothness": 0.85
         },
         {
           "__type": "Sandbox.Sharpen",
@@ -108,8 +108,59 @@
           "OnComponentFixedUpdate": null,
           "OnComponentStart": null,
           "OnComponentUpdate": null,
-          "Scale": 0.2,
+          "Scale": 0.12,
           "TexelSize": 1
+        },
+        {
+          "__type": "Sandbox.Tonemapping",
+          "__guid": "c2e262a4-f614-487c-8198-f1f54e52f14a",
+          "__enabled": true,
+          "Flags": 0,
+          "__version": 3,
+          "AutoExposureEnabled": false,
+          "ExposureCompensation": 0,
+          "ExposureMethod": "RGB",
+          "MaximumExposure": 3,
+          "MinimumExposure": 1,
+          "Mode": "ACES",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Rate": 1
+        },
+        {
+          "__type": "Sandbox.FilmGrain",
+          "__guid": "f3b856f6-6985-44a1-8f3c-36a696123347",
+          "__enabled": true,
+          "Flags": 0,
+          "Intensity": 0.03,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Response": 0.6
+        },
+        {
+          "__type": "Sandbox.ColorAdjustments",
+          "__guid": "5e9c8c4b-a750-4955-97b1-06aedbc5ac36",
+          "__enabled": true,
+          "Flags": 0,
+          "Blend": 1,
+          "Brightness": 1,
+          "Contrast": 1.06,
+          "HueRotate": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Saturation": 0.95
         }
       ],
       "Children": []
@@ -180,7 +231,7 @@
           "FogMode": "Enabled",
           "FogStrength": 1,
           "IncludeStaticShadowCasters": false,
-          "Intensity": 0.12,
+          "Intensity": 0,
           "LightColor": "1,0.95,0.85,1",
           "MixedShadows": false,
           "OnComponentDestroy": null,
@@ -193,8 +244,8 @@
           "ShadowCascadeCount": 4,
           "ShadowCascadeSplitRatio": 0.91,
           "ShadowHardness": 0,
-          "Shadows": true,
-          "SkyColor": "0.05,0.05,0.07,1",
+          "Shadows": false,
+          "SkyColor": "0.03,0.035,0.045,1",
           "Temperature": 6500,
           "Visualizer": {}
         },
@@ -203,7 +254,7 @@
           "__guid": "6ce3ad52-bcfd-4c3b-890e-53b35a83dd92",
           "__enabled": true,
           "Flags": 0,
-          "Color": "0.22,0.23,0.26,1",
+          "Color": "0.24,0.25,0.29,1",
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -465,12 +516,12 @@
           "__enabled": true,
           "Flags": 0,
           "DeathSound": {
-            "Id": "ca20669b-d1cd-480f-b809-32831c716405",
+            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "HurtShake": 0.5,
           "HurtSound": {
-            "Id": "ca20669b-d1cd-480f-b809-32831c716405",
+            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "OnComponentDestroy": null,
@@ -501,17 +552,17 @@
           "DamagePerLevel": 0.25,
           "DisplayName": "Rifle",
           "DryFireSound": {
-            "Id": "a059a70c-1e9f-4a70-b0e6-599e416ade20",
+            "Id": "9bac4cec-8b16-4430-ba13-0f0fb870b3b4",
             "Path": "sounds/player_use_fail.sound"
           },
           "FireRate": 8,
           "FovKickPerShot": 1.5,
           "HitFleshSound": {
-            "Id": "a5b6da09-3f5f-45c1-87eb-e781671f1ab0",
+            "Id": "201d084a-4feb-4863-89fa-9497678312d4",
             "Path": "sounds/impacts/bullets/impact-bullet-flesh.sound"
           },
           "HitWorldSound": {
-            "Id": "7506ae5f-4696-4f3e-8771-92370f74769c",
+            "Id": "3c45254b-fb3d-43b7-ae2c-e5a1eb029238",
             "Path": "sounds/impacts/bullets/impact-bullet-concrete.sound"
           },
           "HoldType": "Rifle",
@@ -525,11 +576,11 @@
           },
           "MagazineSize": 30,
           "MagInSound": {
-            "Id": "2cd17984-f705-481d-a33f-d81d28ca05ae",
+            "Id": "fd982b3c-6964-4e89-b2b1-29c62dcfed60",
             "Path": "sound/vidya/weapons/reload_mag_in.sound"
           },
           "MagOutSound": {
-            "Id": "c286aaa2-b239-4e15-9921-b47555815034",
+            "Id": "38952191-6d18-413e-8ca4-b4f3daa5749e",
             "Path": "sound/vidya/weapons/reload_mag_out.sound"
           },
           "MuzzleFlash": {
@@ -551,7 +602,7 @@
           "ShellReload": false,
           "ShellTime": 0.5,
           "ShootSound": {
-            "Id": "67224730-d190-4d02-8df7-de8fbe27c324",
+            "Id": "53538e88-3e87-4ad3-89e1-195c073fe124",
             "Path": "sound/vidya/weapons/smg/smg_shoot.sound"
           },
           "Slot": 1,
@@ -608,11 +659,11 @@
             "prefab": "particles/surfaces/impact.generic.prefab"
           },
           "JumpSound": {
-            "Id": "0c322bb3-5e5f-423f-890e-ad6a64779537",
+            "Id": "477ca2ab-eadd-4ce6-bf32-b202c6631d06",
             "Path": "sounds/footsteps/footstep-concrete-jump.sound"
           },
           "LandSound": {
-            "Id": "f66689f3-b28e-44ff-8022-b6c52c1742c7",
+            "Id": "c878e111-7a81-4166-8134-6124ac90d8b8",
             "Path": "sounds/footsteps/footstep-concrete-land.sound"
           },
           "MantleHeight": 95,
@@ -680,17 +731,17 @@
           "DamagePerLevel": 0.25,
           "DisplayName": "Shotgun",
           "DryFireSound": {
-            "Id": "a059a70c-1e9f-4a70-b0e6-599e416ade20",
+            "Id": "9bac4cec-8b16-4430-ba13-0f0fb870b3b4",
             "Path": "sounds/player_use_fail.sound"
           },
           "FireRate": 1.4,
           "FovKickPerShot": 4,
           "HitFleshSound": {
-            "Id": "a5b6da09-3f5f-45c1-87eb-e781671f1ab0",
+            "Id": "201d084a-4feb-4863-89fa-9497678312d4",
             "Path": "sounds/impacts/bullets/impact-bullet-flesh.sound"
           },
           "HitWorldSound": {
-            "Id": "7506ae5f-4696-4f3e-8771-92370f74769c",
+            "Id": "3c45254b-fb3d-43b7-ae2c-e5a1eb029238",
             "Path": "sounds/impacts/bullets/impact-bullet-concrete.sound"
           },
           "HoldType": "Shotgun",
@@ -704,7 +755,7 @@
           },
           "MagazineSize": 6,
           "MagInSound": {
-            "Id": "2cd17984-f705-481d-a33f-d81d28ca05ae",
+            "Id": "fd982b3c-6964-4e89-b2b1-29c62dcfed60",
             "Path": "sound/vidya/weapons/reload_mag_in.sound"
           },
           "MagOutSound": null,
@@ -727,7 +778,7 @@
           "ShellReload": true,
           "ShellTime": 0.5,
           "ShootSound": {
-            "Id": "d399a5fb-b56b-4463-b0e0-a4b29babe2b6",
+            "Id": "67efa082-9e84-41d7-9ded-4c3bd29eb37d",
             "Path": "sound/vidya/weapons/shotgun/shotgun_shoot.sound"
           },
           "Slot": 2,
@@ -1538,7 +1589,7 @@
               "Children": []
             },
             {
-              "__guid": "f6d426a9-fcf4-4191-a868-27970d29553f",
+              "__guid": "33d09dad-fda6-4f4e-8525-a7975f4f962d",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - cargo_pants_army",
@@ -1555,7 +1606,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "1ec4e849-d475-4496-b5eb-ed742439c7da",
+                  "__guid": "1969b715-aa3b-4aa6-b1a8-542d777a54aa",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -1605,7 +1656,7 @@
               "Children": []
             },
             {
-              "__guid": "f3615252-ca31-44ff-844d-41f3462eca99",
+              "__guid": "8876ecf6-c581-477a-9afb-c2ade0f4ad69",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - army_boots",
@@ -1622,7 +1673,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "c70215c7-0763-4bca-8e2a-eb282dabe826",
+                  "__guid": "14872ee4-d747-4d19-8f7c-1a822e33e599",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -1672,7 +1723,7 @@
               "Children": []
             },
             {
-              "__guid": "1c08fcb4-8e64-461e-8397-8d52408f25f5",
+              "__guid": "4ea850ab-0f9e-4520-9c57-794cbde2919a",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - tactical_vest_army",
@@ -1689,7 +1740,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "6047dc31-5bfe-4006-b6c5-43144e4a1cb4",
+                  "__guid": "57c915d5-cd5d-47e5-a625-2986d6473ccf",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -2252,8 +2303,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "31af5cc5-11dc-4635-ad83-39d394dcb45c",
+                    "Path": "materials/ground/indoor_floor.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2273,7 +2324,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.4,0.4,0.42,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2330,8 +2381,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "94f8950e-5c6d-429d-bc07-8d39375dce31",
+                    "Path": "materials/ground/indoor_ceiling.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2351,7 +2402,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.3,0.3,0.33,1"
+                  "Tint": "1,1,1,1"
                 }
               ],
               "Children": []
@@ -2382,8 +2433,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "2ab39821-4321-478d-9aa2-8de4be3cc25a",
+                    "Path": "materials/ground/indoor_wall_long.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2403,7 +2454,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2460,8 +2511,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "2ab39821-4321-478d-9aa2-8de4be3cc25a",
+                    "Path": "materials/ground/indoor_wall_long.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2481,7 +2532,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2538,8 +2589,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "2ab39821-4321-478d-9aa2-8de4be3cc25a",
+                    "Path": "materials/ground/indoor_wall_long.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2559,7 +2610,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2616,8 +2667,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "2ab39821-4321-478d-9aa2-8de4be3cc25a",
+                    "Path": "materials/ground/indoor_wall_long.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2637,7 +2688,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2694,8 +2745,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "52ccb846-84fe-4c75-a414-d4076c73a8f5",
+                    "Path": "materials/ground/indoor_wall_short.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2715,7 +2766,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2772,8 +2823,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "52ccb846-84fe-4c75-a414-d4076c73a8f5",
+                    "Path": "materials/ground/indoor_wall_short.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2793,7 +2844,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2850,8 +2901,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "52ccb846-84fe-4c75-a414-d4076c73a8f5",
+                    "Path": "materials/ground/indoor_wall_short.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2871,7 +2922,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -2928,8 +2979,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "52ccb846-84fe-4c75-a414-d4076c73a8f5",
+                    "Path": "materials/ground/indoor_wall_short.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -2949,7 +3000,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.62,0.61,0.58,1"
+                  "Tint": "1,1,1,1"
                 },
                 {
                   "__type": "Sandbox.BoxCollider",
@@ -3255,7 +3306,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 10,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3264,7 +3315,7 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1700,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
                   "Shadows": true,
@@ -3340,7 +3391,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 10,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3349,7 +3400,7 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1700,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
                   "Shadows": true,
@@ -3425,7 +3476,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 10,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3434,7 +3485,7 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1700,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
                   "Shadows": true,
@@ -3510,7 +3561,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 10,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3519,7 +3570,7 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1700,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
                   "Shadows": true,
@@ -3595,7 +3646,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 5,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3604,10 +3655,10 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1400,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
-                  "Shadows": false,
+                  "Shadows": true,
                   "Temperature": 6500
                 }
               ],
@@ -3680,7 +3731,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 5,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3689,10 +3740,10 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1400,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
-                  "Shadows": false,
+                  "Shadows": true,
                   "Temperature": 6500
                 }
               ],
@@ -3765,7 +3816,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 5,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3774,10 +3825,10 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1400,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
-                  "Shadows": false,
+                  "Shadows": true,
                   "Temperature": 6500
                 }
               ],
@@ -3850,7 +3901,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 5,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3859,10 +3910,10 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1400,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
-                  "Shadows": false,
+                  "Shadows": true,
                   "Temperature": 6500
                 }
               ],
@@ -3935,7 +3986,7 @@
                   "FogMode": "Enabled",
                   "FogStrength": 1,
                   "Intensity": 5,
-                  "LightColor": "1,0.93,0.8,1",
+                  "LightColor": "4,3.44,2.72,4",
                   "LinearAttenuation": 0,
                   "MixedShadows": false,
                   "OnComponentDestroy": null,
@@ -3944,10 +3995,10 @@
                   "OnComponentFixedUpdate": null,
                   "OnComponentStart": null,
                   "OnComponentUpdate": null,
-                  "Radius": 1400,
+                  "Radius": 1500,
                   "ShadowBias": 0,
                   "ShadowHardness": 0,
-                  "Shadows": false,
+                  "Shadows": true,
                   "Temperature": 6500
                 }
               ],
@@ -4301,7 +4352,7 @@
           "TopSpeed": 280,
           "WaveClearBonus": 50,
           "WaveClearedSound": {
-            "Id": "a909b736-1d7e-4e8d-ab6c-ad36018bbd08",
+            "Id": "6c7c325f-f4f6-4e16-ba27-8c9c5cf744a6",
             "Path": "sounds/kenney/ui/ui.upvote.sound"
           },
           "WaveStartSound": null,
@@ -4312,7 +4363,7 @@
           },
           "ZombieDeathSound": null,
           "ZombieModel": {
-            "Id": "b87f46c7-03af-4537-9923-d3f56a71a1ac",
+            "Id": "2307a336-9a70-42a0-abb7-184672ddc5e2",
             "Path": "zombie_project/models/zombie_male.vmdl"
           },
           "ZombiePrefab": null,
@@ -4406,35 +4457,35 @@
           "MaxSplatsPerTick": 3,
           "MeatModels": [
             {
-              "Id": "5abd1032-ba76-4be2-af67-081b516a4574",
+              "Id": "3013dfec-1ff9-4ebd-9707-8fb67ea9aa8b",
               "Path": "models/citizen_gibs/models/torn_torso_gib.vmdl"
             },
             {
-              "Id": "18c3304c-cd82-4098-b53e-1d025b323941",
+              "Id": "0b62ddae-2bd0-41ac-baa7-3cba8a7dc44d",
               "Path": "models/citizen_gibs/models/torn_arm_gib.vmdl"
             },
             {
-              "Id": "27df23b0-dfe0-4c2d-b21a-29579d56afb1",
+              "Id": "904aafc5-c54f-4f65-bee9-a63c6beb6887",
               "Path": "models/citizen_gibs/models/torn_hand_gib.vmdl"
             },
             {
-              "Id": "7102f6bb-a911-49b1-9093-5555f4ae21b0",
+              "Id": "dbb06281-d5fd-4d26-ba32-74590a660e4e",
               "Path": "models/citizen_gibs/models/left_foot_gib_cap.vmdl"
             },
             {
-              "Id": "1b72a81b-544d-4fe8-869b-4c2f5bfe3da5",
+              "Id": "08bdbe2c-f24c-48b8-9f18-ca678d620e0c",
               "Path": "models/citizen_gibs/models/right_foot_gib_cap.vmdl"
             },
             {
-              "Id": "a12802d6-18d8-4e3e-a109-f6e257d79fd9",
+              "Id": "9ec35567-732b-4224-82a5-4f384a29cb95",
               "Path": "models/citizen_gibs/models/right_leg_gib_cap.vmdl"
             },
             {
-              "Id": "320f4fa8-53f7-4acf-a98e-c065b927fada",
+              "Id": "5097c064-548e-46de-9be5-a5f5b3447b02",
               "Path": "models/citizen_gibs/models/left_arm_gib_cap.vmdl"
             },
             {
-              "Id": "80d9e4fe-770e-44e7-b000-004a701b43ea",
+              "Id": "2ae9687f-42b5-4a5f-92b0-222661434d32",
               "Path": "models/citizen_gibs/models/pelvis_gib_cap.vmdl"
             }
           ],
@@ -4447,16 +4498,16 @@
           "OnComponentUpdate": null,
           "OrganModels": [
             {
-              "Id": "2b89437a-60f8-4042-8a14-e840622df44d",
+              "Id": "dd755aba-5abe-4e02-b3d9-2cd53d846b4f",
               "Path": "models/citizen_gibs/models/organ_gib.vmdl"
             },
             {
-              "Id": "24e4de6f-affd-45dd-a895-7ed25e9b550f",
+              "Id": "6d416713-6160-470a-80d4-d8768279778e",
               "Path": "models/citizen_gibs/models/intestine_gib.vmdl"
             }
           ],
           "SplatSound": {
-            "Id": "ca20669b-d1cd-480f-b809-32831c716405",
+            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "SplatVolume": 0.55,
@@ -4640,13 +4691,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "23e88750-2fc2-475c-824d-8566ffc89a65",
+                    "Id": "794109e9-134b-4bec-80f6-074027946281",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 250,
                   "CostIncrease": 0,
                   "DenySound": {
-                    "Id": "f4060bc6-5cac-4947-8e16-432a31de8658",
+                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -4840,13 +4891,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "23e88750-2fc2-475c-824d-8566ffc89a65",
+                    "Id": "794109e9-134b-4bec-80f6-074027946281",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 500,
                   "CostIncrease": 250,
                   "DenySound": {
-                    "Id": "f4060bc6-5cac-4947-8e16-432a31de8658",
+                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -5040,13 +5091,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "23e88750-2fc2-475c-824d-8566ffc89a65",
+                    "Id": "794109e9-134b-4bec-80f6-074027946281",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 1000,
                   "CostIncrease": 500,
                   "DenySound": {
-                    "Id": "f4060bc6-5cac-4947-8e16-432a31de8658",
+                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -5180,6 +5231,95 @@
           "OnComponentUpdate": null,
           "StartDistance": 2800,
           "VerticalFalloffExponent": 1
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "26224fb1-d9dc-422c-956b-3ded8642f898",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Sky",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "skybox",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.SkyBox2D",
+          "__guid": "73a0ef2b-8eae-4a2d-9604-fa9c241fb056",
+          "__enabled": true,
+          "Flags": 0,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "SkyIndirectLighting": false,
+          "SkyMaterial": {
+            "Id": "e585bcc3-da55-40a5-b729-35a2c54452f3",
+            "Path": "materials/skybox/skybox_dark_01.vmat"
+          },
+          "Tint": "0.35,0.35,0.38,1"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "fe417613-3478-4c83-b196-d5c4a0d3f839",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Reflections",
+      "Position": "0,0,200",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "Sandbox.EnvmapProbe",
+          "__guid": "0844e761-d832-4cec-96e4-eb1c0b911f2e",
+          "__enabled": true,
+          "Flags": 0,
+          "__version": 1,
+          "BakedTexture": null,
+          "Bounds": {
+            "Mins": "-1500,-1500,-210",
+            "Maxs": "1500,1500,210"
+          },
+          "DelayBetweenUpdates": 0.1,
+          "Feathering": 0.05,
+          "FrameInterval": 5,
+          "MaxDistance": 512,
+          "Mode": "Realtime",
+          "MultiBounce": false,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Priority": 0,
+          "Projection": "Box",
+          "RenderExcludeTags": "",
+          "Resolution": "Small",
+          "Texture": null,
+          "TintColor": "1,1,1,1",
+          "UpdateStrategy": "OnEnabled",
+          "ZFar": 4096,
+          "ZNear": 16
         }
       ],
       "Children": []

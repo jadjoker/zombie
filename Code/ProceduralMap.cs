@@ -174,8 +174,9 @@ public sealed class ProceduralMap : Component
 		visual.WorldScale = FitBox( new Vector3( size, size, 20f ) );
 		var r = visual.AddComponent<ModelRenderer>();
 		r.Model = box;
-		r.MaterialOverride = Material.Load( "materials/arena/grass.vmat" );
-		r.Tint = new Color( 0.5f, 0.68f, 0.36f );
+		// Tiled for a 12800 unit ground (HalfSize 6000); one texture repeat is about 250 units.
+		r.MaterialOverride = Material.Load( "materials/ground/forest_ground_world.vmat" );
+		r.Tint = Color.White;
 	}
 
 	/// <summary> Invisible walls round the edge so nobody walks off the world. </summary>

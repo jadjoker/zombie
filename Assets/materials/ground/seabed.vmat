@@ -1,0 +1,16 @@
+"Layer0"
+{
+	"shader"		"shaders/complex.shader"
+	"g_flModelTintAmount"		"1.000000"
+	"g_vColorTint"		"[1.000000 1.000000 1.000000 1.000000]"
+	"TextureColor"		"materials/ground/seabed_color.png"
+	"g_bFogEnabled"		"1"
+	"g_flMetalness"		"0.000000"
+	"TextureNormal"		"materials/ground/seabed_normal.png"
+	"TextureRoughness"		"materials/ground/seabed_rough.png"
+	"g_nScaleTexCoordUByModelScaleAxis"		"0"
+	"g_nScaleTexCoordVByModelScaleAxis"		"0"
+	"g_vTexCoordOffset"		"[0.000 0.000]"
+	"g_vTexCoordScale"		"[9.000 9.000]"
+	"g_vTexCoordScrollSpeed"		"[0.000 0.000]"
+}

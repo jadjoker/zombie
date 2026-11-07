@@ -129,8 +129,8 @@ groundGo.WorldPosition = new Vector3( 0, 0, -10f );
 groundGo.WorldScale = FitBox( new Vector3( 6800f, 6800f, 20f ) );
 var groundR = groundGo.Components.Create<ModelRenderer>();
 groundR.Model = box;
-groundR.MaterialOverride = Material.Load( "materials/arena/grass.vmat" );
-groundR.Tint = new Color( 0.5f, 0.68f, 0.36f );
+groundR.MaterialOverride = Material.Load( "materials/ground/forest_ground.vmat" );
+groundR.Tint = Color.White;
 
 // Trees: a dense forest edge, then a few scattered singles, so the middle stays open.
 for ( var i = 0; i < 46; i++ )

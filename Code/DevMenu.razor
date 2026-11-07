@@ -3,6 +3,10 @@
 @inherits PanelComponent
 
 <root class=@(Open ? "open" : "closed")>
+	@if ( !Open && DevFlags.Placing )
+	{
+		<div class="place-hint">Placing @placeKind: left click to place, right click to stop</div>
+	}
 	@if ( Open )
 	{
 		<div class="backdrop"></div>
@@ -41,6 +45,27 @@
 				</div>
 
 				<div class="section">
+					<div class="heading">Place at crosshair (left click places, right click stops)</div>
+					<div class="chips">
+						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
+						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
+						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
+						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="heading">Screenshots</div>
+					<div class="chips">
+						<div class=@Chip( DevFlags.FreezeEnemies ) onclick=@(() => DevFlags.FreezeEnemies = !DevFlags.FreezeEnemies)>Freeze enemies</div>
+						<div class=@Chip( DevFlags.Noclip ) onclick=@(() => SetNoclip( !DevFlags.Noclip ))>Noclip</div>
+						<div class=@Chip( DevFlags.HideHud ) onclick=@(() => DevFlags.HideHud = !DevFlags.HideHud)>Hide HUD</div>
+						<div class=@Chip( DevFlags.HideWeapon ) onclick=@(() => DevFlags.HideWeapon = !DevFlags.HideWeapon)>Hide weapon</div>
+					</div>
+				</div>
+
+				<div class="section">
 					<div class="heading">Player</div>
 					<div class="chips">
 						<div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div>
@@ -73,11 +98,24 @@
 	WaveDirector Director => Scene.GetAllComponents<WaveDirector>().FirstOrDefault();
 	PlayerSurvivor Player => Scene.GetAllComponents<PlayerSurvivor>().FirstOrDefault( p => !p.IsProxy );
 
+	protected override void OnStart()
+	{
+		DevFlags.Reset();   // the switches are static: start every play session clean
+	}
+
+	protected override void OnDestroy()
+	{
+		DevFlags.Reset();
+	}
+
 	protected override void OnUpdate()
 	{
 		// Dev tool: only in the editor, never in a published build.
 		if ( !Game.IsEditor ) return;
 		if ( Input.Pressed( "DevMenu" ) ) SetOpen( !open );
+		UpdateNoclip();
+		UpdatePlacing();
+		UpdateHideHud();
 	}
 
 	/// <summary> Open/close: free the cursor and stop the player fighting while it's up. </summary>
@@ -97,7 +135,7 @@
 		}
 		else if ( Player.IsAlive )
 		{
-			controller.UseInputControls = true;
+			controller.UseInputControls = !DevFlags.Noclip;
 			controller.UseLookControls = true;
 		}
 	}
@@ -148,7 +186,110 @@
 	protected override int BuildHash()
 	{
 		var a = System.HashCode.Combine( open, Wave, Kills, Remaining, Phase, GodMode, InfiniteAmmo, Paused );
-		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, BossWaves );
+		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, BossWaves,
+			System.HashCode.Combine( DevFlags.FreezeEnemies, DevFlags.Noclip, DevFlags.HideHud, DevFlags.HideWeapon, DevFlags.Placing, placeKind ) );
 		return System.HashCode.Combine( a, b );
+	}
+
+	// ---- hands-on tools: noclip, placing enemies at the crosshair, hiding the HUD ----
+	WaveDirector.EnemyKind placeKind;
+	bool noclipApplied;
+	bool savedGravity = true;
+	bool hudHidden;
+
+	/// <summary> How fast noclip flies (Shift for 3x). </summary>
+	const float NoclipSpeed = 450f;
+
+	void SetNoclip( bool on )
+	{
+		DevFlags.Noclip = on;
+		if ( Player?.Controller is { } controller && controller.IsValid() && !open )
+			controller.UseInputControls = !on;
+	}
+
+	void UpdateNoclip()
+	{
+		var controller = Player?.Controller;
+		if ( !controller.IsValid() ) return;
+		var body = controller.Body;
+
+		if ( DevFlags.Noclip != noclipApplied )
+		{
+			noclipApplied = DevFlags.Noclip;
+			if ( body.IsValid() )
+			{
+				if ( noclipApplied )
+				{
+					savedGravity = body.Gravity;
+					body.Gravity = false;
+					body.Velocity = Vector3.Zero;
+				}
+				else
+				{
+					body.Gravity = savedGravity;
+					body.Velocity = Vector3.Zero;
+				}
+				body.MotionEnabled = !noclipApplied;   // kinematic while flying, so walls don't push back
+			}
+			if ( !open ) controller.UseInputControls = !noclipApplied;
+		}
+
+		if ( !noclipApplied || open ) return;
+
+		// Fly where you look: WASD along the view, Space up, Ctrl down, Shift faster.
+		var view = controller.EyeAngles.ToRotation();
+		var move = Input.AnalogMove;
+		var wish = view.Forward * move.x + view.Left * move.y;
+		if ( Input.Down( "Jump" ) ) wish += Vector3.Up;
+		if ( Input.Down( "Duck" ) ) wish += Vector3.Down;
+		if ( wish.IsNearlyZero() ) return;
+		var speed = NoclipSpeed * (Input.Down( "Run" ) ? 3f : 1f);
+		controller.WorldPosition += wish.Normal * speed * RealTime.Delta;
+		if ( body.IsValid() ) body.Velocity = Vector3.Zero;
+	}
+
+	void StartPlacing( WaveDirector.EnemyKind kind )
+	{
+		placeKind = kind;
+		DevFlags.Placing = true;
+		SetOpen( false );
+	}
+
+	void UpdatePlacing()
+	{
+		if ( !DevFlags.Placing || open ) return;
+		var camera = Scene.Camera;
+		if ( !camera.IsValid() ) return;
+
+		if ( Input.Pressed( "Attack2" ) )
+		{
+			DevFlags.Placing = false;
+			return;
+		}
+
+		var from = camera.WorldPosition;
+		var trace = Scene.Trace.Ray( from, from + camera.WorldRotation.Forward * 8000f )
+			.WithoutTags( "player", "viewmodel", "creature", "gib", "zombie", "zombieblocker", "trigger" );
+		if ( Player is { } p ) trace = trace.IgnoreGameObjectHierarchy( p.GameObject );
+		var tr = trace.Run();
+		if ( !tr.Hit ) return;
+
+		DebugOverlay.Sphere( new Sphere( tr.HitPosition, 10f ), Color.Cyan );
+		DebugOverlay.Line( tr.HitPosition, tr.HitPosition + Vector3.Up * 60f, Color.Cyan );
+
+		if ( Input.Pressed( "Attack1" ) )
+			Director?.SpawnAt( placeKind, tr.HitPosition + tr.Normal * 2f, from );
+	}
+
+	void UpdateHideHud()
+	{
+		var hide = DevFlags.HideHud;
+		if ( hide == hudHidden ) return;
+		hudHidden = hide;
+		foreach ( var panel in Scene.GetAllComponents<PanelComponent>() )
+		{
+			if ( panel == this || panel.Panel is null ) continue;
+			panel.Panel.Style.Display = hide ? DisplayMode.None : null;
+		}
 	}
 }

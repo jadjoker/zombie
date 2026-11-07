@@ -239,6 +239,21 @@ public sealed class WaveDirector : Component
 		_ => false,
 	};
 
+	Vector3? forcedSpawn;
+
+	/// <summary> Dev tool: spawn one enemy on a chosen spot (floaters hover above it), turned to face `faceToward`. </summary>
+	public GameObject SpawnAt( EnemyKind kind, Vector3 position, Vector3 faceToward )
+	{
+		forcedSpawn = position;
+		var count = alive.Count;
+		try { if ( !Spawn( kind ) ) return null; }
+		finally { forcedSpawn = null; }
+		var go = alive.Count > count ? alive[^1] : null;
+		var look = (faceToward - position).WithZ( 0 );
+		if ( go.IsValid() && !look.IsNearlyZero() ) go.WorldRotation = Rotation.LookAt( look.Normal, Vector3.Up );
+		return go;
+	}
+
 	/// <summary> Dev tool: kill everything alive right now (their deaths play out). </summary>
 	public void ClearEnemies()
 	{
@@ -603,6 +618,12 @@ public sealed class WaveDirector : Component
 
 	bool TryFindSpawnPosition( out Vector3 position )
 	{
+		if ( forcedSpawn is { } forced )
+		{
+			position = forced;
+			return true;
+		}
+
 		var player = PlayerSurvivor.FindNearestAlive( Scene, WorldPosition );
 		var center = player?.WorldPosition ?? WorldPosition;
 

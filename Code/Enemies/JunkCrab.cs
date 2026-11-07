@@ -276,7 +276,7 @@ public sealed class JunkCrab : Component, ICreature
 			if ( timeSinceDeath > 1f ) GameObject.Destroy();
 			return;
 		}
-		else Think();
+		else if ( !DevFlags.FreezeEnemies ) Think();
 
 		if ( diedLocally || !rig.IsValid() ) return;
 		rig.WorldPosition = WorldPosition;

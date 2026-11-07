@@ -37,6 +37,7 @@ public sealed class InkBall : Component
 
 	protected override void OnUpdate()
 	{
+		if ( DevFlags.FreezeEnemies ) { age = age - Time.Delta; return; }
 		var dt = Time.Delta;
 		if ( age > 5f ) { GameObject.Destroy(); return; }
 

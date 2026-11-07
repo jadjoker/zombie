@@ -187,7 +187,7 @@ public sealed class PlayerWeapon : Component
 		}
 
 		// The first-person gun only shows in first person (and comes back after a respawn).
-		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson;
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson && !DevFlags.HideWeapon;
 
 		// Dev tool: never run dry.
 		if ( InfiniteAmmo )
@@ -220,6 +220,8 @@ public sealed class PlayerWeapon : Component
 		// Firing interrupts a shell-by-shell reload, as long as there's something loaded.
 		if ( ShellReload && IsReloading && Input.Pressed( "Attack1" ) && Ammo > 0 )
 			CancelReload();
+
+		if ( DevFlags.Placing ) return;   // left click is placing an enemy
 
 		var wantsFire = Automatic ? Input.Down( "Attack1" ) : Input.Pressed( "Attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )

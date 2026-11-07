@@ -321,7 +321,7 @@ public sealed class Bloober : Component, ICreature
 			if ( timeSinceDeath > 1f ) GameObject.Destroy();
 			return;
 		}
-		else
+		else if ( !DevFlags.FreezeEnemies )
 		{
 			Think();
 		}

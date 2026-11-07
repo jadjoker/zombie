@@ -10,9 +10,20 @@ DevMenu
 	color: white;
 	text-shadow: 0 1px 2px rgba( black, 0.8 );
 
-	&.closed
+	.place-hint
 	{
-		display: none;
+		position: absolute;
+		left: 50%;
+		bottom: 120px;
+		width: 560px;
+		margin-left: -280px;
+		justify-content: center;
+		padding: 8px 14px;
+		border-radius: 8px;
+		background-color: rgba( #0c1016, 0.8 );
+		border: 1px solid #2fd08a;
+		font-size: 15px;
+		font-weight: 700;
 	}
 
 	.backdrop
@@ -31,9 +42,9 @@ DevMenu
 		left: 50%;
 		top: 50%;
 		width: 660px;
-		height: 470px;
+		height: 600px;
 		margin-left: -330px;
-		margin-top: -235px;
+		margin-top: -300px;
 		flex-direction: column;
 		background-color: rgba( #0c1016, 0.96 );
 		border: 2px solid #2fd08a;

@@ -147,7 +147,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		Stamina = MaxStamina;
 	}
 
-	bool CanAct => !IsProxy && Controller.IsValid() && Body.IsValid()
+	bool CanAct => !IsProxy && !DevFlags.Noclip && Controller.IsValid() && Body.IsValid()
 		&& (GetComponent<PlayerSurvivor>()?.IsAlive ?? true);
 
 	// ---- Stamina ----------------------------------------------------------------

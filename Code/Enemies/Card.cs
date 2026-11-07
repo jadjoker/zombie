@@ -70,6 +70,7 @@ public sealed class Card : Component
 
 	protected override void OnUpdate()
 	{
+		if ( DevFlags.FreezeEnemies ) { age = age - Time.Delta; return; }   // hangs in the air, and doesn't age
 		var dt = Time.Delta;
 		var life = confetti ? 3f : 2.6f;
 		if ( age > life + (stuck ? 2f : 0f) )

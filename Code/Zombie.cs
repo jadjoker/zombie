@@ -123,6 +123,14 @@ public sealed class Zombie : Component
 			return;
 		}
 
+		if ( DevFlags.FreezeEnemies )
+		{
+			Agent?.Stop();
+			NetVelocity = NetWishVelocity = Vector3.Zero;
+			Animate( Vector3.Zero, Vector3.Zero );
+			return;
+		}
+
 		if ( nextGroan )
 		{
 			nextGroan = Game.Random.Float( GroanInterval.x, GroanInterval.y );

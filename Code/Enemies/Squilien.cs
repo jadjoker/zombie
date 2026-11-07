@@ -315,7 +315,7 @@ public sealed class Squilien : Component, ICreature
 			if ( timeSinceDeath > 1f ) GameObject.Destroy();
 			return;
 		}
-		else
+		else if ( !DevFlags.FreezeEnemies )
 		{
 			Think();
 		}

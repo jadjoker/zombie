@@ -91,7 +91,7 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 		sun.Shadows = true;
 		sun.ShadowCascadeCount = 4;
 		sun.ShadowHardness = 0.3f;
-		if ( amb is not null ) amb.Color = new Color( 0.42f, 0.46f, 0.52f );
+		if ( amb is not null ) amb.Color = new Color( 0.75f, 0.82f, 0.95f );
 		sky.SkyMaterial = Material.Load( "materials/skybox/skybox_day_01.vmat" );
 		sky.Tint = Color.White;
 		sky.SkyIndirectLighting = true;
@@ -106,7 +106,10 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 			fog.FalloffExponent = 1.4f;
 			fog.VerticalFalloffExponent = 1.2f;
 		}
-		adj.Saturation = 1.06f;
+		// Props: triplanar nature materials and the curated palette (Code/ForestLook.cs).
+		foreach ( var r in s.GetAllComponents<ModelRenderer>() )
+			ForestLook.Apply( r, new System.Random( r.GameObject.Id.GetHashCode() ) );
+		adj.Saturation = 1.0f;
 		adj.Contrast = 1.05f;
 		adj.Brightness = 1.0f;
 	}

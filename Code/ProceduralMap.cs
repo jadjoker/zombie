@@ -109,6 +109,7 @@ public sealed class ProceduralMap : Component
 		var r = go.AddComponent<ModelRenderer>();
 		r.Model = model;
 		r.Tint = tint;
+		ForestLook.Apply( r, rnd );
 		return go;
 	}
 

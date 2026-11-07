@@ -121,7 +121,7 @@ def forest():
 	blades = norm01(blades)
 	clumps = norm01(fbm(3, 8, 60))
 	gtone = norm01(fbm(4, 3, 30))
-	grass_col = mix(rgb(0.13, 0.21, 0.06), rgb(0.30, 0.40, 0.12), gtone)
+	grass_col = mix(rgb(0.15, 0.20, 0.07), rgb(0.34, 0.37, 0.13), gtone)
 	grass_col = mix(grass_col, rgb(0.42, 0.40, 0.18), smooth(0.65, 0.95, clumps) * 0.6)  # dry patches
 	grass_col = grass_col * (0.35 + 1.15 * blades[..., None] ** 1.4)
 	soil_tone = norm01(fbm(5, 4, 80))

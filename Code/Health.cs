@@ -56,6 +56,8 @@ public sealed class Health : Component, Component.IDamageable
 	void Apply( DamageInfo damage )
 	{
 		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
+		// Dev menu: one hit kills any enemy.
+		if ( DevFlags.OneShot && GameObject.Components.Get<PlayerSurvivor>() is null ) damage.Damage = MathF.Max( damage.Damage, Current );
 
 		Current = MathF.Max( 0f, Current - damage.Damage );
 		TimeSinceDamaged = 0f;

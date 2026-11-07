@@ -219,7 +219,8 @@ public sealed class WaveDirector : Component
 
 	/// <summary> Master switch: pause the director's own spawning (it still fights). </summary>
 	[Property, Group( "Dev" )] public bool SpawningPaused { get; set; }
-	[Property, Group( "Dev" )] public bool SpawnZombies { get; set; } = true;
+	/// <summary> The regular zombie guy. Off by default (#12); flip it on here or in the dev menu. </summary>
+	[Property, Group( "Dev" )] public bool SpawnZombies { get; set; } = false;
 	[Property, Group( "Dev" )] public bool SpawnBloobers { get; set; } = true;
 	[Property, Group( "Dev" )] public bool SpawnSquiliens { get; set; } = true;
 	[Property, Group( "Dev" )] public bool SpawnCrabs { get; set; } = true;
@@ -273,6 +274,19 @@ public sealed class WaveDirector : Component
 		bossPending = false;
 		ClearEnemies();
 	}
+
+	/// <summary> Dev tool: clear this wave and start `wave` right away. </summary>
+	public void JumpToWave( int wave )
+	{
+		if ( IsProxy || OpenWorld ) return;
+		SkipWave();
+		Wave = Math.Max( 0, wave - 1 );
+		State = WaveState.Intermission;
+		nextWaveAt = 0.1f;
+	}
+
+	/// <summary> The next wave number that brings MC61 (0 if boss waves are off). </summary>
+	public int NextBossWave => BossEvery > 0 ? (Wave / BossEvery + 1) * BossEvery : 0;
 
 	/// <summary> Every enemy still alive this wave (zombies and creatures). </summary>
 	readonly List<GameObject> alive = new();
@@ -464,6 +478,19 @@ public sealed class WaveDirector : Component
 			bloober /= total;
 		}
 		var crab = SpawnCrabs && Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
+		if ( !SpawnZombies )
+		{
+			// No zombies to fill the gap: share the whole roll among the creatures, unlocking them early if none are due yet.
+			if ( squilien + bloober + crab <= 0.01f )
+			{
+				squilien = SpawnSquiliens ? 1f : 0f;
+				bloober = SpawnBloobers ? 1f : 0f;
+				crab = SpawnCrabs && !FloatRound ? 1f : 0f;
+			}
+			var sum = squilien + bloober + crab;
+			if ( sum <= 0.01f ) return false;
+			squilien /= sum; bloober /= sum; crab /= sum;
+		}
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		if ( roll < squilien + bloober + crab ) return TrySpawnCrab();

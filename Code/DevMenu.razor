@@ -3,6 +3,19 @@
 @inherits PanelComponent
 
 <root class=@(Open ? "open" : "closed")>
+	@if ( DevFlags.ShowStats )
+	{
+		<div class="stats">
+			<span>@Fps fps (@FrameMs ms)</span>
+			<span>enemies @AliveEnemies</span>
+			<span>time @(TimeScale)x</span>
+			<span>@PlayerPos</span>
+		</div>
+	}
+	@if ( !Open && DevFlags.FreeCam && !DevFlags.HideHud )
+	{
+		<div class="place-hint">Free camera: WASD, Space up, Ctrl down, Shift fast (turn it off in the menu)</div>
+	}
 	@if ( !Open && DevFlags.Placing )
 	{
 		<div class="place-hint">Placing @placeKind: left click to place, right click to stop</div>
@@ -17,72 +30,145 @@
 			</div>
 
 			<div class="body">
-				<div class="section">
-					<div class="heading">Spawning</div>
-					<div class="chips">
-						<div class=@Chip( !Paused ) onclick=@(() => Pause( !Paused ))>Spawning: @(Paused ? "PAUSED" : "ON")</div>
-						<div class=@Chip( Zombies ) onclick=@(() => ToggleZombies())>Zombies</div>
-						<div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div>
-						<div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div>
-						<div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div>
-						<div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div>
+				<div class="column">
+					<div class="section">
+						<div class="heading">Spawning</div>
+						<div class="chips">
+							<div class=@Chip( !Paused ) onclick=@(() => Pause( !Paused ))>Spawning: @(Paused ? "PAUSED" : "ON")</div>
+							<div class=@Chip( Zombies ) onclick=@(() => ToggleZombies())>Zombies</div>
+							<div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div>
+							<div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div>
+							<div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div>
+							<div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div>
+						</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => KillAll())>Kill all enemies</div>
+							<div class="chip action" onclick=@(() => SkipWave())>Skip wave</div>
+						</div>
 					</div>
-					<div class="chips">
-						<div class="chip action" onclick=@(() => KillAll())>Kill all enemies</div>
-						<div class="chip action" onclick=@(() => SkipWave())>Skip wave</div>
+
+					<div class="section">
+						<div class="heading">Spawn one</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+						</div>
+					</div>
+
+					<div class="section">
+						<div class="heading">Place at crosshair</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+						</div>
+					</div>
+
+					<div class="section">
+						<div class="heading">Enemies</div>
+						<div class="chips">
+							<div class=@Chip( DevFlags.FreezeEnemies ) onclick=@(() => DevFlags.FreezeEnemies = !DevFlags.FreezeEnemies)>Freeze enemies</div>
+							<div class=@Chip( DevFlags.OneShot ) onclick=@(() => DevFlags.OneShot = !DevFlags.OneShot)>One-shot kills</div>
+							<div class=@Chip( DevFlags.ShowHitboxes ) onclick=@(() => DevFlags.ShowHitboxes = !DevFlags.ShowHitboxes)>Show hitboxes</div>
+						</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Float ))>MC61 float</div>
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Charge ))>Charge</div>
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Beam ))>Beam</div>
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Cards ))>Cards</div>
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Dance ))>Dance</div>
+							<div class="chip action" onclick=@(() => BossToTenPercent())>MC61 to 10% HP</div>
+						</div>
+					</div>
+
+					<div class="section">
+						<div class="heading">Player</div>
+						<div class="chips">
+							<div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div>
+							<div class=@Chip( InfiniteAmmo ) onclick=@(() => ToggleInfiniteAmmo())>Infinite ammo</div>
+							<div class="chip action" onclick=@(() => Heal())>Heal</div>
+							<div class="chip action" onclick=@(() => RefillAmmo())>Refill ammo</div>
+							<div class="chip action" onclick=@(() => AddPoints())>+1000 points</div>
+						</div>
 					</div>
 				</div>
 
-				<div class="section">
-					<div class="heading">Spawn one</div>
-					<div class="chips">
-						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
-						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
-						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
-						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
-						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+				<div class="column">
+					<div class="section">
+						<div class="heading">Screenshots</div>
+						<div class="chips">
+							<div class=@Chip( DevFlags.Noclip ) onclick=@(() => SetNoclip( !DevFlags.Noclip ))>Noclip</div>
+							<div class=@Chip( DevFlags.FreeCam ) onclick=@(() => SetFreeCam( !DevFlags.FreeCam ))>Free camera</div>
+							<div class=@Chip( DevFlags.HideHud ) onclick=@(() => DevFlags.HideHud = !DevFlags.HideHud)>Hide HUD</div>
+							<div class=@Chip( DevFlags.HideWeapon ) onclick=@(() => DevFlags.HideWeapon = !DevFlags.HideWeapon)>Hide weapon</div>
+						</div>
+						<div class="chips">
+							<div class="row-label">Time</div>
+							@foreach ( var t in TimeScales )
+							{
+								<div class=@Pick( MathF.Abs( TimeScale - t ) < 0.01f ) onclick=@(() => SetTimeScale( t ))>@(t == 0f ? "Stop" : $"{t}x")</div>
+							}
+						</div>
+						<div class="chips">
+							<div class="row-label">FOV</div>
+							@foreach ( var f in Fovs )
+							{
+								<div class=@Pick( DevFlags.Fov == f ) onclick=@(() => DevFlags.Fov = f)>@(f == 0f ? "Game" : $"{f}")</div>
+							}
+						</div>
+						<div class="chips">
+							<div class="row-label">Sun</div>
+							@foreach ( var preset in SunPresets )
+							{
+								<div class=@Pick( sunPreset == preset ) onclick=@(() => SetSun( preset ))>@preset</div>
+							}
+						</div>
 					</div>
-				</div>
 
-				<div class="section">
-					<div class="heading">Place at crosshair (left click places, right click stops)</div>
-					<div class="chips">
-						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
-						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
-						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
-						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
-						<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+					<div class="section">
+						<div class="heading">Waves</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => Director?.JumpToWave( Wave + 1 ))>Next wave</div>
+							<div class="chip action" onclick=@(() => Director?.JumpToWave( Wave + 5 ))>+5 waves</div>
+							@if ( Director is { NextBossWave: > 0 } d )
+							{
+								<div class="chip action" onclick=@(() => d.JumpToWave( d.NextBossWave ))>Boss wave (@d.NextBossWave)</div>
+							}
+						</div>
 					</div>
-				</div>
 
-				<div class="section">
-					<div class="heading">Screenshots</div>
-					<div class="chips">
-						<div class=@Chip( DevFlags.FreezeEnemies ) onclick=@(() => DevFlags.FreezeEnemies = !DevFlags.FreezeEnemies)>Freeze enemies</div>
-						<div class=@Chip( DevFlags.Noclip ) onclick=@(() => SetNoclip( !DevFlags.Noclip ))>Noclip</div>
-						<div class=@Chip( DevFlags.HideHud ) onclick=@(() => DevFlags.HideHud = !DevFlags.HideHud)>Hide HUD</div>
-						<div class=@Chip( DevFlags.HideWeapon ) onclick=@(() => DevFlags.HideWeapon = !DevFlags.HideWeapon)>Hide weapon</div>
+					<div class="section">
+						<div class="heading">Travel</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => TeleportToBoss())>To MC61</div>
+							<div class="chip action" onclick=@(() => TeleportToSpawnPoint())>To a spawn point</div>
+							<div class="chip action" onclick=@(() => SaveSpot())>Save spot</div>
+							<div class=@(savedSpot is null ? "chip off" : "chip action") onclick=@(() => LoadSpot())>Go to saved spot</div>
+						</div>
+						<div class="chips">
+							<div class="row-label">Scene</div>
+							<div class="chip action" onclick=@(() => LoadScene( "scenes/indoor.scene" ))>Indoor</div>
+							<div class="chip action" onclick=@(() => LoadScene( "scenes/forest.scene" ))>Forest</div>
+							<div class="chip action" onclick=@(() => LoadScene( "scenes/water_level.scene" ))>Water level</div>
+						</div>
 					</div>
-				</div>
 
-				<div class="section">
-					<div class="heading">Player</div>
-					<div class="chips">
-						<div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div>
-						<div class=@Chip( InfiniteAmmo ) onclick=@(() => ToggleInfiniteAmmo())>Infinite ammo</div>
-						<div class="chip action" onclick=@(() => Heal())>Heal</div>
-						<div class="chip action" onclick=@(() => RefillAmmo())>Refill ammo</div>
-						<div class="chip action" onclick=@(() => AddPoints())>+1000 points</div>
-					</div>
-				</div>
-
-				<div class="section">
-					<div class="heading">State</div>
-					<div class="info">
-						<span>Wave <b>@Wave</b></span>
-						<span>Kills <b>@Kills</b></span>
-						<span>Enemies left <b>@Remaining</b></span>
-						<span>Phase <b>@Phase</b></span>
+					<div class="section">
+						<div class="heading">State</div>
+						<div class="chips">
+							<div class=@Chip( DevFlags.ShowStats ) onclick=@(() => DevFlags.ShowStats = !DevFlags.ShowStats)>Stats overlay</div>
+						</div>
+						<div class="info">
+							<span>Wave <b>@Wave</b></span>
+							<span>Kills <b>@Kills</b></span>
+							<span>Enemies left <b>@Remaining</b></span>
+							<span>Phase <b>@Phase</b></span>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -101,6 +187,7 @@
 	protected override void OnStart()
 	{
 		DevFlags.Reset();   // the switches are static: start every play session clean
+		Scene.TimeScale = 1f;
 	}
 
 	protected override void OnDestroy()
@@ -114,8 +201,10 @@
 		if ( !Game.IsEditor ) return;
 		if ( Input.Pressed( "DevMenu" ) ) SetOpen( !open );
 		UpdateNoclip();
+		UpdateFreeCam();
 		UpdatePlacing();
 		UpdateHideHud();
+		UpdateHitboxes();
 	}
 
 	/// <summary> Open/close: free the cursor and stop the player fighting while it's up. </summary>
@@ -135,8 +224,8 @@
 		}
 		else if ( Player.IsAlive )
 		{
-			controller.UseInputControls = !DevFlags.Noclip;
-			controller.UseLookControls = true;
+			controller.UseInputControls = !DevFlags.Noclip && !DevFlags.FreeCam;
+			controller.UseLookControls = !DevFlags.FreeCam;
 		}
 	}
 
@@ -181,6 +270,7 @@
 	void AddPoints() { Player?.AddPoints( 1000 ); }
 
 	string Chip( bool on ) => on ? "chip on" : "chip off";
+	string Pick( bool on ) => on ? "chip on" : "chip";
 
 	// Re-render only when something the menu shows actually changes.
 	protected override int BuildHash()
@@ -188,7 +278,10 @@
 		var a = System.HashCode.Combine( open, Wave, Kills, Remaining, Phase, GodMode, InfiniteAmmo, Paused );
 		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, BossWaves,
 			System.HashCode.Combine( DevFlags.FreezeEnemies, DevFlags.Noclip, DevFlags.HideHud, DevFlags.HideWeapon, DevFlags.Placing, placeKind ) );
-		return System.HashCode.Combine( a, b );
+		var c = System.HashCode.Combine( DevFlags.FreeCam, DevFlags.Fov, DevFlags.OneShot, DevFlags.ShowHitboxes, DevFlags.ShowStats, TimeScale, sunPreset, savedSpot is null );
+		// The stats overlay ticks a few times a second.
+		var d = DevFlags.ShowStats ? (int)(RealTime.Now * 4f) : 0;
+		return System.HashCode.Combine( a, b, c, d );
 	}
 
 	// ---- hands-on tools: noclip, placing enemies at the crosshair, hiding the HUD ----
@@ -204,7 +297,7 @@
 	{
 		DevFlags.Noclip = on;
 		if ( Player?.Controller is { } controller && controller.IsValid() && !open )
-			controller.UseInputControls = !on;
+			controller.UseInputControls = !on && !DevFlags.FreeCam;
 	}
 
 	void UpdateNoclip()
@@ -231,10 +324,10 @@
 				}
 				body.MotionEnabled = !noclipApplied;   // kinematic while flying, so walls don't push back
 			}
-			if ( !open ) controller.UseInputControls = !noclipApplied;
+			if ( !open ) controller.UseInputControls = !noclipApplied && !DevFlags.FreeCam;
 		}
 
-		if ( !noclipApplied || open ) return;
+		if ( !noclipApplied || open || DevFlags.FreeCam ) return;
 
 		// Fly where you look: WASD along the view, Space up, Ctrl down, Shift faster.
 		var view = controller.EyeAngles.ToRotation();
@@ -292,4 +385,182 @@
 			panel.Panel.Style.Display = hide ? DisplayMode.None : null;
 		}
 	}
+
+	// ---- free camera: fly the view on its own while the player stays put ----
+	const float FreeCamSpeed = 350f;
+
+	void SetFreeCam( bool on )
+	{
+		var controller = Player?.Controller;
+		if ( on )
+		{
+			var cam = Scene.Camera;
+			DevFlags.FreeCamPosition = cam.IsValid() ? cam.WorldPosition : (controller?.WorldPosition ?? Vector3.Zero) + Vector3.Up * 64f;
+			DevFlags.FreeCamAngles = controller.IsValid() ? controller.EyeAngles : (cam.IsValid() ? cam.WorldRotation.Angles() : Angles.Zero);
+		}
+		DevFlags.FreeCam = on;
+		if ( controller.IsValid() && !open )
+		{
+			controller.UseInputControls = !on && !DevFlags.Noclip;
+			controller.UseLookControls = !on;
+		}
+	}
+
+	void UpdateFreeCam()
+	{
+		if ( !DevFlags.FreeCam || open ) return;
+		var look = Input.AnalogLook;
+		var angles = DevFlags.FreeCamAngles + look;
+		angles.pitch = MathX.Clamp( angles.pitch, -89f, 89f );
+		angles.roll = 0f;
+		DevFlags.FreeCamAngles = angles;
+
+		var view = angles.ToRotation();
+		var move = Input.AnalogMove;
+		var wish = view.Forward * move.x + view.Left * move.y;
+		if ( Input.Down( "Jump" ) ) wish += Vector3.Up;
+		if ( Input.Down( "Duck" ) ) wish += Vector3.Down;
+		if ( wish.IsNearlyZero() ) return;
+		var speed = FreeCamSpeed * (Input.Down( "Run" ) ? 3f : 1f);
+		DevFlags.FreeCamPosition += wish.Normal * speed * RealTime.Delta;
+	}
+
+	// ---- time ----
+	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
+	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };
+	float TimeScale => Scene.TimeScale;
+	void SetTimeScale( float t ) => Scene.TimeScale = t;
+
+	// ---- sun ----
+	static readonly string[] SunPresets = { "Default", "Morning", "Noon", "Dusk", "Night" };
+	string sunPreset = "Default";
+	Rotation? sunRotation;
+	Color sunColor;
+
+	void SetSun( string preset )
+	{
+		var sun = Scene.GetAllComponents<DirectionalLight>().FirstOrDefault();
+		if ( !sun.IsValid() ) return;
+		if ( sunRotation is null )
+		{
+			sunRotation = sun.WorldRotation;
+			sunColor = sun.LightColor;
+		}
+		sunPreset = preset;
+		var yaw = sunRotation.Value.Angles().yaw;
+		(sun.WorldRotation, sun.LightColor) = preset switch
+		{
+			"Morning" => (Rotation.From( 18f, yaw, 0f ), new Color( 1f, 0.82f, 0.62f ) * 2.2f),
+			"Noon" => (Rotation.From( 78f, yaw, 0f ), new Color( 1f, 0.97f, 0.92f ) * 3f),
+			"Dusk" => (Rotation.From( 6f, yaw + 40f, 0f ), new Color( 1f, 0.5f, 0.28f ) * 1.8f),
+			"Night" => (Rotation.From( 45f, yaw, 0f ), new Color( 0.35f, 0.45f, 0.8f ) * 0.5f),
+			_ => (sunRotation.Value, sunColor),
+		};
+	}
+
+	// ---- enemies ----
+	void ForceBoss( MC61.Mode mode )
+	{
+		foreach ( var boss in Scene.GetAllComponents<MC61>() )
+			if ( !boss.IsDead ) boss.ForceState( mode );
+	}
+
+	void BossToTenPercent()
+	{
+		foreach ( var boss in Scene.GetAllComponents<MC61>() )
+			if ( !boss.IsDead && boss.Components.Get<Health>() is { } h ) h.Current = h.MaxHealth * 0.1f;
+	}
+
+	void UpdateHitboxes()
+	{
+		if ( !DevFlags.ShowHitboxes ) return;
+		foreach ( var part in Scene.GetAllComponents<CreaturePart>() )
+		{
+			foreach ( var c in part.Components.GetAll<Collider>() )
+			{
+				var t = c.WorldTransform;
+				switch ( c )
+				{
+					case SphereCollider s:
+						DebugOverlay.Sphere( new Sphere( t.PointToWorld( s.Center ), s.Radius * t.UniformScale ), Color.Yellow );
+						break;
+					case CapsuleCollider cap:
+						var a = t.PointToWorld( cap.Start );
+						var b = t.PointToWorld( cap.End );
+						var r = cap.Radius * t.UniformScale;
+						DebugOverlay.Sphere( new Sphere( a, r ), Color.Yellow );
+						DebugOverlay.Sphere( new Sphere( b, r ), Color.Yellow );
+						DebugOverlay.Line( a, b, Color.Yellow );
+						break;
+					case BoxCollider box:
+						DebugOverlay.Box( BBox.FromPositionAndSize( box.Center, box.Scale ), Color.Yellow, 0f, t );
+						break;
+					default:
+						DebugOverlay.Box( c.GameObject.GetBounds(), Color.Orange );
+						break;
+				}
+			}
+		}
+	}
+
+	// ---- travel ----
+	(Vector3 Position, Angles Angles)? savedSpot;
+
+	void MovePlayer( Vector3 position, Angles? angles = null )
+	{
+		var controller = Player?.Controller;
+		if ( !controller.IsValid() ) return;
+		controller.WorldPosition = position;
+		if ( angles is { } a ) controller.EyeAngles = a;
+		if ( controller.Body.IsValid() ) controller.Body.Velocity = Vector3.Zero;
+		if ( DevFlags.FreeCam ) SetFreeCam( true );   // bring the free camera along
+	}
+
+	Vector3 Ground( Vector3 near )
+	{
+		var tr = Scene.Trace.Ray( near + Vector3.Up * 50f, near + Vector3.Down * 3000f )
+			.WithoutTags( "player", "creature", "gib", "zombie", "zombieblocker", "trigger", "viewmodel" ).Run();
+		return tr.Hit ? tr.HitPosition : near;
+	}
+
+	void TeleportToBoss()
+	{
+		var boss = Scene.GetAllComponents<MC61>().FirstOrDefault( b => !b.IsDead );
+		if ( boss is null ) return;
+		var forward = boss.WorldRotation.Forward.WithZ( 0 ).Normal;
+		var spot = Ground( boss.WorldPosition.WithZ( boss.WorldPosition.z ) + forward * 260f );
+		var look = Rotation.LookAt( boss.WorldPosition - (spot + Vector3.Up * 64f) ).Angles();
+		MovePlayer( spot, look.WithRoll( 0f ) );
+	}
+
+	void TeleportToSpawnPoint()
+	{
+		var points = Scene.GetAllComponents<ZombieSpawnPoint>().ToList();
+		if ( points.Count == 0 ) return;
+		MovePlayer( Game.Random.FromList( points ).WorldPosition + Vector3.Up * 4f );
+	}
+
+	void SaveSpot()
+	{
+		if ( Player?.Controller is { } c && c.IsValid() ) savedSpot = (c.WorldPosition, c.EyeAngles);
+	}
+
+	void LoadSpot()
+	{
+		if ( savedSpot is { } s ) MovePlayer( s.Position, s.Angles );
+	}
+
+	void LoadScene( string path )
+	{
+		SetOpen( false );
+		Scene.TimeScale = 1f;
+		Scene.LoadFromFile( path );
+	}
+
+	// ---- stats overlay ----
+	int Fps => (int)MathF.Round( 1f / MathF.Max( 0.0001f, RealTime.SmoothDelta ) );
+	string FrameMs => (RealTime.SmoothDelta * 1000f).ToString( "0.0" );
+	int AliveEnemies => Scene.GetAllComponents<Zombie>().Count( z => !z.IsDead ) + Scene.GetAllComponents<Bloober>().Count( c => !c.IsDead )
+		+ Scene.GetAllComponents<Squilien>().Count( c => !c.IsDead ) + Scene.GetAllComponents<JunkCrab>().Count( c => !c.IsDead ) + Scene.GetAllComponents<MC61>().Count( c => !c.IsDead );
+	string PlayerPos => Player?.WorldPosition is { } p ? $"{p.x:0} {p.y:0} {p.z:0}" : "";
 }

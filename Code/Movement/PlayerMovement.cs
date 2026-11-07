@@ -705,6 +705,14 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 		cam.FieldOfView += fovBoost;
 		cam.WorldRotation *= new Angles( landDip, 0f, tilt + wallRoll ).ToRotation();
 		cam.WorldPosition += Vector3.Down * landDip * 0.6f;
+
+		// Dev menu camera tools.
+		if ( DevFlags.Fov > 0f ) cam.FieldOfView = DevFlags.Fov;
+		if ( DevFlags.FreeCam )
+		{
+			cam.WorldPosition = DevFlags.FreeCamPosition;
+			cam.WorldRotation = DevFlags.FreeCamAngles.ToRotation();
+		}
 	}
 
 	void Kick( float fov )

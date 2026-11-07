@@ -152,6 +152,8 @@ public sealed class MC61 : Component, ICreature
 	static readonly Vector3 EyeFromHead = new( 20.68f, 0, 0 );
 	static readonly Vector3 HatFromHead = new( -2.13f, 11.63f, 17.92f );
 	static readonly Rotation HatRotation = new( -0.16307f, -0.19920f, -0.61210f, 0.74771f );
+	/// <summary> Degrees the hat leans off-centre. </summary>
+	const float HatTilt = 14f;
 	static readonly Vector3 TailRoot = new( -16.6f, 0, -25f );
 	const float TailSegment = 10f;
 	static readonly float[] TailRadius = { 10.4f, 8.6f, 6.2f, 3.6f };
@@ -279,7 +281,7 @@ public sealed class MC61 : Component, ICreature
 		Trigger( eye, new Vector3( 0, -5, 0 ), new Vector3( 0, 5, 0 ), 9f );
 
 		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, Angles.Zero, HatHealth );
-		hat.Go.LocalRotation = HatRotation;
+		hat.Go.LocalRotation = Rotation.FromAxis( Vector3.Forward, HatTilt ) * HatRotation;   // worn at a jaunty angle (#8)
 		Sculpt( hat, "hat", Tux );
 		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 10 ), 8.5f );
 
@@ -857,6 +859,9 @@ public sealed class MC61 : Component, ICreature
 	}
 
 	// ---- Host brain -----------------------------------------------------------
+
+	/// <summary> Dev menu: jump straight into a move. </summary>
+	public void ForceState( Mode mode ) => SetState( mode );
 
 	void SetState( Mode mode )
 	{

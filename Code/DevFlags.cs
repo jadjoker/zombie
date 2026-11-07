@@ -11,9 +11,20 @@ public static class DevFlags
 	public static bool Placing;
 	public static bool HideHud;
 	public static bool HideWeapon;
+	/// <summary> Camera detached from the player and flown separately (the player stays put). </summary>
+	public static bool FreeCam;
+	public static Vector3 FreeCamPosition;
+	public static Angles FreeCamAngles;
+	/// <summary> Field of view override; 0 = the game's own. </summary>
+	public static float Fov;
+	/// <summary> Any hit on an enemy kills it. </summary>
+	public static bool OneShot;
+	public static bool ShowHitboxes;
+	public static bool ShowStats;
 
 	public static void Reset()
 	{
-		FreezeEnemies = Noclip = Placing = HideHud = HideWeapon = false;
+		FreezeEnemies = Noclip = Placing = HideHud = HideWeapon = FreeCam = OneShot = ShowHitboxes = ShowStats = false;
+		Fov = 0f;
 	}
 }

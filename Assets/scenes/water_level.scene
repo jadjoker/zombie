@@ -12307,7 +12307,7 @@
           "SpawningPaused": false,
           "SpawnInterval": 1,
           "SpawnSquiliens": true,
-          "SpawnZombies": true,
+          "SpawnZombies": false,
           "SpeedPerWave": 10,
           "SquilienBaseHealth": 130,
           "SquilienChance": 0.25,

@@ -187,7 +187,7 @@ public sealed class PlayerWeapon : Component
 		}
 
 		// The first-person gun only shows in first person (and comes back after a respawn).
-		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson && !DevFlags.HideWeapon;
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam;
 
 		// Dev tool: never run dry.
 		if ( InfiniteAmmo )

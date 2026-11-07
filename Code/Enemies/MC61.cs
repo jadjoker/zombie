@@ -1,18 +1,21 @@
 /// <summary>
-/// MC61: a magical floating cyclops in a tux and top hat. The boss.
+/// MC61: a floating ghost magician in a tux and top hat, with one big living eye and two detached white-gloved
+/// hands that do the talking. The boss.
 ///
 /// Attacks:
-///  - Eye beam: shouts "I SEEE YOUUU", charges his eye (a thin aiming line shows where), then fires a
-///    heavy beam that sweeps slowly after you. Keep moving.
-///  - "Pick any card": snaps the briefcase open and spins, flinging rings of cards in every direction.
-///    Each card carries a curse: burn, poison, slow or ink.
-///  - The worm dance: sometimes he just drops to the floor and does the worm (it reminds him of
-///    cheering crowds as a kid). He takes extra damage while he dances.
+///  - Eye beam: shouts "I SEEE YOUUU", charges his eye (it glows red and veins creep in; a thin aiming line shows
+///    where), then fires a heavy beam that sweeps slowly after you. Keep moving.
+///  - "Pick any card": his hands pinch a card, then snap open and he spins, flinging rings of cards in every
+///    direction. Each card carries a curse: burn, poison, slow or ink.
+///  - The worm dance: sometimes he just drops to the floor and wriggles (it reminds him of cheering crowds as a
+///    kid). He takes extra damage while he dances.
 ///
-/// Chunking: the hat can be shot off; arms and legs come off at the shoulder/hip or elbow/knee; the
-/// briefcase can be destroyed (or dropped with the arm holding it) which ends his card trick; the eye
-/// is a critical spot and can be popped, which ends the beam. The head is lethal. Without eye or case
-/// he just comes at you.
+/// Chunking: the hat can be shot off; a hand can be shot off (lose both and the card trick is over); the tail
+/// breaks at the point you hit and the rest drops; the eye is a critical spot and can be popped, which ends the
+/// beam. The head is lethal. Without eye or hands he just comes at you.
+///
+/// The eye is a live 2D picture on the eyeball: the pupil follows you, he blinks, and it glows red as the beam
+/// charges. Every finger is its own jointed piece, curled into poses by the code.
 ///
 /// Networking: the host runs him (the networked root); the rig is built and animated on every machine
 /// from synced state. Speech, cards and cuts are broadcast; a mask lets late joiners catch up.
@@ -48,9 +51,12 @@ public sealed class MC61 : Component, ICreature
 	[Property, Group( "Damage" )] public float EyeMultiplier { get; set; } = 2.5f;
 	[Property, Group( "Damage" )] public float TorsoMultiplier { get; set; } = 0.6f;
 	[Property, Group( "Damage" )] public float LimbMultiplier { get; set; } = 0.15f;
-	[Property, Group( "Damage" )] public float LimbHealth { get; set; } = 110f;
+	[Property, Group( "Damage" )] public float TorsoHealth { get; set; } = 110f;
 	[Property, Group( "Damage" )] public float HatHealth { get; set; } = 40f;
-	[Property, Group( "Damage" )] public float CaseHealth { get; set; } = 150f;
+	[Property, Group( "Damage" )] public float HandHealth { get; set; } = 130f;
+	[Property, Group( "Damage" )] public float TailHealth { get; set; } = 60f;
+	/// <summary> Hands are modelled small; this scales the whole hand and its fingers. </summary>
+	[Property, Group( "Body" )] public float HandScale { get; set; } = 1.45f;
 	[Property, Group( "Damage" )] public float EyeHealth { get; set; } = 350f;
 
 	public enum Mode { Float, Charge, Beam, Cards, Dance }
@@ -68,9 +74,11 @@ public sealed class MC61 : Component, ICreature
 	public event System.Action<MC61> Killed;
 
 	// Part indices (also the bits in GoneMask).
-	const int Torso = 0, Head = 1, Eye = 2, Hat = 3, ArmL = 4, ForearmL = 5, ArmR = 6, ForearmR = 7, Case = 8, LegL = 9, ShinL = 10, LegR = 11, ShinR = 12;
+	const int Torso = 0, Head = 1, Eye = 2, Hat = 3, HandL = 4, HandR = 5, Tail0 = 6, TailCount = 4;
+	const int PartCount = 10;
 
 	static readonly Color Tux = new( 0.06f, 0.06f, 0.09f );
+	static readonly Color GhostBody = new( 0.7f, 0.78f, 0.93f );
 	static readonly Color Skin = new( 0.42f, 0.47f, 0.4f ); // sickly
 	static readonly Color Glove = new( 0.97f, 0.97f, 1f );
 	static readonly Color Iris = new( 1f, 0.12f, 0.08f );
@@ -92,9 +100,9 @@ public sealed class MC61 : Component, ICreature
 		public Vector3 Velocity;
 	}
 
-	readonly Part[] parts = new Part[13];
+	readonly Part[] parts = new Part[PartCount];
 	GameObject rig;
-	GameObject beam, beamCore, aimLine, lid;
+	GameObject beam, beamCore, aimLine;
 	Health health;
 	GoreSystem gore;
 
@@ -134,6 +142,41 @@ public sealed class MC61 : Component, ICreature
 		Build();
 	}
 
+	// Layout numbers come from Tools/blender/mc61_ghost.py (Assets/models/creatures/mc61g_layout.json).
+	static readonly Vector3 HeadPivot = new( 0, 0, 38f );
+	static readonly Vector3 EyeFromHead = new( 20.68f, 0, 0 );
+	static readonly Vector3 HatFromHead = new( -2.13f, 11.63f, 17.92f );
+	static readonly Rotation HatRotation = new( -0.16307f, -0.19920f, -0.61210f, 0.74771f );
+	static readonly Vector3 TailRoot = new( -16.6f, 0, -25f );
+	const float TailSegment = 10f;
+	static readonly float[] TailRadius = { 10.4f, 8.6f, 6.2f, 3.6f };
+	static readonly float[] FingerY = { -4.05f, -1.35f, 1.35f, 4.05f };
+	const float FingerZ = 9.6f;
+	static readonly float[] FingerLength = { 3.7f, 3.1f, 2.7f };
+	static readonly float[] ThumbLength = { 3.6f, 3.0f };
+
+	/// <summary> A jointed hand: the palm part plus a joint object for every finger segment. </summary>
+	sealed class Hand
+	{
+		public float Side;
+		public GameObject Root;
+		public readonly GameObject[][] Fingers = new GameObject[4][];
+		public readonly GameObject[] Thumb = new GameObject[2];
+		public readonly float[] Curl = new float[14];   // 4 fingers x 3 joints, then 2 thumb joints
+		public float Splay = 38f;
+	}
+	readonly Hand[] hands = new Hand[2];
+
+	// Eye picture
+	const int EyeW = 128, EyeH = 96;
+	Texture eyeTexture;
+	Color32[] eyePixels;
+	Material eyeMaterial;
+
+	// Tail spring state per segment (pitch back, roll sideways)
+	readonly float[] tailPitch = new float[TailCount], tailPitchVel = new float[TailCount], tailRoll = new float[TailCount], tailRollVel = new float[TailCount];
+	Vector3 lastRigPosition;
+
 	void Build()
 	{
 		rig = new GameObject( true, "MC61 Rig" );
@@ -141,91 +184,136 @@ public sealed class MC61 : Component, ICreature
 		rig.WorldTransform = WorldTransform;
 		rig.WorldScale = Size;
 
-		// Torso: black tux with a white shirt front and a red bow tie.
-		var torso = AddPart( Torso, -1, rig, "Torso", Vector3.Zero, Angles.Zero, LimbHealth );
-		Sculpt( torso, "torso_jacket", Tux );
-		Sculpt( torso, "torso_shirt", Glove );
-		Sculpt( torso, "torso_bowtie", new Color( 0.9f, 0.05f, 0.1f ) );
-		Trigger( torso, new Vector3( 0, 0, -14 ), new Vector3( 0, 0, 14 ), 14f );
+		// Body: the ghost sheet, the tuxedo jacket, a squared bow tie, and the shirt choker and buttons.
+		var torso = AddPart( Torso, -1, rig, "Torso", Vector3.Zero, Angles.Zero, TorsoHealth );
+		Sculpt( torso, "body", GhostBody );
+		Sculpt( torso, "jacket", Tux );
+		Sculpt( torso, "bow", Tux );
+		Sculpt( torso, "front", Tux );
+		Trigger( torso, new Vector3( 0, 0, -16 ), new Vector3( 0, 0, 24 ), 19f );
 
-		// Big round head, one huge eye, top hat.
-		var head = AddPart( Head, Torso, torso.Go, "Head", new Vector3( 0, 0, 20 ), Angles.Zero, 0f );
-		Sculpt( head, "head", Skin );
-		Trigger( head, new Vector3( 0, 0, 9 ), new Vector3( 0, 0, 27 ), 18f );
+		// Head: a hit shape over the dome (the meshes live on the body).
+		var head = AddPart( Head, Torso, torso.Go, "Head", HeadPivot, Angles.Zero, 0f );
+		Trigger( head, new Vector3( 0, 0, -2 ), new Vector3( 0, 0, 5 ), 19f );
 
-		var eye = AddPart( Eye, Head, head.Go, "Eye", new Vector3( 15.5f, 0, 21f ), Angles.Zero, EyeHealth );
-		Sphere( eye, Vector3.Zero, new Vector3( 5f, 9.5f, 9.5f ), Sclera );
-		Sphere( eye, new Vector3( 3.6f, 0, 0 ), new Vector3( 2f, 5.5f, 5.5f ), Iris );
-		Sphere( eye, new Vector3( 5f, 0, 0 ), new Vector3( 1.2f, 2.8f, 2.8f ), Color.Black );
-		Sphere( eye, new Vector3( 5.4f, 1.6f, 2.2f ), new Vector3( 0.6f, 1f, 1f ), Color.White );
-		Trigger( eye, new Vector3( 0, 0, -1 ), new Vector3( 0, 0, 1 ), 9f );
+		// Eye: a dome flush on the face, wearing a live 2D picture, with a lid ring round it.
+		var eye = AddPart( Eye, Head, head.Go, "Eye", EyeFromHead, Angles.Zero, EyeHealth );
+		var eyeball = new GameObject( eye.Go, true, "Eyeball" );
+		var eyeRenderer = eyeball.AddComponent<ModelRenderer>();
+		eyeRenderer.Model = Model.Load( "models/creatures/mc61g/eyeball.vmdl" );
+		eyeRenderer.Tint = Color.White;
+		eye.Renderers.Add( (eyeRenderer, Color.White) );
+		MakeEyePicture( eyeRenderer );
+		Sculpt( eye, "lids", Color.Black );
+		Trigger( eye, new Vector3( 0, -5, 0 ), new Vector3( 0, 5, 0 ), 9f );
 
-		// A big toothy grin, a cocked brow over the eye, and rosy cheeks.
-		Sphere( head, new Vector3( 14.2f, 0, 8.6f ), new Vector3( 2.6f, 8.4f, 3.2f ), new Color( 0.2f, 0.03f, 0.08f ) );
-		// Jagged teeth all along the grin, top and bottom.
-		var tooth = new Color( 0.9f, 0.86f, 0.7f );
-		for ( var i = 0; i < 9; i++ )
+		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, Angles.Zero, HatHealth );
+		hat.Go.LocalRotation = HatRotation;
+		Sculpt( hat, "hat", Tux );
+		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 10 ), 8.5f );
+
+		// Hands: floating gloves, each with a palm and fully jointed fingers.
+		BuildHand( HandL, 1f );
+		BuildHand( HandR, -1f );
+
+		// The tail: four pieces in a chain that sway and trail on their own.
+		var parentIndex = Torso;
+		var parentGo = torso.Go;
+		for ( var i = 0; i < TailCount; i++ )
 		{
-			var y = (i - 4f) * 1.8f;
-			var curve = MathF.Abs( y ) * 0.06f;
-			Tooth( head, new Vector3( 18.6f - curve, y, 12.3f + curve ), Vector3.Down, 2.6f, tooth );
-			if ( i % 2 == 0 ) Tooth( head, new Vector3( 18.4f - curve, y + 0.9f, 5.2f + curve ), Vector3.Up, 2.2f, tooth );
-		}
-		var brow = new GameObject( head.Go, true, "Shape" );
-		brow.LocalPosition = new Vector3( 19.6f, 0, 34f );
-		brow.LocalRotation = new Angles( 0, 0, 12f ).ToRotation();
-		brow.LocalScale = new Vector3( 2.2f, 10f, 1.6f ) * Shapes.SphereScale( 1f );
-		var browRenderer = brow.AddComponent<ModelRenderer>();
-		browRenderer.Model = Shapes.Sphere;
-		browRenderer.Tint = Tux;
-		head.Renderers.Add( (browRenderer, Tux) );
-
-		var hat = AddPart( Hat, Head, head.Go, "Hat", new Vector3( -1, 0, 35f ), new Angles( 0, 0, 9f ), HatHealth );
-		Sculpt( hat, "hat_body", Tux );
-		Sculpt( hat, "hat_band", new Color( 0.85f, 0.05f, 0.15f ) );
-		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 24 ), 13f );
-
-		// Arms: black sleeves, white gloves. The right hand carries the briefcase.
-		foreach ( var (upper, lower, side) in new[] { (ArmL, ForearmL, 1f), (ArmR, ForearmR, -1f) } )
-		{
-			var arm = AddPart( upper, Torso, torso.Go, side > 0 ? "Arm L" : "Arm R", new Vector3( 0, side * 17f, 12f ), new Angles( 0, 0, -side * 12f ), LimbHealth );
-			Sculpt( arm, "arm_sleeve", Tux );
-			Trigger( arm, Vector3.Zero, new Vector3( 0, 0, -20 ), 6.5f );
-
-			var fore = AddPart( lower, upper, arm.Go, side > 0 ? "Forearm L" : "Forearm R", new Vector3( 0, 0, -20 ), Angles.Zero, LimbHealth );
-			Sculpt( fore, "forearm_sleeve", Tux );
-			Sculpt( fore, "forearm_cuff", Glove );
-			Sculpt( fore, side > 0 ? "glove_l" : "glove_r", Glove );
-			Trigger( fore, Vector3.Zero, new Vector3( 0, 0, -26 ), 6f );
-		}
-
-		var briefcase = AddPart( Case, ForearmR, parts[ForearmR].Go, "Briefcase", new Vector3( 0, 0, -27f ), Angles.Zero, CaseHealth );
-		var leather = new Color( 0.32f, 0.16f, 0.07f );
-		Sculpt( briefcase, "case_body", leather );
-		Sculpt( briefcase, "case_handle", Tux );
-		Sculpt( briefcase, "case_metal", new Color( 0.85f, 0.7f, 0.2f ) );
-		lid = new GameObject( briefcase.Go, true, "Lid" );
-		lid.LocalPosition = new Vector3( 3.6f, 0, -4f );
-		Sculpt( briefcase, "case_lid", leather, lid );
-		Trigger( briefcase, new Vector3( 0, 0, -4 ), new Vector3( 0, 0, -18 ), 9f );
-
-		// Legs: white trousers, black shoes, dangling as he floats.
-		foreach ( var (upper, lower, side) in new[] { (LegL, ShinL, 1f), (LegR, ShinR, -1f) } )
-		{
-			var leg = AddPart( upper, Torso, torso.Go, side > 0 ? "Leg L" : "Leg R", new Vector3( 0, side * 7f, -18f ), Angles.Zero, LimbHealth );
-			Sculpt( leg, "leg_trouser", Glove );
-			Trigger( leg, Vector3.Zero, new Vector3( 0, 0, -22 ), 7f );
-
-			var shin = AddPart( lower, upper, leg.Go, side > 0 ? "Shin L" : "Shin R", new Vector3( 0, 0, -22 ), Angles.Zero, LimbHealth );
-			Sculpt( shin, "shin_trouser", Glove );
-			Sculpt( shin, "shoe", Tux );
-			Trigger( shin, Vector3.Zero, new Vector3( 0, 0, -23 ), 6.5f );
+			var tail = AddPart( Tail0 + i, parentIndex, parentGo, $"Tail {i}", i == 0 ? TailRoot : new Vector3( 0, 0, -TailSegment ), Angles.Zero, TailHealth );
+			Sculpt( tail, $"tail{i}", GhostBody );
+			Trigger( tail, Vector3.Zero, new Vector3( 0, 0, -TailSegment ), TailRadius[i] * 0.9f );
+			parentIndex = Tail0 + i;
+			parentGo = tail.Go;
 		}
 
 		// The beam, its glowing core, and the thin aiming line shown while charging.
 		beam = BeamPiece( "Beam", BeamColor * 2.5f );
 		beamCore = BeamPiece( "Beam Core", Color.White * 3f );
 		aimLine = BeamPiece( "Aim Line", new Color( 1f, 0.1f, 0.3f ) * 2f );
+	}
+
+	void BuildHand( int index, float side )
+	{
+		var part = AddPart( index, Torso, parts[Torso].Go, side > 0 ? "Hand L" : "Hand R", new Vector3( 6f, side * 36f, 18f ), Angles.Zero, HandHealth );
+		part.Go.LocalScale = HandScale;
+		Sculpt( part, side > 0 ? "palm_l" : "palm_r", Glove );
+		Trigger( part, new Vector3( 0, 0, 0 ), new Vector3( 0, 0, 13 ), 8f );
+
+		var hand = new Hand { Side = side, Root = part.Go };
+		hands[index == HandL ? 0 : 1] = hand;
+		for ( var f = 0; f < 4; f++ )
+		{
+			hand.Fingers[f] = new GameObject[3];
+			var parent = part.Go;
+			for ( var j = 0; j < 3; j++ )
+			{
+				var joint = new GameObject( parent, true, $"Finger {f}.{j}" );
+				joint.LocalPosition = j == 0 ? new Vector3( 0, FingerY[f], FingerZ ) : new Vector3( 0, 0, FingerLength[j - 1] );
+				Sculpt( part, j == 0 ? "f_prox" : j == 1 ? "f_mid" : "f_dist", Glove, joint );
+				hand.Fingers[f][j] = joint;
+				parent = joint;
+			}
+		}
+		var thumbBase = new GameObject( part.Go, true, "Thumb 0" );
+		thumbBase.LocalPosition = new Vector3( 0, side * 4.7f, 4.4f );
+		Sculpt( part, "t_base", Glove, thumbBase );
+		var thumbTip = new GameObject( thumbBase, true, "Thumb 1" );
+		thumbTip.LocalPosition = new Vector3( 0, 0, ThumbLength[0] );
+		Sculpt( part, "t_tip", Glove, thumbTip );
+		hand.Thumb[0] = thumbBase;
+		hand.Thumb[1] = thumbTip;
+	}
+
+	// ---- The live eye picture --------------------------------------------------
+
+	void MakeEyePicture( ModelRenderer renderer )
+	{
+		eyePixels = new Color32[EyeW * EyeH];
+		eyeTexture = Texture.Create( EyeW, EyeH ).WithDynamicUsage().Finish();
+		var baseMaterial = Material.Load( "materials/creature/mc61_eye.vmat" );
+		eyeMaterial = baseMaterial?.CreateCopy();
+		if ( eyeMaterial is null ) return;
+		eyeMaterial.Set( "Color", eyeTexture );
+		renderer.MaterialOverride = eyeMaterial;
+		DrawEye( Vector2.Zero, 0f, 0f );
+	}
+
+	/// <summary> Paints the eye: white with veins that redden with `glow`, a pupil looking at `look`, an upper lid closing with `lid`. </summary>
+	void DrawEye( Vector2 look, float lid, float glow )
+	{
+		if ( eyeTexture is null || eyePixels is null ) return;
+		var px = look.x * 0.38f;
+		var py = look.y * 0.3f;
+		var lidEdge = 1f - 2.1f * lid;
+		for ( var y = 0; y < EyeH; y++ )
+		{
+			var ny = 1f - (y + 0.5f) / EyeH * 2f;   // up is +1 (the top row of the picture)
+			for ( var x = 0; x < EyeW; x++ )
+			{
+				var nx = (x + 0.5f) / EyeW * 2f - 1f;
+				var rr = MathF.Sqrt( nx * nx + ny * ny );
+				// base: white, reddening with the charge, veins creeping in from the rim
+				var veins = MathX.Clamp( (rr - 0.55f) * 1.6f, 0f, 1f ) * glow * 0.7f;
+				var r = 1f;
+				var g = 1f - 0.9f * glow - veins * 0.5f;
+				var b = 1f - 0.92f * glow - veins * 0.5f;
+				var dx = (nx - px) / 0.3f;
+				var dy = (ny - py) / 0.5f;
+				if ( dx * dx + dy * dy < 1f ) { r = glow < 0.5f ? 0.02f : 0.25f; g = b = glow < 0.5f ? 0.02f : 0f; }
+				var hx = (nx - px + 0.1f) / 0.07f;
+				var hy = (ny - py - 0.2f) / 0.09f;
+				if ( hx * hx + hy * hy < 1f ) { r = g = b = 1f; }
+				if ( lid > 0.02f )
+				{
+					if ( ny > lidEdge ) { r = GhostBody.r; g = GhostBody.g; b = GhostBody.b; }
+					else if ( ny > lidEdge - 0.06f ) { r = g = b = 0.02f; }
+				}
+				eyePixels[y * EyeW + x] = new Color32( (byte)(MathX.Clamp( r, 0f, 1f ) * 255f), (byte)(MathX.Clamp( g, 0f, 1f ) * 255f), (byte)(MathX.Clamp( b, 0f, 1f ) * 255f), 255 );
+			}
+		}
+		eyeTexture.Update( eyePixels, 0, 0, EyeW, EyeH );
 	}
 
 	Part AddPart( int index, int parent, GameObject parentGo, string name, Vector3 position, Angles angles, float hp )
@@ -262,7 +350,7 @@ public sealed class MC61 : Component, ICreature
 	{
 		var go = new GameObject( parent ?? part.Go, true, "Shape" );
 		var r = go.AddComponent<ModelRenderer>();
-		r.Model = Model.Load( $"models/creatures/mc61/{model}.vmdl" );
+		r.Model = Model.Load( $"models/creatures/mc61g/{model}.vmdl" );
 		r.Tint = color;
 		part.Renderers.Add( (r, color) );
 	}
@@ -330,66 +418,149 @@ public sealed class MC61 : Component, ICreature
 
 	bool Has( int index ) => parts[index] is { Gone: false };
 
-	/// <summary> Poses the rig: idle float, beam stance, card spin, or the worm. </summary>
+	// ---- Hand poses: curl in degrees for [index, middle, ring, pinky] x [base, mid, tip], then thumb [base, tip] ----
+
+	static readonly float[] PoseOpen = { 8, 6, 4, 6, 5, 3, 8, 6, 4, 12, 8, 5, -10, 8 };
+	static readonly float[] PoseWave = { 20, 14, 10, 16, 12, 8, 22, 14, 10, 28, 16, 12, -18, 10 };
+	static readonly float[] PoseFist = { 85, 95, 60, 88, 98, 62, 85, 95, 60, 80, 92, 58, 35, 40 };
+	static readonly float[] PosePoint = { 4, 2, 2, 88, 98, 62, 86, 96, 60, 82, 94, 58, 30, 20 };
+	static readonly float[] PosePinch = { 52, 50, 35, 30, 28, 20, 20, 24, 18, 22, 24, 18, 40, 24 };
+	static readonly float[] PoseClaw = { 55, 40, 25, 58, 42, 26, 55, 40, 25, 50, 38, 22, 20, 25 };
+	static readonly float[] PoseSpread = { -6, -4, -2, -2, -2, 0, -4, -2, 0, -10, -6, -2, -25, 0 };
+
+	/// <summary> Eases a hand's every finger joint toward a pose, with an optional tremble and finger fan. </summary>
+	void CurlHand( Hand hand, float[] pose, float rate, float tremble, float fan, float thumbSplay )
+	{
+		if ( hand is null || !hand.Root.IsValid() ) return;
+		var t = Time.Now;
+		var k = MathX.Clamp( Time.Delta * rate, 0f, 1f );
+		for ( var i = 0; i < 14; i++ )
+		{
+			var wobble = tremble * MathF.Sin( t * 31f + i * 1.7f + hand.Side * 2f );
+			hand.Curl[i] = MathX.Lerp( hand.Curl[i], pose[i] + wobble, k );
+		}
+		hand.Splay = MathX.Lerp( hand.Splay, thumbSplay, k );
+		for ( var f = 0; f < 4; f++ )
+		{
+			var spread = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan );
+			for ( var j = 0; j < 3; j++ )
+			{
+				var joint = hand.Fingers[f][j];
+				if ( !joint.IsValid() ) continue;
+				var curl = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + j] );
+				joint.LocalRotation = j == 0 ? spread * curl : curl;
+			}
+		}
+		if ( hand.Thumb[0].IsValid() ) hand.Thumb[0].LocalRotation = Rotation.FromAxis( Vector3.Forward, -hand.Side * hand.Splay ) * Rotation.FromAxis( Vector3.Left, hand.Curl[12] );
+		if ( hand.Thumb[1].IsValid() ) hand.Thumb[1].LocalRotation = Rotation.FromAxis( Vector3.Left, hand.Curl[13] );
+	}
+
+	void MoveHand( int index, Vector3 position, Rotation rotation, float rate = 7f )
+	{
+		var part = parts[index];
+		if ( part is null || part.Gone || !part.Go.IsValid() ) return;
+		var k = MathX.Clamp( Time.Delta * rate, 0f, 1f );
+		part.Go.LocalPosition = Vector3.Lerp( part.Go.LocalPosition, position, k );
+		part.Go.LocalRotation = Rotation.Slerp( part.Go.LocalRotation, rotation, k );
+	}
+
+	/// <summary> Poses the rig: idle float, charging, beam stance, card spin, or the worm. </summary>
 	void Animate()
 	{
 		var t = Time.Now;
+		var dt = MathF.Max( Time.Delta, 0.0001f );
 		var st = localStateTime.Relative;
 		var torso = parts[Torso].Go;
 
-		// Defaults: idle float with lazy swinging limbs.
+		// Defaults: idle float, hands drifting and fluttering, tail trailing.
 		var torsoAngles = new Angles( MathF.Sin( t * 1.3f ) * 3f, 0, MathF.Sin( t * 0.9f ) * 4f );
 		var headAngles = new Angles( 0, MathF.Sin( t * 0.7f ) * 8f, 0 );
-		var armL = new Angles( MathF.Sin( t * 1.6f ) * 10f, 0, -12f );
-		var armR = new Angles( MathF.Sin( t * 1.6f + 1.5f ) * 10f, 0, 12f );
-		var foreL = new Angles( -15f, 0, 0 );
-		var foreR = new Angles( -15f, 0, 0 );
-		var legL = new Angles( MathF.Sin( t * 1.2f ) * 12f, 0, 0 );
-		var legR = new Angles( MathF.Sin( t * 1.2f + 2f ) * 12f, 0, 0 );
-		var shinL = new Angles( 15f + MathF.Sin( t * 1.2f ) * 8f, 0, 0 );
-		var shinR = new Angles( 15f + MathF.Sin( t * 1.2f + 2f ) * 8f, 0, 0 );
 		var bob = MathF.Sin( t * 1.8f ) * 3f;
-		var lidOpen = 0f;
 		var spin = 0f;
+		var tailWiggle = 1f;
+		var eyeGlow = 0f;
+
+		float[] poseL = PoseWave, poseR = PoseOpen;
+		var tremble = 0f;
+		var fan = 0f;
+		var thumbSplay = 38f;
+		var posL = new Vector3( 4f, 40f, 14f + MathF.Sin( t * 1.4f ) * 4f );
+		var posR = new Vector3( 8f, -38f, 26f + MathF.Sin( t * 1.4f + 1.7f ) * 4f );
+		var rotL = Rotation.FromAxis( Vector3.Forward, -28f + MathF.Sin( t * 1.1f ) * 6f ) * Rotation.FromAxis( Vector3.Up, 10f );
+		var rotR = Rotation.FromAxis( Vector3.Forward, 30f + MathF.Sin( t * 1.2f ) * 6f ) * Rotation.FromAxis( Vector3.Up, -10f );
+		var flutter = 5f;
 
 		switch ( State )
 		{
 			case Mode.Charge:
-				// Leans back, head tipping down to glare.
+			{
+				// Leans back, hands rising to either side of the eye, fingers hooked into claws and shaking.
 				torsoAngles = new Angles( -8f - st * 3f, 0, 0 );
 				headAngles = new Angles( 10f, 0, 0 );
-				armL = new Angles( -30f, 0, -40f );
-				armR = new Angles( -30f, 0, 40f );
 				bob = MathF.Sin( t * 30f ) * 0.6f * st;
+				var charge = MathX.Clamp( st / ChargeTime, 0f, 1f );
+				eyeGlow = charge * (0.85f + 0.15f * MathF.Sin( t * 20f ));
+				poseL = poseR = PoseClaw;
+				tremble = 2f + 6f * charge;
+				flutter = 0f;
+				posL = new Vector3( 14f, 30f, 38f + MathF.Sin( t * 25f ) * charge );
+				posR = new Vector3( 14f, -30f, 38f + MathF.Sin( t * 25f + 1f ) * charge );
+				rotL = Rotation.FromAxis( Vector3.Forward, -22f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 22f );
+				tailWiggle = 0.5f;
 				break;
+			}
 
 			case Mode.Beam:
+			{
 				torsoAngles = new Angles( 6f, 0, 0 );
 				headAngles = Angles.Zero;
-				armL = new Angles( -10f, 0, -55f );
-				armR = new Angles( -10f, 0, 55f );
 				bob = MathF.Sin( t * 45f ) * 0.8f;
+				eyeGlow = 1f;
+				// Palms thrust forward like "stop", fingers splayed and rattling.
+				poseL = poseR = PoseSpread;
+				tremble = 6f;
+				fan = 9f;
+				flutter = 0f;
+				posL = new Vector3( 30f, 26f, 24f );
+				posR = new Vector3( 30f, -26f, 24f );
+				rotL = Rotation.FromAxis( Vector3.Up, -8f );
+				rotR = Rotation.FromAxis( Vector3.Up, 8f );
+				tailWiggle = 0.3f;
 				break;
+			}
 
 			case Mode.Cards:
-				// Case arm up, lid open, and a full spin while the cards fly.
-				armR = new Angles( -150f, 0, 25f );
-				foreR = new Angles( 0, 0, 0 );
-				lidOpen = MathX.Clamp( st / 0.5f, 0f, 1f );
+			{
+				// Hands come together holding a card, then fly apart in a spin while the cards fly.
+				var hold = st < 0.55f;
+				poseL = poseR = hold ? PosePinch : PoseSpread;
+				fan = hold ? 0f : 12f;
+				flutter = 0f;
+				tremble = hold ? 1.5f : 0f;
+				posL = hold ? new Vector3( 22f, 9f, 14f ) : new Vector3( 8f, 38f, 22f );
+				posR = hold ? new Vector3( 22f, -9f, 14f ) : new Vector3( 8f, -38f, 22f );
+				rotL = hold ? Rotation.FromAxis( Vector3.Up, -20f ) : Rotation.FromAxis( Vector3.Forward, -40f );
+				rotR = hold ? Rotation.FromAxis( Vector3.Up, 20f ) : Rotation.FromAxis( Vector3.Forward, 40f );
 				spin = MathX.Clamp( (st - 0.6f) / 1.1f, 0f, 1f ) * 360f;
+				tailWiggle = 1.6f;
 				break;
+			}
 
 			case Mode.Dance:
 			{
-				// The worm: flat on his belly, a wave rolling from feet to head.
+				// The worm: belly-down, a wave rolling along him, hands waving and fluttering.
 				var w = t * 7f;
 				torsoAngles = new Angles( 90f + MathF.Sin( w ) * 14f, 0, 0 );
 				headAngles = new Angles( -70f + MathF.Sin( w - 1.2f ) * 20f, 0, 0 );
-				armL = new Angles( -10f, 0, -60f + MathF.Sin( w ) * 10f );
-				armR = new Angles( -10f, 0, 60f - MathF.Sin( w ) * 10f );
-				legL = legR = new Angles( MathF.Sin( w + 1.4f ) * 30f, 0, 0 );
-				shinL = shinR = new Angles( 20f + MathF.Sin( w + 2.4f ) * 40f, 0, 0 );
 				bob = MathF.Max( 0f, MathF.Sin( w ) ) * 8f;
+				poseL = poseR = PoseWave;
+				flutter = 22f;
+				posL = new Vector3( 6f, 36f, 22f + MathF.Sin( w ) * 10f );
+				posR = new Vector3( 6f, -36f, 22f + MathF.Sin( w + 2f ) * 10f );
+				rotL = Rotation.FromAxis( Vector3.Forward, MathF.Sin( w ) * 30f );
+				rotR = Rotation.FromAxis( Vector3.Forward, MathF.Sin( w + 2f ) * 30f );
+				tailWiggle = 3f;
 				break;
 			}
 		}
@@ -397,22 +568,91 @@ public sealed class MC61 : Component, ICreature
 		torso.LocalPosition = new Vector3( 0, 0, bob );
 		torso.LocalRotation = Rotation.FromYaw( spin ) * torsoAngles.ToRotation();
 		Pose( Head, headAngles );
-		Pose( ArmL, armL );
-		Pose( ArmR, armR );
-		Pose( ForearmL, foreL );
-		Pose( ForearmR, foreR );
-		Pose( LegL, legL );
-		Pose( LegR, legR );
-		Pose( ShinL, shinL );
-		Pose( ShinR, shinR );
-		if ( lid.IsValid() ) lid.LocalRotation = Rotation.FromPitch( -lidOpen * 110f );
 
-		// Eye: swells and glows while charging and firing.
-		if ( Has( Eye ) )
+		// Hands drift to where the attack wants them; every finger eases into the pose.
+		MoveHand( HandL, posL, rotL );
+		MoveHand( HandR, posR, rotR );
+		CurlHand( hands[0], poseL, 14f, tremble + flutter * 0.4f, fan, thumbSplay );
+		CurlHand( hands[1], poseR, 14f, tremble + flutter * 0.4f, fan, thumbSplay );
+
+		AnimateTail( t, dt, tailWiggle );
+		AnimateEye( t, dt, eyeGlow );
+	}
+
+	/// <summary> A ghostly tail: each piece is a little spring that lags behind his movement and ripples. </summary>
+	void AnimateTail( float t, float dt, float wiggle )
+	{
+		var velocityNow = (WorldPosition - lastRigPosition) / dt;
+		lastRigPosition = WorldPosition;
+		var local = WorldRotation.Inverse * velocityNow;
+		for ( var i = 0; i < TailCount; i++ )
 		{
-			var glow = State == Mode.Charge ? 0.5f + 0.5f * MathF.Sin( t * 20f ) * st : State == Mode.Beam ? 1f : 0f;
-			parts[Eye].Go.LocalScale = 1f + glow * 0.25f;
+			var tail = parts[Tail0 + i];
+			if ( tail is null || tail.Gone ) break;
+			var drag = 1f + i * 0.35f;
+			var targetPitch = (i == 0 ? 42f : 12f) + MathX.Clamp( local.x * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
+			var targetRoll = -14f + MathX.Clamp( -local.y * 0.05f, -22f, 22f ) * drag + MathF.Cos( t * 1.7f - i * 0.8f ) * (4f + 3f * i) * wiggle;
+			tailPitchVel[i] += (targetPitch - tailPitch[i]) * 38f * dt;
+			tailPitchVel[i] *= MathF.Exp( -4f * dt );
+			tailPitch[i] += tailPitchVel[i] * dt;
+			tailRollVel[i] += (targetRoll - tailRoll[i]) * 38f * dt;
+			tailRollVel[i] *= MathF.Exp( -4f * dt );
+			tailRoll[i] += tailRollVel[i] * dt;
+			tail.Go.LocalRotation = Rotation.FromAxis( Vector3.Forward, tailRoll[i] ) * Rotation.FromAxis( Vector3.Left, tailPitch[i] );
 		}
+	}
+
+	// ---- The living eye: tracks you, blinks (sometimes off-beat), and reddens as it charges ----
+
+	Vector2 eyeLook;
+	float eyeLid;
+	float eyeGlowNow;
+	float nextBlinkAt = 2f;
+	float blinkStart = -1f;
+	float blinkLength = 0.2f;
+	float nextEyePaint;
+
+	void AnimateEye( float t, float dt, float glowTarget )
+	{
+		if ( eyeTexture is null || !Has( Eye ) ) return;
+
+		// Where is he looking? At the nearest player, in the head's own frame.
+		var want = Vector2.Zero;
+		PlayerSurvivor target = null;
+		var best = float.MaxValue;
+		foreach ( var p in Scene.GetAllComponents<PlayerSurvivor>() )
+		{
+			if ( !p.IsAlive ) continue;
+			var d = p.WorldPosition.DistanceSquared( WorldPosition );
+			if ( d < best ) { best = d; target = p; }
+		}
+		if ( target is not null )
+		{
+			var dir = (target.WorldPosition + Vector3.Up * 50f - parts[Eye].Go.WorldPosition).Normal;
+			var localDir = parts[Head].Go.WorldRotation.Inverse * dir;
+			want = new Vector2( MathX.Clamp( localDir.y * 2.4f, -1f, 1f ), MathX.Clamp( localDir.z * 2.0f, -1f, 1f ) );
+		}
+		else want = new Vector2( MathF.Sin( t * 0.8f ), MathF.Cos( t * 0.6f ) * 0.4f );
+		eyeLook = Vector2.Lerp( eyeLook, want, MathX.Clamp( dt * 9f, 0f, 1f ) );
+
+		// Blinks: usually a quick one, sometimes slow or a double.
+		if ( t >= nextBlinkAt )
+		{
+			blinkStart = t;
+			blinkLength = Game.Random.Float() < 0.2f ? Game.Random.Float( 0.35f, 0.55f ) : 0.18f;
+			nextBlinkAt = t + (Game.Random.Float() < 0.2f ? 0.4f : Game.Random.Float( 1.8f, 5f ));
+		}
+		var k = blinkStart < 0f ? 2f : (t - blinkStart) / blinkLength;
+		var lid = k is < 0f or > 1f ? 0f : MathF.Sin( k * MathF.PI );
+		if ( State is Mode.Beam ) lid = MathF.Max( lid, 0.18f ); // narrowed to a glare while firing
+		eyeLid = lid;
+
+		eyeGlowNow = MathX.Lerp( eyeGlowNow, glowTarget, MathX.Clamp( dt * 10f, 0f, 1f ) );
+
+		// Repaint at ~40 fps.
+		if ( t < nextEyePaint ) return;
+		nextEyePaint = t + 0.025f;
+		DrawEye( eyeLook, eyeLid, eyeGlowNow );
 	}
 
 	void Pose( int index, Angles angles )
@@ -433,7 +673,7 @@ public sealed class MC61 : Component, ICreature
 			{
 				if ( !renderer.IsValid() ) continue;
 				var color = Color.Lerp( tint, tint * 0.5f, part.Hurt ).WithAlpha( 1f );
-				if ( part.Index == Eye && glowing && tint == Iris ) color = Iris * (2f + MathF.Sin( Time.Now * 25f ));
+				if ( part.Index == Eye && tint == Color.White ) color = Color.White * (1f + 1.2f * eyeGlowNow);
 				renderer.Tint = Color.Lerp( color, Color.White * 3f, flash );
 			}
 
@@ -500,7 +740,7 @@ public sealed class MC61 : Component, ICreature
 		var dt = Time.Delta;
 		var target = PlayerSurvivor.FindNearestAlive( Scene, WorldPosition );
 		var hasEye = Has( Eye );
-		var hasCase = Has( Case );
+		var hasCase = Has( HandL ) || Has( HandR );
 
 		switch ( State )
 		{
@@ -545,7 +785,7 @@ public sealed class MC61 : Component, ICreature
 				var due = (int)MathF.Floor( (stateTime - 0.6f) / 0.35f ) + 1;
 				while ( hasCase && cardRingsThrown < Math.Min( due, CardRings ) )
 				{
-					var origin = parts[Case].Go.WorldPosition;
+					var origin = parts[Has( HandR ) ? HandR : HandL].Go.WorldPosition;
 					// Tilt the ring down (or up) so it sweeps through the target's body height, the
 					// second ring a little lower than the first so jumping over one doesn't dodge both.
 					var slope = 0f;
@@ -883,20 +1123,13 @@ public sealed class MC61 : Component, ICreature
 				Say( "MY EYEEE" );
 				return;
 
-			case Case:
-				// Bursts open: a harmless confetti of cards.
-				CardConfetti( at );
-				Detach( part, direction * 120f + Vector3.Up * 150f );
-				if ( !IsProxy ) Say( "My cards!" );
-				return;
-
 			case Hat:
 				Detach( part, direction * 80f + Vector3.Up * 260f, spin: 25f );
 				return;
 		}
 
-		// Losing the arm with the case also loses the case trick.
-		if ( (mask & (1 << Case)) != 0 ) CardConfetti( at );
+		// A hand that comes off drops its card in a puff of confetti.
+		if ( index is HandL or HandR ) CardConfetti( at );
 		Detach( part, direction * Game.Random.Float( 80f, 180f ) + Vector3.Up * 80f );
 		CreatureGore.Twitch( part.Go, Game.Random.Float( 2f, 3.5f ), 1.2f );
 	}
@@ -904,11 +1137,11 @@ public sealed class MC61 : Component, ICreature
 	/// <summary> Raw stumps on both sides of a cut: on what he keeps, and on the piece that flies off. </summary>
 	void AddStumps( Part part, float scale )
 	{
-		if ( part.Index == Hat || part.Index == Case ) return;
+		if ( part.Index == Hat ) return;
 		var parent = part.Parent >= 0 ? parts[part.Parent] : null;
 		var joint = part.Go.WorldPosition;
 		var outward = parent is not null ? (joint - parent.Go.WorldPosition).Normal : Vector3.Up;
-		var radius = (part.Index is ArmL or ArmR or ForearmL or ForearmR ? 5.5f : part.Index is LegL or LegR or ShinL or ShinR ? 6.5f : 7f) * Size * scale;
+		var radius = (part.Index is HandL or HandR ? 5f : 7f) * Size * scale;
 		var skin = part.Renderers.Count > 0 ? part.Renderers[0].Tint : Tux;
 		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, joint, outward, radius, skin, Goo );
 		if ( part.Index != Eye ) CreatureGore.AddStump( part.Go, joint, -outward, radius, skin, Goo, 2f );
@@ -993,7 +1226,7 @@ public sealed class MC61 : Component, ICreature
 		CardConfetti( headAt );
 
 		// Hat and limbs fly off; the head is gone; the torso drops.
-		foreach ( var index in new[] { Hat, ArmL, ArmR, LegL, LegR } )
+		foreach ( var index in new[] { Hat, HandL, HandR, Tail0 } )
 		{
 			if ( !Has( index ) ) continue;
 			var part = parts[index];

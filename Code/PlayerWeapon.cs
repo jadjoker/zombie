@@ -44,6 +44,9 @@ public sealed class PlayerWeapon : Component
 	public int Ammo { get; private set; }
 	public int Reserve { get; private set; }
 
+	/// <summary> Dev tool: keep the magazine and reserve topped up (set by the dev menu). </summary>
+	public bool InfiniteAmmo { get; set; }
+
 	/// <summary> Raised by the damage upgrade station. </summary>
 	public int DamageLevel { get; set; }
 	[Property, Group( "Stats" )] public float DamagePerLevel { get; set; } = 0.25f;
@@ -102,9 +105,10 @@ public sealed class PlayerWeapon : Component
 	public TimeSince TimeSinceHit { get; private set; } = 999f;
 	/// <summary> Time since a bullet killed something. The HUD shows a red hitmarker. </summary>
 	public TimeSince TimeSinceKill { get; private set; } = 999f;
+#pragma warning disable SB3003 // Owner-local fire/reload timers; a reset on host migration is harmless.
 	public TimeSince TimeSinceShot { get; private set; } = 999f;
-
 	TimeUntil reloadFinished;
+#pragma warning restore SB3003
 	bool magInPlayed;
 
 	/// <summary> The gun as seen in hand in third person, and by other players. </summary>
@@ -184,6 +188,13 @@ public sealed class PlayerWeapon : Component
 
 		// The first-person gun only shows in first person (and comes back after a respawn).
 		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson;
+
+		// Dev tool: never run dry.
+		if ( InfiniteAmmo )
+		{
+			Ammo = MagazineSize;
+			Reserve = Math.Max( Reserve, StartingReserve );
+		}
 
 		if ( IsReloading && ShellReload )
 		{

@@ -95,6 +95,13 @@ public sealed class Gib : Component
 	/// Turns an object that already has its visuals (a creature segment, a blob) into a loose physics
 	/// piece: a ball collider, a rigidbody, and the usual gib life (fade, splats, shoot it to bits).
 	/// </summary>
+	/// <param name="go"> The object to turn into a gib. </param>
+	/// <param name="gore"> The scene's gore system (sounds, decals), or null. </param>
+	/// <param name="radius"> Collider radius / size of the piece. </param>
+	/// <param name="health"> How much damage it takes before it's pulverised. </param>
+	/// <param name="mass"> Physics mass. </param>
+	/// <param name="velocity"> Initial launch velocity. </param>
+	/// <param name="gooColor"> Colour it leaks: creature goo if set, otherwise it bleeds. </param>
 	/// <param name="addCollider"> False when the object already has the solid colliders it should tumble with. </param>
 	public static Gib Attach( GameObject go, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor, bool addCollider = true )
 	{

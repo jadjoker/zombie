@@ -72,6 +72,112 @@ public sealed class WaveDirector : Component
 	/// <summary> The anchor is off this wave: players swim in 3D. </summary>
 	[Sync] public bool FloatRound { get; set; }
 
+	// ---- Open world: no waves. Danger climbs as players push away from the start and uncover new ground. ----
+
+	/// <summary> On: enemies trickle in all the time and danger (shown as the "wave" number) rises with exploration. </summary>
+	[Property, Group( "Open world" )] public bool OpenWorld { get; set; }
+	/// <summary> Side of one square of ground that counts as "explored" when someone steps into it. </summary>
+	[Property, Group( "Open world" )] public float CellSize { get; set; } = 500f;
+	/// <summary> Distance from the start that adds one danger level. </summary>
+	[Property, Group( "Open world" )] public float DistancePerLevel { get; set; } = 1500f;
+	/// <summary> New squares explored that add one danger level. </summary>
+	[Property, Group( "Open world" )] public int CellsPerLevel { get; set; } = 5;
+	/// <summary> Enemies kept around at danger 1, plus more per level (capped by MaxAlive). </summary>
+	[Property, Group( "Open world" )] public int BaseAlive { get; set; } = 4;
+	[Property, Group( "Open world" )] public float AlivePerLevel { get; set; } = 1.5f;
+	/// <summary> Stepping into fresh ground has this chance of spooking up a few extra enemies. </summary>
+	[Property, Group( "Open world" )] public float AmbushChance { get; set; } = 0.35f;
+	/// <summary> Enemies left this far behind every player are quietly removed so the count stays near the action. </summary>
+	[Property, Group( "Open world" )] public float DespawnDistance { get; set; } = 3200f;
+	/// <summary> A fallen player comes back this long after dying, as long as a teammate is alive. </summary>
+	[Property, Group( "Open world" )] public float TeammateRespawnSeconds { get; set; } = 20f;
+
+	[Sync] public int CellsExplored { get; set; }
+	[Sync] public float FarthestDistance { get; set; }
+
+	readonly HashSet<(int, int)> visitedCells = new();
+	bool originSet;
+	Vector3 origin;
+	int lastDanger;
+#pragma warning disable SB3003 // Host-only timers.
+	TimeSince deadTimer;
+#pragma warning restore SB3003
+
+	(int, int) CellOf( Vector3 p ) => ((int)MathF.Floor( p.x / CellSize ), (int)MathF.Floor( p.y / CellSize ));
+
+	void UpdateOpenWorld()
+	{
+		State = WaveState.Fighting;
+		FloatRound = false;
+		BossWave = false;
+		bossPending = false;
+		toSpawn = 0;
+
+		var players = Scene.GetAllComponents<PlayerSurvivor>().Where( p => p.IsAlive ).ToList();
+		if ( !originSet && players.Count > 0 )
+		{
+			originSet = true;
+			origin = players[0].WorldPosition;
+			visitedCells.Clear();
+			visitedCells.Add( CellOf( origin ) );
+			lastDanger = 0;
+			Wave = 1;
+			timeSinceSpawn = SpawnInterval;
+		}
+		if ( !originSet ) return;
+
+		var ambush = 0;
+		foreach ( var p in players )
+		{
+			if ( visitedCells.Add( CellOf( p.WorldPosition ) ) && Game.Random.Float() < AmbushChance )
+				ambush += Game.Random.Int( 1, 2 );
+			FarthestDistance = MathF.Max( FarthestDistance, (p.WorldPosition - origin).WithZ( 0 ).Length );
+		}
+		CellsExplored = visitedCells.Count;
+
+		Wave = 1 + (int)(FarthestDistance / MathF.Max( 1f, DistancePerLevel )) + (CellsExplored - 1) / Math.Max( 1, CellsPerLevel );
+		if ( Wave > lastDanger )
+		{
+			if ( lastDanger > 0 ) WaveStartedEverywhere(); // banner and sting when the danger steps up
+			lastDanger = Wave;
+		}
+
+		// Drop stragglers left far behind everyone.
+		if ( players.Count > 0 )
+		{
+			foreach ( var go in alive.ToList() )
+			{
+				if ( !go.IsValid() ) continue;
+				var nearest = players.Min( p => p.WorldPosition.Distance( go.WorldPosition ) );
+				if ( nearest > DespawnDistance ) { alive.Remove( go ); go.Destroy(); }
+			}
+		}
+
+		// Keep the count at what this much danger calls for; fresh ground can add a quick ambush on top.
+		var target = Math.Min( MaxAlive, BaseAlive + (int)(AlivePerLevel * (Wave - 1)) );
+		if ( !SpawningPaused )
+		{
+			for ( var i = 0; i < ambush && alive.Count < MaxAlive; i++ ) TrySpawnEnemy();
+			if ( alive.Count < target && timeSinceSpawn >= SpawnInterval )
+			{
+				TrySpawnEnemy();
+				timeSinceSpawn = 0f;
+			}
+		}
+
+		// Fallen players come back beside a living teammate.
+		var allPlayers = Scene.GetAllComponents<PlayerSurvivor>().ToList();
+		var anyDead = allPlayers.Any( p => !p.IsAlive );
+		if ( !anyDead ) deadTimer = 0f;
+		else if ( players.Count > 0 && deadTimer >= TeammateRespawnSeconds )
+		{
+			var index = 0;
+			foreach ( var p in allPlayers.Where( q => !q.IsAlive ) )
+				p.Respawn( players[0].WorldPosition + Vector3.Right * (60f + 40f * index++), fullReset: false );
+			deadTimer = 0f;
+		}
+	}
+
 	/// <summary> This wave has MC61 in it. </summary>
 	[Sync] public bool BossWave { get; set; }
 	bool bossPending;
@@ -94,11 +200,57 @@ public sealed class WaveDirector : Component
 	[Sync] public int ZombiesRemaining { get; set; }
 	[Sync] public float SecondsUntilNextWave { get; set; }
 
+	// ---- Dev toggles (driven by the in-game dev menu) ------------------------
+
+	/// <summary> Master switch: pause the director's own spawning (it still fights). </summary>
+	[Property, Group( "Dev" )] public bool SpawningPaused { get; set; }
+	[Property, Group( "Dev" )] public bool SpawnZombies { get; set; } = true;
+	[Property, Group( "Dev" )] public bool SpawnBloobers { get; set; } = true;
+	[Property, Group( "Dev" )] public bool SpawnSquiliens { get; set; } = true;
+	[Property, Group( "Dev" )] public bool SpawnCrabs { get; set; } = true;
+	[Property, Group( "Dev" )] public bool SpawnBossWaves { get; set; } = true;
+
+	/// <summary> Enemy types the dev menu can spawn on demand. </summary>
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss }
+
+	/// <summary> Dev tool: spawn one enemy of a type near the players. False if it had nowhere to go. </summary>
+	public bool Spawn( EnemyKind kind ) => kind switch
+	{
+		EnemyKind.Zombie => TrySpawnZombie(),
+		EnemyKind.Bloober => TrySpawnBloober(),
+		EnemyKind.Squilien => TrySpawnSquilien(),
+		EnemyKind.Crab => TrySpawnCrab(),
+		EnemyKind.Boss => SpawnBossWaves && TrySpawnBoss(),
+		_ => false,
+	};
+
+	/// <summary> Dev tool: kill everything alive right now (their deaths play out). </summary>
+	public void ClearEnemies()
+	{
+		foreach ( var go in alive.ToList() )
+		{
+			if ( !go.IsValid() ) continue;
+			var health = go.GetComponent<Health>();
+			if ( health.IsValid() ) health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+			else go.Destroy();
+		}
+	}
+
+	/// <summary> Dev tool: end the current wave now (stop spawning, kill what's left). </summary>
+	public void SkipWave()
+	{
+		toSpawn = 0;
+		bossPending = false;
+		ClearEnemies();
+	}
+
 	/// <summary> Every enemy still alive this wave (zombies and creatures). </summary>
 	readonly List<GameObject> alive = new();
 	int toSpawn;
+#pragma warning disable SB3003 // Host-only wave timers; a reset on host migration is harmless.
 	TimeUntil nextWaveAt;
 	TimeSince timeSinceSpawn;
+#pragma warning restore SB3003
 
 	protected override void OnStart()
 	{
@@ -126,17 +278,27 @@ public sealed class WaveDirector : Component
 			return;
 		}
 
+		if ( OpenWorld )
+		{
+			UpdateOpenWorld();
+			return;
+		}
+
 		if ( State == WaveState.Intermission )
 		{
 			if ( nextWaveAt ) StartWave();
 			return;
 		}
 
-		if ( bossPending && TrySpawnBoss() ) bossPending = false;
+		if ( bossPending )
+		{
+			if ( !SpawnBossWaves ) bossPending = false; // dev disabled boss waves: drop the pending boss
+			else if ( !SpawningPaused && TrySpawnBoss() ) bossPending = false;
+		}
 
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
-			if ( TrySpawnEnemy() ) toSpawn--;
+			if ( !SpawningPaused && TrySpawnEnemy() ) toSpawn--;
 			timeSinceSpawn = 0f;
 		}
 
@@ -152,7 +314,7 @@ public sealed class WaveDirector : Component
 			foreach ( var survivor in Scene.GetAllComponents<PlayerSurvivor>().ToList() )
 			{
 				if ( survivor.IsAlive ) survivor.RewardPoints( WaveClearBonus * Wave );
-				else survivor.Respawn( CoopNetwork.SpawnPosition( Scene, index ), fullReset: false );
+				else survivor.Respawn( RespawnPosition( Scene, index ), fullReset: false );
 				index++;
 			}
 		}
@@ -216,6 +378,10 @@ public sealed class WaveDirector : Component
 
 		Wave = 0;
 		Kills = 0;
+		originSet = false;
+		visitedCells.Clear();
+		CellsExplored = 0;
+		FarthestDistance = 0f;
 		toSpawn = 0;
 		bossPending = false;
 		BossWave = false;
@@ -226,7 +392,14 @@ public sealed class WaveDirector : Component
 
 		var index = 0;
 		foreach ( var survivor in Scene.GetAllComponents<PlayerSurvivor>().ToList() )
-			survivor.Respawn( CoopNetwork.SpawnPosition( Scene, index++ ), fullReset: true );
+			survivor.Respawn( RespawnPosition( Scene, index++ ), fullReset: true );
+	}
+
+	/// <summary> Where the Nth survivor comes back: the lobby's spawn centre when there is one, else the origin. </summary>
+	static Vector3 RespawnPosition( Scene scene, int index )
+	{
+		var coop = scene.Get<CoopNetwork>();
+		return coop.IsValid() ? coop.SpawnPosition( index ) : CoopNetwork.SpawnPosition( Vector3.Zero, index, 90f );
 	}
 
 	/// <summary> Gibs, meat and blood are local to each machine, so everyone clears their own. </summary>
@@ -239,23 +412,29 @@ public sealed class WaveDirector : Component
 
 	bool TrySpawnEnemy()
 	{
-		// One roll shared out between the creatures; whatever is left over is a zombie.
+		// One roll shared out between the enabled creatures; whatever is left over is a zombie.
 		var roll = Game.Random.Float();
-		var squilien = Wave >= SquilienFromWave ? SquilienChance : 0f;
-		var bloober = Wave >= BlooberFromWave ? BlooberChance : 0f;
+		var squilien = SpawnSquiliens && Wave >= SquilienFromWave ? SquilienChance : 0f;
+		var bloober = SpawnBloobers && Wave >= BlooberFromWave ? BlooberChance : 0f;
 		// Zombies can't swim: an anchor-snapped round is all floaters, in the same proportions.
 		if ( FloatRound )
 		{
 			var total = MathF.Max( 0.01f, squilien + bloober );
-			if ( squilien + bloober <= 0.01f ) { squilien = 0.4f; bloober = 0.6f; total = 1f; }
+			if ( squilien + bloober <= 0.01f )
+			{
+				if ( !SpawnSquiliens && !SpawnBloobers ) return false; // nothing can spawn in a float round
+				squilien = SpawnSquiliens ? 0.4f : 0f;
+				bloober = SpawnBloobers ? 0.6f : 0f;
+				total = squilien + bloober;
+			}
 			squilien /= total;
 			bloober /= total;
 		}
-		var crab = Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
+		var crab = SpawnCrabs && Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		if ( roll < squilien + bloober + crab ) return TrySpawnCrab();
-		return TrySpawnZombie();
+		return SpawnZombies && TrySpawnZombie();
 	}
 
 	bool TrySpawnCrab()
@@ -409,9 +588,9 @@ public sealed class WaveDirector : Component
 		var player = PlayerSurvivor.FindNearestAlive( Scene, WorldPosition );
 		var center = player?.WorldPosition ?? WorldPosition;
 
-		// Prefer hand-placed spawn points that aren't right next to a player.
+		// Prefer hand-placed spawn points that aren't right next to a player (in the open world, only ones in a sensible band).
 		var points = Scene.GetAllComponents<ZombieSpawnPoint>()
-			.Where( p => p.WorldPosition.Distance( center ) >= MinSpawnDistance )
+			.Where( p => p.WorldPosition.Distance( center ) >= MinSpawnDistance && (!OpenWorld || p.WorldPosition.Distance( center ) <= MaxSpawnDistance) )
 			.ToList();
 
 		if ( points.Count > 0 )

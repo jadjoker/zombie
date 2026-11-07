@@ -105,7 +105,9 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 	TimeSince timeSinceGroundMode;
 	TimeSince timeSinceSlideBoost = 999f;
 	TimeSince timeSinceWallJump = 999f;
+#pragma warning disable SB3003 // Owner-local dash timer; a reset on host migration is harmless.
 	TimeSince timeSinceDash = 999f;
+#pragma warning restore SB3003
 	TimeSince timeSinceDust;
 	Vector3 dashDirection;
 	bool dashFromGround;
@@ -364,7 +366,7 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 	}
 
 	/// <summary> True while the anchor is off and the player is swimming. </summary>
-	public bool IsFloating => MoveModeFloat.Active( Scene ) && (GetComponent<PlayerSurvivor>()?.IsAlive ?? true);
+	public bool IsFloating => MoveModeFloat.IsActive( Scene ) && (GetComponent<PlayerSurvivor>()?.IsAlive ?? true);
 
 	/// <summary> A burst wherever you're swimming (or looking), which the water then eases back out. </summary>
 	void FloatDash()

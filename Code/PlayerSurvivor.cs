@@ -12,7 +12,15 @@ public sealed class PlayerSurvivor : Component
 
 	[RequireComponent] public Health Health { get; set; }
 	public PlayerController Controller => GetComponent<PlayerController>();
-	public PlayerWeapon Weapon => GetComponent<PlayerWeapon>();
+	/// <summary> The gun in hand (the inventory's current one, falling back to the first PlayerWeapon). </summary>
+	public PlayerWeapon Weapon
+	{
+		get
+		{
+			var current = GetComponent<WeaponInventory>()?.Current;
+			return current.IsValid() ? current : GetComponent<PlayerWeapon>();
+		}
+	}
 	public bool IsAlive => Health.IsValid() && !Health.IsDead;
 
 	[Property, Group( "Points" )] public int StartingPoints { get; set; } = 500;

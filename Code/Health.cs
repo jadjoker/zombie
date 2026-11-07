@@ -12,6 +12,8 @@ public sealed class Health : Component, Component.IDamageable
 
 	[Sync] public float Current { get; set; }
 	[Sync] public bool IsDead { get; set; }
+	/// <summary> Dev tool: ignore all damage while set (the dev menu's god mode). </summary>
+	public bool Invulnerable { get; set; }
 	public float Fraction => MaxHealth > 0 ? Current / MaxHealth : 0f;
 	public TimeSince TimeSinceDamaged { get; private set; } = 999f;
 
@@ -31,7 +33,7 @@ public sealed class Health : Component, Component.IDamageable
 
 	public void OnDamage( in DamageInfo damage )
 	{
-		if ( IsDead || damage.Damage <= 0f ) return;
+		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
 
 		// Not ours: ask the owner to take it.
 		if ( IsProxy )
@@ -51,7 +53,7 @@ public sealed class Health : Component, Component.IDamageable
 
 	void Apply( DamageInfo damage )
 	{
-		if ( IsDead || damage.Damage <= 0f ) return;
+		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
 
 		Current = MathF.Max( 0f, Current - damage.Damage );
 		TimeSinceDamaged = 0f;

@@ -78,6 +78,20 @@ public sealed class Squilien : Component, ICreature
 
 	Piece bell;
 	GameObject bellSkin;
+
+	// Blinking: each eye has its own clock. Mostly they close together, but sometimes one lags, one is slow,
+	// or it double-blinks, so it feels slightly off.
+	sealed class Eye
+	{
+		public GameObject Go, Glint;
+		public Vector3 Scale, GlintScale;
+		public float Closed;       // 0 open .. 1 shut
+		public float Start = -1f;  // time the current blink began
+		public float Length = 0.16f;
+	}
+	readonly List<Eye> eyes = new();
+	float nextBlink;
+	bool doubleBlinkPending;
 	readonly List<Tentacle> tentacles = new();
 	readonly List<Piece> all = new();
 	Health health;
@@ -90,7 +104,9 @@ public sealed class Squilien : Component, ICreature
 	int seenPulses;
 	float squeeze;
 	bool diedLocally;
+#pragma warning disable SB3003 // Host-only death timer; a reset on host migration is harmless.
 	TimeSince timeSinceDeath;
+#pragma warning restore SB3003
 	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
 	bool lastShotPointBlank;
@@ -140,13 +156,22 @@ public sealed class Squilien : Component, ICreature
 			AddDot( bellGo, dir, BellRadius, BellRadius * Range( 0.1f, 0.18f ), SpotColor );
 		}
 
+		// Classic alien eyes: big glossy black almonds that slant down toward the outside (Tools/blender/squilien.py).
 		foreach ( var side in new[] { -1f, 1f } )
 		{
-			var dir = new Vector3( 0.82f, side * 0.38f, -0.05f ).Normal;
-			var eye = AddDot( bellGo, dir, BellRadius, BellRadius * 0.3f, new Color( 0.04f, 0.02f, 0.06f ) );
-			eye.LocalScale = new Vector3( 0.12f, 0.24f, 0.36f ) * Shapes.SphereScale( BellRadius );
-			var glint = AddDot( bellGo, (dir + new Vector3( 0.05f, 0f, 0.12f )).Normal, BellRadius * 1.04f, BellRadius * 0.07f, Shapes.Glow( Hue + 0.5f, 3f ) );
+			var dir = new Vector3( 0.82f, side * 0.52f, 0.14f ).Normal;
+			var eye = new GameObject( bellGo, true, "Eye" );
+			eye.LocalPosition = dir * BellRadius * 0.96f;
+			eye.LocalRotation = Rotation.LookAt( dir );
+			eye.LocalScale = BellRadius / 32f;
+			var eyeRenderer = eye.AddComponent<ModelRenderer>();
+			eyeRenderer.Model = Model.Load( side > 0f ? "models/creatures/squilien/eye_l.vmdl" : "models/creatures/squilien/eye_r.vmdl" );
+			if ( eyeRenderer.Model is null || eyeRenderer.Model.IsError ) eyeRenderer.Model = Shapes.Sphere;
+			eyeRenderer.Tint = new Color( 0.02f, 0.015f, 0.03f );
+			var glint = AddDot( bellGo, (dir + new Vector3( 0.02f, -side * 0.08f, 0.14f )).Normal, BellRadius * 1.04f, BellRadius * 0.05f, Shapes.Glow( Hue + 0.5f, 3f ) );
 			glint.Name = "Glint";
+			eyes.Add( new Eye { Go = eye, Glint = glint, Scale = eye.LocalScale, GlintScale = glint.LocalScale } );
+			nextBlink = Time.Now + Range( 1.5f, 4f );
 		}
 
 		// A frilly skirt round the rim of the bell, and a soft glow-spot crown on top.
@@ -249,6 +274,36 @@ public sealed class Squilien : Component, ICreature
 
 	// ---- Every frame --------------------------------------------------------
 
+	void UpdateBlink()
+	{
+		if ( eyes.Count == 0 ) return;
+		var now = Time.Now;
+		if ( now >= nextBlink )
+		{
+			var odd = Random.Shared.NextDouble();
+			var slow = odd < 0.2 ? Random.Shared.NextSingle() * 0.25f + 0.2f : 0f; // a sluggish, heavy blink
+			var lag = odd is >= 0.2 and < 0.5 ? Random.Shared.NextSingle() * 0.25f + 0.1f : 0f; // one eye late
+			var lagged = Random.Shared.Next( eyes.Count );
+			for ( var i = 0; i < eyes.Count; i++ )
+			{
+				eyes[i].Start = now + (i == lagged ? lag : 0f);
+				eyes[i].Length = 0.16f + slow;
+			}
+			// Sometimes it goes again straight away, or after an odd long pause.
+			if ( !doubleBlinkPending && Random.Shared.NextDouble() < 0.2 ) { doubleBlinkPending = true; nextBlink = now + 0.35f + Random.Shared.NextSingle() * 0.2f; }
+			else { doubleBlinkPending = false; nextBlink = now + (Random.Shared.NextDouble() < 0.15 ? 5f + Random.Shared.NextSingle() * 3f : 1.5f + Random.Shared.NextSingle() * 3.5f); }
+		}
+
+		foreach ( var e in eyes )
+		{
+			if ( !e.Go.IsValid() ) continue;
+			var k = e.Start < 0f ? 0f : (now - e.Start) / e.Length;
+			e.Closed = k is < 0f or > 1f ? 0f : MathF.Sin( k * MathF.PI ); // down and back up
+			e.Go.LocalScale = new Vector3( e.Scale.x, e.Scale.y, e.Scale.z * MathX.Lerp( 1f, 0.06f, e.Closed ) );
+			if ( e.Glint.IsValid() ) e.Glint.LocalScale = e.GlintScale * (1f - e.Closed);
+		}
+	}
+
 	protected override void OnUpdate()
 	{
 		if ( IsProxy )
@@ -266,6 +321,8 @@ public sealed class Squilien : Component, ICreature
 		}
 
 		if ( diedLocally ) return;
+
+		UpdateBlink();
 
 		if ( health.IsValid() && !bell.Gone )
 			CreatureGore.BleedTrail( Scene, bell.Position + Vector3.Down * BellRadius * 0.4f, GooColor, health.Fraction, ref bleedTimer );
@@ -292,26 +349,57 @@ public sealed class Squilien : Component, ICreature
 		bellSkin.LocalScale = new Vector3( 1f - 0.2f * s, 1f - 0.2f * s, 0.75f + 0.15f * s ) * Shapes.SphereScale( BellRadius * (1f - 0.12f * bell.Hurt) );
 		Tint( bell );
 
-		// Tentacles trail behind as the bell moves, droop under a little gravity and sway.
+		// Tentacles are a soft verlet-style chain hung from the bell: they keep their own momentum (so they lag
+		// and whip when the bell darts), drag through the air, hang under weak gravity with a springy pull back
+		// to straight, ripple with a travelling wave, and flare out then trail on every swim stroke.
 		var time = Time.Now;
+		var frameDt = MathF.Min( dt, 1f / 20f );
+		const int substeps = 3;
+		var h = frameDt / substeps;
+		var bellRot = WorldRotation;
 		foreach ( var tentacle in tentacles )
 		{
+			var outward = (bellRot * Rotation.FromYaw( tentacle.Angle ).Forward).WithZ( 0 ).Normal;
+			var tangent = Vector3.Cross( Vector3.Up, outward ).Normal;
+			for ( var step = 0; step < substeps; step++ )
+			{
+				var parent = Anchor( tentacle );
+				for ( var i = 0; i < tentacle.Pieces.Count; i++ )
+				{
+					var piece = tentacle.Pieces[i];
+					if ( piece.Gone ) break;
+					var along = i / (float)Math.Max( 1, tentacle.Pieces.Count - 1 );
+
+					var force = Vector3.Down * 140f;
+					// Springy stiffness: pulled to hang straight down from its parent, strongest at the root.
+					force += (parent + Vector3.Down * SegmentLength - piece.Position) * MathX.Lerp( 70f, 25f, along );
+					// Slow undulating wave travelling down the tentacle.
+					var wave = MathF.Sin( time * 2.4f - i * 1.1f + tentacle.Phase );
+					force += tangent * wave * (60f + 110f * along);
+					force += outward * MathF.Cos( time * 1.7f - i * 0.9f + tentacle.Phase * 1.3f ) * (30f + 40f * along);
+					// Swim stroke: flare outward and curl up, then trail as the bell shoots away.
+					force += (outward * 500f + Vector3.Up * 380f) * squeeze * (0.4f + along);
+
+					var velocity = piece.Velocity + force * h;
+					velocity *= MathF.Exp( -2.2f * h );
+					var position = piece.Position + velocity * h;
+
+					var offset = position - parent;
+					if ( offset.LengthSquared < 0.01f ) offset = Vector3.Down;
+					position = parent + offset.Normal * SegmentLength;
+
+					piece.Velocity = (position - piece.Position) / h;
+					piece.Position = position;
+					parent = position;
+				}
+			}
+
 			var previous = Anchor( tentacle );
 			for ( var i = 0; i < tentacle.Pieces.Count; i++ )
 			{
 				var piece = tentacle.Pieces[i];
 				if ( piece.Gone ) break;
-
-				var sway = new Vector3(
-					MathF.Sin( time * 1.7f + tentacle.Phase + i * 0.8f ),
-					MathF.Cos( time * 1.3f + tentacle.Phase * 1.3f + i * 0.7f ), 0f ) * (6f + i * 4f);
-				var wanted = piece.Position + (Vector3.Down * 60f + sway) * dt + Vector3.Up * squeeze * 30f * dt;
-				var offset = wanted - previous;
-				if ( offset.LengthSquared < 0.01f ) offset = Vector3.Down;
-				var position = previous + offset.Normal * SegmentLength;
-
-				piece.Velocity = (position - piece.Position) / dt;
-				piece.Position = position;
+				var position = piece.Position;
 				piece.Go.WorldPosition = (previous + position) * 0.5f;
 				piece.Go.WorldRotation = Rotation.LookAt( position - previous, Vector3.Up );
 				var skin = piece.Renderer.GameObject;
@@ -606,7 +694,7 @@ public sealed class Squilien : Component, ICreature
 
 		foreach ( var piece in all )
 		{
-			if ( piece == bell || piece.Gone || piece.Index >= 31 ) continue;
+			if ( piece == bell || piece.Gone || piece.Index >= CreatureGore.MaxMaskParts ) continue;
 			if ( (GoneMask & (1 << piece.Index)) != 0 )
 			{
 				CutLocal( piece.Index, Vector3.Forward, quiet: true );

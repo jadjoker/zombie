@@ -49,16 +49,8 @@ public sealed class PlayerAfflictions : Component
 	/// <summary> How long goo stays on the screen. </summary>
 	public const float DripLife = 1.8f;
 	readonly List<ScreenDrip> drips = new();
-	/// <summary> Goo currently on the screen (this machine only). </summary>
-	public IReadOnlyList<ScreenDrip> Drips
-	{
-		get
-		{
-			var now = Time.Now;
-			drips.RemoveAll( d => now - d.Born > DripLife );
-			return drips;
-		}
-	}
+	/// <summary> Goo currently on the screen (this machine only). Old splats are cleared in OnUpdate. </summary>
+	public IReadOnlyList<ScreenDrip> Drips => drips;
 
 	/// <summary>
 	/// Something burst right in front of you: splashes of its goo on the camera that slide down and
@@ -184,6 +176,10 @@ public sealed class PlayerAfflictions : Component
 
 	protected override void OnUpdate()
 	{
+		// Expire old camera splats up front, so the HUD just reads the list.
+		var now = Time.Now;
+		drips.RemoveAll( d => now - d.Born > DripLife );
+
 		if ( IsProxy ) return;
 
 		var health = Health;

@@ -15,6 +15,10 @@ public sealed class CoopNetwork : Component, Component.INetworkListener
 	[Property] public LobbyPrivacy Privacy { get; set; } = LobbyPrivacy.FriendsOnly;
 	/// <summary> How long to wait for a lobby before starting solo. </summary>
 	[Property] public float SoloFallbackSeconds { get; set; } = 2f;
+	/// <summary> Where players spawn: an empty object marking the spot. Empty means the world origin. </summary>
+	[Property] public GameObject SpawnCentre { get; set; }
+	/// <summary> Distance between players when more than one spawns (they ring round the centre). </summary>
+	[Property] public float SpawnSpacing { get; set; } = 90f;
 
 	TimeSince timeSinceStart;
 	bool spawnedSolo;
@@ -62,7 +66,7 @@ public sealed class CoopNetwork : Component, Component.INetworkListener
 		}
 
 		var index = Scene.GetAllComponents<PlayerSurvivor>().Count();
-		var player = PlayerTemplate.Clone( SpawnPosition( Scene, index ) );
+		var player = PlayerTemplate.Clone( SpawnPosition( index ) );
 		player.Name = owner is null ? "Player" : $"Player - {owner.DisplayName}";
 		player.Enabled = true;
 
@@ -73,12 +77,16 @@ public sealed class CoopNetwork : Component, Component.INetworkListener
 		}
 	}
 
-	/// <summary> Where the Nth player (re)spawns: the first in the middle, the rest in a ring around it. </summary>
-	public static Vector3 SpawnPosition( Scene scene, int index )
+	/// <summary> The spawn centre (empty means the world origin). </summary>
+	public Vector3 SpawnCentrePosition => SpawnCentre.IsValid() ? SpawnCentre.WorldPosition : Vector3.Zero;
+
+	/// <summary> Where the Nth player (re)spawns, using this lobby's spawn centre and spacing. </summary>
+	public Vector3 SpawnPosition( int index ) => SpawnPosition( SpawnCentrePosition, index, SpawnSpacing );
+
+	/// <summary> Where the Nth player respawns: the first at the centre, the rest in a ring around it. </summary>
+	public static Vector3 SpawnPosition( Vector3 centre, int index, float spacing )
 	{
-		var centre = Vector3.Zero;
 		if ( index <= 0 ) return centre;
-		var angle = index * 90f;
-		return centre + Rotation.FromYaw( angle ).Forward * 90f;
+		return centre + Rotation.FromYaw( index * 90f ).Forward * spacing;
 	}
 }

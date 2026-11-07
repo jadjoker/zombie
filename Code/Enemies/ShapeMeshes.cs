@@ -70,7 +70,7 @@ public static class ShapeMeshes
 		}
 
 		var mesh = new Mesh( Plain );
-		mesh.CreateVertexBuffer( verts.Count, Vertex.Layout, verts );
+		mesh.CreateVertexBuffer( verts.Count, verts );
 		mesh.CreateIndexBuffer( indices.Count, indices );
 		mesh.Bounds = new BBox( new Vector3( 0, -1, -1 ), new Vector3( 1, 1, 1 + MathF.Max( 0f, bend ) ) );
 		return Model.Builder.AddMesh( mesh ).Create();

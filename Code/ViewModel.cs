@@ -11,6 +11,8 @@ public sealed class ViewModel : Component
 	/// <summary> Extra lag on top of the graph's own sway, in degrees per unit of mouse movement. </summary>
 	[Property] public float SwayAmount { get; set; } = 0.6f;
 	[Property] public float SwaySmoothing { get; set; } = 10f;
+	/// <summary> How long the graph's reload animation runs at speed 1, so it can be scaled to the real reload time. </summary>
+	[Property] public float GraphReloadTime { get; set; } = 1.6f;
 
 	PlayerController controller;
 	PlayerWeapon weapon;
@@ -90,7 +92,8 @@ public sealed class ViewModel : Component
 	public void Reload( float duration )
 	{
 		if ( !Gun.IsValid() ) return;
-		Gun.Set( "speed_reload", 1f );
+		// Speed the graph up or down so its reload finishes with the weapon's real reload time.
+		Gun.Set( "speed_reload", duration > 0.01f ? GraphReloadTime / duration : 1f );
 		Gun.Set( "b_reload", true );
 	}
 

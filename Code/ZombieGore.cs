@@ -82,6 +82,9 @@ public sealed class ZombieGore : Component
 	TimeSince timeSinceDrip;
 
 	/// <summary> Visible damage that builds up as a torso or head segment takes hits. </summary>
+	/// <param name="segment"> The segment that was hit. </param>
+	/// <param name="position"> Where the hit landed, in world space. </param>
+	/// <param name="direction"> The bullet's direction of travel. </param>
 	/// <param name="ratio"> Damage against the segment's split threshold. </param>
 	/// <param name="hurt"> Damage against the zombie's health. Torso stages use this, so they happen while it's still on its feet. </param>
 	void Progress( Segment segment, Vector3 position, Vector3 direction, float ratio, float hurt )

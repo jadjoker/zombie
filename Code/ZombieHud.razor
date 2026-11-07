@@ -76,7 +76,7 @@
 	}
 
 	<div class="top">
-		<div class="wave">WAVE @(Director?.Wave ?? 0)</div>
+		<div class="wave">@(Director?.OpenWorld ?? false ? "DANGER" : "WAVE") @(Director?.Wave ?? 0)</div>
 		<div class="status">@StatusText</div>
 	</div>
 
@@ -149,7 +149,7 @@
 	{
 		<div class="gameover">
 			<div class="title">YOU DIED</div>
-			<div class="detail">Survived to wave @Director.Wave with @Director.Kills kills</div>
+			<div class="detail">@(Director.OpenWorld ? "Reached danger" : "Survived to wave") @Director.Wave with @Director.Kills kills</div>
 			<div class="detail">Press JUMP to try again</div>
 		</div>
 	}
@@ -283,8 +283,8 @@
 	bool BannerIsStart => Director is not null && Director.TimeSinceWaveStarted < Director.TimeSinceWaveCleared;
 	string BannerClass => BannerIsStart ? "start" : "cleared";
 	bool FloatStart => BannerIsStart && (Director?.FloatRound ?? false);
-	string BannerTitle => FloatStart ? "ANCHOR SNAPPED" : BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
-	string BannerSubtitle => FloatStart ? $"Wave {Director?.Wave}: you're floating. Jump to rise, crouch to sink"
+	string BannerTitle => (Director?.OpenWorld ?? false) ? (BannerIsStart ? $"DANGER {Director?.Wave}" : "") : FloatStart ? "ANCHOR SNAPPED" : BannerIsStart ? $"WAVE {Director?.Wave}" : "WAVE CLEARED";
+	string BannerSubtitle => (Director?.OpenWorld ?? false) ? "The ground ahead is getting worse" : FloatStart ? $"Wave {Director?.Wave}: you're floating. Jump to rise, crouch to sink"
 		: BannerIsStart ? (Director?.BossWave ?? false ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
 	float BannerOpacity => BannerAge < 0.2f ? BannerAge / 0.2f : MathX.Clamp( 1f - (BannerAge - 2f) / 0.6f, 0f, 1f );
 	float BannerScale => 1f + MathX.Clamp( 1f - BannerAge / 0.25f, 0f, 1f ) * 0.6f;
@@ -295,6 +295,7 @@
 		{
 			var d = Director;
 			if ( d is null ) return "";
+			if ( d.OpenWorld && d.State == WaveState.Fighting ) return $"{d.CellsExplored} areas explored, {d.ZombiesRemaining} enemies near";
 			return d.State switch
 			{
 				WaveState.Intermission when d.Wave == 0 => $"Enemies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",

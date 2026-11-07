@@ -28,7 +28,7 @@ for k in range(12):
     az = k * 30 + 15
     p.append(ellipsoid("lobe", on_sphere(az, -18, R * 0.95), (R * 0.2, R * 0.2, R * 0.15)))
 p.append(ellipsoid("cap", (0, 0, R * 0.78), (R * 0.42, R * 0.42, R * 0.3)))
-stats["bell"] = export(fuse(p, "squilien_bell", voxel=1.0, smooth=3, noise=0.6, noise_scale=6, decimate=0.18), "squilien", "bell")
+stats["bell"] = export(fuse(p, "squilien_bell", voxel=0.6, smooth=4, noise=0.5, noise_scale=5, decimate=0.1), "squilien", "bell")
 
 # ---- Tentacle piece (along +X, stretched by the code): ringed, with suckers underneath.
 clear()
@@ -37,5 +37,34 @@ for x in (-0.55, 0.0, 0.55):
     p.append(ellipsoid("ring", (x * R, 0, 0), (R * 0.16, R * 0.97, R * 0.97)))
 for x in (-0.5, 0.0, 0.5):
     p.append(ellipsoid("sucker", (x * R, 0, -R * 0.82), (R * 0.2, R * 0.2, R * 0.16)))
-stats["tentacle"] = export(fuse(p, "squilien_tentacle", voxel=1.6, smooth=3, noise=0.5, noise_scale=6, decimate=0.08), "squilien", "tentacle")
+stats["tentacle"] = export(fuse(p, "squilien_tentacle", voxel=0.9, smooth=4, noise=0.4, noise_scale=5, decimate=0.06), "squilien", "tentacle")
+# ---- Eyes: classic alien eyes. Big black almonds that taper to a point on the outer side, which
+# droops. Modelled facing +X with the pivot at the eye centre; one per side (mirrored).
+def alien_eye(side):
+    """Round tilted oval, classic cartoon alien eye."""
+    import bmesh
+    clear()
+    bpy.ops.mesh.primitive_uv_sphere_add(segments=64, ring_count=32, radius=1)
+    o = bpy.context.active_object
+    o.name = f"squilien_eye_{'l' if side > 0 else 'r'}"
+    L, H, T, K = 11.0, 8.2, 4.2, 3.2
+    bm = bmesh.new(); bm.from_mesh(o.data)
+    for v in bm.verts:
+        x, y, z = v.co
+        t = y * side  # outer side positive
+        # plump tilted oval: fuller on the outer-top, flatter bottom on the inner side
+        hf = 1.0 + 0.12 * t
+        tf = max(0.0, 1 - t * t) ** 0.5
+        zz = z * H * hf
+        if zz < 0: zz *= 1 - 0.15 * min(1.0, max(0.0, -t)) ** 2
+        v.co = (x * T * (0.4 + 0.6 * tf), y * L, zz + K * t)
+    bm.to_mesh(o.data); bm.free()
+    bpy.ops.object.shade_smooth()
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02); bpy.ops.object.mode_set(mode='OBJECT')
+    return o
+
+
+stats["eye_l"] = export(alien_eye(1), "squilien", "eye_l")
+stats["eye_r"] = export(alien_eye(-1), "squilien", "eye_r")
 result = stats

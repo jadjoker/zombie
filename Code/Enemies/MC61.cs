@@ -113,7 +113,9 @@ public sealed class MC61 : Component, ICreature
 	Mode seenState;
 	TimeSince scorchTime;
 	bool diedLocally;
+#pragma warning disable SB3003 // Host-only death timer; a reset on host migration is harmless.
 	TimeSince timeSinceDeath;
+#pragma warning restore SB3003
 	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
 	bool lastShotPointBlank;

@@ -10,6 +10,12 @@ public static class CreatureGore
 	const int MaxWoundsPerPart = 7;
 
 	/// <summary>
+	/// How many parts a creature's synced gone-mask can track: one bit each, in an int. The creatures
+	/// keep their part counts under this, so the mask never overflows.
+	/// </summary>
+	public const int MaxMaskParts = 31;
+
+	/// <summary>
 	/// Where a shot along this line actually meets the skin of a part: the nearest hit on any of its
 	/// blob shapes (ellipsoids), with the surface normal there. Null if it misses them all.
 	/// </summary>

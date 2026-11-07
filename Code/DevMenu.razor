@@ -1,0 +1,152 @@
+@using Sandbox;
+@using Sandbox.UI;
+@inherits PanelComponent
+
+<root class=@(Open ? "open" : "closed")>
+	@if ( Open )
+	{
+		<div class="backdrop"></div>
+		<div class="window">
+			<div class="header">
+				<div class="title">DEV MENU</div>
+				<div class="hint">P to close</div>
+			</div>
+
+			<div class="body">
+				<div class="section">
+					<div class="heading">Spawning</div>
+					<div class="chips">
+						<div class=@Chip( !Paused ) onclick=@(() => Pause( !Paused ))>Spawning: @(Paused ? "PAUSED" : "ON")</div>
+						<div class=@Chip( Zombies ) onclick=@(() => ToggleZombies())>Zombies</div>
+						<div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div>
+						<div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div>
+						<div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div>
+						<div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div>
+					</div>
+					<div class="chips">
+						<div class="chip action" onclick=@(() => KillAll())>Kill all enemies</div>
+						<div class="chip action" onclick=@(() => SkipWave())>Skip wave</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="heading">Spawn one</div>
+					<div class="chips">
+						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
+						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
+						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
+						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+						<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="heading">Player</div>
+					<div class="chips">
+						<div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div>
+						<div class=@Chip( InfiniteAmmo ) onclick=@(() => ToggleInfiniteAmmo())>Infinite ammo</div>
+						<div class="chip action" onclick=@(() => Heal())>Heal</div>
+						<div class="chip action" onclick=@(() => RefillAmmo())>Refill ammo</div>
+						<div class="chip action" onclick=@(() => AddPoints())>+1000 points</div>
+					</div>
+				</div>
+
+				<div class="section">
+					<div class="heading">State</div>
+					<div class="info">
+						<span>Wave <b>@Wave</b></span>
+						<span>Kills <b>@Kills</b></span>
+						<span>Enemies left <b>@Remaining</b></span>
+						<span>Phase <b>@Phase</b></span>
+					</div>
+				</div>
+			</div>
+		</div>
+	}
+</root>
+
+@code {
+	bool open;
+
+	public bool Open => open;
+
+	WaveDirector Director => Scene.GetAllComponents<WaveDirector>().FirstOrDefault();
+	PlayerSurvivor Player => Scene.GetAllComponents<PlayerSurvivor>().FirstOrDefault( p => !p.IsProxy );
+
+	protected override void OnUpdate()
+	{
+		if ( Input.Pressed( "DevMenu" ) ) SetOpen( !open );
+	}
+
+	/// <summary> Open/close: free the cursor and stop the player fighting while it's up. </summary>
+	public void SetOpen( bool value )
+	{
+		if ( open == value ) return;
+		open = value;
+
+		Mouse.Visibility = open ? MouseVisibility.Visible : MouseVisibility.Hidden;
+
+		var controller = Player?.Controller;
+		if ( !controller.IsValid() ) return;
+		if ( open )
+		{
+			controller.UseInputControls = false;
+			controller.UseLookControls = false;
+		}
+		else if ( Player.IsAlive )
+		{
+			controller.UseInputControls = true;
+			controller.UseLookControls = true;
+		}
+	}
+
+	// ---- current state (also what the chips show) ----
+	bool Paused => Director is { SpawningPaused: true };
+	bool Zombies => Director is null || Director.SpawnZombies;
+	bool Bloobers => Director is null || Director.SpawnBloobers;
+	bool Squiliens => Director is null || Director.SpawnSquiliens;
+	bool Crabs => Director is null || Director.SpawnCrabs;
+	bool BossWaves => Director is null || Director.SpawnBossWaves;
+
+	int Wave => Director?.Wave ?? 0;
+	int Kills => Director?.Kills ?? 0;
+	int Remaining => Director?.ZombiesRemaining ?? 0;
+	string Phase => Director?.State.ToString() ?? "-";
+
+	bool GodMode => Player?.Health?.Invulnerable ?? false;
+	bool InfiniteAmmo => PlayerWeapons().Any( w => w.InfiniteAmmo );
+
+	IEnumerable<PlayerWeapon> PlayerWeapons() =>
+		Player?.Components.GetAll<PlayerWeapon>( FindMode.EverythingInSelf ) ?? System.Linq.Enumerable.Empty<PlayerWeapon>();
+
+	// ---- actions ----
+	void Pause( bool value ) { if ( Director is { } d ) d.SpawningPaused = value; }
+	void ToggleZombies() { if ( Director is { } d ) d.SpawnZombies = !d.SpawnZombies; }
+	void ToggleBloobers() { if ( Director is { } d ) d.SpawnBloobers = !d.SpawnBloobers; }
+	void ToggleSquiliens() { if ( Director is { } d ) d.SpawnSquiliens = !d.SpawnSquiliens; }
+	void ToggleCrabs() { if ( Director is { } d ) d.SpawnCrabs = !d.SpawnCrabs; }
+	void ToggleBossWaves() { if ( Director is { } d ) d.SpawnBossWaves = !d.SpawnBossWaves; }
+	void SpawnOne( WaveDirector.EnemyKind kind ) { Director?.Spawn( kind ); }
+	void KillAll() { Director?.ClearEnemies(); }
+	void SkipWave() { Director?.SkipWave(); }
+
+	void ToggleGodMode() { if ( Player?.Health is { } h ) h.Invulnerable = !h.Invulnerable; }
+	void ToggleInfiniteAmmo()
+	{
+		var on = !InfiniteAmmo;
+		foreach ( var weapon in PlayerWeapons() ) weapon.InfiniteAmmo = on;
+	}
+	void Heal() { if ( Player?.Health is { } h ) h.Heal( h.MaxHealth ); }
+	void RefillAmmo() { foreach ( var weapon in PlayerWeapons() ) weapon.RefillAmmo(); }
+	void AddPoints() { Player?.AddPoints( 1000 ); }
+
+	string Chip( bool on ) => on ? "chip on" : "chip off";
+
+	// Re-render only when something the menu shows actually changes.
+	protected override int BuildHash()
+	{
+		var a = System.HashCode.Combine( open, Wave, Kills, Remaining, Phase, GodMode, InfiniteAmmo, Paused );
+		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, BossWaves );
+		return System.HashCode.Combine( a, b );
+	}
+}

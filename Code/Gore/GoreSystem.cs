@@ -68,6 +68,12 @@ public sealed class GoreSystem : Component
 	}
 
 	/// <summary> Sprays blood from a point: decals wherever the droplets land on the world. </summary>
+	/// <param name="origin"> Where the spray starts. </param>
+	/// <param name="direction"> Which way it's thrown. </param>
+	/// <param name="drops"> How many droplets to trace. </param>
+	/// <param name="reach"> How far each droplet is traced. </param>
+	/// <param name="sizeMin"> Smallest decal scale. </param>
+	/// <param name="sizeMax"> Largest decal scale. </param>
 	/// <param name="sag"> How much the drops fall on the way (1 = arcs to the floor, 0 = flies straight at walls). </param>
 	public void Spray( Vector3 origin, Vector3 direction, int drops, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{
@@ -162,6 +168,13 @@ public sealed class GoreSystem : Component
 	}
 
 	/// <summary> Sprays goo from a point: splatters wherever the drops land. </summary>
+	/// <param name="origin"> Where the spray starts. </param>
+	/// <param name="direction"> Which way it's thrown. </param>
+	/// <param name="drops"> How many droplets to trace. </param>
+	/// <param name="color"> The goo colour (per creature). </param>
+	/// <param name="reach"> How far each droplet is traced. </param>
+	/// <param name="sizeMin"> Smallest splat scale. </param>
+	/// <param name="sizeMax"> Largest splat scale. </param>
 	/// <param name="sag"> How much the drops fall on the way (1 = arcs to the floor, 0 = flies straight at walls). </param>
 	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{

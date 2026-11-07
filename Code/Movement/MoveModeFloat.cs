@@ -17,7 +17,7 @@ public sealed class MoveModeFloat : MoveMode
 	/// <summary> Testing aid: swim in this direction (world space) as if keys were held. </summary>
 	public Vector3? TestInput { get; set; }
 
-	public static bool Active( Scene scene )
+	public static bool IsActive( Scene scene )
 	{
 		if ( scene is null ) return false;
 		// Look it up even if it's disabled, and remember it (this runs every physics step).
@@ -30,7 +30,7 @@ public sealed class MoveModeFloat : MoveMode
 	public override int Score( PlayerController controller )
 	{
 		var alive = GetComponent<PlayerSurvivor>()?.IsAlive ?? true;
-		return Active( Scene ) && alive ? 2000 : -1000;
+		return IsActive( Scene ) && alive ? 2000 : -1000;
 	}
 
 	/// <summary> Where the player wants to swim, in world space, at full speed. </summary>

@@ -113,7 +113,9 @@ public sealed class Bloober : Component, ICreature
 	float mouthOpen;
 	float wigglePhase;
 	bool diedLocally;
+#pragma warning disable SB3003 // Host-only death timer; a reset on host migration is harmless.
 	TimeSince timeSinceDeath;
+#pragma warning restore SB3003
 	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
 	bool lastShotPointBlank;
@@ -635,7 +637,7 @@ public sealed class Bloober : Component, ICreature
 	int TailMask( int from )
 	{
 		var mask = 0;
-		for ( var i = from; i < segments.Count && i < 31; i++ ) mask |= 1 << i;
+		for ( var i = from; i < segments.Count && i < CreatureGore.MaxMaskParts; i++ ) mask |= 1 << i;
 		return mask;
 	}
 
@@ -728,7 +730,7 @@ public sealed class Bloober : Component, ICreature
 	{
 		if ( IsDead && !diedLocally ) { DieLocal( Vector3.Forward, quiet: true ); return; }
 
-		for ( var i = 1; i < segments.Count && i < 31; i++ )
+		for ( var i = 1; i < segments.Count && i < CreatureGore.MaxMaskParts; i++ )
 		{
 			if ( (GoneMask & (1 << i)) != 0 && !segments[i].Gone )
 			{

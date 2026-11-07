@@ -36,8 +36,9 @@ public sealed class CameraJuice : Component, PlayerController.IEvents
 			cam.WorldRotation *= offset.ToRotation();
 		}
 
-		// Zoom in while aiming down the sights.
-		var weapon = GetComponent<PlayerWeapon>();
+		// Zoom in while aiming down the sights: use the gun in hand, not a holstered one.
+		var inventory = GetComponent<WeaponInventory>();
+		var weapon = inventory is not null && inventory.Current.IsValid() ? inventory.Current : GetComponent<PlayerWeapon>();
 		if ( weapon.IsValid() && weapon.AimAmount > 0.001f )
 			cam.FieldOfView *= MathX.Lerp( 1f, weapon.AimFovScale, weapon.AimAmount );
 

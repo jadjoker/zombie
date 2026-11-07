@@ -22,7 +22,7 @@ def segment(variant):
             p.append(ellipsoid("bump", (x * R, side * R * 0.88, R * 0.15), (R * 0.16, R * 0.16, R * 0.16)))
     # Flatter belly.
     p.append(ellipsoid("belly", (0, 0, -R * 0.45), (R * 0.9, R * 0.8, R * 0.42)))
-    return fuse(p, f"bloober_seg{variant}", voxel=1.1, smooth=3, noise=0.9, noise_scale=7, decimate=0.12)
+    return fuse(p, f"bloober_seg{variant}", voxel=0.7, smooth=4, noise=0.7, noise_scale=6, decimate=0.077)
 
 
 stats["segment0"] = export(segment(0), "bloober", "segment0")
@@ -45,5 +45,5 @@ for side in (-1, 1):
     p.append(ellipsoid("nostril", (1.02 * R, side * 0.18 * R, 0.22 * R), (R * 0.08, R * 0.07, R * 0.06)))
 for x, h in ((-0.1, 1.0), (-0.45, 0.85), (0.2, 0.7)):
     p.append(cone("crest", (x * R, 0, 0.72 * R), (-0.5, 0, 1), R * 0.12 * h, R * 0.45 * h))
-stats["head"] = export(fuse(p, "bloober_head", voxel=1.0, smooth=3, noise=0.7, noise_scale=7, decimate=0.16), "bloober", "head")
+stats["head"] = export(fuse(p, "bloober_head", voxel=0.6, smooth=4, noise=0.55, noise_scale=6, decimate=0.115), "bloober", "head")
 result = stats

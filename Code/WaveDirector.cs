@@ -269,6 +269,8 @@ public sealed class WaveDirector : Component
 
 	protected override void OnStart()
 	{
+		// Editor sessions start with enemy spawning paused (toggle it back on in the dev menu).
+		if ( Game.IsEditor ) SpawningPaused = true;
 		nextWaveAt = FirstWaveDelay;
 	}
 

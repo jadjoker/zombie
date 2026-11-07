@@ -28,6 +28,8 @@ public sealed class Health : Component, Component.IDamageable
 	{
 		if ( IsProxy || started ) return;
 		started = true;
+		// Editor sessions start in god mode (the dev menu's toggle still works).
+		if ( Game.IsEditor && GameObject.Components.Get<PlayerSurvivor>() is not null ) Invulnerable = true;
 		if ( Current <= 0f && !IsDead ) Current = MaxHealth;
 	}
 

@@ -619,16 +619,17 @@ public sealed class MC61 : Component, ICreature
 				var charge = MathX.Clamp( st / ChargeTime, 0f, 1f );
 				eyeGlow = charge * (0.85f + 0.15f * MathF.Sin( t * 20f ));
 				poseL = poseR = PoseReach;
-					fan = 22f - 4f * charge;
-					ripple = 2f;
-					tremble = 1.2f + 3.5f * charge;
-					// Raised beside the head, palms toward the player, claws hooked and reaching forward.
-					var lift = 42f + 4f * charge + MathF.Sin( t * 22f ) * charge * 0.8f;
-					posL = new Vector3( 20f + 4f * charge, 40f + 3f * charge, lift );
-					posR = new Vector3( 20f + 4f * charge, -40f - 3f * charge, lift );
-					rotL = Rotation.FromAxis( Vector3.Forward, -34f ) * Rotation.FromAxis( Vector3.Left, 10f );
-					rotR = Rotation.FromAxis( Vector3.Forward, 34f ) * Rotation.FromAxis( Vector3.Left, 10f );
-					tailWiggle = 0.5f;
+				fan = 22f - 4f * charge;
+				ripple = 2f;
+				tremble = 1.2f + 3.5f * charge;
+				// Reaching to grab: arms out toward the player, palms toward them, fingers hooked and closing in.
+				var lift = 34f + MathF.Sin( t * 22f ) * charge * 0.8f;
+				var reach = 30f + 14f * charge;
+				posL = new Vector3( reach, 24f - 6f * charge, lift );
+				posR = new Vector3( reach, -24f + 6f * charge, lift );
+				rotL = Rotation.FromAxis( Vector3.Forward, -12f ) * Rotation.FromAxis( Vector3.Left, 62f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 12f ) * Rotation.FromAxis( Vector3.Left, 62f );
+				tailWiggle = 0.5f;
 				break;
 			}
 

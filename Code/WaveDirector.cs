@@ -99,6 +99,11 @@ public sealed class WaveDirector : Component
 	/// <summary> A fallen player comes back this long after dying, as long as a teammate is alive. </summary>
 	[Property, Group( "Open world" )] public float TeammateRespawnSeconds { get; set; } = 20f;
 
+	/// <summary> 0..1 progress toward the next danger level, for the HUD bar. </summary>
+	public float DangerProgress => DangerBy == DangerSource.Time
+		? (SurvivalSeconds % MathF.Max( 1f, SecondsPerLevel )) / MathF.Max( 1f, SecondsPerLevel )
+		: MathX.Clamp( ((FarthestDistance % MathF.Max( 1f, DistancePerLevel )) / MathF.Max( 1f, DistancePerLevel ) + ((CellsExplored - 1) % Math.Max( 1, CellsPerLevel )) / (float)Math.Max( 1, CellsPerLevel )) * 0.5f, 0f, 1f );
+
 	[Sync] public int CellsExplored { get; set; }
 	[Sync] public float FarthestDistance { get; set; }
 

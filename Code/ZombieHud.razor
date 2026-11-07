@@ -78,6 +78,10 @@
 	<div class="top">
 		<div class="wave">@(Director?.OpenWorld ?? false ? "DANGER" : "WAVE") @(Director?.Wave ?? 0)</div>
 		<div class="status">@StatusText</div>
+		@if ( Director?.OpenWorld ?? false )
+		{
+			<div class="danger-bar"><div class="fill" style="width: @(MathF.Round( Director.DangerProgress * 100f ))%"></div></div>
+		}
 	</div>
 
 	@if ( Boss is { } boss )

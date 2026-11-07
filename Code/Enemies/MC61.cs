@@ -55,6 +55,11 @@ public sealed class MC61 : Component, ICreature
 	[Property, Group( "Damage" )] public float HatHealth { get; set; } = 40f;
 	[Property, Group( "Damage" )] public float HandHealth { get; set; } = 130f;
 	[Property, Group( "Damage" )] public float TailHealth { get; set; } = 60f;
+	public enum Surface { Plain, RimGlow, Sheen }
+	/// <summary> How his ghostly body (and tail) is shaded: plain, a blue rim glow with drifting mist, or a rainbow sheen. </summary>
+	[Property, Group( "Body" )] public Surface Look { get; set; } = Surface.RimGlow;
+	/// <summary> He scans in from the floor up as a hologram for this long when he appears (0 = off). </summary>
+	[Property, Group( "Body" )] public float SpawnInTime { get; set; } = 1.8f;
 	/// <summary> Hands are modelled small; this scales the whole hand and its fingers. </summary>
 	[Property, Group( "Body" )] public float HandScale { get; set; } = 1.45f;
 	[Property, Group( "Damage" )] public float EyeHealth { get; set; } = 350f;
@@ -153,6 +158,7 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] FingerY = { -4.05f, -1.35f, 1.35f, 4.05f };
 	const float FingerZ = 9.6f;
 	static readonly float[] FingerLength = { 3.7f, 3.1f, 2.7f };
+	static readonly float[] FingerScale = { 0.93f, 1.0f, 0.95f, 0.8f };   // index, middle, ring, pinky: real hands have uneven fingers
 	static readonly float[] ThumbLength = { 3.6f, 3.0f };
 
 	/// <summary> A jointed hand: the palm part plus a joint object for every finger segment. </summary>
@@ -176,6 +182,58 @@ public sealed class MC61 : Component, ICreature
 	// Tail spring state per segment (pitch back, roll sideways)
 	readonly float[] tailPitch = new float[TailCount], tailPitchVel = new float[TailCount], tailRoll = new float[TailCount], tailRollVel = new float[TailCount];
 	Vector3 lastRigPosition;
+
+	// Surface looks and the hologram spawn-in
+	readonly List<ModelRenderer> styleRenderers = new();
+	readonly List<(ModelRenderer Renderer, Material Original)> spawnSaved = new();
+	Material hologramMaterial;
+	TimeSince sinceSpawned = 0f;
+	bool spawnDone;
+
+	/// <summary> Puts the chosen surface shader on the ghost body and tail (null material = the normal one). </summary>
+	public void ApplyLook()
+	{
+		var path = Look switch { Surface.RimGlow => "materials/fx/fx_ghost.vmat", Surface.Sheen => "materials/fx/fx_iridescent.vmat", _ => null };
+		var material = path is null ? null : Material.Load( path );
+		foreach ( var r in styleRenderers )
+			if ( r.IsValid() ) r.MaterialOverride = material;
+	}
+
+	/// <summary> The scan-in: every piece wears the hologram shader while a glowing line sweeps up him, then the real materials return. </summary>
+	void UpdateSpawnIn()
+	{
+		if ( spawnDone ) return;
+		if ( SpawnInTime <= 0f ) { spawnDone = true; ApplyLook(); return; }
+
+		if ( hologramMaterial is null )
+		{
+			hologramMaterial = Material.Load( "materials/fx/fx_hologram.vmat" );
+			foreach ( var part in parts )
+			{
+				if ( part is null ) continue;
+				foreach ( var (renderer, _) in part.Renderers )
+					if ( renderer.IsValid() ) spawnSaved.Add( (renderer, renderer.MaterialOverride) );
+			}
+			foreach ( var (renderer, _) in spawnSaved ) renderer.MaterialOverride = hologramMaterial;
+		}
+
+		var progress = MathX.Clamp( sinceSpawned.Relative / SpawnInTime, 0f, 1f );
+		var centre = parts[Torso].Go.WorldPosition.z;
+		var revealZ = MathX.Lerp( centre - 60f * Size, centre + 95f * Size, progress );
+		foreach ( var (renderer, original) in spawnSaved )
+		{
+			if ( !renderer.IsValid() ) continue;
+			if ( progress >= 1f ) renderer.MaterialOverride = original;
+			else renderer.Attributes.Set( "RevealZ", revealZ );
+		}
+
+		if ( progress >= 1f )
+		{
+			spawnDone = true;
+			spawnSaved.Clear();
+			ApplyLook();
+		}
+	}
 
 	void Build()
 	{
@@ -251,6 +309,7 @@ public sealed class MC61 : Component, ICreature
 			{
 				var joint = new GameObject( parent, true, $"Finger {f}.{j}" );
 				joint.LocalPosition = j == 0 ? new Vector3( 0, FingerY[f], FingerZ ) : new Vector3( 0, 0, FingerLength[j - 1] );
+				if ( j == 0 ) joint.LocalScale = FingerScale[f];
 				Sculpt( part, j == 0 ? "f_prox" : j == 1 ? "f_mid" : "f_dist", Glove, joint );
 				hand.Fingers[f][j] = joint;
 				parent = joint;
@@ -350,6 +409,7 @@ public sealed class MC61 : Component, ICreature
 	{
 		var go = new GameObject( parent ?? part.Go, true, "Shape" );
 		var r = go.AddComponent<ModelRenderer>();
+		if ( model == "body" || model.StartsWith( "tail" ) ) styleRenderers.Add( r );
 		r.Model = Model.Load( $"models/creatures/mc61g/{model}.vmdl" );
 		r.Tint = color;
 		part.Renderers.Add( (r, color) );
@@ -411,6 +471,7 @@ public sealed class MC61 : Component, ICreature
 		rig.WorldRotation = WorldRotation;
 		if ( Has( Torso ) && health.IsValid() )
 			CreatureGore.BleedTrail( Scene, parts[Torso].Go.WorldPosition, Goo, health.Fraction, ref bleedTimer );
+		UpdateSpawnIn();
 		Animate();
 		DrawBeam();
 		Tint();

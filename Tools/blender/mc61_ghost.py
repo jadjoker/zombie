@@ -359,24 +359,24 @@ out(assemble([crown, brim, band], "ghost_hat"), "hat")
 # so the game can curl every finger. Pieces point along +Z from their joint; the palm faces +X, thumb on the side.
 FING_Y = (-4.05, -1.35, 1.35, 4.05)          # finger root positions across the knuckles
 FING_Z = 9.6                                 # knuckle height on the palm
-SEGS = ((3.7, 1.35, 1.28), (3.1, 1.28, 1.2), (2.7, 1.2, 1.1))   # (length, start radius, end radius) prox/mid/dist
+SEGS = ((3.7, 1.42, 1.28), (3.1, 1.28, 1.13), (2.7, 1.13, 0.95))   # (length, start radius, end radius) prox/mid/dist
 T_BASE = (3.6, 1.75, 1.55); T_TIP = (3.0, 1.55, 1.35)
 
 
 def capsule(name, length, r0, r1, ball_start=True):
     p = [tube("c", (0, 0, 0), (0, 0, length), r0, r1, verts=20), ellipsoid("tip", (0, 0, length), (r1, r1, r1), 20)]
     if ball_start:
-        p.append(ellipsoid("joint", (0, 0, 0), (r0 * 1.02, r0 * 1.02, r0 * 1.02), 20))
-    return sculpt(p, name, voxel=0.14, smooth=5, decimate=0.35)
+        p.append(ellipsoid("joint", (0, 0, 0), (r0, r0, r0), 20))
+    return sculpt(p, name, voxel=0.14, smooth=7, decimate=0.35)
 
 
 def palm(side):
     p = [ellipsoid("palm", (0, 0, 5.2), (3.4, 5.9, 5.3), 40), ellipsoid("heel", (0.2, 0, 2.2), (3.2, 5.1, 3.0), 32),
          cyl("cuff", (0, 0, -1.4), 4.5, 4.9, 3.6, verts=40), ellipsoid("cuffrim", (0, 0, -3.1), (4.9, 4.9, 0.9), 32)]
-    for y in FING_Y:                              # soft knuckle bumps
-        p.append(ellipsoid("knuckle", (0.4, y, FING_Z - 0.3), (1.9, 1.7, 1.6), 20))
-    p.append(ellipsoid("thumbpad", (1.2, side * 4.7, 4.4), (2.3, 2.5, 3.0), 24))     # base of the thumb
-    return sculpt(p, "ghost_palm", voxel=0.22, smooth=6, decimate=0.3)
+    # one smooth knuckle ridge across the hand (not separate balls), so the fingers grow out of the palm
+    p.append(ellipsoid("ridge", (0.3, 0, FING_Z - 0.6), (1.7, 5.5, 1.5), 32))
+    p.append(ellipsoid("thumbpad", (0.6, side * 4.3, 4.6), (2.1, 2.3, 2.8), 24))     # base of the thumb, blended into the palm
+    return sculpt(p, "ghost_palm", voxel=0.2, smooth=9, decimate=0.3)
 
 
 clear(); out(palm(1), "palm_l")

@@ -110,14 +110,22 @@ public static class CreatureGore
 		if ( near is not null )
 		{
 			if ( near.LocalScale.x < 1.8f ) near.LocalScale *= 1.15f;
+			// The same spot again: the hole gets deeper and loses another bit.
+			if ( DentedMesh.Dent( hit.Shape, hit.Position, hit.Normal, size * 3.4f, size * 0.7f ) )
+				KnockChunks( part.Scene, near.WorldPosition, hit.Normal, direction, skin, goo, size, 1 );
 			return;
 		}
+
+		// Punch a real crater into the mesh, and knock a few bits of flesh out of it.
+		var depth = size * 1.5f;
+		var dented = DentedMesh.Dent( hit.Shape, hit.Position, hit.Normal, size * 3.2f, depth );
+		KnockChunks( part.Scene, hit.Position, hit.Normal, direction, skin, goo, size, Game.Random.Int( 1, 3 ) );
 
 		if ( wounds.Count >= MaxWoundsPerPart ) wounds[0].Destroy();
 
 		var wound = new GameObject( part, true, "Wound" );
 		wound.Tags.Add( "gore" );
-		wound.WorldPosition = hit.Position;
+		wound.WorldPosition = dented ? hit.Position - hit.Normal * depth * 0.85f : hit.Position;
 		wound.WorldRotation = Rotation.LookAt( hit.Normal ) * Rotation.FromRoll( Game.Random.Float( 0f, 360f ) );
 		var partScale = part.WorldScale.x;
 		var s = size / MathF.Max( partScale, 0.01f );
@@ -125,15 +133,36 @@ public static class CreatureGore
 		// Flat and tight: a thin bruised rim, a dark punched hole, a wet bead of goo welling up in it.
 		// Slightly oval when the shot came in at an angle, like a real entry wound.
 		var oval = 1f + (1f - MathF.Abs( Vector3.Dot( direction, hit.Normal ) )) * 0.6f;
-		Blob( wound, new Vector3( -0.05f * s, 0, 0 ), new Vector3( 0.05f, 1f * oval, 0.9f ) * s, Color.Lerp( skin, Color.Black, 0.45f ) );
-		Blob( wound, new Vector3( -0.03f * s, 0, 0 ), new Vector3( 0.07f, 0.6f * oval, 0.55f ) * s, Color.Lerp( goo, Color.Black, 0.75f ) );
-		Blob( wound, new Vector3( -0.01f * s, 0.08f * s, -0.1f * s ), new Vector3( 0.09f, 0.32f, 0.4f ) * s, Color.Lerp( goo, Color.Black, 0.2f ) );
+		// No rings (they read as eyes): the crater is the edge. A ragged dark hole of a few
+		// overlapping lumps, with wet goo welling up off to one side.
+		var flesh = Color.Lerp( goo, new Color( 0.06f, 0.01f, 0.02f ), 0.85f );
+		var lumps = Game.Random.Int( 2, 4 );
+		for ( var i = 0; i < lumps; i++ )
+		{
+			var off = new Vector3( 0, Game.Random.Float( -0.3f, 0.3f ) * oval, Game.Random.Float( -0.3f, 0.3f ) ) * s;
+			var rad = Game.Random.Float( 0.3f, 0.5f );
+			Blob( wound, new Vector3( -0.04f * s, off.y, off.z ), new Vector3( 0.07f, rad * oval, rad * Game.Random.Float( 0.7f, 1f ) ) * s, i == 0 ? new Color( 0.02f, 0.01f, 0.01f ) : flesh );
+		}
+		Blob( wound, new Vector3( -0.02f * s, Game.Random.Float( -0.2f, 0.2f ) * s, -0.2f * s ), new Vector3( 0.08f, 0.22f, 0.3f ) * s, Color.Lerp( goo, Color.Black, 0.35f ) );
 
 		// A thin trickle running out of it.
 		var drip = wound.AddComponent<GooOoze>();
 		drip.Color = goo;
 		drip.Lifetime = Game.Random.Float( 1.5f, 3f );
 		drip.Interval = 0.3f;
+	}
+
+	/// <summary> Small bits of skin and flesh torn out of a fresh crater, flung back out of it. </summary>
+	public static void KnockChunks( Scene scene, Vector3 at, Vector3 normal, Vector3 direction, Color skin, Color goo, float size, int count )
+	{
+		var gore = GoreSystem.Get( scene );
+		if ( gore is null ) return;
+		var reflect = direction - 2f * Vector3.Dot( direction, normal ) * normal;
+		for ( var i = 0; i < count; i++ )
+		{
+			var dir = (normal + reflect * 0.4f + Vector3.Random * 0.5f).Normal;
+			gore.ThrowBlob( at + normal * size * 0.5f, dir, skin, goo, Game.Random.Float( 0.35f, 0.6f ) * size );
+		}
 	}
 
 	/// <summary>
@@ -422,5 +451,136 @@ public sealed class GooJet : Component
 			GooDroplet.Spawn( Scene, WorldPosition + dir * Game.Random.Float( 0f, 2f ), dir * speed * Game.Random.Float( 0.85f, 1.1f ), Color,
 				Game.Random.Float( 0.45f, 0.95f ) * MathF.Sqrt( Strength ), 1.8f );
 		}
+	}
+}
+
+/// <summary>
+/// Lets bullets dent a creature part for real: keeps its own copy of the part's mesh and pushes the
+/// skin in around each hit (a crater with a slightly raised, torn lip), then rebuilds the model.
+/// Skinned models (MC61's hands) and multi-mesh models are left alone.
+/// </summary>
+public sealed class DentedMesh : Component
+{
+	/// <summary> Craters one shape can take before it stops changing (each one rebuilds the mesh). </summary>
+	const int MaxDents = 14;
+	/// <summary> Bigger meshes than this aren't worth rebuilding on every hit. </summary>
+	const int MaxVertices = 40000;
+
+	Vertex[] vertices;
+	List<int> indices;
+	Material material;
+	BBox bounds;
+	int dents;
+	bool unusable;
+
+	/// <summary> Dents `shape` at a world point. False if this shape can't be dented. </summary>
+	public static bool Dent( GameObject shape, Vector3 worldPosition, Vector3 worldNormal, float radius, float depth )
+	{
+		if ( !shape.IsValid() ) return false;
+		var renderer = shape.Components.Get<ModelRenderer>();
+		if ( renderer is null || renderer is SkinnedModelRenderer || renderer.Model is null ) return false;
+		var dent = shape.Components.Get<DentedMesh>() ?? shape.Components.Create<DentedMesh>();
+		return dent.Apply( renderer, worldPosition, worldNormal, radius, depth );
+	}
+
+	bool Apply( ModelRenderer renderer, Vector3 worldPosition, Vector3 worldNormal, float radius, float depth )
+	{
+		if ( unusable || dents >= MaxDents ) return false;
+		if ( vertices is null && !Capture( renderer.Model ) ) { unusable = true; return false; }
+
+		// Into the model's own space (the object's scale comes off the radius and depth too).
+		var tx = GameObject.WorldTransform;
+		var scale = MathF.Max( 0.001f, GameObject.WorldScale.x );
+		var p = tx.PointToLocal( worldPosition );
+		var n = (GameObject.WorldRotation.Inverse * worldNormal).Normal;
+		var r = radius / scale;
+		var d = depth / scale;
+		var lip = r * 1.5f;
+
+		var moved = new HashSet<int>();
+		for ( var i = 0; i < vertices.Length; i++ )
+		{
+			var v = vertices[i];
+			var off = v.Position - p;
+			var dist = off.Length;
+			if ( dist >= lip ) continue;
+			float push;
+			if ( dist < r )
+			{
+				// A smooth bowl, deepest in the middle, with a little ragged noise so it isn't machined.
+				var t = 1f - dist / r;
+				push = -d * t * t * (3f - 2f * t) * (0.85f + 0.3f * Noise( v.Position * 0.9f ));
+			}
+			else
+			{
+				// The torn lip bulges out a touch just past the edge.
+				var t = (dist - r) / (lip - r);
+				push = d * 0.22f * MathF.Sin( t * MathF.PI ) * (0.6f + 0.8f * Noise( v.Position * 1.3f ));
+			}
+			v.Position += n * push;
+			vertices[i] = v;
+			moved.Add( i );
+		}
+		if ( moved.Count == 0 ) return false;
+
+		RecomputeNormals( moved );
+		Rebuild( renderer );
+		dents++;
+		return true;
+	}
+
+	bool Capture( Model model )
+	{
+		if ( model.MeshCount != 1 ) return false;
+		var v = model.GetVertices();
+		var idx = model.GetIndices();
+		if ( v is null || idx is null || v.Length == 0 || v.Length > MaxVertices ) return false;
+		vertices = v.ToArray();
+		indices = idx.Select( i => (int)i ).ToList();
+		material = model.Materials.FirstOrDefault();
+		bounds = model.Bounds;
+		return true;
+	}
+
+	/// <summary> Fresh smooth normals for the vertices that moved, from the triangles around them. </summary>
+	void RecomputeNormals( HashSet<int> moved )
+	{
+		var sum = new Dictionary<int, Vector3>();
+		for ( var t = 0; t + 2 < indices.Count; t += 3 )
+		{
+			int a = indices[t], b = indices[t + 1], c = indices[t + 2];
+			if ( !moved.Contains( a ) && !moved.Contains( b ) && !moved.Contains( c ) ) continue;
+			var face = Vector3.Cross( vertices[b].Position - vertices[a].Position, vertices[c].Position - vertices[a].Position );
+			foreach ( var i in new[] { a, b, c } )
+			{
+				if ( !moved.Contains( i ) ) continue;
+				sum[i] = sum.TryGetValue( i, out var s ) ? s + face : face;
+			}
+		}
+		foreach ( var (i, s) in sum )
+		{
+			if ( s.IsNearlyZero() ) continue;
+			var v = vertices[i];
+			var normal = s.Normal;
+			// Keep the winding the model came with.
+			if ( Vector3.Dot( normal, v.Normal ) < 0f ) normal = -normal;
+			v.Normal = normal;
+			vertices[i] = v;
+		}
+	}
+
+	void Rebuild( ModelRenderer renderer )
+	{
+		var mesh = new Mesh( material );
+		mesh.CreateVertexBuffer( vertices.Length, vertices.ToList() );
+		mesh.CreateIndexBuffer( indices.Count, indices );
+		mesh.Bounds = bounds;
+		renderer.Model = Model.Builder.AddMesh( mesh ).Create();
+	}
+
+	static float Noise( Vector3 p )
+	{
+		var h = MathF.Sin( p.x * 12.9898f + p.y * 78.233f + p.z * 37.719f ) * 43758.5453f;
+		return h - MathF.Floor( h );
 	}
 }

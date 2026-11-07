@@ -74,10 +74,11 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 			else if ( r.GameObject.Name == "Ceiling" ) mat = "indoor_ceiling";
 			else if ( b.z > 400 && MathF.Max( b.x, b.y ) > 2000 ) mat = "indoor_wall_long";
 			else if ( b.z > 400 ) mat = "indoor_wall_short";
+			else if ( r.GameObject.Name.StartsWith( "Trim" ) ) mat = "indoor_trim";
 		}
 		if ( mat is null ) continue;
 		r.MaterialOverride = Material.Load( $"materials/ground/{mat}.vmat" );
-		r.Tint = Color.White;
+		r.Tint = mat == "indoor_trim" ? new Color( 0.45f, 0.45f, 0.5f ) : Color.White;
 	}
 
 	if ( name == "forest" )
@@ -115,7 +116,7 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 		sun.Intensity = 0f;
 		sun.Shadows = false;
 		sun.SkyColor = new Color( 0.03f, 0.035f, 0.045f );
-		if ( amb is not null ) amb.Color = new Color( 0.24f, 0.25f, 0.29f );
+		if ( amb is not null ) amb.Color = new Color( 0.30f, 0.31f, 0.36f );
 		sky.SkyMaterial = Material.Load( "materials/skybox/skybox_dark_01.vmat" );
 		sky.Tint = new Color( 0.35f, 0.35f, 0.38f );
 		sky.SkyIndirectLighting = false;

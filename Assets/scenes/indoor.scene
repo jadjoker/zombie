@@ -254,7 +254,7 @@
           "__guid": "6ce3ad52-bcfd-4c3b-890e-53b35a83dd92",
           "__enabled": true,
           "Flags": 0,
-          "Color": "0.24,0.25,0.29,1",
+          "Color": "0.3,0.31,0.36,1",
           "OnComponentDestroy": null,
           "OnComponentDisabled": null,
           "OnComponentEnabled": null,
@@ -3057,8 +3057,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "a02ee8d7-8ca6-477f-b8c3-2d59731674c1",
+                    "Path": "materials/ground/indoor_trim.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -3078,7 +3078,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.24,0.24,0.27,1"
+                  "Tint": "0.45,0.45,0.5,1"
                 }
               ],
               "Children": []
@@ -3109,8 +3109,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "a02ee8d7-8ca6-477f-b8c3-2d59731674c1",
+                    "Path": "materials/ground/indoor_trim.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -3130,7 +3130,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.24,0.24,0.27,1"
+                  "Tint": "0.45,0.45,0.5,1"
                 }
               ],
               "Children": []
@@ -3161,8 +3161,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "a02ee8d7-8ca6-477f-b8c3-2d59731674c1",
+                    "Path": "materials/ground/indoor_trim.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -3182,7 +3182,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.24,0.24,0.27,1"
+                  "Tint": "0.45,0.45,0.5,1"
                 }
               ],
               "Children": []
@@ -3213,8 +3213,8 @@
                   "LodOverride": null,
                   "MaterialGroup": null,
                   "MaterialOverride": {
-                    "Id": "fdddc772-86b1-4e85-ac67-09b2fd01f422",
-                    "Path": "materials/indoor/concrete.vmat"
+                    "Id": "a02ee8d7-8ca6-477f-b8c3-2d59731674c1",
+                    "Path": "materials/ground/indoor_trim.vmat"
                   },
                   "Materials": null,
                   "Model": {
@@ -3234,7 +3234,7 @@
                     "AfterUILayer": false
                   },
                   "RenderType": "On",
-                  "Tint": "0.24,0.24,0.27,1"
+                  "Tint": "0.45,0.45,0.5,1"
                 }
               ],
               "Children": []

@@ -502,6 +502,7 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] PosePoint = { 4, 2, 2, 88, 98, 62, 86, 96, 60, 82, 94, 58, 30, 20 };
 	static readonly float[] PosePinch = { 52, 50, 35, 30, 28, 20, 20, 24, 18, 22, 24, 18, 40, 24 };
 	static readonly float[] PoseClaw = { 55, 40, 25, 58, 42, 26, 55, 40, 25, 50, 38, 22, 20, 25 };
+	static readonly float[] PoseReach = { 18, 40, 26, 20, 44, 28, 18, 40, 26, 14, 36, 24, 8, 20 };
 	static readonly float[] PoseRelaxed = { 18, 24, 14, 22, 28, 16, 26, 30, 18, 30, 32, 20, 10, 12 };
 	static readonly float[] PoseSpread = { -6, -4, -2, -2, -2, 0, -4, -2, 0, -10, -6, -2, -25, 0 };
 
@@ -617,16 +618,17 @@ public sealed class MC61 : Component, ICreature
 				bob = MathF.Sin( t * 30f ) * 0.6f * st;
 				var charge = MathX.Clamp( st / ChargeTime, 0f, 1f );
 				eyeGlow = charge * (0.85f + 0.15f * MathF.Sin( t * 20f ));
-				poseL = poseR = charge < 0.5f ? PoseSpread : PoseClaw;
-				fan = 14f - 8f * charge;
-				ripple = 3f;
-				tremble = 1.5f + 5f * charge;
-				var lift = 28f + 8f * charge + MathF.Sin( t * 22f ) * charge * 0.8f;
-				posL = new Vector3( 4f, 38f + 4f * charge, lift );
-				posR = new Vector3( 4f, -38f - 4f * charge, lift );
-				rotL = Rotation.FromAxis( Vector3.Forward, -34f + 14f * charge ) * Rotation.FromAxis( Vector3.Up, 0f );
-				rotR = Rotation.FromAxis( Vector3.Forward, 34f - 14f * charge ) * Rotation.FromAxis( Vector3.Up, 0f );
-				tailWiggle = 0.5f;
+				poseL = poseR = PoseReach;
+					fan = 22f - 4f * charge;
+					ripple = 2f;
+					tremble = 1.2f + 3.5f * charge;
+					// Raised beside the head, palms toward the player, claws hooked and reaching forward.
+					var lift = 42f + 4f * charge + MathF.Sin( t * 22f ) * charge * 0.8f;
+					posL = new Vector3( 20f + 4f * charge, 40f + 3f * charge, lift );
+					posR = new Vector3( 20f + 4f * charge, -40f - 3f * charge, lift );
+					rotL = Rotation.FromAxis( Vector3.Forward, -34f ) * Rotation.FromAxis( Vector3.Left, 10f );
+					rotR = Rotation.FromAxis( Vector3.Forward, 34f ) * Rotation.FromAxis( Vector3.Left, 10f );
+					tailWiggle = 0.5f;
 				break;
 			}
 

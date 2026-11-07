@@ -69,19 +69,19 @@ def weights_for(v, side):
     """Smooth skin weights: no hard region edges anywhere (hard edges tear when a finger bends), blended in y between
     neighbouring fingers, along each finger's length at its joints, and between palm and finger at the knuckle line."""
     # --- fingers ---
-    infl = [math.exp(-((v.y - FY[i]) / 1.25) ** 2) for i in range(4)]
+    infl = [math.exp(-((v.y - FY[i]) / 1.5) ** 2) for i in range(4)]
     total = sum(infl)
     fingerw = {}
     blend = 0.0
     if total > 1e-4:
         z = v.z - FZ
-        sm0 = smooth01(z, -1.9, 1.3)
+        sm0 = smooth01(z, -3.2, 2.2)
         blend = sm0 * min(1.0, total * 1.6)
         for i in range(4):
             share = infl[i] / total
             s_ = FS[i]
-            sm1 = smooth01(z, SEG[0] * s_ - 0.9, SEG[0] * s_ + 0.9)
-            sm2 = smooth01(z, (SEG[0] + SEG[1]) * s_ - 0.9, (SEG[0] + SEG[1]) * s_ + 0.9)
+            sm1 = smooth01(z, SEG[0] * s_ - 1.4, SEG[0] * s_ + 1.4)
+            sm2 = smooth01(z, (SEG[0] + SEG[1]) * s_ - 1.3, (SEG[0] + SEG[1]) * s_ + 1.3)
             fingerw[f"f{i}_0"] = share * blend * (1 - sm1)
             fingerw[f"f{i}_1"] = share * blend * sm1 * (1 - sm2)
             fingerw[f"f{i}_2"] = share * blend * sm1 * sm2

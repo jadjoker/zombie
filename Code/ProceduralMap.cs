@@ -3,7 +3,7 @@
 /// object of a scene that already has the forest lighting, the player template and the director.
 ///
 /// The host picks a seed (synced); every machine builds the same world from it: a huge grass floor with an
-/// invisible boundary, woods that thicken and thin in patches, boulder fields, meadows and a clear start area.
+/// invisible boundary, woods that thicken and thin in patches, boulder fields, fallen logs and a clear start area. Only solid props: no bushes, grass or ferns.
 /// Trees and boulders get colliders so the navmesh routes around them. The hand-made arena (floor, walls,
 /// crates, dressing) and its fixed zombie spawns are switched off, so enemies spawn on the navmesh instead.
 /// </summary>
@@ -31,10 +31,9 @@ public sealed class ProceduralMap : Component
 	static readonly Color[] TrunkTints = { new( 0.32f, 0.22f, 0.13f ), new( 0.28f, 0.2f, 0.15f ), new( 0.4f, 0.28f, 0.17f ) };
 	static readonly Color[] LeafTints = { new( 0.2f, 0.5f, 0.18f ), new( 0.28f, 0.6f, 0.22f ), new( 0.16f, 0.42f, 0.16f ), new( 0.4f, 0.62f, 0.24f ), new( 0.24f, 0.48f, 0.3f ) };
 	static readonly Color[] RockTints = { new( 0.46f, 0.47f, 0.45f ), new( 0.54f, 0.52f, 0.48f ), new( 0.4f, 0.42f, 0.4f ) };
-	static readonly Color[] GrassTints = { new( 0.3f, 0.6f, 0.22f ), new( 0.44f, 0.7f, 0.32f ), new( 0.26f, 0.5f, 0.2f ) };
 	static readonly Color[] PineTints = { new( 0.14f, 0.38f, 0.2f ), new( 0.18f, 0.44f, 0.24f ), new( 0.12f, 0.34f, 0.19f ) };
 
-	Model trunkA, trunkB, trunkC, canopyA, canopyB, canopyC, rockA, rockB, bush, grass, log, stump, fern, box;
+	Model trunkA, trunkB, trunkC, canopyA, canopyB, canopyC, rockA, rockB, log, box;
 
 	protected override void OnStart()
 	{
@@ -134,11 +133,8 @@ public sealed class ProceduralMap : Component
 
 		var d = MathF.Max( 0.1f, Density );
 		for ( var i = 0; i < (int)(2600 * d); i++ ) TryTree();
-		for ( var i = 0; i < (int)(1400 * d); i++ ) TryBush();
 		for ( var i = 0; i < (int)(900 * d); i++ ) TryRock();
-		for ( var i = 0; i < (int)(70 * d); i++ ) TryLogOrStump();
-		for ( var i = 0; i < (int)(500 * d); i++ ) TryGrassPatch();
-		for ( var i = 0; i < (int)(500 * d); i++ ) TryFern();
+		for ( var i = 0; i < (int)(40 * d); i++ ) TryLog();
 		BuildEdgeWoods();
 
 		// Trees and boulders are new solid things: rebuild the navmesh around them.
@@ -157,11 +153,7 @@ public sealed class ProceduralMap : Component
 		canopyC = Model.Load( "models/forest/tree_canopy_c.vmdl" );
 		rockA = Model.Load( "models/forest/rock_a.vmdl" );
 		rockB = Model.Load( "models/forest/rock_b.vmdl" );
-		bush = Model.Load( "models/forest/bush_a.vmdl" );
-		grass = Model.Load( "models/forest/grass_a.vmdl" );
 		log = Model.Load( "models/forest/log_a.vmdl" );
-		stump = Model.Load( "models/forest/stump_a.vmdl" );
-		fern = Model.Load( "models/forest/fern_a.vmdl" );
 	}
 
 	Vector3 FitBox( Vector3 size )
@@ -240,15 +232,6 @@ public sealed class ProceduralMap : Component
 		PlantTree( p, scale );
 	}
 
-	void TryBush()
-	{
-		var p = RandomPoint();
-		var chance = 0.2f + Woodland( p ) * 0.6f;
-		if ( rnd.NextDouble() > chance || !Free( p, 60f ) ) return;
-		Put( bush, p, R( 0, 360 ), Vector3.One * R( 0.7f, 1.35f ), LeafTints[rnd.Next( LeafTints.Length )], "Bush" );
-		Block( p, 40f );
-	}
-
 	void TryRock()
 	{
 		var p = RandomPoint();
@@ -262,40 +245,14 @@ public sealed class ProceduralMap : Component
 		Block( p, 55f * sc );
 	}
 
-	void TryLogOrStump()
+	void TryLog()
 	{
 		var p = RandomPoint();
 		if ( !Free( p, 110f ) ) return;
-		if ( rnd.NextDouble() < 0.5 )
-		{
-			var sc = R( 0.8f, 1.4f );
-			var go = Put( log, p, R( 0, 360 ), Vector3.One * sc, TrunkTints[rnd.Next( TrunkTints.Length )], "Log" );
-			go.AddComponent<BoxCollider>().Scale = new Vector3( 120f, 36f, 36f );
-			Block( p, 95f * sc );
-		}
-		else
-		{
-			Put( stump, p, R( 0, 360 ), Vector3.One * R( 0.7f, 1.3f ), TrunkTints[rnd.Next( TrunkTints.Length )], "Stump" );
-			Block( p, 30f );
-		}
-	}
-
-	void TryGrassPatch()
-	{
-		var p = RandomPoint();
-		if ( !Free( p, 10f ) ) return;
-		for ( var g = rnd.Next( 3, 6 ); g > 0; g-- )
-		{
-			var at = p + new Vector3( R( -80f, 80f ), R( -80f, 80f ), 0 );
-			Put( grass, at, R( 0, 360 ), Vector3.One * R( 0.8f, 1.5f ), GrassTints[rnd.Next( GrassTints.Length )], "Grass" );
-		}
-	}
-
-	void TryFern()
-	{
-		var p = RandomPoint();
-		if ( !Free( p, 30f ) ) return;
-		Put( fern, p, R( 0, 360 ), Vector3.One * R( 0.7f, 1.35f ), LeafTints[rnd.Next( LeafTints.Length )], "Fern" );
+		var sc = R( 0.8f, 1.4f );
+		var go = Put( log, p, R( 0, 360 ), Vector3.One * sc, TrunkTints[rnd.Next( TrunkTints.Length )], "Log" );
+		go.AddComponent<BoxCollider>().Scale = new Vector3( 120f, 36f, 36f );
+		Block( p, 95f * sc );
 	}
 
 	/// <summary> A dense belt of trees along the border so the edge reads as the end of the woods. </summary>

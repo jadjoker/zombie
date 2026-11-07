@@ -209,6 +209,35 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 			fog.FalloffExponent = 0.8f;
 			fog.VerticalFalloffExponent = 1f;
 		}
+		// Marine snow: slow drifting specks filling the arena, lit by the scene so they glint in the light.
+		var snowGo = s.Children.FirstOrDefault( g => g.Name == "Marine Snow" ) ?? s.CreateObject();
+		snowGo.Name = "Marine Snow";
+		snowGo.WorldPosition = new Vector3( 0, 0, 380 );
+		var snow = Ensure<ParticleEffect>( snowGo );
+		snow.MaxParticles = 5000;
+		snow.Lifetime = new ParticleFloat( 10f, 16f );
+		snow.PreWarm = 16f;
+		snow.StartVelocity = new ParticleFloat( 0f, 6f );
+		snow.ConstantMovement = new Vector3( 5f, 3f, -7f );
+		snow.Damping = 0.5f;
+		snow.Scale = new ParticleFloat( 0.5f, 1.6f );
+		snow.ApplyColor = true;
+		snow.Tint = new Color( 0.85f, 0.95f, 1f );
+		snow.ApplyAlpha = true;
+		snow.Alpha = new ParticleFloat( 0.35f, 0.8f );
+		var emit = Ensure<ParticleBoxEmitter>( snowGo );
+		emit.Loop = true;
+		emit.Size = new Vector3( 3000f, 3000f, 760f );
+		emit.Rate = 300f;
+		var snowR = Ensure<ParticleSpriteRenderer>( snowGo );
+		snowR.Sprite = ResourceLibrary.Get<Sprite>( "particles/soft_dot.sprite" );
+		snowR.Lighting = true;
+		snowR.Additive = false;
+		snowR.Shadows = false;
+		snowR.FogStrength = 1f;
+		snowR.DepthFeather = 4f;
+		snowR.CameraFadeNear = 8f;
+		snowR.CameraFadeFar = 40f;
 		bloom.Strength = 0.4f;
 		adj.Saturation = 1.05f;
 		adj.Contrast = 1.08f;

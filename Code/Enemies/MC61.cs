@@ -61,7 +61,7 @@ public sealed class MC61 : Component, ICreature
 	/// <summary> He scans in from the floor up as a hologram for this long when he appears (0 = off). </summary>
 	[Property, Group( "Body" )] public float SpawnInTime { get; set; } = 1.8f;
 	/// <summary> Hands are modelled small; this scales the whole hand and its fingers. </summary>
-	[Property, Group( "Body" )] public float HandScale { get; set; } = 1.45f;
+	[Property, Group( "Body" )] public float HandScale { get; set; } = 1.2f;
 	[Property, Group( "Damage" )] public float EyeHealth { get; set; } = 350f;
 
 	public enum Mode { Float, Charge, Beam, Cards, Dance }
@@ -158,6 +158,14 @@ public sealed class MC61 : Component, ICreature
 	static readonly float[] FingerY = { -4.05f, -1.35f, 1.35f, 4.05f };
 	const float FingerZ = 9.6f;
 	static readonly float[] FingerLength = { 3.7f, 3.1f, 2.7f };
+	// Fingers are chains of short links, and each bend is shared across 2-3 of them, so curls are smooth arcs (16 per finger, a bend spread over 4).
+	const int FingerLinks = 16, ThumbLinks = 10;
+	const float FingerLinkLength = 0.594f, FingerTaper = 0.9753f, ThumbLinkLength = 0.66f, ThumbTaper = 0.9744f;
+	// Which anatomical joint (0 knuckle, 1 middle, 2 tip) each link bends for, and how much of it.
+	static readonly int[] FingerLinkJoint = { 0, 0, -1, -1, 1, 1, 1, 1, -1, -1, 2, 2, 2, 2, -1, -1 };
+	static readonly float[] FingerLinkShare = { 0.6f, 0.4f, 0f, 0f, 0.25f, 0.25f, 0.25f, 0.25f, 0f, 0f, 0.25f, 0.25f, 0.25f, 0.25f, 0f, 0f };
+	static readonly int[] ThumbLinkJoint = { 0, 0, -1, -1, 1, 1, 1, 1, -1, -1 };
+	static readonly float[] ThumbLinkShare = { 0.6f, 0.4f, 0f, 0f, 0.25f, 0.25f, 0.25f, 0.25f, 0f, 0f };
 	static readonly float[] FingerScale = { 0.93f, 1.0f, 0.95f, 0.8f };   // index, middle, ring, pinky: real hands have uneven fingers
 	static readonly float[] ThumbLength = { 3.6f, 3.0f };
 
@@ -167,7 +175,7 @@ public sealed class MC61 : Component, ICreature
 		public float Side;
 		public GameObject Root;
 		public readonly GameObject[][] Fingers = new GameObject[4][];
-		public readonly GameObject[] Thumb = new GameObject[2];
+		public readonly GameObject[] Thumb = new GameObject[ThumbLinks];
 		public readonly float[] Curl = new float[14];   // 4 fingers x 3 joints, then 2 thumb joints
 		public float Splay = 38f;
 	}
@@ -303,26 +311,28 @@ public sealed class MC61 : Component, ICreature
 		hands[index == HandL ? 0 : 1] = hand;
 		for ( var f = 0; f < 4; f++ )
 		{
-			hand.Fingers[f] = new GameObject[3];
+			hand.Fingers[f] = new GameObject[FingerLinks];
 			var parent = part.Go;
-			for ( var j = 0; j < 3; j++ )
+			for ( var j = 0; j < FingerLinks; j++ )
 			{
 				var joint = new GameObject( parent, true, $"Finger {f}.{j}" );
-				joint.LocalPosition = j == 0 ? new Vector3( 0, FingerY[f], FingerZ ) : new Vector3( 0, 0, FingerLength[j - 1] );
-				if ( j == 0 ) joint.LocalScale = FingerScale[f];
-				Sculpt( part, j == 0 ? "f_prox" : j == 1 ? "f_mid" : "f_dist", Glove, joint );
+				joint.LocalPosition = j == 0 ? new Vector3( 0, FingerY[f], FingerZ ) : new Vector3( 0, 0, FingerLinkLength );
+				joint.LocalScale = j == 0 ? FingerScale[f] : FingerTaper;   // each link a touch smaller than the one before
+				Sculpt( part, "f_seg", Glove, joint );
 				hand.Fingers[f][j] = joint;
 				parent = joint;
 			}
 		}
-		var thumbBase = new GameObject( part.Go, true, "Thumb 0" );
-		thumbBase.LocalPosition = new Vector3( 0, side * 4.7f, 4.4f );
-		Sculpt( part, "t_base", Glove, thumbBase );
-		var thumbTip = new GameObject( thumbBase, true, "Thumb 1" );
-		thumbTip.LocalPosition = new Vector3( 0, 0, ThumbLength[0] );
-		Sculpt( part, "t_tip", Glove, thumbTip );
-		hand.Thumb[0] = thumbBase;
-		hand.Thumb[1] = thumbTip;
+		var thumbParent = part.Go;
+		for ( var j = 0; j < ThumbLinks; j++ )
+		{
+			var joint = new GameObject( thumbParent, true, $"Thumb {j}" );
+			joint.LocalPosition = j == 0 ? new Vector3( 0, side * 4.7f, 4.4f ) : new Vector3( 0, 0, ThumbLinkLength );
+			joint.LocalScale = j == 0 ? 1f : ThumbTaper;
+			Sculpt( part, "t_seg", Glove, joint );
+			hand.Thumb[j] = joint;
+			thumbParent = joint;
+		}
 	}
 
 	// ---- The live eye picture --------------------------------------------------
@@ -511,16 +521,25 @@ public sealed class MC61 : Component, ICreature
 		for ( var f = 0; f < 4; f++ )
 		{
 			var spread = Rotation.FromAxis( Vector3.Forward, -(f - 1.5f) * fan );
-			for ( var j = 0; j < 3; j++ )
+			for ( var j = 0; j < FingerLinks; j++ )
 			{
-				var joint = hand.Fingers[f][j];
-				if ( !joint.IsValid() ) continue;
-				var curl = Rotation.FromAxis( Vector3.Left, hand.Curl[f * 3 + j] );
-				joint.LocalRotation = j == 0 ? spread * curl : curl;
+				var link = hand.Fingers[f][j];
+				if ( !link.IsValid() ) continue;
+				var m = FingerLinkJoint[j];
+				var angle = m >= 0 ? hand.Curl[f * 3 + m] * FingerLinkShare[j] : 0f;
+				var bend = Rotation.FromAxis( Vector3.Left, angle );
+				link.LocalRotation = j == 0 ? spread * bend : bend;
 			}
 		}
-		if ( hand.Thumb[0].IsValid() ) hand.Thumb[0].LocalRotation = Rotation.FromAxis( Vector3.Forward, -hand.Side * hand.Splay ) * Rotation.FromAxis( Vector3.Left, hand.Curl[12] );
-		if ( hand.Thumb[1].IsValid() ) hand.Thumb[1].LocalRotation = Rotation.FromAxis( Vector3.Left, hand.Curl[13] );
+		for ( var j = 0; j < ThumbLinks; j++ )
+		{
+			var link = hand.Thumb[j];
+			if ( !link.IsValid() ) continue;
+			var m = ThumbLinkJoint[j];
+			var angle = m >= 0 ? hand.Curl[12 + m] * ThumbLinkShare[j] : 0f;
+			var bend = Rotation.FromAxis( Vector3.Left, angle );
+			link.LocalRotation = j == 0 ? Rotation.FromAxis( Vector3.Forward, -hand.Side * hand.Splay ) * bend : bend;
+		}
 	}
 
 	readonly Vector3[] handVel = new Vector3[2];
@@ -564,9 +583,9 @@ public sealed class MC61 : Component, ICreature
 		var thumbSplay = 34f;
 		var posL = new Vector3( 8f, 36f, 12f + MathF.Sin( t * 1.4f ) * 4f + MathF.Sin( t * 0.7f ) * 2f );
 		var posR = new Vector3( 8f, -36f, 14f + MathF.Sin( t * 1.4f + 1.9f ) * 4f + MathF.Sin( t * 0.8f + 1f ) * 2f );
-		var sway = (float f) => Rotation.FromAxis( Vector3.Left, MathF.Sin( t * 1.3f + f ) * 9f ) * Rotation.FromAxis( Vector3.Up, MathF.Cos( t * 1.1f + f * 1.4f ) * 10f );
-		var rotL = Rotation.FromAxis( Vector3.Forward, -24f + MathF.Sin( t * 1.1f ) * 7f ) * Rotation.FromAxis( Vector3.Up, 12f ) * sway( 0f );
-		var rotR = Rotation.FromAxis( Vector3.Forward, 26f + MathF.Sin( t * 1.2f ) * 7f ) * Rotation.FromAxis( Vector3.Up, -12f ) * sway( 2f );
+		var sway = (float f) => Rotation.FromAxis( Vector3.Left, MathF.Sin( t * 1.3f + f ) * 9f ) * Rotation.FromAxis( Vector3.Up, MathF.Cos( t * 1.1f + f * 1.4f ) * 4f );
+		var rotL = Rotation.FromAxis( Vector3.Forward, -24f + MathF.Sin( t * 1.1f ) * 7f ) * sway( 0f );
+		var rotR = Rotation.FromAxis( Vector3.Forward, 26f + MathF.Sin( t * 1.2f ) * 7f ) * sway( 2f );
 
 		switch ( State )
 		{
@@ -586,8 +605,8 @@ public sealed class MC61 : Component, ICreature
 				var lift = 28f + 8f * charge + MathF.Sin( t * 22f ) * charge * 0.8f;
 				posL = new Vector3( 4f, 38f + 4f * charge, lift );
 				posR = new Vector3( 4f, -38f - 4f * charge, lift );
-				rotL = Rotation.FromAxis( Vector3.Forward, -34f + 14f * charge ) * Rotation.FromAxis( Vector3.Up, 18f );
-				rotR = Rotation.FromAxis( Vector3.Forward, 34f - 14f * charge ) * Rotation.FromAxis( Vector3.Up, -18f );
+				rotL = Rotation.FromAxis( Vector3.Forward, -34f + 14f * charge ) * Rotation.FromAxis( Vector3.Up, 0f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 34f - 14f * charge ) * Rotation.FromAxis( Vector3.Up, 0f );
 				tailWiggle = 0.5f;
 				break;
 			}
@@ -605,8 +624,8 @@ public sealed class MC61 : Component, ICreature
 				ripple = 0f;
 				posL = new Vector3( 12f, 34f, 30f );
 				posR = new Vector3( 12f, -34f, 30f );
-				rotL = Rotation.FromAxis( Vector3.Forward, -26f ) * Rotation.FromAxis( Vector3.Up, 24f );
-				rotR = Rotation.FromAxis( Vector3.Forward, 26f ) * Rotation.FromAxis( Vector3.Up, -24f );
+				rotL = Rotation.FromAxis( Vector3.Forward, -26f ) * Rotation.FromAxis( Vector3.Up, 0f );
+				rotR = Rotation.FromAxis( Vector3.Forward, 26f ) * Rotation.FromAxis( Vector3.Up, 0f );
 				tailWiggle = 0.3f;
 				break;
 			}
@@ -621,8 +640,8 @@ public sealed class MC61 : Component, ICreature
 				tremble = hold ? 1.5f : 0f;
 				posL = hold ? new Vector3( 22f, 9f, 14f ) : new Vector3( 8f, 38f, 22f );
 				posR = hold ? new Vector3( 22f, -9f, 14f ) : new Vector3( 8f, -38f, 22f );
-				rotL = hold ? Rotation.FromAxis( Vector3.Up, -20f ) : Rotation.FromAxis( Vector3.Forward, -40f );
-				rotR = hold ? Rotation.FromAxis( Vector3.Up, 20f ) : Rotation.FromAxis( Vector3.Forward, 40f );
+				rotL = hold ? Rotation.FromAxis( Vector3.Up, 0f ) : Rotation.FromAxis( Vector3.Forward, -40f );
+				rotR = hold ? Rotation.FromAxis( Vector3.Up, 0f ) : Rotation.FromAxis( Vector3.Forward, 40f );
 				spin = MathX.Clamp( (st - 0.6f) / 1.1f, 0f, 1f ) * 360f;
 				tailWiggle = 1.6f;
 				break;

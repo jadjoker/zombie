@@ -385,9 +385,28 @@ for i, (ln, r0, r1) in enumerate(SEGS):
     clear(); out(capsule(f"ghost_finger{i}", ln, r0, r1), ("f_prox", "f_mid", "f_dist")[i])
 clear(); out(capsule("ghost_thumb0", *T_BASE), "t_base")
 clear(); out(capsule("ghost_thumb1", *T_TIP), "t_tip")
+# Short repeating links: the game chains 16 of these per finger (10 per thumb) and shares each bend across 4 of
+# them, so fingers curl in smooth arcs instead of hinging at three rigid joints. Each link is one smooth stretched
+# ellipsoid that overlaps its neighbours (no tube-and-cap seams, so no ribbing), and the game scales each link
+# relative to its parent, which gives a continuous taper down the finger.
+F_LINKS, F_LINK, F_R0, F_TAPER = 16, 0.594, 1.42, 0.9753
+T_LINKS, T_LINK, T_R0, T_TAPER = 10, 0.66, 1.75, 0.9744
+
+
+def link(name, length, r0, taper):
+    r = r0 * (1 + taper) / 2
+    o = ellipsoid(name, (0, 0, length / 2), (r, r, length / 2 + 0.55 * r), 16)
+    bpy.ops.object.shade_smooth()
+    bpy.ops.object.mode_set(mode='EDIT'); bpy.ops.mesh.select_all(action='SELECT')
+    bpy.ops.uv.smart_project(angle_limit=1.15, island_margin=0.02); bpy.ops.object.mode_set(mode='OBJECT')
+    return o
+
+
+clear(); out(link("ghost_flink", F_LINK, F_R0, F_TAPER), "f_seg")
+clear(); out(link("ghost_tlink", T_LINK, T_R0, T_TAPER), "t_seg")
 json.dump({"eye": list(EYE_P), "hat_pos": list(HAT_P), "hat_euler_deg": [math.degrees(a) for a in HAT_E],
            "eye_tilt_deg": math.degrees(TILT), "eye_half": [EL, EH],
-           "finger_y": list(FING_Y), "finger_z": FING_Z, "finger_segs": [list(x) for x in SEGS], "thumb": [list(T_BASE), list(T_TIP)]},
+           "finger_y": list(FING_Y), "finger_z": FING_Z, "finger_segs": [list(x) for x in SEGS], "thumb": [list(T_BASE), list(T_TIP)], "finger_links": [F_LINKS, F_LINK, F_TAPER], "thumb_links": [T_LINKS, T_LINK, T_TAPER]},
           open(r"C:/Users/smitt/Documents/zombie_survival/Assets/models/creatures/mc61g_layout.json", "w"))
 
 result = stats

@@ -138,6 +138,39 @@ foreach ( var sess in Editor.SceneEditorSession.All )
 			fog.FalloffExponent = 1.5f;
 			fog.VerticalFalloffExponent = 1f;
 		}
+		// Painted steel door frames over the dividers' ends, so no stretched concrete shows at doorways.
+		var dressing = s.GetAllObjects( true ).FirstOrDefault( g => g.Name == "Dressing" );
+		if ( dressing is not null )
+		{
+			foreach ( var old in dressing.Children.Where( g => g.Name == "Door Frames" ).ToList() ) old.Destroy();
+			var frames = s.CreateObject();
+			frames.Name = "Door Frames";
+			frames.SetParent( dressing, false );
+			var boxModel = Model.Load( "models/dev/box.vmdl" );
+			var steel = Material.Load( "materials/ground/steel.vmat" );
+			foreach ( var d in dressing.Children.Where( g => g.Name.StartsWith( "Divider" ) ).ToList() )
+			{
+				var bb = d.GetBounds();
+				var c = bb.Center;
+				var alongX = bb.Size.x > bb.Size.y;
+				var half = (alongX ? bb.Size.x : bb.Size.y) / 2f;
+				var thick = (alongX ? bb.Size.y : bb.Size.x) + 10f;
+				foreach ( var sign in new[] { -1f, 1f } )
+				{
+					var f = s.CreateObject();
+					f.Name = "Frame";
+					f.SetParent( frames, true );
+					var at = alongX ? new Vector3( c.x + sign * half, c.y, c.z ) : new Vector3( c.x, c.y + sign * half, c.z );
+					var size = new Vector3( alongX ? 16f : thick, alongX ? thick : 16f, bb.Size.z );
+					f.WorldPosition = at;
+					f.WorldScale = size / boxModel.Bounds.Size;
+					var fr = f.Components.Create<ModelRenderer>();
+					fr.Model = boxModel;
+					fr.MaterialOverride = steel;
+					f.Components.Create<BoxCollider>().Scale = boxModel.Bounds.Size;
+				}
+			}
+		}
 		// Box-projected reflections so the polished floor picks up the lights.
 		var probeGo = s.Children.FirstOrDefault( g => g.Name == "Reflections" ) ?? s.CreateObject();
 		probeGo.Name = "Reflections";

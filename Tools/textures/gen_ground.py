@@ -276,9 +276,29 @@ def panels(name, painted, seed):
 	save_png(name + "_rough", np.clip(rough + 0.3 * seam, 0.3, 1))
 
 
+# ---- painted steel for door frames: worn paint over bare metal, scuffs. Isotropic, so it
+# survives being stretched across thin box faces.
+def steel():
+	big = fbm(80, 1, 10)
+	mid = fbm(81, 10, 80)
+	grain = fbm(82, 200, 512, 0.0)
+	chips = smooth(2.1, 2.5, fbm(83, 15, 140) + 0.5 * fbm(84, 2, 12))
+	scuff = smooth(1.8, 3.0, band(85, 30, 400, 0.4, (0.3, 10.0)))
+	paint = mix(rgb(0.16, 0.19, 0.22), rgb(0.22, 0.25, 0.28), norm01(big)) * (1 + 0.06 * mid[..., None] + 0.03 * grain[..., None])
+	metal = rgb(0.45, 0.45, 0.46) * (1 + 0.1 * grain[..., None])
+	col = mix(paint, metal, chips)
+	col = mix(col, rgb(0.35, 0.36, 0.38), scuff * 0.4)
+	h = 0.5 - 0.3 * chips + 0.02 * mid + 0.01 * grain
+	rough = np.clip(0.55 + 0.08 * mid - 0.2 * chips + 0.1 * scuff, 0.25, 1)
+	save_png("steel_color", col)
+	save_png("steel_normal", normal_from(h, 10))
+	save_png("steel_rough", rough)
+
+
 if __name__ == "__main__":
 	forest()
 	indoor()
 	seabed()
 	panels("indoor_wall", True, 60)
 	panels("indoor_ceiling", False, 70)
+	steel()

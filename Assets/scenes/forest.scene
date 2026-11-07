@@ -161,6 +161,25 @@
           "OnComponentStart": null,
           "OnComponentUpdate": null,
           "Saturation": 1
+        },
+        {
+          "__type": "GlobalStylize",
+          "__guid": "2f516be7-b3f0-4056-92ab-64a373974e6f",
+          "__enabled": true,
+          "Flags": 0,
+          "Bands": 4,
+          "InkColor": "0.05,0.05,0.08,1",
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Outline": 0.9,
+          "OutlineWidth": 1.6,
+          "PixelSize": 3,
+          "Strength": 1,
+          "Style": "Off"
         }
       ],
       "Children": []

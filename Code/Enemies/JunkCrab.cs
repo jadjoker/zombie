@@ -78,6 +78,29 @@ public sealed class JunkCrab : Component, ICreature
 	bool lastShotPointBlank;
 	float gait;
 
+	/// <summary>
+	/// A big cartoon eye on a stalk: white ball, a large black pupil with a highlight that follows you, and
+	/// shell-coloured lids that blink, squint angrily when it attacks and fly open when it's shot.
+	/// Each lid is a slightly bigger sphere pushed off the eyeball: how far it's pushed sets how much of the
+	/// eye it covers, and tilting the push slants the lid like a brow.
+	/// </summary>
+	sealed class CrabEye
+	{
+		public int Index;
+		public float Side;
+		public GameObject Ball, Gaze, UpperLid, LowerLid, Pupil;
+		public Rotation GazeRot = Rotation.Identity;
+		public Vector3 Wander = Vector3.Forward;
+		public float Upper = 0.2f, Lower = 0.08f, Slant, PupilSize = 1f;
+	}
+
+	const float EyeRadius = 3.4f;
+	const float LidRadius = EyeRadius * 1.07f;
+	readonly List<CrabEye> eyes = new();
+	TimeUntil nextBlink = 2f;
+	TimeUntil nextGlance = 1f;
+	float blink = 1f;   // 0 = mid-blink, 1 = open
+
 	// ---- Setup ------------------------------------------------------------
 
 	protected override void OnStart()
@@ -148,10 +171,7 @@ public sealed class JunkCrab : Component, ICreature
 		{
 			var eye = AddPart( index, Body, body.Go, side > 0 ? "Eye L" : "Eye R", new Vector3( 11f, side * 5f, 5f ), new Angles( -10, 0, -side * 12 ), EyeHealth );
 			Sculpt( eye, "eyestalk", bellyColor );
-			// Beady black eyes with a glowing red pupil.
-			Sphere( eye, new Vector3( 0, 0, 11f ), new Vector3( 2.6f, 2.6f, 2.6f ), new Color( 0.05f, 0.03f, 0.03f ) );
-			Sphere( eye, new Vector3( 2.2f, 0, 11.2f ), new Vector3( 0.6f, 1f, 1f ), new Color( 1f, 0.12f, 0.04f ) );
-			Sphere( eye, new Vector3( 0.4f, 0, 13.2f ), new Vector3( 3.5f, 3.5f, 1.2f ), Color.Lerp( shellColor, Color.Black, 0.2f ) ); // lid
+			BuildEye( eye, side );
 			Trigger( eye, new Vector3( 0, 0, 3 ), new Vector3( 0, 0, 12 ), 4f );
 		}
 
@@ -216,6 +236,98 @@ public sealed class JunkCrab : Component, ICreature
 		shootable.Creature = this;
 		shootable.Index = index;
 		return part;
+	}
+
+	void BuildEye( Part part, float side )
+	{
+		var ball = new GameObject( part.Go, true, "Eyeball" );
+		ball.LocalPosition = new Vector3( 0.6f, 0, 11.5f );
+		Sphere( ball, part, Vector3.Zero, new Vector3( EyeRadius, EyeRadius, EyeRadius ), new Color( 0.97f, 0.96f, 0.93f ) );
+
+		var gaze = new GameObject( ball, true, "Gaze" );
+		var pupil = new GameObject( gaze, true, "Pupil" );
+		Sphere( pupil, part, new Vector3( EyeRadius * 0.9f, 0, 0 ), new Vector3( 0.42f, 1.55f, 1.75f ), new Color( 0.02f, 0.02f, 0.03f ) );
+		Sphere( pupil, part, new Vector3( EyeRadius * 0.98f, 0.5f * side, 0.65f ), new Vector3( 0.2f, 0.42f, 0.42f ), Color.White );   // shine
+		Sphere( pupil, part, new Vector3( EyeRadius * 0.98f, -0.45f * side, -0.6f ), new Vector3( 0.15f, 0.2f, 0.2f ), new Color( 0.85f, 0.88f, 0.95f ) );
+
+		var upper = Lid( ball, part, "Upper Lid", shellColor );
+		var lower = Lid( ball, part, "Lower Lid", bellyColor );
+
+		eyes.Add( new CrabEye { Index = part.Index, Side = side, Ball = ball, Gaze = gaze, Pupil = pupil, UpperLid = upper, LowerLid = lower } );
+	}
+
+	/// <summary> An eyelid: a half-dome shell a touch bigger than the eyeball, in the creature's shell colour. </summary>
+	GameObject Lid( GameObject ball, Part part, string name, Color color )
+	{
+		var go = new GameObject( ball, true, name );
+		go.LocalScale = LidRadius;
+		var r = go.AddComponent<ModelRenderer>();
+		r.Model = ShapeMeshes.Dome;
+		r.Tint = color;
+		Shapes.Skin( r, "chitin" );
+		part.Renderers.Add( (r, color) );
+		return go;
+	}
+
+	/// <summary> How far to swing a lid's front edge (degrees above the eye's middle) to cover `coverage` of it (0 none, 1 all). </summary>
+	static float LidEdge( float coverage ) => MathX.RadianToDegree( MathF.Asin( 1f - 2f * MathX.Clamp( coverage, 0f, 1f ) ) );
+
+	void UpdateEyes()
+	{
+		// Blink every few seconds (now and then a double blink).
+		if ( nextBlink )
+		{
+			blink = 0f;
+			nextBlink = Game.Random.Float() < 0.2f ? 0.25f : Game.Random.Float( 2f, 5f );
+		}
+		blink = MathF.Min( 1f, blink + Time.Delta / 0.16f );
+		var closing = 1f - MathF.Abs( blink * 2f - 1f );   // 0 -> 1 -> 0 over the blink
+
+		var target = PlayerSurvivor.FindNearestAlive( Scene, WorldPosition );
+		var angry = Snapping || timeSinceSnap < 0.6f;
+		var shocked = parts.Any( p => p is not null && !p.Gone && p.Flash < 0.5f );   // just got shot, anywhere
+		if ( nextGlance )
+		{
+			nextGlance = Game.Random.Float( 0.6f, 1.8f );
+			foreach ( var e in eyes ) e.Wander = new Vector3( 1f, Game.Random.Float( -0.6f, 0.6f ), Game.Random.Float( -0.3f, 0.4f ) ).Normal;
+		}
+
+		foreach ( var e in eyes )
+		{
+			if ( !Has( e.Index ) || !e.Ball.IsValid() ) continue;
+
+			// Look at you (darting about a little when nobody's near), within what an eyeball can turn.
+			var look = e.Wander;
+			if ( target is not null && target.WorldPosition.Distance( WorldPosition ) < 1400f )
+				look = e.Ball.WorldRotation.Inverse * ((target.WorldPosition + Vector3.Up * 60f) - e.Ball.WorldPosition).Normal;
+			var limit = MathF.Cos( MathX.DegreeToRadian( 42f ) );
+			if ( look.x < limit )
+			{
+				var sideways = look.WithX( 0 );
+				sideways = sideways.IsNearlyZero() ? Vector3.Up : sideways.Normal;
+				look = (Vector3.Forward * limit + sideways * MathF.Sqrt( 1f - limit * limit )).Normal;
+			}
+			e.GazeRot = Rotation.Slerp( e.GazeRot, Rotation.LookAt( look ), MathX.Clamp( Time.Delta * 14f, 0f, 1f ) );
+			e.Gaze.LocalRotation = e.GazeRot;
+
+			// Mood: relaxed, a mean squint while it attacks, eyes popping wide when it gets hit.
+			var upper = shocked ? 0.02f : angry ? 0.42f : 0.2f + 0.04f * MathF.Sin( Time.Now * 0.7f + e.Side );
+			var lower = shocked ? 0f : angry ? 0.2f : 0.08f;
+			var slant = angry ? 28f : shocked ? -8f : 6f;
+			var pupilSize = shocked ? 0.6f : angry ? 0.85f : 1f;
+			var k = MathX.Clamp( Time.Delta * 12f, 0f, 1f );
+			e.Upper = MathX.Lerp( e.Upper, upper, k );
+			e.Lower = MathX.Lerp( e.Lower, lower, k );
+			e.Slant = MathX.Lerp( e.Slant, slant, k );
+			e.PupilSize = MathX.Lerp( e.PupilSize, pupilSize, k );
+
+			var up = MathX.Lerp( e.Upper, 0.56f, closing );
+			var down = MathX.Lerp( e.Lower, 0.5f, closing );
+			// Each lid's front edge swings to its height; the brow slant rolls the upper lid so the inner corner drops.
+			e.UpperLid.LocalRotation = Rotation.FromAxis( Vector3.Forward, e.Side * e.Slant ) * Rotation.FromPitch( -LidEdge( up ) );
+			e.LowerLid.LocalRotation = Rotation.FromPitch( LidEdge( down ) ) * Rotation.FromRoll( 180f );
+			e.Pupil.LocalScale = new Vector3( 1f, e.PupilSize, e.PupilSize );
+		}
 	}
 
 	void Sphere( Part part, Vector3 at, Vector3 radii, Color color ) => Sphere( part.Go, part, at, radii, color );
@@ -328,9 +440,10 @@ public sealed class JunkCrab : Component, ICreature
 			}
 		}
 
-		// Eye stalks wobble.
+		// Eye stalks wobble, and the eyes themselves look, blink and emote.
 		foreach ( var (eye, side) in new[] { (EyeL, 1f), (EyeR, -1f) } )
 			if ( Has( eye ) ) parts[eye].Go.LocalRotation = parts[eye].Rest * new Angles( MathF.Sin( Time.Now * 2.3f + side ) * 8f, 0, MathF.Sin( Time.Now * 1.7f + side * 2f ) * 10f ).ToRotation();
+		UpdateEyes();
 	}
 
 	void Tint()

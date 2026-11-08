@@ -4,9 +4,9 @@
 [Title( "Global Stylize" ), Category( "Post Processing" ), Icon( "brush" )]
 public sealed class GlobalStylize : BasePostProcess<GlobalStylize>
 {
-	public enum Look { Off, InkOutlines, Toon, Painterly, Retro, Storybook }
+	public enum Look { Off, InkOutlines, Toon, Painterly, Retro, Storybook, Comic, Anime, Sketch, Watercolor, Riso, Flat }
 
-	[Property] public Look Style { get; set; } = Look.Off;
+	[Property] public Look Style { get; set; } = Look.Flat;
 	[Property, Range( 0, 1 )] public float Strength { get; set; } = 1f;
 	[Property, Range( 0, 1 )] public float Outline { get; set; } = 0.9f;
 	[Property, Range( 1, 4 )] public float OutlineWidth { get; set; } = 1.6f;

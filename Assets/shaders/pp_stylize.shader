@@ -1,6 +1,6 @@
 HEADER
 {
-	Description = "Global stylize post-process: ink outlines, toon bands, painterly, retro dither, storybook";
+	Description = "Global stylize post-process: ink outlines, toon, painterly, retro, storybook, comic, anime, sketch, watercolor, riso, flat";
 	DevShader = true;
 }
 
@@ -157,6 +157,23 @@ PS
 
 	float Hash( float2 p ) { return frac( sin( dot( p, float2( 12.9898, 78.233 ) ) ) * 43758.5453 ); }
 
+	// A round halftone dot for this pixel: 1 inside the dot. `amount` (0..1) sets how big the dots are.
+	float Dots( float2 px, float angle, float amount, float scale )
+	{
+		float s = sin( angle ); float co = cos( angle );
+		float2 p = float2( co * px.x - s * px.y, s * px.x + co * px.y ) / max( scale, 1.0 );
+		float2 cell = frac( p ) - 0.5;
+		float r = sqrt( saturate( amount ) ) * 0.72;
+		return 1.0 - smoothstep( r - 0.1, r + 0.1, length( cell ) );
+	}
+
+	// A thin repeating line along `coord`.
+	float Line( float coord, float spacing )
+	{
+		float v = abs( frac( coord / max( spacing, 1.0 ) ) - 0.5 ) * 2.0;
+		return smoothstep( 0.7, 0.86, v );
+	}
+
 	float4 MainPs( PixelInput i ) : SV_Target0
 	{
 		float2 px = i.vPositionSs.xy;
@@ -196,6 +213,75 @@ PS
 			float paper = ( Hash( floor( px / 3.0 ) ) + Hash( floor( px / 9.0 ) + 7.0 ) ) * 0.015 - 0.015;
 			c += paper;
 			c = lerp( c, g_vInk * 1.5, Edge( px, uv ) * g_flOutline * 0.6 );
+		}
+
+		else if ( g_nStyle == 6 ) // Comic: flat bands, halftone dots in the shadows, bold ink
+		{
+			float3 base = Toon( c );
+			float shade = sqrt( saturate( Luma( base ) ) );
+			float dots = Dots( px, 0.7854, 1.0 - shade, g_flPixel * 2.0 ) * smoothstep( 0.7, 0.3, shade );
+			c = lerp( base, base * 0.4, dots );
+			c = lerp( c, g_vInk, Edge( px, uv ) * g_flOutline );
+		}
+		else if ( g_nStyle == 7 ) // Anime: three soft tones, cool shadows and warm lights, tinted outlines
+		{
+			float3 lifted = c * 1.35;
+			float l = sqrt( saturate( Luma( lifted ) ) );
+			float tone = smoothstep( 0.24, 0.32, l ) * 0.5 + smoothstep( 0.5, 0.58, l ) * 0.5;
+			float3 shadow = lifted * float3( 0.78, 0.84, 1.15 ) * 0.9;
+			float3 light = lifted * float3( 1.12, 1.05, 0.94 );
+			float3 o = lerp( shadow, light, tone );
+			o = lerp( Luma( o ).xxx, o, 1.25 );
+			float ink = max( DepthEdge( px ), Edge( px, uv ) * 0.6 ) * g_flOutline;
+			c = lerp( o, o * 0.2 + g_vInk * 0.5, ink );
+		}
+		else if ( g_nStyle == 8 ) // Sketch: pencil crosshatch on paper
+		{
+			float l = saturate( sqrt( saturate( Luma( c ) ) ) * 1.5 );
+			float spacing = max( g_flPixel * 2.4, 4.0 );
+			float a = Line( px.x + px.y, spacing ) * step( l, 0.7 );
+			float b = Line( px.x - px.y, spacing ) * step( l, 0.45 );
+			float h = Line( px.y, spacing * 0.9 ) * step( l, 0.25 );
+			float dark = saturate( max( a, max( b, h ) ) );
+			float3 paper = float3( 0.97, 0.95, 0.88 ) + ( Hash( floor( px / 2.0 ) ) - 0.5 ) * 0.04;
+			float3 pencil = float3( 0.14, 0.14, 0.18 );
+			float3 o = lerp( paper, pencil, dark * 0.85 );
+			o = lerp( o, o * ( src * 1.8 + 0.3 ), 0.5 );   // a wash of the real colours
+			c = lerp( o, pencil, Edge( px, uv ) * g_flOutline * 0.9 );
+		}
+		else if ( g_nStyle == 9 ) // Watercolor: bleeding washes, pooled edges, paper grain
+		{
+			float3 k = Kuwahara( uv );
+			float3 wash = lerp( Luma( k ).xxx, k, 1.25 ) * 1.2 + 0.03;
+			float edge = Edge( px, uv );
+			float3 o = lerp( wash, wash * 0.55, edge * 0.8 * g_flOutline );
+			float blotch = Hash( floor( px / 6.0 ) + 3.0 ) * 0.5 + Hash( floor( px / 17.0 ) + 9.0 ) * 0.5;
+			o = lerp( o, float3( 0.98, 0.96, 0.9 ), 0.03 + blotch * 0.1 );
+			o += ( Hash( floor( px / 2.0 ) ) - 0.5 ) * 0.03;
+			c = o;
+		}
+		else if ( g_nStyle == 10 ) // Riso: two inks printed in dots on paper, slightly out of register
+		{
+			float l = saturate( ( sqrt( saturate( Luma( c ) ) ) - 0.12 ) * 1.5 );
+			float3 shifted = Fetch( uv + float2( 2.5, 1.5 ) / g_vRenderTargetSize );
+			float a1 = Dots( px, 0.26, saturate( 1.0 - l ) * 0.95, g_flPixel * 1.8 );
+			float warm = saturate( shifted.r - shifted.g * 0.8 ) * 1.6 + saturate( 1.0 - l ) * 0.35;
+			float a2 = Dots( px + float2( 2.5, 1.5 ), 1.3, saturate( warm ), g_flPixel * 1.8 );
+			float3 paper = float3( 0.97, 0.94, 0.86 );
+			float3 ink1 = float3( 0.02, 0.45, 0.6 );
+			float3 ink2 = float3( 0.96, 0.27, 0.46 );
+			c = paper * lerp( float3( 1, 1, 1 ), ink1, a1 ) * lerp( float3( 1, 1, 1 ), ink2, a2 * 0.85 );
+			c = lerp( c, c * 0.45, DepthEdge( px ) * g_flOutline * 0.7 );
+			c += ( Hash( floor( px ) ) - 0.5 ) * 0.025;
+		}
+		else if ( g_nStyle == 11 ) // Flat: posterised colour like a vector illustration, clean ink lines
+		{
+			float levels = max( g_flBands, 2.0 ) + 1.0;
+			float3 g = pow( saturate( c ), 0.5 );
+			g = floor( g * levels + 0.5 ) / levels;
+			float3 o = g * g;
+			o = lerp( Luma( o ).xxx, o, 1.25 );
+			c = lerp( o, g_vInk, DepthEdge( px ) * g_flOutline );
 		}
 
 		return float4( lerp( src, saturate( c ), g_flStrength ), 1 );

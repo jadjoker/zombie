@@ -179,7 +179,7 @@
           "OutlineWidth": 1.6,
           "PixelSize": 3,
           "Strength": 1,
-          "Style": "Off"
+          "Style": "Flat"
         }
       ],
       "Children": []

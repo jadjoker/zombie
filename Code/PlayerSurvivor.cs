@@ -69,6 +69,8 @@ public sealed class PlayerSurvivor : Component
 		startingMaxHealth = Health.MaxHealth;
 		Health.Damaged += OnHurt;
 		Health.Died += OnDied;
+		if ( !IsProxy && !Components.Get<PlayerMelee>().IsValid() ) AddComponent<PlayerMelee>();
+		if ( !IsProxy && !Components.Get<AllyCommander>().IsValid() ) AddComponent<AllyCommander>();
 	}
 
 	// ---- Networked rewards and respawning ----------------------------------------------------

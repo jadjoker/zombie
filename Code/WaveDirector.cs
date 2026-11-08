@@ -60,6 +60,12 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Junk Crab" )] public float CrabBaseHealth { get; set; } = 130f;
 	[Property, Group( "Junk Crab" )] public float CrabHealthPerWave { get; set; } = 15f;
 
+	/// <summary> Chance each spawn is a Sea Spider (tall stalker on the floor), once they've started. </summary>
+	[Property, Group( "Sea Spider" )] public float SpiderChance { get; set; } = 0.2f;
+	[Property, Group( "Sea Spider" )] public int SpiderFromWave { get; set; } = 2;
+	[Property, Group( "Sea Spider" )] public float SpiderBaseHealth { get; set; } = 110f;
+	[Property, Group( "Sea Spider" )] public float SpiderHealthPerWave { get; set; } = 12f;
+
 	/// <summary> MC61 turns up every this many waves (0 = never). </summary>
 	[Property, Group( "Boss" )] public int BossEvery { get; set; } = 5;
 	[Property, Group( "Boss" )] public float BossBaseHealth { get; set; } = 2000f;
@@ -224,10 +230,11 @@ public sealed class WaveDirector : Component
 	[Property, Group( "Dev" )] public bool SpawnBloobers { get; set; } = true;
 	[Property, Group( "Dev" )] public bool SpawnSquiliens { get; set; } = true;
 	[Property, Group( "Dev" )] public bool SpawnCrabs { get; set; } = true;
+	[Property, Group( "Dev" )] public bool SpawnSpiders { get; set; } = false;   // the spider is the player's ally now
 	[Property, Group( "Dev" )] public bool SpawnBossWaves { get; set; } = true;
 
 	/// <summary> Enemy types the dev menu can spawn on demand. </summary>
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider }
 
 	/// <summary> Dev tool: spawn one enemy of a type near the players. False if it had nowhere to go. </summary>
 	public bool Spawn( EnemyKind kind ) => kind switch
@@ -237,6 +244,7 @@ public sealed class WaveDirector : Component
 		EnemyKind.Squilien => TrySpawnSquilien(),
 		EnemyKind.Crab => TrySpawnCrab(),
 		EnemyKind.Boss => TrySpawnBoss(),
+		EnemyKind.Spider => TrySpawnSpider(),
 		_ => false,
 	};
 
@@ -420,6 +428,8 @@ public sealed class WaveDirector : Component
 			m.GameObject.Destroy();
 		foreach ( var c in Scene.GetAllComponents<JunkCrab>().ToList() )
 			c.GameObject.Destroy();
+		foreach ( var s in Scene.GetAllComponents<SeaSpider>().ToList() )
+			s.GameObject.Destroy();
 		alive.Clear();
 
 		Wave = 0;
@@ -478,22 +488,25 @@ public sealed class WaveDirector : Component
 			bloober /= total;
 		}
 		var crab = SpawnCrabs && Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
+		var spider = SpawnSpiders && Wave >= SpiderFromWave && !FloatRound ? SpiderChance : 0f;
 		if ( !SpawnZombies )
 		{
 			// No zombies to fill the gap: share the whole roll among the creatures, unlocking them early if none are due yet.
-			if ( squilien + bloober + crab <= 0.01f )
+			if ( squilien + bloober + crab + spider <= 0.01f )
 			{
 				squilien = SpawnSquiliens ? 1f : 0f;
 				bloober = SpawnBloobers ? 1f : 0f;
 				crab = SpawnCrabs && !FloatRound ? 1f : 0f;
+				spider = SpawnSpiders && !FloatRound ? 1f : 0f;
 			}
-			var sum = squilien + bloober + crab;
+			var sum = squilien + bloober + crab + spider;
 			if ( sum <= 0.01f ) return false;
-			squilien /= sum; bloober /= sum; crab /= sum;
+			squilien /= sum; bloober /= sum; crab /= sum; spider /= sum;
 		}
 		if ( roll < squilien ) return TrySpawnSquilien();
 		if ( roll < squilien + bloober ) return TrySpawnBloober();
 		if ( roll < squilien + bloober + crab ) return TrySpawnCrab();
+		if ( roll < squilien + bloober + crab + spider ) return TrySpawnSpider();
 		return SpawnZombies && TrySpawnZombie();
 	}
 
@@ -525,6 +538,44 @@ public sealed class WaveDirector : Component
 		crab.Size = size;
 		crab.MoveSpeed = MathF.Min( TopSpeed, 200f + SpeedPerWave * (Wave - 1) );
 		crab.Killed += c =>
+		{
+			alive.Remove( c.GameObject );
+			Kills++;
+		};
+		alive.Add( go );
+
+		if ( Networking.IsActive ) go.NetworkSpawn();
+		return true;
+	}
+
+	bool TrySpawnSpider()
+	{
+		if ( !TryFindSpawnPosition( out var position ) ) return false;
+
+		var size = Game.Random.Float( 0.9f, 1.15f );
+		var go = new GameObject( true, "Sea Spider" );
+		go.WorldPosition = position;
+		go.WorldRotation = Rotation.FromYaw( Game.Random.Float( 0f, 360f ) );
+
+		// Body-blocking capsule on a child, tagged so bullets skip it and hit the parts instead.
+		var blocker = new GameObject( go, true, "Blocker" );
+		blocker.Tags.Add( "zombieblocker" );
+		var capsule = blocker.AddComponent<CapsuleCollider>();
+		capsule.Start = Vector3.Up * 20f * size;
+		capsule.End = Vector3.Up * 40f * size;
+		capsule.Radius = 16f * size;
+
+		var agent = go.AddComponent<NavMeshAgent>();
+		agent.Height = 60f * size;
+		agent.Radius = 18f * size;
+		agent.Acceleration = 900f;
+
+		go.AddComponent<Health>().ResetTo( SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1) );
+		var spiderComponent = go.AddComponent<SeaSpider>();
+		spiderComponent.Hue = Game.Random.Float();
+		spiderComponent.Size = size;
+		spiderComponent.MoveSpeed = MathF.Min( TopSpeed, 220f + SpeedPerWave * (Wave - 1) );
+		spiderComponent.Killed += c =>
 		{
 			alive.Remove( c.GameObject );
 			Kills++;

@@ -187,7 +187,7 @@ public sealed class PlayerWeapon : Component
 		}
 
 		// The first-person gun only shows in first person (and comes back after a respawn).
-		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam;
+		if ( ViewModel.IsValid() ) ViewModel.GameObject.Enabled = !InThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && !MeleeActive;
 
 		// Dev tool: never run dry.
 		if ( InfiniteAmmo )
@@ -221,7 +221,7 @@ public sealed class PlayerWeapon : Component
 		if ( ShellReload && IsReloading && Input.Pressed( "Attack1" ) && Ammo > 0 )
 			CancelReload();
 
-		if ( DevFlags.Placing ) return;   // left click is placing an enemy
+		if ( DevFlags.Placing || MeleeActive ) return;   // left click is placing an enemy; the axe is out
 
 		var wantsFire = Automatic ? Input.Down( "Attack1" ) : Input.Pressed( "Attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )
@@ -413,6 +413,12 @@ public sealed class PlayerWeapon : Component
 
 	/// <summary> Called back from the host when one of our bullets killed something. </summary>
 	public void MarkKill() => TimeSinceKill = 0f;
+
+	/// <summary> Melee hits show the hitmarker too. </summary>
+	public void MarkHit() => TimeSinceHit = 0f;
+
+	/// <summary> The axe is out: the gun is hidden and can't fire. </summary>
+	bool MeleeActive => GetComponent<PlayerMelee>()?.IsSwinging ?? false;
 
 	/// <summary> Other players hear our shots and see the flash from roughly where we stand. </summary>
 	[Rpc.Broadcast( NetFlags.Unreliable )]

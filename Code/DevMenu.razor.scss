@@ -71,6 +71,33 @@ DevMenu
 			color: #2fd08a;
 		}
 
+		.header-right
+		{
+			flex-direction: row;
+			align-items: center;
+		}
+
+		.close
+		{
+			margin-left: 14px;
+			width: 30px;
+			height: 30px;
+			align-items: center;
+			justify-content: center;
+			border-radius: 6px;
+			font-size: 16px;
+			font-weight: 900;
+			background-color: rgba( #ff5a5a, 0.25 );
+			border: 1px solid rgba( #ff5a5a, 0.7 );
+			color: #ffd6d6;
+			cursor: pointer;
+
+			&:hover
+			{
+				background-color: rgba( #ff5a5a, 0.55 );
+			}
+		}
+
 		.hint
 		{
 			font-size: 13px;
@@ -122,7 +149,7 @@ DevMenu
 	{
 		flex-direction: column;
 		flex-shrink: 0;
-		margin-bottom: 12px;
+		margin-bottom: 8px;
 
 		.heading
 		{
@@ -143,8 +170,8 @@ DevMenu
 
 	.chip
 	{
-		padding: 7px 14px;
-		margin: 0 8px 8px 0;
+		padding: 5px 12px;
+		margin: 0 6px 6px 0;
 		border-radius: 6px;
 		font-size: 15px;
 		font-weight: 700;

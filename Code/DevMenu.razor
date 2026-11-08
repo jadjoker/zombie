@@ -26,7 +26,10 @@
 		<div class="window">
 			<div class="header">
 				<div class="title">DEV MENU</div>
-				<div class="hint">P to close</div>
+				<div class="header-right">
+					<div class="hint">P to close</div>
+					<div class="close" onclick=@(() => SetOpen( false ))>X</div>
+				</div>
 			</div>
 
 			<div class="body">
@@ -39,6 +42,7 @@
 							<div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div>
 							<div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div>
 							<div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div>
+							<div class=@Chip( Spiders ) onclick=@(() => ToggleSpiders())>Sea Spiders</div>
 							<div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div>
 						</div>
 						<div class="chips">
@@ -54,6 +58,8 @@
 							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
 							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
 							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Spider ))>Sea Spider</div>
+							<div class="chip action" onclick=@(() => SpawnAlly())>Ally Spider</div>
 							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
 						</div>
 					</div>
@@ -65,6 +71,7 @@
 							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
 							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
 							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
+							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Spider ))>Sea Spider</div>
 							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
 						</div>
 					</div>
@@ -119,6 +126,32 @@
 							@foreach ( var f in Fovs )
 							{
 								<div class=@Pick( DevFlags.Fov == f ) onclick=@(() => DevFlags.Fov = f)>@(f == 0f ? "Game" : $"{f}")</div>
+							}
+						</div>
+						<div class="chips">
+							<div class="row-label">Look</div>
+							@foreach ( var look in Enum.GetValues<GlobalStylize.Look>() )
+							{
+								<div class=@Pick( Stylize?.Style == look ) onclick=@(() => SetLook( look ))>@(look switch { GlobalStylize.Look.InkOutlines => "Ink", GlobalStylize.Look.Painterly => "Paint", GlobalStylize.Look.Storybook => "Book", GlobalStylize.Look.Watercolor => "Water", _ => look.ToString() })</div>
+							}
+						</div>
+						<div class="chips">
+							<div class="row-label">Bands</div>
+							@foreach ( var n in BandCounts )
+							{
+								<div class=@Pick( Stylize is { } z && z.Bands == n ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Bands = n; })>@n</div>
+							}
+							<div class="row-label">Ink</div>
+							@foreach ( var o in InkLevels )
+							{
+								<div class=@Pick( Stylize is { } z && MathF.Abs( z.Outline - o ) < 0.01f ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Outline = o; })>@(o == 0f ? "None" : $"{o}")</div>
+							}
+						</div>
+						<div class="chips">
+							<div class="row-label">Skin</div>
+							@foreach ( var fx in SkinFx )
+							{
+								<div class=@Pick( skinFx == fx ) onclick=@(() => SetSkinFx( fx ))>@fx</div>
 							}
 						</div>
 						<div class="chips">
@@ -235,6 +268,7 @@
 	bool Bloobers => Director is null || Director.SpawnBloobers;
 	bool Squiliens => Director is null || Director.SpawnSquiliens;
 	bool Crabs => Director is null || Director.SpawnCrabs;
+	bool Spiders => Director is null || Director.SpawnSpiders;
 	bool BossWaves => Director is null || Director.SpawnBossWaves;
 
 	int Wave => Director?.Wave ?? 0;
@@ -254,6 +288,12 @@
 	void ToggleBloobers() { if ( Director is { } d ) d.SpawnBloobers = !d.SpawnBloobers; }
 	void ToggleSquiliens() { if ( Director is { } d ) d.SpawnSquiliens = !d.SpawnSquiliens; }
 	void ToggleCrabs() { if ( Director is { } d ) d.SpawnCrabs = !d.SpawnCrabs; }
+	void SpawnAlly()
+	{
+		foreach ( var a in Scene.GetAllComponents<SeaSpider>().Where( s => s.IsAlly ).ToList() ) a.GameObject.Destroy();
+		if ( Player.IsValid() ) SeaSpider.SpawnAlly( Scene, Player );
+	}
+	void ToggleSpiders() { if ( Director is { } d ) d.SpawnSpiders = !d.SpawnSpiders; }
 	void ToggleBossWaves() { if ( Director is { } d ) d.SpawnBossWaves = !d.SpawnBossWaves; }
 	void SpawnOne( WaveDirector.EnemyKind kind ) { Director?.Spawn( kind ); }
 	void KillAll() { Director?.ClearEnemies(); }
@@ -276,7 +316,7 @@
 	protected override int BuildHash()
 	{
 		var a = System.HashCode.Combine( open, Wave, Kills, Remaining, Phase, GodMode, InfiniteAmmo, Paused );
-		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, BossWaves,
+		var b = System.HashCode.Combine( Zombies, Bloobers, Squiliens, Crabs, Spiders, BossWaves,
 			System.HashCode.Combine( DevFlags.FreezeEnemies, DevFlags.Noclip, DevFlags.HideHud, DevFlags.HideWeapon, DevFlags.Placing, placeKind ) );
 		var c = System.HashCode.Combine( DevFlags.FreeCam, DevFlags.Fov, DevFlags.OneShot, DevFlags.ShowHitboxes, DevFlags.ShowStats, TimeScale, sunPreset, savedSpot is null );
 		// The stats overlay ticks a few times a second.
@@ -431,6 +471,48 @@
 	float TimeScale => Scene.TimeScale;
 	void SetTimeScale( float t ) => Scene.TimeScale = t;
 
+	// ---- look (global stylize post-process) ----
+	static readonly float[] BandCounts = { 2f, 3f, 4f, 6f };
+	static readonly float[] InkLevels = { 0f, 0.5f, 0.9f };
+	GlobalStylize Stylize => Scene.GetAllComponents<GlobalStylize>().FirstOrDefault();
+	void SetLook( GlobalStylize.Look look ) { if ( Stylize is { } z ) z.Style = look; }
+
+	// ---- creature skin shaders (experiment) ----
+	static readonly string[] SkinFx = { "Off", "Dissolve", "Ghost", "Holo", "Iridescent" };
+	string skinFx = "Off";
+	readonly Dictionary<ModelRenderer, Material> skinOriginals = new();
+
+	void SetSkinFx( string fx )
+	{
+		skinFx = fx;
+		var path = fx switch
+		{
+			"Dissolve" => "materials/fx/fx_dissolve.vmat",
+			"Ghost" => "materials/fx/fx_ghost.vmat",
+			"Holo" => "materials/fx/fx_hologram.vmat",
+			"Iridescent" => "materials/fx/fx_iridescent.vmat",
+			_ => null,
+		};
+		var material = path is null ? null : Material.Load( path );
+
+		// Put back whatever skins we swapped out before.
+		foreach ( var (r, original) in skinOriginals )
+			if ( r.IsValid() ) r.MaterialOverride = original;
+		skinOriginals.Clear();
+		if ( material is null ) return;
+
+		// Creature rigs are built as their own objects, so walk the shootable parts instead of the creature component.
+		foreach ( var part in Scene.GetAllComponents<CreaturePart>() )
+			foreach ( var r in part.GameObject.Components.GetAll<ModelRenderer>( FindMode.EverythingInSelfAndDescendants ) )
+			{
+				// Only the body skins, so eyes and props keep their look.
+				var current = r.MaterialOverride;
+				if ( skinOriginals.ContainsKey( r ) || current is null || !(current.Name?.Contains( "materials/creature/" ) ?? false) ) continue;
+				skinOriginals[r] = current;
+				r.MaterialOverride = material;
+			}
+	}
+
 	// ---- sun ----
 	static readonly string[] SunPresets = { "Default", "Morning", "Noon", "Dusk", "Night" };
 	string sunPreset = "Default";
@@ -561,6 +643,6 @@
 	int Fps => (int)MathF.Round( 1f / MathF.Max( 0.0001f, RealTime.SmoothDelta ) );
 	string FrameMs => (RealTime.SmoothDelta * 1000f).ToString( "0.0" );
 	int AliveEnemies => Scene.GetAllComponents<Zombie>().Count( z => !z.IsDead ) + Scene.GetAllComponents<Bloober>().Count( c => !c.IsDead )
-		+ Scene.GetAllComponents<Squilien>().Count( c => !c.IsDead ) + Scene.GetAllComponents<JunkCrab>().Count( c => !c.IsDead ) + Scene.GetAllComponents<MC61>().Count( c => !c.IsDead );
+		+ Scene.GetAllComponents<Squilien>().Count( c => !c.IsDead ) + Scene.GetAllComponents<JunkCrab>().Count( c => !c.IsDead ) + Scene.GetAllComponents<SeaSpider>().Count( c => !c.IsDead && !c.IsAlly ) + Scene.GetAllComponents<MC61>().Count( c => !c.IsDead );
 	string PlayerPos => Player?.WorldPosition is { } p ? $"{p.x:0} {p.y:0} {p.z:0}" : "";
 }

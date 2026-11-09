@@ -218,8 +218,11 @@ void main()
 	else if ( style == 11 )
 	{
 		float levels = max( p.bands, 2.0 ) + 1.0;
-		vec3 g = pow( clamp( c, 0.0, 1.0 ), vec3( 0.5 ) );
-		g = floor( g * levels + 0.5 ) / levels;
+		// s&box runs this after TAA, which smooths texture and shadow grain first. Here a small cross blur and
+		// slightly soft band edges stand in for it, so grain near a band edge does not speckle and crawl.
+		vec3 soft = ( c * 4.0 + fetch( uv + vec2( t.x, 0.0 ) ) + fetch( uv - vec2( t.x, 0.0 ) ) + fetch( uv + vec2( 0.0, t.y ) ) + fetch( uv - vec2( 0.0, t.y ) ) ) / 8.0;
+		vec3 g = pow( clamp( soft, 0.0, 1.0 ), vec3( 0.5 ) ) * levels;
+		g = ( floor( g ) + smoothstep( vec3( 0.42 ), vec3( 0.58 ), fract( g ) ) ) / levels;
 		vec3 o = g * g;
 		o = mix( vec3( luma( o ) ), o, 1.25 );
 		c = mix( o, ink, depth_edge( uv, t ) * outline );

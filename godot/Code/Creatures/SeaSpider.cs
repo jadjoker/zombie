@@ -1,3 +1,4 @@
+using System.Linq;
 using Godot;
 
 /// <summary>
@@ -263,6 +264,9 @@ public partial class SeaSpider : Node3D, ICreature
 		rig.AddChild( lureBulb );
 		lureLight = new OmniLight3D { LightColor = glowColor, LightEnergy = 2.5f, OmniRange = 380f * U.In, OmniAttenuation = 1.1f, ShadowEnabled = false };
 		lureBulb.AddChild( lureLight );
+		// Top-level pieces start at the spider (not the map origin) until the first lure update.
+		foreach ( var m in lureSeg.Concat( lureJoint ).Append( lureBulb ) )
+			if ( m is not null ) m.GlobalPosition = rig.GlobalPosition;
 	}
 
 	void ComputeLureRest()
@@ -407,7 +411,7 @@ public partial class SeaSpider : Node3D, ICreature
 			sideways = sideways.IsNearlyZero() ? Vector3.Up : sideways.Normalized();
 			look = (Vector3.Forward * limit + sideways * MathF.Sqrt( 1f - limit * limit )).Normalized();
 		}
-		gazeRot = gazeRot.Normalized().Slerp( Shapes.LookAt( look ).Orthonormalized().GetRotationQuaternion().Normalized(), MathX.Clamp( dt * 14f, 0f, 1f ) );
+		gazeRot = gazeRot.SafeSlerp( Shapes.LookAt( look ).Orthonormalized().GetRotationQuaternion(), MathX.Clamp( dt * 14f, 0f, 1f ) );
 		eyeGaze.Quaternion = gazeRot;
 		var now = (float)Clock.Now;
 		var upper = shocked ? 0.02f : angry ? 0.4f : 0.15f + 0.04f * MathF.Sin( now * 0.7f );
@@ -947,7 +951,7 @@ public partial class SeaSpider : Node3D, ICreature
 				}
 				// Head up the wall, feet into it.
 				var wanted = Basis.LookingAt( upDir, climbNormal ).GetRotationQuaternion();
-				GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().Slerp( wanted, MathX.Clamp( dt * 6f, 0f, 1f ) ) );
+				GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( wanted, MathX.Clamp( dt * 6f, 0f, 1f ) ) );
 				if ( climbPhase == ClimbPhase.Perch && nextHarpoonScan <= 0f )
 				{
 					nextHarpoonScan = 0.4f;
@@ -1072,7 +1076,7 @@ public partial class SeaSpider : Node3D, ICreature
 		var flat = direction.Flat();
 		if ( flat.IsNearlyZero() ) return;
 		var wanted = Shapes.LookAt( flat ).GetRotationQuaternion();
-		GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().Slerp( wanted, MathX.Clamp( dt * rate, 0f, 1f ) ) );
+		GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( wanted, MathX.Clamp( dt * rate, 0f, 1f ) ) );
 	}
 
 	void Stab( PlayerSurvivor target )

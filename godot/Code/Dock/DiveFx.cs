@@ -141,7 +141,9 @@ public partial class DiveRush : Node
 				CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
 			};
 			root.AddChild( mesh );
-			specks.Add( (mesh, Place( at, Vector3.Down, Rng.Float( -Radius, Radius ) * U.In )) );
+			var pos = Place( at, Vector3.Down, Rng.Float( -Radius, Radius ) * U.In );
+			mesh.Transform = new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), pos );   // hidden at its spot until the first update
+			specks.Add( (mesh, pos) );
 		}
 	}
 

@@ -461,7 +461,7 @@ public partial class Bloober : Node3D, ICreature
 		{
 			var from = GlobalBasis.Orthonormalized().GetRotationQuaternion();
 			var to = Shapes.LookAt( heading ).GetRotationQuaternion();
-			GlobalBasis = new Basis( from.Slerp( to, MathX.Clamp( dt * 10f, 0f, 1f ) ) );
+			GlobalBasis = new Basis( from.SafeSlerp( to, MathX.Clamp( dt * 10f, 0f, 1f ) ) );
 		}
 	}
 

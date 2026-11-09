@@ -95,7 +95,15 @@ public partial class PlayerController : CharacterBody3D
 	float duckElapsed;
 
 	/// <summary> Where the player is drawn this frame (between physics ticks). Use for anything placed per frame. </summary>
-	public Vector3 DrawnPosition => GetGlobalTransformInterpolated().Origin;
+	public Vector3 DrawnPosition
+	{
+		get
+		{
+			// Right after a teleport the interpolated spot is still the old one: use where we are now.
+			var drawn = GetGlobalTransformInterpolated().Origin;
+			return drawn.DistanceTo( GlobalPosition ) > 3f ? GlobalPosition : drawn;
+		}
+	}
 
 	Vector3 lastTickPosition;
 

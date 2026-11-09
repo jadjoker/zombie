@@ -296,7 +296,7 @@ public partial class PlayerRig : Node
 		if ( (chargeBlend > 0.01f || surgeBlend > 0.001f) && slideBlend <= 0.001f )
 		{
 			var q = rot.GetRotationQuaternion();
-			if ( chargeBlend > 0.01f ) q = q.Slerp( (yawRot * new Angles( 28f, 0f, 0f ).ToBasis()).GetRotationQuaternion(), chargeBlend );
+			if ( chargeBlend > 0.01f ) q = q.SafeSlerp( (yawRot * new Angles( 28f, 0f, 0f ).ToBasis()).GetRotationQuaternion(), chargeBlend );
 			if ( surgeBlend > 0.001f )
 			{
 				var dir = jet.SurgeDirection.IsNearlyZero() ? -yawRot.Z : jet.SurgeDirection.Normalized();
@@ -305,7 +305,7 @@ public partial class PlayerRig : Node
 				if ( belly.Length() < 0.2f ) belly = -yawRot.Z;
 				var superman = Basis.LookingAt( belly.Normalized(), dir );   // forward = belly, up = head
 				var e = surgeBlend * surgeBlend * (3f - 2f * surgeBlend);
-				q = q.Slerp( superman.GetRotationQuaternion(), e );
+				q = q.SafeSlerp( superman.GetRotationQuaternion(), e );
 			}
 			rot = new Basis( q );
 			pos = feet + Vector3.Up * hips - rot * (Vector3.Up * hips);
@@ -480,12 +480,12 @@ public partial class PlayerRig : Node
 			{
 				var slideForward = CharDir( slideYaw * ToG( SAng( -footLift, 0f, 0f ) ) * U.Sbox( SFwd ) ) / U.In;
 				var up = CharDir( Vector3.Up );
-				footRot = new Basis( footRot.GetRotationQuaternion().Slerp( SLook( slideForward, up ).GetRotationQuaternion(), slideBlend ) );
+				footRot = new Basis( footRot.GetRotationQuaternion().SafeSlerp( SLook( slideForward, up ).GetRotationQuaternion(), slideBlend ) );
 			}
 			if ( jetBlend > 0.001f )
 			{
 				var downRot = SLook( new Vector3( 0.05f, 0f, -1f ), SFwd );
-				footRot = new Basis( footRot.GetRotationQuaternion().Slerp( downRot.GetRotationQuaternion(), jetBlend ) );
+				footRot = new Basis( footRot.GetRotationQuaternion().SafeSlerp( downRot.GetRotationQuaternion(), jetBlend ) );
 			}
 			var bootScale = 1f - 0.65f * jetBlend;
 			Put( $"foot_{s}", ankle, footRot, bootScale );

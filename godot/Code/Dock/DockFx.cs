@@ -117,7 +117,7 @@ public partial class WaterSurfaceFx : Node3D
 	{
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( root is null ) return;
-		var splash = new SplashFx { Power = MathX.Clamp( speed / 900f, 0.4f, 1.6f ) };
+		var splash = new SplashFx { Power = MathX.Clamp( speed / 900f, 0.4f, 1.6f ), Position = at };   // placed before _Ready, which builds around it
 		root.AddChild( splash );
 		splash.GlobalPosition = at;
 		Fx.Expire( splash, 2.6f );
@@ -137,6 +137,7 @@ public partial class SplashFx : Node3D
 	{
 		var m = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = tint }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, TopLevel = true };
 		AddChild( m );
+		m.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), GlobalPosition );   // hidden at the splash until the first update
 		return m;
 	}
 

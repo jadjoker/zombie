@@ -392,7 +392,7 @@ public partial class Squilien : Node3D, ICreature
 			if ( !face.IsNearlyZero() )
 			{
 				var wanted = (Shapes.LookAt( face ) * new Angles( tilt, 0f, 0f ).ToBasis()).GetRotationQuaternion();
-				GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().Slerp( wanted, MathX.Clamp( dt * 3f, 0f, 1f ) ) );
+				GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( wanted, MathX.Clamp( dt * 3f, 0f, 1f ) ) );
 			}
 			if ( nextThrow <= 0f ) TryThrow( target );
 		}

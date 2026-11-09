@@ -18,6 +18,10 @@ public partial class AutoTest : Node
 		var args = OS.GetCmdlineUserArgs();
 		var i = Array.IndexOf( args, "--shots" );
 		if ( i >= 0 && i + 1 < args.Length ) shots = args[i + 1];
+		if ( args.Contains( "--pops" ) ) AddChild( new PopProbe() );
+		if ( args.Contains( "--nostyle" ) )
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is GlobalStylize gs ) gs.Style = GlobalStylize.Look.Off;
 
 		await Wait( 0.5f );
 		player = GetTree().Root.FindChild( "Player", true, false ) as PlayerController;

@@ -270,7 +270,7 @@ public partial class DockHouse : Node3D
 					tumbleSpin *= MathF.Exp( -1.4f * dt );
 					tumble = new Angles( tumbleSpin.X * dt, tumbleSpin.Y * dt, tumbleSpin.Z * dt ).ToBasis() * tumble;
 				}
-				else tumble = new Basis( tumble.Orthonormalized().GetRotationQuaternion().Slerp( Quaternion.Identity, 1f - MathF.Exp( -5f * dt ) ) );
+				else tumble = new Basis( tumble.Orthonormalized().GetRotationQuaternion().SafeSlerp( Quaternion.Identity, 1f - MathF.Exp( -5f * dt ) ) );
 				CameraTumble = tumble;
 
 				if ( !tumbling && speedNow > 300f )
@@ -353,7 +353,7 @@ public partial class DockHouse : Node3D
 					var k = MathX.Clamp( (phaseTime - fly) / 0.9f, 0f, 1f );
 					var ease = 1f - (1f - k) * (1f - k);
 					controller.GlobalPosition = landEnd;
-					tumble = new Basis( tumble.Orthonormalized().GetRotationQuaternion().Slerp( Quaternion.Identity, 1f - MathF.Exp( -6f * dt ) ) );
+					tumble = new Basis( tumble.Orthonormalized().GetRotationQuaternion().SafeSlerp( Quaternion.Identity, 1f - MathF.Exp( -6f * dt ) ) );
 					controller.EyeAngles = new Angles( MathX.Lerp( landPitch, 5f, ease ), controller.EyeAngles.Yaw, 0f );
 					if ( phaseTime - fly < dt * 1.5f )
 					{

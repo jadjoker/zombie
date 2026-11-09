@@ -119,3 +119,18 @@ public static class Rng
 	}
 	public static Vector3 OnSphere() => InSphere( 1f ).SafeNormal() is var n && n != Vector3.Zero ? n : Vector3.Up;
 }
+
+public static class QuatX
+{
+	/// <summary>
+	/// Quaternion.Slerp that tolerates slightly unnormalized input (Godot's C# Slerp throws, which skipped the rest
+	/// of a creature's animation for that frame). Falls back to the target if either side is degenerate.
+	/// </summary>
+	public static Quaternion SafeSlerp( this Quaternion from, Quaternion to, float weight )
+	{
+		var a = from.LengthSquared() > 1e-8f ? from.Normalized() : Quaternion.Identity;
+		var b = to.LengthSquared() > 1e-8f ? to.Normalized() : a;
+		if ( !a.IsFinite() || !b.IsFinite() ) return Quaternion.Identity;
+		return a.Slerp( b, weight );
+	}
+}

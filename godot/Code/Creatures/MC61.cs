@@ -514,7 +514,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		handVel[slot] += (target - part.Go.Position) * 55f * dt;
 		handVel[slot] *= MathF.Exp( -6.5f * dt );
 		part.Go.Position += handVel[slot] * dt;
-		var q = part.Go.Basis.Orthonormalized().GetRotationQuaternion().Slerp( rotation.GetRotationQuaternion(), MathX.Clamp( dt * 9f, 0f, 1f ) );
+		var q = part.Go.Basis.Orthonormalized().GetRotationQuaternion().SafeSlerp( rotation.GetRotationQuaternion(), MathX.Clamp( dt * 9f, 0f, 1f ) );
 		part.Go.Basis = new Basis( q );
 	}
 
@@ -698,7 +698,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	{
 		var part = parts[index];
 		if ( part is null || part.Gone ) return;
-		var q = part.Go.Basis.Orthonormalized().GetRotationQuaternion().Slerp( angles.ToBasis().GetRotationQuaternion(), MathX.Clamp( dt * 12f, 0f, 1f ) );
+		var q = part.Go.Basis.Orthonormalized().GetRotationQuaternion().SafeSlerp( angles.ToBasis().GetRotationQuaternion(), MathX.Clamp( dt * 12f, 0f, 1f ) );
 		part.Go.Basis = new Basis( q );
 	}
 
@@ -851,7 +851,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		var face = State == Mode.Beam ? beamDirection.Flat() : target is not null ? (target.WorldPosition - GlobalPosition).Flat() : Vector3.Zero;
 		if ( State != Mode.Dance && !face.IsNearlyZero() )
 		{
-			var q = GlobalBasis.Orthonormalized().GetRotationQuaternion().Slerp( Shapes.LookAt( face ).GetRotationQuaternion(), MathX.Clamp( dt * 4f, 0f, 1f ) );
+			var q = GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( Shapes.LookAt( face ).GetRotationQuaternion(), MathX.Clamp( dt * 4f, 0f, 1f ) );
 			GlobalBasis = new Basis( q );
 		}
 	}

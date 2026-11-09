@@ -100,6 +100,14 @@ public partial class WaveDirector : Node3D
 			b.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return b;
 		},
+		[EnemyKind.Spider] = ( d, at, health ) =>
+		{
+			var s = SeaSpider.Spawn( d.GetTree().CurrentScene, at, health );
+			s.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
+			s.Size = Rng.Float( 0.9f, 1.1f );
+			s.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return s;
+		},
 	};
 
 	public static WaveDirector Current { get; private set; }

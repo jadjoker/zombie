@@ -68,7 +68,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [x] 1. Skeleton project, player movement, camera juice (`367cd92`)
 - [x] 3. Rifle, shotgun, axe, weapon HUD (weapons step)
 - [x] 4. Bloober end to end + WaveDirector + Health + basic HUD (gore detail still to do: mesh dents, s&box GooJet look, decals art)
-- [ ] 5. Water level: seabed map, WaterFeel, Jetpack/surge, Sea Spider ally
+- [x] 5. Water level: seabed map, WaterFeel, Jetpack/surge, Sea Spider ally (jet power bar and surge HUD come with the full HUD in 7)
 - [ ] 6. Dock, dive, crater, surface waves
 - [ ] 7. Squilien, Junk Crab, MC61, zombies (if kept), skins, dev menu, buy stations, afflictions, full HUD
 - [ ] 7b. Robot third-person model + animation set, world gun, PlayerRig poses

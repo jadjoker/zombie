@@ -208,7 +208,72 @@ public partial class AutoTest : Node
 		await Wait( 0.5f );
 		await Shot( $"level_{Level.Current.LevelName}_third" );
 		player.ThirdPerson = false;
+
+		// The ally spider: it should have spawned beside us and be standing on its legs.
+		await Wait( 2.5f );
+		var ally = SeaSpider.All.FirstOrDefault( x => x.IsAlly );
+		GD.Print( $"[autotest] ally: {(ally is null ? "none" : $"at {ally.GlobalPosition / U.In}, steps {ally.StepCount}")}" );
+		if ( ally is not null )
+		{
+			DevFlags.FreezeEnemies = true;
+			player.GlobalPosition = ally.GlobalPosition + new Vector3( 160f, 0f, 160f ) * U.In;
+			player.ThirdPerson = true;
+			LookAt( ally.GlobalPosition + Vector3.Up * 40f * U.In );
+			await Wait( 0.3f );
+			LookAt( ally.GlobalPosition + Vector3.Up * 40f * U.In );
+			await Shot( "ally_spider" );
+			player.ThirdPerson = false;
+			DevFlags.FreezeEnemies = false;
+			// Walk away so it follows.
+			player.GlobalPosition += new Vector3( 600f, 0f, 0f ) * U.In;
+			await Wait( 3f );
+			LookAt( ally.GlobalPosition + Vector3.Up * 40f * U.In );
+			await Wait( 0.1f );
+			await Shot( "ally_follow" );
+			GD.Print( $"[autotest] ally after follow: dist {(ally.GlobalPosition - player.GlobalPosition).Flat().Length() / U.In:0} steps {ally.StepCount}" );
+		}
+
+		// Jetpack: hold thrust for a second, then a surge.
+		var jet = player.GetNode<Jetpack>( "Jetpack" );
+		var y0 = player.GlobalPosition.Y;
+		Input.ActionPress( "jump" ); await Wait( 0.05f ); Input.ActionRelease( "jump" );
+		jet.TestHold = true;
+		await Wait( 1.2f );
+		jet.TestHold = false;
+		GD.Print( $"[autotest] jetpack: rose {(player.GlobalPosition.Y - y0) / U.In:0} u, power {jet.Power:0}, stalled {jet.Stalled}" );
+		await Shot( "jetpack" );
+		await Wait( 3f );
+		player.EyeAngles = new Angles( 0f, 90f, 0f );
+		var p0 = player.GlobalPosition;
+		jet.TestSurge( 0.5f );
+		await Wait( 0.75f );
+		await Shot( "surge" );
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] surge: moved {(player.GlobalPosition - p0).Length() / U.In:0} u" );
+
+		// An enemy spider: shoot its legs off.
 		var director = WaveDirector.Current;
+		var enemySpider = director.SpawnAt( WaveDirector.EnemyKind.Spider, player.GlobalPosition + new Vector3( 0f, 0f, -500f ) * U.In, player.GlobalPosition ) as SeaSpider;
+		DevFlags.FreezeEnemies = true;
+		await Wait( 0.5f );
+		if ( enemySpider is not null )
+		{
+			player.GlobalPosition = enemySpider.GlobalPosition + new Vector3( 160f, 0f, 160f ) * U.In;
+			LookAt( enemySpider.GlobalPosition + Vector3.Up * 30f * U.In );
+			await Wait( 0.3f );
+			LookAt( enemySpider.GlobalPosition + Vector3.Up * 30f * U.In );
+			await Shot( "enemy_spider" );
+			player.ThirdPerson = true;
+			await Wait( 0.3f );
+			await Shot( "enemy_spider_3p" );
+			player.ThirdPerson = false;
+			var weapon = player.GetNode<WeaponInventory>( "WeaponInventory" ).Current;
+			for ( var k = 0; k < 12 && !enemySpider.IsDead; k++ ) { LookAt( enemySpider.GlobalPosition + Vector3.Up * 10f * U.In + Vector3.Right * 30f * U.In ); weapon.TestFire(); await Wait( 0.13f ); }
+			await Shot( "enemy_spider_shot" );
+			GD.Print( $"[autotest] enemy spider: dead {enemySpider.IsDead} health {enemySpider.Health?.Current:0}" );
+		}
+		DevFlags.FreezeEnemies = false;
+
 		director.SpawningPaused = false;
 		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
 		await Wait( 9f );

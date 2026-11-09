@@ -19,6 +19,8 @@ public static class PlayerFactory
 		player.AddChild( PlayerWeapon.Shotgun() );
 		player.AddChild( new PlayerMelee() );
 		player.AddChild( new WaterFeel() );
+		player.AddChild( new Jetpack() );
+		player.AddChild( new AllyCommander() );
 		var survivor = new PlayerSurvivor();
 		player.AddChild( survivor );
 

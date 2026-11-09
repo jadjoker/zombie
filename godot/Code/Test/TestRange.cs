@@ -65,6 +65,7 @@ public partial class TestRange : Node3D
 		hill.RotationDegrees = new Vector3( -12f, 0f, 0f );
 		hill.Position = new Vector3( 1300f, MathF.Sin( MathX.Rad( 12f ) ) * 700f - 6f, 200f ) * U.In;
 
+		Nav.Bake( this );
 		player = PlayerFactory.Create( this, new Vector3( 0f, 10f, 0f ) * U.In );
 		movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
 

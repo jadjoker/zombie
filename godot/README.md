@@ -32,3 +32,7 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
 - Game: `WaveDirector` (waves, float rounds, boss waves, open world, dev tools; kinds plug in via `Spawners`), `GameHud`
   (wave, status, banners, kills, points, health, venom, camera goo, game over), `PlayerSurvivor`, `PlayerAfflictions`.
 - Test range keys: B spawns a Bloober, O toggles wave spawning (`--waves` starts them on).
+- Water level: `Level` builds `levels/water_level.json` (from `Tools/godot/convert_scene.py`), navmesh baked at load (`Nav`,
+  `NavAgent`), `WaterFeel` (blend, gravity, drag, sway, muffle, bubbles), `WaterBubble`, `MarineSnow`, `Jetpack`
+  (thrust, stall, dock and launch kick, charged surge, slams), `SeaSpider` (IK legs, eye, lure, climbing, ally brain,
+  harpoons), `SpiderStrand`, `AllyCommander` (Z).

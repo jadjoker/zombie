@@ -31,6 +31,7 @@ public partial class Level : Node3D
 		BuildEnvironment( settings );
 
 		foreach ( var o in root.GetProperty( "objects" ).EnumerateArray() ) Build( o );
+		Nav.Bake( this );
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );

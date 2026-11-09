@@ -18,6 +18,11 @@ public partial class CreaturePart : StaticBody3D, IShootable
 	public CollisionShape3D Collider;
 	ICreature Owner => Creature as ICreature;
 
+	/// <summary> Every creature part in the scene. </summary>
+	public static readonly List<CreaturePart> All = new();
+	public override void _EnterTree() => All.Add( this );
+	public override void _ExitTree() => All.Remove( this );
+
 	public Node ShotOwner => Creature;
 	public bool IsDead => Creature is null || !IsInstanceValid( Creature ) || (Owner?.IsDead ?? true);
 

@@ -100,6 +100,14 @@ public partial class WaveDirector : Node3D
 			b.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return b;
 		},
+		[EnemyKind.Squilien] = ( d, at, health ) =>
+		{
+			var q = Squilien.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * d.SquilienSpawnHeight * U.In, health );
+			q.Hue = Rng.Float();
+			q.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
+			q.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return q;
+		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
 			var s = SeaSpider.Spawn( d.GetTree().CurrentScene, at, health );
@@ -341,6 +349,7 @@ public partial class WaveDirector : Node3D
 		if ( State != WaveState.GameOver ) return;
 		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
 		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
+		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
 		alive.Clear();
 		Wave = 0;
 		Kills = 0;

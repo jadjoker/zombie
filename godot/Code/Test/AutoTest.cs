@@ -24,6 +24,7 @@ public partial class AutoTest : Node
 		movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
 		Input.MouseMode = Input.MouseModeEnum.Visible;
 		if ( Level.Current is not null ) { await LevelTest(); return; }
+		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
 		Report( "settled" );
 		await Shot( "spawn" );
@@ -195,6 +196,57 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary> A converted level: look around from the spawn, then let some Bloobers in. </summary>
+	/// <summary> The step 7 creatures on the test range: spawn each, look at it, shoot it apart. </summary>
+	async Task CreatureTest()
+	{
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		inventory.Select( inventory.Weapons[0] );
+		var range = GetTree().CurrentScene;
+
+		// Squilien: two hovering in front.
+		player.EyeAngles = new Angles( -10f, 180f, 0f );
+		for ( var k = 0; k < 2; k++ )
+			Squilien.Spawn( range, player.GlobalPosition + new Vector3( (k - 0.5f) * 200f, 150f, 450f ) * U.In, 130f ).Hue = k * 0.4f + 0.1f;
+		await Wait( 2.5f );
+		await Shot( "squilien_swim" );
+		var q = Squilien.All.OrderBy( x => x.GlobalPosition.DistanceTo( player.GlobalPosition ) ).First();
+		DevFlags.FreezeEnemies = true;
+		var face = -q.GlobalBasis.Z;
+		player.GlobalPosition = q.GlobalPosition + face * 110f * U.In - Vector3.Up * 60f * U.In;
+		player.Velocity = Vector3.Zero;
+		LookAt( q.GlobalPosition + Vector3.Down * 15f * U.In );
+		await Wait( 0.4f );
+		LookAt( q.GlobalPosition + Vector3.Down * 15f * U.In );
+		await Shot( "squilien_face" );
+		var weapon = inventory.Current;
+		for ( var k = 0; k < 5; k++ ) { LookAt( q.GlobalPosition + Vector3.Down * 40f * U.In ); weapon.TestFire(); await Wait( 0.13f ); }
+		await Wait( 0.2f );
+		await Shot( "squilien_tentacles" );
+		for ( var k = 0; k < 14 && !q.IsDead; k++ ) { LookAt( q.GlobalPosition ); weapon.TestFire(); await Wait( 0.13f ); }
+		DevFlags.FreezeEnemies = false;
+		GD.Print( $"[autotest] squilien: dead {q.IsDead}, health {q.Health?.Current:0}, alive {Squilien.All.Count( x => !x.IsDead )}" );
+		await Wait( 0.4f );
+		await Shot( "squilien_dead" );
+
+		// Let the other one throw ink at us.
+		survivor.Health.Invulnerable = false;
+		var other = Squilien.All.FirstOrDefault( x => !x.IsDead );
+		if ( other is not null )
+		{
+			player.GlobalPosition = other.GlobalPosition + Vector3.Back * 400f * U.In;
+			await Wait( 0.1f );
+			player.Velocity = Vector3.Zero;
+			for ( var k = 0; k < 40; k++ ) { LookAt( other.GlobalPosition ); await Wait( 0.1f ); }
+			GD.Print( $"[autotest] after ink: player health {survivor.Health.Current:0}" );
+			await Shot( "squilien_ink" );
+		}
+
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task LevelTest()
 	{
 		if ( DockHouse.Current is { } dock )

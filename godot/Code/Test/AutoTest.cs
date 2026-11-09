@@ -23,6 +23,7 @@ public partial class AutoTest : Node
 		player = GetTree().Root.FindChild( "Player", true, false ) as PlayerController;
 		movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
 		Input.MouseMode = Input.MouseModeEnum.Visible;
+		if ( Level.Current is not null ) { await LevelTest(); return; }
 
 		Report( "settled" );
 		await Shot( "spawn" );
@@ -189,6 +190,33 @@ public partial class AutoTest : Node
 		await Wait( 0.6f );
 		await Shot( "third_person" );
 
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> A converted level: look around from the spawn, then let some Bloobers in. </summary>
+	async Task LevelTest()
+	{
+		for ( var i = 0; i < 4; i++ )
+		{
+			player.EyeAngles = new Angles( 5f, i * 90f, 0f );
+			await Wait( 0.4f );
+			await Shot( $"level_{Level.Current.LevelName}_{i * 90}" );
+		}
+		player.EyeAngles = new Angles( 25f, 45f, 0f );
+		player.ThirdPerson = true;
+		await Wait( 0.5f );
+		await Shot( $"level_{Level.Current.LevelName}_third" );
+		player.ThirdPerson = false;
+		var director = WaveDirector.Current;
+		director.SpawningPaused = false;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		await Wait( 9f );
+		GD.Print( $"[autotest] level waves: state {director.State} wave {director.Wave} alive {director.AliveCount}" );
+		var b = Bloober.All.FirstOrDefault();
+		if ( b is not null ) LookAt( b.GlobalPosition );
+		await Wait( 0.2f );
+		await Shot( $"level_{Level.Current.LevelName}_bloober" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

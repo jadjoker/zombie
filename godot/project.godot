@@ -6,7 +6,7 @@ config_version=5
 [application]
 
 config/name="Risk of Copyright"
-run/main_scene="res://scenes/test_range.tscn"
+run/main_scene="res://scenes/water_level.tscn"
 config/features=PackedStringArray("4.7", "C#", "Forward Plus")
 
 [autoload]

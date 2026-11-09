@@ -65,16 +65,8 @@ public partial class TestRange : Node3D
 		hill.RotationDegrees = new Vector3( -12f, 0f, 0f );
 		hill.Position = new Vector3( 1300f, MathF.Sin( MathX.Rad( 12f ) ) * 700f - 6f, 200f ) * U.In;
 
-		player = new PlayerController { Name = "Player", Position = new Vector3( 0f, 10f, 0f ) * U.In };
-		AddChild( player );
-		movement = new PlayerMovement();
-		player.AddChild( movement );
-		player.AddChild( new CameraJuice() );
-		player.AddChild( new WeaponInventory() );
-		player.AddChild( PlayerWeapon.Rifle() );
-		player.AddChild( PlayerWeapon.Shotgun() );
-		player.AddChild( new PlayerMelee() );
-		player.AddChild( new PlayerSurvivor() );
+		player = PlayerFactory.Create( this, new Vector3( 0f, 10f, 0f ) * U.In );
+		movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
 
 		// Targets to shoot: a row of dummies at 10, 20 and 40 metres, and some loose crates.
 		for ( var i = 0; i < 5; i++ )
@@ -97,9 +89,7 @@ public partial class TestRange : Node3D
 		readout.AddThemeColorOverride( "font_outline_color", Colors.Black );
 		readout.AddThemeConstantOverride( "outline_size", 6 );
 		hud.AddChild( readout );
-		hud.AddChild( WeaponHud.Create( player ) );
-		hud.AddChild( GameHud.Create( player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ) ) );
-		// The wave director, paused until P toggles it (the s&box editor started paused too).
+		// The wave director, paused until O toggles it (the s&box editor started paused too).
 		AddChild( new WaveDirector { SpawningPaused = !OS.GetCmdlineUserArgs().Contains( "--waves" ) } );
 
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );

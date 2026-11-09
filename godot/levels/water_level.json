@@ -1,0 +1,8106 @@
+{
+ "name": "water_level",
+ "settings": {
+  "sun": {
+   "rot": [
+    -0.56058073,
+    0.243276104,
+    0.176750422,
+    0.771573186
+   ],
+   "color": [
+    0.78,
+    0.95,
+    1.0,
+    1.0
+   ],
+   "shadows": true
+  },
+  "ambient": [
+   0.07,
+   0.16,
+   0.2,
+   1.0
+  ],
+  "fog": {
+   "color": [
+    0.05,
+    0.26,
+    0.34,
+    1.0
+   ],
+   "start": 3.81,
+   "end": 96.52,
+   "falloff": 0.8,
+   "height": 152.4
+  },
+  "sky_tint": [
+   0.12,
+   0.38,
+   0.48,
+   1.0
+  ]
+ },
+ "objects": [
+  {
+   "name": "Floor",
+   "path": "/Arena/Floor",
+   "pos": [
+    -0.0,
+    -0.254,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    0.400000006,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.93,
+    0.84,
+    0.66,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "reflectivity_50b.vmat"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall North",
+   "path": "/Arena/Wall North",
+   "pos": [
+    -0.0,
+    2.032,
+    -38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    3.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall South",
+   "path": "/Arena/Wall South",
+   "pos": [
+    -0.0,
+    2.032,
+    38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    3.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall West",
+   "path": "/Arena/Wall West",
+   "pos": [
+    -38.1,
+    2.032,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    3.20000005,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall East",
+   "path": "/Arena/Wall East",
+   "pos": [
+    38.1,
+    2.032,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    3.20000005,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 0",
+   "path": "/Arena/Crate 0",
+   "pos": [
+    23.2918,
+    0.7874,
+    17.7546
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.24000001,
+    1.24000001,
+    1.24000001
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.5,
+    0.55,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 1",
+   "path": "/Arena/Crate 1",
+   "pos": [
+    -20.8534,
+    1.1176,
+    -26.288999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.75999999,
+    1.75999999,
+    1.75999999
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.66,
+    0.35,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 2",
+   "path": "/Arena/Crate 2",
+   "pos": [
+    18.6436,
+    0.8255,
+    -27.8892
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.29999995,
+    1.29999995,
+    1.29999995
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.45,
+    0.95,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 3",
+   "path": "/Arena/Crate 3",
+   "pos": [
+    12.166599999999999,
+    0.7746999999999999,
+    12.572999999999999
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.22000003,
+    1.22000003,
+    1.22000003
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.85,
+    0.78,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 4",
+   "path": "/Arena/Crate 4",
+   "pos": [
+    27.406599999999997,
+    1.0541,
+    -15.5194
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.65999997,
+    1.65999997,
+    1.65999997
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.75,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 5",
+   "path": "/Arena/Crate 5",
+   "pos": [
+    -23.2918,
+    1.1049,
+    29.590999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.74000001,
+    1.74000001,
+    1.74000001
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.5,
+    0.55,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 6",
+   "path": "/Arena/Crate 6",
+   "pos": [
+    30.0228,
+    0.8635999999999999,
+    -22.5552
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.36000001,
+    1.36000001,
+    1.36000001
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.66,
+    0.35,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 7",
+   "path": "/Arena/Crate 7",
+   "pos": [
+    -27.5082,
+    0.6858,
+    -22.1234
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.08000004,
+    1.08000004,
+    1.08000004
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.45,
+    0.95,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 8",
+   "path": "/Arena/Crate 8",
+   "pos": [
+    2.3367999999999998,
+    0.8509,
+    -14.224
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.34000003,
+    1.34000003,
+    1.34000003
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.85,
+    0.78,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 9",
+   "path": "/Arena/Crate 9",
+   "pos": [
+    -20.9296,
+    1.0541,
+    24.180799999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.65999997,
+    1.65999997,
+    1.65999997
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.75,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 10",
+   "path": "/Arena/Crate 10",
+   "pos": [
+    -7.7978,
+    1.1049,
+    -16.9164
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.74000001,
+    1.74000001,
+    1.74000001
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.5,
+    0.55,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 12",
+   "path": "/Arena/Crate 12",
+   "pos": [
+    -2.032,
+    0.9017,
+    -12.5476
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.41999996,
+    1.41999996,
+    1.41999996
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.66,
+    0.35,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Crate 13",
+   "path": "/Arena/Crate 13",
+   "pos": [
+    23.7744,
+    1.0922,
+    11.785599999999999
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.72000003,
+    1.72000003,
+    1.72000003
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.45,
+    0.95,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Barricade A",
+   "path": "/Arena/Barricade A",
+   "pos": [
+    -7.62,
+    0.762,
+    -12.7
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    6.0,
+    1.20000005,
+    0.600000024
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.85,
+    0.78,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Barricade B",
+   "path": "/Arena/Barricade B",
+   "pos": [
+    10.16,
+    0.762,
+    11.43
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.600000024,
+    1.20000005,
+    6.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.75,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Barricade C",
+   "path": "/Arena/Barricade C",
+   "pos": [
+    -15.24,
+    0.762,
+    15.24
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    5.0,
+    1.20000005,
+    0.600000024
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.5,
+    0.55,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Sand",
+   "path": "/Arena/Dressing/Sand",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sand_floor.fbx",
+   "material": {
+    "name": "seabed",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 9.0,
+    "albedo": "res://assets/materials/ground/seabed_color.png",
+    "normal": "res://assets/materials/ground/seabed_normal.png",
+    "rough": "res://assets/materials/ground/seabed_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    36.781066646,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.999502182,
+    -0.0,
+    0.0315497778
+   ],
+   "scale": [
+    1.11876988,
+    1.37760639,
+    1.11876988
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    23.472082011799998,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.999993443,
+    -0.0,
+    -0.003618157
+   ],
+   "scale": [
+    1.09239757,
+    1.22936821,
+    1.09239757
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    12.3598882088,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.996954679,
+    -0.0,
+    -0.0779833198
+   ],
+   "scale": [
+    1.11068201,
+    1.1801883,
+    1.11068201
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -0.38435890361999997,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.997243941,
+    -0.0,
+    0.074192673
+   ],
+   "scale": [
+    1.02563882,
+    0.952524364,
+    1.02563882
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -12.7592366862,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.999970376,
+    -0.0,
+    -0.00769421225
+   ],
+   "scale": [
+    1.02806091,
+    0.970390916,
+    1.02806091
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -23.803089731799997,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.99928844,
+    -0.0,
+    0.0377176479
+   ],
+   "scale": [
+    1.11519516,
+    1.15732539,
+    1.11519516
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -37.088995164,
+    0.0,
+    -39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.999994993,
+    -0.0,
+    -0.00316719082
+   ],
+   "scale": [
+    0.999203682,
+    1.22301793,
+    0.999203682
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    37.100101314,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0260817111,
+    -0.0,
+    0.999659836
+   ],
+   "scale": [
+    0.914031446,
+    1.03632796,
+    0.914031446
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    23.689206749,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0613997653,
+    -0.0,
+    0.998113275
+   ],
+   "scale": [
+    1.01517642,
+    1.23977399,
+    1.01517642
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    12.182964127799998,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    0.0504052117,
+    -0.0,
+    0.998728871
+   ],
+   "scale": [
+    0.901086092,
+    1.03201556,
+    0.901086092
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -0.55963657694,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0107125267,
+    -0.0,
+    0.999942601
+   ],
+   "scale": [
+    1.1149261,
+    1.34955347,
+    1.1149261
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -12.812865966799999,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0534230582,
+    -0.0,
+    0.998571992
+   ],
+   "scale": [
+    0.955544353,
+    0.962912381,
+    0.955544353
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -23.4996617382,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0650411397,
+    -0.0,
+    0.997882605
+   ],
+   "scale": [
+    1.00724483,
+    1.17060947,
+    1.00724483
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -37.429504516,
+    0.0,
+    39.623999999999995
+   ],
+   "rot": [
+    -0.0,
+    -0.0834043548,
+    -0.0,
+    0.99651581
+   ],
+   "scale": [
+    0.955238104,
+    1.17244816,
+    0.955238104
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    36.625345849999995
+   ],
+   "rot": [
+    -0.0,
+    -0.718548894,
+    -0.0,
+    0.695476413
+   ],
+   "scale": [
+    0.920475066,
+    0.975201309,
+    0.920475066
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    24.935558587
+   ],
+   "rot": [
+    -0.0,
+    -0.691354632,
+    -0.0,
+    0.722515583
+   ],
+   "scale": [
+    0.983665824,
+    1.09501791,
+    0.983665824
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    13.118932563200001
+   ],
+   "rot": [
+    -0.0,
+    -0.696792066,
+    -0.0,
+    0.717273176
+   ],
+   "scale": [
+    0.878518283,
+    0.813830197,
+    0.878518283
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    -0.7505607747199999
+   ],
+   "rot": [
+    -0.0,
+    -0.690734863,
+    -0.0,
+    0.723108113
+   ],
+   "scale": [
+    0.867617548,
+    0.977441847,
+    0.867617548
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    -12.9850112918
+   ],
+   "rot": [
+    -0.0,
+    -0.761221349,
+    -0.0,
+    0.648492098
+   ],
+   "scale": [
+    0.855902672,
+    0.932880998,
+    0.855902672
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    -24.013721822599997
+   ],
+   "rot": [
+    -0.0,
+    -0.7194767,
+    -0.0,
+    0.694516599
+   ],
+   "scale": [
+    0.977052927,
+    1.00167906,
+    0.977052927
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    -39.623999999999995,
+    0.0,
+    -35.872222896
+   ],
+   "rot": [
+    -0.0,
+    -0.662158787,
+    -0.0,
+    0.749363542
+   ],
+   "scale": [
+    0.894614339,
+    0.866368353,
+    0.894614339
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    36.493713652
+   ],
+   "rot": [
+    -0.0,
+    0.764138043,
+    -0.0,
+    0.645052731
+   ],
+   "scale": [
+    0.992970467,
+    1.10340905,
+    0.992970467
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    24.6684973736
+   ],
+   "rot": [
+    -0.0,
+    0.717472136,
+    -0.0,
+    0.696587205
+   ],
+   "scale": [
+    1.06766737,
+    1.02562249,
+    1.06766737
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    11.2375016804
+   ],
+   "rot": [
+    -0.0,
+    0.649679542,
+    -0.0,
+    0.760208189
+   ],
+   "scale": [
+    1.13235068,
+    1.26867211,
+    1.13235068
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    -0.7341757300199999
+   ],
+   "rot": [
+    -0.0,
+    0.691411793,
+    -0.0,
+    0.722460866
+   ],
+   "scale": [
+    1.06588733,
+    1.03832054,
+    1.06588733
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    -12.1026721116
+   ],
+   "rot": [
+    -0.0,
+    0.750553966,
+    -0.0,
+    0.660809159
+   ],
+   "scale": [
+    0.907634854,
+    1.10084617,
+    0.907634854
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    -25.0038706932
+   ],
+   "rot": [
+    -0.0,
+    0.677971005,
+    -0.0,
+    0.735088646
+   ],
+   "scale": [
+    0.864004612,
+    0.78150022,
+    0.864004612
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Cliff",
+   "path": "/Arena/Dressing/Cliff",
+   "pos": [
+    39.623999999999995,
+    0.0,
+    -37.378878252
+   ],
+   "rot": [
+    -0.0,
+    0.6930843,
+    -0.0,
+    0.720856547
+   ],
+   "scale": [
+    0.92245996,
+    0.905353427,
+    0.92245996
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/cliff1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    23.2918,
+    0.6929120177799999,
+    17.7546
+   ],
+   "rot": [
+    -0.0,
+    0.235547349,
+    -0.0,
+    0.971862853
+   ],
+   "scale": [
+    0.620000005,
+    0.5614326,
+    0.620000005
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -20.8534,
+    0.9834880304799999,
+    -26.288999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.494649768,
+    -0.0,
+    0.869092405
+   ],
+   "scale": [
+    0.879999995,
+    0.868570328,
+    0.879999995
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    18.6436,
+    0.7264400101599999,
+    -27.8892
+   ],
+   "rot": [
+    -0.0,
+    0.958587527,
+    -0.0,
+    -0.284798175
+   ],
+   "scale": [
+    0.649999976,
+    0.633958995,
+    0.649999976
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    12.166599999999999,
+    0.68173600508,
+    12.572999999999999
+   ],
+   "rot": [
+    -0.0,
+    0.865506947,
+    -0.0,
+    -0.500896931
+   ],
+   "scale": [
+    0.610000014,
+    0.638664603,
+    0.610000014
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder2.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    27.406599999999997,
+    0.9276080127,
+    -15.5194
+   ],
+   "rot": [
+    -0.0,
+    0.902530432,
+    -0.0,
+    -0.430626035
+   ],
+   "scale": [
+    0.829999983,
+    0.843347907,
+    0.829999983
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder2.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -23.2918,
+    0.97231196952,
+    29.590999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.937941611,
+    -0.0,
+    -0.346793234
+   ],
+   "scale": [
+    0.870000005,
+    0.798505664,
+    0.870000005
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    30.0228,
+    0.75996800254,
+    -22.5552
+   ],
+   "rot": [
+    -0.0,
+    0.83288002,
+    -0.0,
+    0.553453565
+   ],
+   "scale": [
+    0.680000007,
+    0.674155891,
+    0.680000007
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -27.5082,
+    0.6035039568199999,
+    -22.1234
+   ],
+   "rot": [
+    -0.0,
+    0.552608013,
+    -0.0,
+    0.833441257
+   ],
+   "scale": [
+    0.540000021,
+    0.564645588,
+    0.540000021
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    2.3367999999999998,
+    0.7487919873,
+    -14.224
+   ],
+   "rot": [
+    -0.0,
+    0.158735603,
+    -0.0,
+    0.987321138
+   ],
+   "scale": [
+    0.670000017,
+    0.642922401,
+    0.670000017
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder2.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -20.9296,
+    0.9276080127,
+    24.180799999999998
+   ],
+   "rot": [
+    -0.0,
+    0.645677507,
+    -0.0,
+    -0.763610244
+   ],
+   "scale": [
+    0.829999983,
+    0.887807429,
+    0.829999983
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder2.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -7.7978,
+    0.97231196952,
+    -16.9164
+   ],
+   "rot": [
+    -0.0,
+    0.84853518,
+    -0.0,
+    0.529138982
+   ],
+   "scale": [
+    0.870000005,
+    0.853059888,
+    0.870000005
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    -2.032,
+    0.79349599492,
+    -12.5476
+   ],
+   "rot": [
+    -0.0,
+    0.978118777,
+    -0.0,
+    0.208047256
+   ],
+   "scale": [
+    0.709999979,
+    0.678403735,
+    0.709999979
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder1.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Boulder",
+   "path": "/Arena/Dressing/Boulder",
+   "pos": [
+    23.7744,
+    0.96113600508,
+    11.785599999999999
+   ],
+   "rot": [
+    -0.0,
+    0.989181876,
+    -0.0,
+    -0.146694496
+   ],
+   "scale": [
+    0.860000014,
+    0.79474324,
+    0.860000014
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/boulder0.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Reef",
+   "path": "/Arena/Dressing/Reef",
+   "pos": [
+    -7.62,
+    0.0,
+    -12.7
+   ],
+   "rot": [
+    -0.0,
+    0.707106769,
+    -0.0,
+    0.707106769
+   ],
+   "scale": [
+    0.850000024,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/reef.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Reef",
+   "path": "/Arena/Dressing/Reef",
+   "pos": [
+    10.16,
+    0.0,
+    11.43
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.850000024,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/reef.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Reef",
+   "path": "/Arena/Dressing/Reef",
+   "pos": [
+    -15.24,
+    0.0,
+    15.24
+   ],
+   "rot": [
+    -0.0,
+    0.707106769,
+    -0.0,
+    0.707106769
+   ],
+   "scale": [
+    0.850000024,
+    1.0,
+    0.833333313
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/reef.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    33.484377785999996,
+    -0.0508,
+    -7.3889598474
+   ],
+   "rot": [
+    -0.0,
+    0.415158004,
+    -0.0,
+    -0.909749329
+   ],
+   "scale": [
+    1.10637617,
+    1.34032714,
+    1.10637617
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.8737955,
+    "period": 5.1072044
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    33.91550494,
+    -0.0508,
+    -8.2483073794
+   ],
+   "rot": [
+    -0.0,
+    0.397196114,
+    -0.0,
+    0.917733729
+   ],
+   "scale": [
+    1.29876542,
+    1.27641594,
+    1.29876542
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.840346,
+    "period": 6.361347
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    33.668989812,
+    -0.0508,
+    -5.045525748399999
+   ],
+   "rot": [
+    -0.0,
+    0.79742378,
+    -0.0,
+    0.603419721
+   ],
+   "scale": [
+    0.72149092,
+    0.810033739,
+    0.72149092
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.5134974,
+    "period": 6.2398806
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    6.3920962582,
+    -0.0508,
+    -34.081711872
+   ],
+   "rot": [
+    -0.0,
+    0.723098755,
+    -0.0,
+    -0.690744638
+   ],
+   "scale": [
+    0.954191446,
+    0.838569582,
+    0.954191446
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.511259,
+    "period": 5.3148127
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    6.6394823268000005,
+    -0.0508,
+    -33.228269331999996
+   ],
+   "rot": [
+    -0.0,
+    0.375874162,
+    -0.0,
+    0.92667073
+   ],
+   "scale": [
+    0.897155166,
+    1.07943749,
+    0.897155166
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.922329,
+    "period": 4.614087
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    6.756848030599999,
+    -0.0508,
+    -33.267184926
+   ],
+   "rot": [
+    -0.0,
+    0.0453960299,
+    -0.0,
+    0.998969078
+   ],
+   "scale": [
+    0.90474546,
+    1.10929906,
+    0.90474546
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.127398,
+    "period": 4.627183
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    7.194849211999999,
+    -0.0508,
+    -33.855226422
+   ],
+   "rot": [
+    -0.0,
+    0.450592428,
+    -0.0,
+    -0.892729759
+   ],
+   "scale": [
+    1.04794121,
+    0.917102158,
+    1.04794121
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.29716,
+    "period": 6.986514
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -16.7025277836,
+    -0.0508,
+    21.6195516808
+   ],
+   "rot": [
+    -0.0,
+    0.997339487,
+    -0.0,
+    0.07289657
+   ],
+   "scale": [
+    0.869484782,
+    0.966445804,
+    0.869484782
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.362667,
+    "period": 6.8293295
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -15.709451969399998,
+    -0.0508,
+    20.7670145746
+   ],
+   "rot": [
+    -0.0,
+    0.163043723,
+    -0.0,
+    -0.986618817
+   ],
+   "scale": [
+    0.995359719,
+    1.09468853,
+    0.995359719
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.52856,
+    "period": 6.3505287
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -17.5534386294,
+    -0.0508,
+    18.745358140399997
+   ],
+   "rot": [
+    -0.0,
+    0.80359292,
+    -0.0,
+    -0.595179319
+   ],
+   "scale": [
+    1.06802309,
+    1.22283566,
+    1.06802309
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.6431036,
+    "period": 5.143756
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -16.7589956666,
+    -0.0508,
+    21.2780795164
+   ],
+   "rot": [
+    -0.0,
+    0.789673865,
+    -0.0,
+    0.613526821
+   ],
+   "scale": [
+    1.02902043,
+    0.963499367,
+    1.02902043
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.9508595,
+    "period": 6.5518446
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -11.598851707,
+    -0.0508,
+    -28.049645957999996
+   ],
+   "rot": [
+    -0.0,
+    0.963163316,
+    -0.0,
+    0.268917173
+   ],
+   "scale": [
+    0.814709604,
+    0.65450114,
+    0.814709604
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.131121,
+    "period": 6.710032
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -11.1541835082,
+    -0.0508,
+    -29.193117382
+   ],
+   "rot": [
+    -0.0,
+    0.999948263,
+    -0.0,
+    0.0101726251
+   ],
+   "scale": [
+    1.11528993,
+    1.23785782,
+    1.11528993
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.6540713,
+    "period": 5.9377775
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -11.691043750199999,
+    -0.0508,
+    -29.341973319999997
+   ],
+   "rot": [
+    -0.0,
+    0.620539963,
+    -0.0,
+    -0.7841748
+   ],
+   "scale": [
+    1.18959987,
+    1.23477042,
+    1.18959987
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.0446644,
+    "period": 6.3394804
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -12.2642638128,
+    -0.0508,
+    -28.015734926
+   ],
+   "rot": [
+    -0.0,
+    0.302965909,
+    -0.0,
+    -0.95300138
+   ],
+   "scale": [
+    0.976092339,
+    0.91337806,
+    0.976092339
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.645557,
+    "period": 6.9514723
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -11.771293907199999,
+    -0.0508,
+    -28.736097213999997
+   ],
+   "rot": [
+    -0.0,
+    0.620328546,
+    -0.0,
+    0.78434211
+   ],
+   "scale": [
+    0.873750806,
+    0.86413759,
+    0.873750806
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.510358,
+    "period": 6.656387
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    25.905124212,
+    -0.0508,
+    -19.714998161999997
+   ],
+   "rot": [
+    -0.0,
+    0.994366884,
+    -0.0,
+    0.10599307
+   ],
+   "scale": [
+    0.894518137,
+    1.15410984,
+    0.894518137
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.9494777,
+    "period": 6.4521875
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    23.0090265752,
+    -0.0508,
+    -19.9368295954
+   ],
+   "rot": [
+    -0.0,
+    0.402840257,
+    -0.0,
+    -0.915270329
+   ],
+   "scale": [
+    1.24130082,
+    1.29799557,
+    1.24130082
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.2069626,
+    "period": 5.7317166
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    22.671363445599997,
+    -0.0508,
+    -18.889270273199998
+   ],
+   "rot": [
+    -0.0,
+    0.883885086,
+    -0.0,
+    0.467704177
+   ],
+   "scale": [
+    1.20122361,
+    1.26772046,
+    1.20122361
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.637501,
+    "period": 5.2517033
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    23.390719538,
+    -0.0508,
+    -18.9509796748
+   ],
+   "rot": [
+    -0.0,
+    0.992684901,
+    -0.0,
+    -0.120734163
+   ],
+   "scale": [
+    0.795594335,
+    0.999389648,
+    0.795594335
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.2670193,
+    "period": 6.20395
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    24.1715866072,
+    -0.0508,
+    -17.876899501399997
+   ],
+   "rot": [
+    -0.0,
+    0.997123063,
+    -0.0,
+    -0.0757996887
+   ],
+   "scale": [
+    0.961495101,
+    1.09322941,
+    0.961495101
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.827796,
+    "period": 6.344782
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    24.4844031774,
+    -0.0508,
+    -18.7710898898
+   ],
+   "rot": [
+    -0.0,
+    0.108853571,
+    -0.0,
+    0.994057775
+   ],
+   "scale": [
+    0.906986594,
+    1.10010624,
+    0.906986594
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.742267,
+    "period": 5.898075
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    5.1624093094,
+    -0.0508,
+    -24.580341492
+   ],
+   "rot": [
+    -0.0,
+    0.777821243,
+    -0.0,
+    0.62848556
+   ],
+   "scale": [
+    1.0340935,
+    0.942833841,
+    1.0340935
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.4990396,
+    "period": 4.9980516
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    7.3255357934,
+    -0.0508,
+    -25.2075373166
+   ],
+   "rot": [
+    -0.0,
+    0.822163224,
+    -0.0,
+    0.569251835
+   ],
+   "scale": [
+    0.880760908,
+    0.817989528,
+    0.880760908
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.518229,
+    "period": 5.326041
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    6.509439889399999,
+    -0.0508,
+    -22.2613714284
+   ],
+   "rot": [
+    -0.0,
+    0.0974715948,
+    -0.0,
+    -0.995238304
+   ],
+   "scale": [
+    1.0828793,
+    1.11161017,
+    1.0828793
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.2054243,
+    "period": 6.1874595
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    7.1754294642000005,
+    -0.0508,
+    -22.8734363968
+   ],
+   "rot": [
+    -0.0,
+    0.0916772336,
+    -0.0,
+    0.995788753
+   ],
+   "scale": [
+    0.761774838,
+    0.818857789,
+    0.761774838
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.2899013,
+    "period": 6.0877943
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    5.590644419399999,
+    -0.0508,
+    -24.813333482199997
+   ],
+   "rot": [
+    -0.0,
+    0.999655426,
+    -0.0,
+    -0.0262495372
+   ],
+   "scale": [
+    0.844285488,
+    0.921195269,
+    0.844285488
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.590232,
+    "period": 4.648799
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -5.7619420956,
+    -0.0508,
+    -24.898573240599998
+   ],
+   "rot": [
+    -0.0,
+    0.597242892,
+    -0.0,
+    -0.802060425
+   ],
+   "scale": [
+    0.883605659,
+    0.948702395,
+    0.883605659
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.3374414,
+    "period": 6.6382713
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -6.9144593485999994,
+    -0.0508,
+    -23.2463500528
+   ],
+   "rot": [
+    -0.0,
+    0.851977825,
+    -0.0,
+    0.523577869
+   ],
+   "scale": [
+    1.13939142,
+    1.39148343,
+    1.13939142
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.8409634,
+    "period": 4.6324663
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -7.777978728999999,
+    -0.0508,
+    -25.549362922
+   ],
+   "rot": [
+    -0.0,
+    0.734132767,
+    -0.0,
+    0.679005921
+   ],
+   "scale": [
+    1.29085457,
+    1.29190993,
+    1.29085457
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.8433247,
+    "period": 6.8835597
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -6.165198871,
+    -0.0508,
+    -23.076318566599998
+   ],
+   "rot": [
+    -0.0,
+    0.0895632654,
+    -0.0,
+    0.995981157
+   ],
+   "scale": [
+    1.04281986,
+    1.05398059,
+    1.04281986
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.0603476,
+    "period": 4.3463416
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -5.485036527999999,
+    -0.0508,
+    -25.711334404
+   ],
+   "rot": [
+    -0.0,
+    0.158362284,
+    -0.0,
+    -0.987381101
+   ],
+   "scale": [
+    0.83977592,
+    0.771802366,
+    0.83977592
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.100976,
+    "period": 4.711022
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -28.04426954,
+    -0.0508,
+    -13.8396932248
+   ],
+   "rot": [
+    -0.0,
+    0.723076701,
+    -0.0,
+    -0.690767765
+   ],
+   "scale": [
+    0.875385702,
+    0.70331049,
+    0.875385702
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.6174974,
+    "period": 6.96742
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -30.109284713999998,
+    -0.0508,
+    -11.6993874216
+   ],
+   "rot": [
+    -0.0,
+    0.823634624,
+    -0.0,
+    0.56712079
+   ],
+   "scale": [
+    0.710575879,
+    0.876481473,
+    0.710575879
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.243656,
+    "period": 5.478031
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -30.610320796,
+    -0.0508,
+    -13.3852108978
+   ],
+   "rot": [
+    -0.0,
+    0.0694919899,
+    -0.0,
+    -0.997582495
+   ],
+   "scale": [
+    0.959666252,
+    1.12706816,
+    0.959666252
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 6.986571,
+    "period": 6.235065
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -2.14416989758,
+    -0.0508,
+    13.4203699842
+   ],
+   "rot": [
+    -0.0,
+    0.356267631,
+    -0.0,
+    -0.934383929
+   ],
+   "scale": [
+    0.889754117,
+    0.814727068,
+    0.889754117
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.1008124,
+    "period": 4.7768226
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -0.130128394302,
+    -0.0508,
+    13.4076622372
+   ],
+   "rot": [
+    -0.0,
+    0.447058022,
+    -0.0,
+    0.894504964
+   ],
+   "scale": [
+    1.23554456,
+    1.24565601,
+    1.23554456
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.7358646,
+    "period": 5.5253515
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -2.13425809876,
+    -0.0508,
+    12.874067673199999
+   ],
+   "rot": [
+    -0.0,
+    0.924779177,
+    -0.0,
+    -0.380504191
+   ],
+   "scale": [
+    0.818345606,
+    0.659844518,
+    0.818345606
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.2640653,
+    "period": 4.0827465
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -1.55531184746,
+    -0.0508,
+    14.171469878999998
+   ],
+   "rot": [
+    -0.0,
+    0.966383696,
+    -0.0,
+    0.257104218
+   ],
+   "scale": [
+    1.29765081,
+    1.51808691,
+    1.29765081
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.3231072,
+    "period": 6.4261894
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -2.0221792805,
+    -0.0508,
+    13.609851444199998
+   ],
+   "rot": [
+    -0.0,
+    0.758095443,
+    -0.0,
+    -0.652143598
+   ],
+   "scale": [
+    0.954404831,
+    0.899865806,
+    0.954404831
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.205126,
+    "period": 5.5480213
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    3.2443418983999996,
+    -0.0508,
+    18.022881302400002
+   ],
+   "rot": [
+    -0.0,
+    0.969449222,
+    -0.0,
+    -0.245292008
+   ],
+   "scale": [
+    0.887605906,
+    0.883162618,
+    0.887605906
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.1646214,
+    "period": 4.4595323
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    5.299702100599999,
+    -0.0508,
+    18.1255820114
+   ],
+   "rot": [
+    -0.0,
+    0.569345653,
+    -0.0,
+    0.822098255
+   ],
+   "scale": [
+    1.19081974,
+    1.19878137,
+    1.19081974
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.985566,
+    "period": 6.3814507
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    3.4170829042,
+    -0.0508,
+    18.661822137799998
+   ],
+   "rot": [
+    -0.0,
+    0.662212908,
+    -0.0,
+    0.749315739
+   ],
+   "scale": [
+    1.19005084,
+    1.36311078,
+    1.19005084
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.0907025,
+    "period": 4.145529
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    5.4592144562,
+    -0.0508,
+    15.963870535999998
+   ],
+   "rot": [
+    -0.0,
+    0.698624253,
+    -0.0,
+    0.715488791
+   ],
+   "scale": [
+    1.19378078,
+    1.28004038,
+    1.19378078
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.843707,
+    "period": 6.2776394
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    6.1864076678,
+    -0.0508,
+    16.775078387799997
+   ],
+   "rot": [
+    -0.0,
+    0.588749766,
+    -0.0,
+    -0.808315337
+   ],
+   "scale": [
+    1.20300865,
+    0.986239433,
+    1.20300865
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.590973,
+    "period": 5.405503
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    4.740642411,
+    -0.0508,
+    17.0504290182
+   ],
+   "rot": [
+    -0.0,
+    0.0913559496,
+    -0.0,
+    -0.995818317
+   ],
+   "scale": [
+    1.01999593,
+    0.971489966,
+    1.01999593
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.5495005,
+    "period": 6.1523805
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -0.473236036,
+    -0.0508,
+    -20.4248881824
+   ],
+   "rot": [
+    -0.0,
+    0.964882672,
+    -0.0,
+    -0.262681186
+   ],
+   "scale": [
+    0.883724928,
+    0.734106779,
+    0.883724928
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.228012,
+    "period": 4.0852494
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    0.044537785448,
+    -0.0508,
+    -19.1862831666
+   ],
+   "rot": [
+    -0.0,
+    0.969012797,
+    -0.0,
+    -0.247010574
+   ],
+   "scale": [
+    1.28912592,
+    1.33497095,
+    1.28912592
+   ],
+   "children": [],
+   "tint": [
+    0.3,
+    0.5,
+    0.35,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 7.2122784,
+    "period": 4.013262
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -3.317882366,
+    -0.0508,
+    -20.9771288864
+   ],
+   "rot": [
+    -0.0,
+    0.997712791,
+    -0.0,
+    0.0675955936
+   ],
+   "scale": [
+    1.19958353,
+    1.46399534,
+    1.19958353
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp0.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.15677,
+    "period": 4.77665
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    -2.686151346,
+    -0.0508,
+    -20.055940152199998
+   ],
+   "rot": [
+    -0.0,
+    0.545514643,
+    -0.0,
+    0.838101268
+   ],
+   "scale": [
+    1.21529734,
+    1.26758993,
+    1.21529734
+   ],
+   "children": [],
+   "tint": [
+    0.35,
+    0.62,
+    0.28,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 4.2463045,
+    "period": 6.6194115
+   }
+  },
+  {
+   "name": "Kelp",
+   "path": "/Arena/Dressing/Kelp",
+   "pos": [
+    0.03829087973,
+    -0.0508,
+    -20.1059433034
+   ],
+   "rot": [
+    -0.0,
+    0.853202641,
+    -0.0,
+    0.521579564
+   ],
+   "scale": [
+    0.829008102,
+    0.908070624,
+    0.829008102
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.55,
+    0.2,
+    1.0
+   ],
+   "model": "res://assets/models/arena/kelp1.fbx",
+   "material": {
+    "name": "slime",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 2.0,
+    "albedo": "res://assets/materials/creature/slime_color.png",
+    "normal": "res://assets/materials/creature/slime_normal.png",
+    "rough": "res://assets/materials/creature/slime_rough.png"
+   },
+   "shadows": true,
+   "sway": {
+    "amount": 5.32983,
+    "period": 5.27594
+   }
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    4.3571359898,
+    -0.0508,
+    13.0054976364
+   ],
+   "rot": [
+    -0.0,
+    0.669003963,
+    -0.0,
+    -0.743258834
+   ],
+   "scale": [
+    1.11314535,
+    1.11314535,
+    1.11314535
+   ],
+   "children": [],
+   "tint": [
+    0.25,
+    0.85,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    13.844584401199999,
+    -0.0508,
+    3.274189286
+   ],
+   "rot": [
+    -0.0,
+    0.950558305,
+    -0.0,
+    0.3105461
+   ],
+   "scale": [
+    1.41822731,
+    1.41822731,
+    1.41822731
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.35,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -6.628979858599999,
+    -0.0508,
+    29.982628884
+   ],
+   "rot": [
+    -0.0,
+    0.5565328,
+    -0.0,
+    -0.830825627
+   ],
+   "scale": [
+    1.23633134,
+    1.23633134,
+    1.23633134
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -17.5835003676,
+    -0.0508,
+    -9.7260528364
+   ],
+   "rot": [
+    -0.0,
+    0.99854362,
+    -0.0,
+    -0.0539506115
+   ],
+   "scale": [
+    1.45828581,
+    1.45828581,
+    1.45828581
+   ],
+   "children": [],
+   "tint": [
+    0.25,
+    0.85,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    28.508610242,
+    -0.0508,
+    -8.2417178574
+   ],
+   "rot": [
+    -0.0,
+    0.688884079,
+    -0.0,
+    0.724871516
+   ],
+   "scale": [
+    1.43912041,
+    1.43912041,
+    1.43912041
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.35,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -15.2689858196,
+    -0.0508,
+    -11.6894399688
+   ],
+   "rot": [
+    -0.0,
+    0.404482573,
+    -0.0,
+    -0.914545715
+   ],
+   "scale": [
+    1.57098639,
+    1.57098639,
+    1.57098639
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.35,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -0.7406546934399999,
+    -0.0508,
+    -15.272235241599999
+   ],
+   "rot": [
+    -0.0,
+    0.783811152,
+    -0.0,
+    -0.620999277
+   ],
+   "scale": [
+    0.891212344,
+    0.891212344,
+    0.891212344
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.4,
+    0.95,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    10.964577257999998,
+    -0.0508,
+    6.063815151999999
+   ],
+   "rot": [
+    -0.0,
+    0.751142859,
+    -0.0,
+    0.66013968
+   ],
+   "scale": [
+    1.21056926,
+    1.21056926,
+    1.21056926
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    30.521262554,
+    -0.0508,
+    9.7055649424
+   ],
+   "rot": [
+    -0.0,
+    0.614108384,
+    -0.0,
+    -0.789221704
+   ],
+   "scale": [
+    0.988620281,
+    0.988620281,
+    0.988620281
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -4.474012184799999,
+    -0.0508,
+    10.811226916999999
+   ],
+   "rot": [
+    -0.0,
+    0.996229172,
+    -0.0,
+    -0.0867611393
+   ],
+   "scale": [
+    1.23815775,
+    1.23815775,
+    1.23815775
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    21.1776189604,
+    -0.0508,
+    -18.1018377104
+   ],
+   "rot": [
+    -0.0,
+    0.0780118331,
+    -0.0,
+    0.996952415
+   ],
+   "scale": [
+    1.54804564,
+    1.54804564,
+    1.54804564
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -27.875731142,
+    -0.0508,
+    15.8878085088
+   ],
+   "rot": [
+    -0.0,
+    0.437725991,
+    -0.0,
+    -0.89910841
+   ],
+   "scale": [
+    1.42603719,
+    1.42603719,
+    1.42603719
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.4,
+    0.95,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -17.113268592799997,
+    -0.0508,
+    -18.267982615599998
+   ],
+   "rot": [
+    -0.0,
+    0.999317348,
+    -0.0,
+    -0.036943417
+   ],
+   "scale": [
+    0.890824735,
+    0.890824735,
+    0.890824735
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    30.435596481999998,
+    -0.0508,
+    -12.734673082799999
+   ],
+   "rot": [
+    -0.0,
+    0.986959755,
+    -0.0,
+    0.160967171
+   ],
+   "scale": [
+    0.896010458,
+    0.896010458,
+    0.896010458
+   ],
+   "children": [],
+   "tint": [
+    0.25,
+    0.85,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    1.4237278256399999,
+    -0.0508,
+    23.4252228726
+   ],
+   "rot": [
+    -0.0,
+    0.857811093,
+    -0.0,
+    -0.51396513
+   ],
+   "scale": [
+    1.43974698,
+    1.43974698,
+    1.43974698
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -30.84266628,
+    -0.0508,
+    14.3767317748
+   ],
+   "rot": [
+    -0.0,
+    0.994528413,
+    -0.0,
+    -0.104466267
+   ],
+   "scale": [
+    0.992530882,
+    0.992530882,
+    0.992530882
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.4,
+    0.95,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    9.219774448399999,
+    -0.0508,
+    26.361342756
+   ],
+   "rot": [
+    -0.0,
+    0.0558149442,
+    -0.0,
+    0.99844116
+   ],
+   "scale": [
+    1.01846719,
+    1.01846719,
+    1.01846719
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    1.03772212318,
+    -0.0508,
+    -12.5143252888
+   ],
+   "rot": [
+    -0.0,
+    0.101957753,
+    -0.0,
+    0.994788706
+   ],
+   "scale": [
+    1.44305992,
+    1.44305992,
+    1.44305992
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    20.684411869599998,
+    -0.0508,
+    26.878629249999996
+   ],
+   "rot": [
+    -0.0,
+    0.960343003,
+    -0.0,
+    0.27882129
+   ],
+   "scale": [
+    1.34342289,
+    1.34342289,
+    1.34342289
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -10.1725596904,
+    -0.0508,
+    9.0805736346
+   ],
+   "rot": [
+    -0.0,
+    0.756949186,
+    -0.0,
+    -0.653473794
+   ],
+   "scale": [
+    1.09609342,
+    1.09609342,
+    1.09609342
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.4,
+    0.95,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -12.03711334,
+    -0.0508,
+    3.3649845324
+   ],
+   "rot": [
+    -0.0,
+    0.455152303,
+    -0.0,
+    0.890413582
+   ],
+   "scale": [
+    1.10601294,
+    1.10601294,
+    1.10601294
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    9.6571702208,
+    -0.0508,
+    2.7093578781999996
+   ],
+   "rot": [
+    -0.0,
+    0.0749627128,
+    -0.0,
+    -0.997186363
+   ],
+   "scale": [
+    1.30801475,
+    1.30801475,
+    1.30801475
+   ],
+   "children": [],
+   "tint": [
+    0.25,
+    0.85,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    14.577927232199999,
+    -0.0508,
+    7.142940756
+   ],
+   "rot": [
+    -0.0,
+    0.994056821,
+    -0.0,
+    -0.108862512
+   ],
+   "scale": [
+    1.10924637,
+    1.10924637,
+    1.10924637
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    7.0294166752,
+    -0.0508,
+    -17.5581484244
+   ],
+   "rot": [
+    -0.0,
+    0.877527475,
+    -0.0,
+    0.479526341
+   ],
+   "scale": [
+    1.42412353,
+    1.42412353,
+    1.42412353
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    4.126026063399999,
+    -0.0508,
+    -18.6662606354
+   ],
+   "rot": [
+    -0.0,
+    0.484729439,
+    -0.0,
+    0.874664128
+   ],
+   "scale": [
+    1.08866358,
+    1.08866358,
+    1.08866358
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    16.863175341399998,
+    -0.0508,
+    -18.726622846399998
+   ],
+   "rot": [
+    -0.0,
+    0.783263624,
+    -0.0,
+    -0.621689677
+   ],
+   "scale": [
+    1.14548492,
+    1.14548492,
+    1.14548492
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    4.4338778225999995,
+    -0.0508,
+    10.9627161238
+   ],
+   "rot": [
+    -0.0,
+    0.109581418,
+    -0.0,
+    -0.993977845
+   ],
+   "scale": [
+    1.05555356,
+    1.05555356,
+    1.05555356
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.42,
+    0.5,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    26.343412133999998,
+    -0.0508,
+    -0.9118027738000001
+   ],
+   "rot": [
+    -0.0,
+    0.392724723,
+    -0.0,
+    -0.919656098
+   ],
+   "scale": [
+    1.34447539,
+    1.34447539,
+    1.34447539
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch1.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    12.2516343486,
+    -0.0508,
+    31.243894331999996
+   ],
+   "rot": [
+    -0.0,
+    0.0691259354,
+    -0.0,
+    0.997607946
+   ],
+   "scale": [
+    1.46704137,
+    1.46704137,
+    1.46704137
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.85,
+    0.3,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_branch0.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -13.9453317486,
+    -0.0508,
+    -7.5582138396
+   ],
+   "rot": [
+    -0.0,
+    0.974338055,
+    -0.0,
+    0.225089729
+   ],
+   "scale": [
+    1.38034248,
+    1.38034248,
+    1.38034248
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.35,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    0.037413604877999995,
+    -0.0508,
+    8.4661398368
+   ],
+   "rot": [
+    -0.0,
+    0.736308515,
+    -0.0,
+    0.676645994
+   ],
+   "scale": [
+    1.13997769,
+    1.13997769,
+    1.13997769
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -34.198997896,
+    -0.0508,
+    -6.04367219
+   ],
+   "rot": [
+    -0.0,
+    0.142515913,
+    -0.0,
+    0.989792526
+   ],
+   "scale": [
+    1.47441459,
+    1.47441459,
+    1.47441459
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.6,
+    0.25,
+    1.0
+   ],
+   "model": "res://assets/models/arena/coral_brain.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -21.949609059799997,
+    -0.0508,
+    12.878691413
+   ],
+   "rot": [
+    -0.0,
+    0.882325947,
+    -0.0,
+    -0.470638871
+   ],
+   "scale": [
+    1.19178391,
+    1.19178391,
+    1.19178391
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.35,
+    0.75,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Coral",
+   "path": "/Arena/Dressing/Coral",
+   "pos": [
+    -25.481058512,
+    -0.0508,
+    15.138324028600001
+   ],
+   "rot": [
+    -0.0,
+    0.599382102,
+    -0.0,
+    -0.80046308
+   ],
+   "scale": [
+    0.870179892,
+    0.870179892,
+    0.870179892
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.4,
+    0.95,
+    1.0
+   ],
+   "model": "res://assets/models/arena/sponge.fbx",
+   "material": {
+    "name": "smooth",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -26.98192216,
+    0.0,
+    5.561702770399999
+   ],
+   "rot": [
+    -0.0,
+    0.742130578,
+    -0.0,
+    0.670255363
+   ],
+   "scale": [
+    1.33854842,
+    1.33854842,
+    1.33854842
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    22.745213209,
+    0.0,
+    1.11667515298
+   ],
+   "rot": [
+    -0.0,
+    0.977732718,
+    -0.0,
+    -0.209853962
+   ],
+   "scale": [
+    0.856626809,
+    0.856626809,
+    0.856626809
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    32.265500366,
+    0.0,
+    15.986476917000001
+   ],
+   "rot": [
+    -0.0,
+    0.987809598,
+    -0.0,
+    0.155666769
+   ],
+   "scale": [
+    1.02580893,
+    1.02580893,
+    1.02580893
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    11.205258691800001,
+    0.0,
+    -15.6860471902
+   ],
+   "rot": [
+    -0.0,
+    0.359626532,
+    -0.0,
+    -0.933096349
+   ],
+   "scale": [
+    1.44387043,
+    1.44387043,
+    1.44387043
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    16.193436371,
+    0.0,
+    0.145672334004
+   ],
+   "rot": [
+    -0.0,
+    0.822343826,
+    -0.0,
+    0.568990886
+   ],
+   "scale": [
+    1.09032643,
+    1.09032643,
+    1.09032643
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    16.9726849268,
+    0.0,
+    5.3909488574
+   ],
+   "rot": [
+    -0.0,
+    0.179467946,
+    -0.0,
+    -0.983763814
+   ],
+   "scale": [
+    1.2701056,
+    1.2701056,
+    1.2701056
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -19.7833412816,
+    0.0,
+    -10.5434145748
+   ],
+   "rot": [
+    -0.0,
+    0.81511575,
+    -0.0,
+    0.579298079
+   ],
+   "scale": [
+    0.863640547,
+    0.863640547,
+    0.863640547
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -4.663039416599999,
+    0.0,
+    -3.9239004071999997
+   ],
+   "rot": [
+    -0.0,
+    0.553823709,
+    -0.0,
+    0.832633913
+   ],
+   "scale": [
+    1.36957562,
+    1.36957562,
+    1.36957562
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -32.994237287999994,
+    0.0,
+    6.9137407826
+   ],
+   "rot": [
+    -0.0,
+    0.978607059,
+    -0.0,
+    0.205738336
+   ],
+   "scale": [
+    1.11155188,
+    1.11155188,
+    1.11155188
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -5.1337699712,
+    0.0,
+    -3.3544270224
+   ],
+   "rot": [
+    -0.0,
+    0.950794041,
+    -0.0,
+    -0.309823722
+   ],
+   "scale": [
+    0.929476261,
+    0.929476261,
+    0.929476261
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -19.6423483454,
+    0.0,
+    -0.245902868366
+   ],
+   "rot": [
+    -0.0,
+    0.940662801,
+    -0.0,
+    0.339342713
+   ],
+   "scale": [
+    1.20174122,
+    1.20174122,
+    1.20174122
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    18.530923161599997,
+    0.0,
+    -21.5018891018
+   ],
+   "rot": [
+    -0.0,
+    0.789773643,
+    -0.0,
+    -0.613398433
+   ],
+   "scale": [
+    1.38373339,
+    1.38373339,
+    1.38373339
+   ],
+   "children": [],
+   "tint": [
+    0.62,
+    0.72,
+    0.74,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -4.4467797272,
+    0.0,
+    -19.1940749214
+   ],
+   "rot": [
+    -0.0,
+    0.758373082,
+    -0.0,
+    -0.651820719
+   ],
+   "scale": [
+    1.10180283,
+    1.10180283,
+    1.10180283
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    15.622767331999999,
+    0.0,
+    -22.273593933799997
+   ],
+   "rot": [
+    -0.0,
+    0.658536732,
+    -0.0,
+    -0.752548575
+   ],
+   "scale": [
+    1.16366196,
+    1.16366196,
+    1.16366196
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -22.8840434876,
+    0.0,
+    9.578937027
+   ],
+   "rot": [
+    -0.0,
+    0.059044484,
+    -0.0,
+    -0.998255372
+   ],
+   "scale": [
+    0.79640168,
+    0.79640168,
+    0.79640168
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -9.725965257199999,
+    0.0,
+    1.42458349068
+   ],
+   "rot": [
+    -0.0,
+    0.954906046,
+    -0.0,
+    0.29690817
+   ],
+   "scale": [
+    1.49992537,
+    1.49992537,
+    1.49992537
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -25.714337446,
+    0.0,
+    -1.9038010412599997
+   ],
+   "rot": [
+    -0.0,
+    0.549665213,
+    -0.0,
+    -0.835385025
+   ],
+   "scale": [
+    1.45972562,
+    1.45972562,
+    1.45972562
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    12.8809742126,
+    0.0,
+    -9.433250551799999
+   ],
+   "rot": [
+    -0.0,
+    0.387819499,
+    -0.0,
+    0.921735346
+   ],
+   "scale": [
+    0.872918189,
+    0.872918189,
+    0.872918189
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    20.268691492,
+    0.0,
+    21.158927075
+   ],
+   "rot": [
+    -0.0,
+    0.616758645,
+    -0.0,
+    -0.78715235
+   ],
+   "scale": [
+    1.03973913,
+    1.03973913,
+    1.03973913
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -9.898578754999999,
+    0.0,
+    14.751470141399999
+   ],
+   "rot": [
+    -0.0,
+    0.998788595,
+    -0.0,
+    -0.0492075197
+   ],
+   "scale": [
+    1.09393668,
+    1.09393668,
+    1.09393668
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    11.7876487132,
+    0.0,
+    19.8314933824
+   ],
+   "rot": [
+    -0.0,
+    0.896666288,
+    -0.0,
+    -0.442707062
+   ],
+   "scale": [
+    0.996279478,
+    0.996279478,
+    0.996279478
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -26.209023528,
+    0.0,
+    3.1389117054
+   ],
+   "rot": [
+    -0.0,
+    0.987992287,
+    -0.0,
+    0.154503226
+   ],
+   "scale": [
+    1.30954373,
+    1.30954373,
+    1.30954373
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    14.422200314800001,
+    0.0,
+    -5.568575985
+   ],
+   "rot": [
+    -0.0,
+    0.988982081,
+    -0.0,
+    0.148035258
+   ],
+   "scale": [
+    0.842673898,
+    0.842673898,
+    0.842673898
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -10.2614565916,
+    0.0,
+    -32.992714812
+   ],
+   "rot": [
+    -0.0,
+    0.540147305,
+    -0.0,
+    -0.841570497
+   ],
+   "scale": [
+    1.42842579,
+    1.42842579,
+    1.42842579
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -6.898061896,
+    0.0,
+    -0.73642971078
+   ],
+   "rot": [
+    -0.0,
+    0.426878512,
+    -0.0,
+    0.904308975
+   ],
+   "scale": [
+    1.11933351,
+    1.11933351,
+    1.11933351
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    7.3339345065999995,
+    0.0,
+    -30.305266542000002
+   ],
+   "rot": [
+    -0.0,
+    0.799826324,
+    -0.0,
+    0.600231528
+   ],
+   "scale": [
+    1.01853359,
+    1.01853359,
+    1.01853359
+   ],
+   "children": [],
+   "tint": [
+    0.55,
+    0.66,
+    0.62,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -26.461876209999996,
+    0.0,
+    19.7581862392
+   ],
+   "rot": [
+    -0.0,
+    0.850923061,
+    -0.0,
+    0.52529037
+   ],
+   "scale": [
+    0.827532291,
+    0.827532291,
+    0.827532291
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    -8.9949114234,
+    0.0,
+    3.1540388785999998
+   ],
+   "rot": [
+    -0.0,
+    0.455179513,
+    -0.0,
+    0.890399694
+   ],
+   "scale": [
+    1.09379041,
+    1.09379041,
+    1.09379041
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    10.252919905599999,
+    0.0,
+    -1.0033512571999998
+   ],
+   "rot": [
+    -0.0,
+    0.729897797,
+    -0.0,
+    0.683556259
+   ],
+   "scale": [
+    0.837176383,
+    0.837176383,
+    0.837176383
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Pebbles",
+   "path": "/Arena/Dressing/Pebbles",
+   "pos": [
+    15.3544255776,
+    0.0,
+    10.1773136814
+   ],
+   "rot": [
+    -0.0,
+    0.854192078,
+    -0.0,
+    -0.519957542
+   ],
+   "scale": [
+    1.11765373,
+    1.11765373,
+    1.11765373
+   ],
+   "children": [],
+   "tint": [
+    0.7,
+    0.66,
+    0.6,
+    1.0
+   ],
+   "model": "res://assets/models/arena/pebbles.fbx",
+   "material": {
+    "name": "rock",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/arena/rock_color.png",
+    "normal": "res://assets/materials/arena/rock_normal.png",
+    "rough": "res://assets/materials/arena/rock_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Spawn 1",
+   "path": "/Zombie Spawns/Spawn 1",
+   "pos": [
+    -34.29,
+    0.0,
+    -34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 2",
+   "path": "/Zombie Spawns/Spawn 2",
+   "pos": [
+    34.29,
+    0.0,
+    -34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 3",
+   "path": "/Zombie Spawns/Spawn 3",
+   "pos": [
+    -34.29,
+    0.0,
+    34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 4",
+   "path": "/Zombie Spawns/Spawn 4",
+   "pos": [
+    34.29,
+    0.0,
+    34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 5",
+   "path": "/Zombie Spawns/Spawn 5",
+   "pos": [
+    -0.0,
+    0.0,
+    -34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 6",
+   "path": "/Zombie Spawns/Spawn 6",
+   "pos": [
+    -0.0,
+    0.0,
+    34.29
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 7",
+   "path": "/Zombie Spawns/Spawn 7",
+   "pos": [
+    -34.29,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 8",
+   "path": "/Zombie Spawns/Spawn 8",
+   "pos": [
+    34.29,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Game",
+   "path": "/Game",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "wave_director": true
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Ammo Station/Body",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.82,
+    0.25,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Health Station/Body",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.95,
+    0.3,
+    0.3,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Damage Station/Body",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.65,
+    0.4,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Marine Snow",
+   "path": "/Marine Snow",
+   "pos": [
+    -0.0,
+    9.652,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "marine_snow": true
+  },
+  {
+   "name": "Dock House",
+   "path": "/Dock House",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "dock_house": {
+    "DiveBloobers": 60,
+    "DiveBoostSpeed": 2600,
+    "DiveBrakeSpeed": 650,
+    "DiveSpeed": 1500,
+    "DiveSteerSpeed": 750,
+    "Origin": "-150,-350,0",
+    "PierLength": 460,
+    "SurfaceHeight": 32000
+   }
+  }
+ ]
+}

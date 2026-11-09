@@ -14,6 +14,9 @@ public partial class GameHud : Control
 		Width = 64, Height = 64, Fill = GradientTexture2D.FillEnum.Radial, FillFrom = new Vector2( 0.5f, 0.5f ), FillTo = new Vector2( 0.5f, 0f ),
 		Gradient = new Gradient { Offsets = new[] { 0f, 0.679f, 0.905f, 1f }, Colors = new[] { Colors.White, Colors.White, new Color( 1, 1, 1, 0 ), new Color( 1, 1, 1, 0 ) } },   // CSS 48% / 64% of the corner distance
 	};
+	static Texture2D[] splats;
+	static Texture2D[] Splats => splats ??= Enumerable.Range( 0, 8 ).Select( i => GD.Load<Texture2D>( $"res://assets/textures/goo/goo_splat_{i}.png" ) ).Where( t => t is not null ).DefaultIfEmpty( Blob ).ToArray();
+
 	static readonly Texture2D Streak = new GradientTexture2D
 	{
 		Width = 8, Height = 64, FillFrom = new Vector2( 0.5f, 0f ), FillTo = new Vector2( 0.5f, 1f ),
@@ -254,17 +257,15 @@ public partial class GameHud : Control
 					var w = size * 0.28f;
 					DrawTextureRect( Streak, new Rect2( x - w * 0.5f, y, w, slide / 100f * Size.Y ), false, c with { A = fade * 0.55f * 0.8f } );
 				}
-				var h = size * (1f + slide * 0.03f);
-				DrawTextureRect( Blob, new Rect2( x - size * 0.5f, y + slide / 100f * Size.Y - h * 0.5f, size, h ), false, c with { A = fade * 0.85f * 0.92f } );
+				// The splat itself: one of the Blender renders (Tools/blender/goo_splats.py), tinted to the goo,
+				// tilted a little, sliding down the lens. The renders carry their own specks and drips.
 				var r = new Random( (int)(drip.Born * 1000f) ^ (int)(drip.X * 37f) );
-				var flecks = 3 + r.Next( 0, 3 );
-				for ( var i = 0; i < flecks; i++ )
-				{
-					var angle = (float)r.NextDouble() * MathF.PI * 2f;
-					var dist = drip.Size * (0.5f + (float)r.NextDouble() * 0.6f) * scale;
-					var fs = drip.Size * (0.1f + (float)r.NextDouble() * 0.18f) * scale;
-					DrawTextureRect( Blob, new Rect2( x + MathF.Cos( angle ) * dist - fs * 0.5f, y + MathF.Sin( angle ) * dist - fs * 0.5f, fs, fs ), false, c with { A = fade * 0.8f * 0.92f } );
-				}
+				var tex = Splats[r.Next( Splats.Length )];
+				var big = size * 2.4f;
+				var tilt = (float)(r.NextDouble() - 0.5) * 0.5f;
+				DrawSetTransform( new Vector2( x, y + slide / 100f * Size.Y ), tilt, Vector2.One );
+				DrawTextureRect( tex, new Rect2( -big * 0.5f, -big * 0.42f, big, big ), false, c with { A = fade * 0.95f } );
+				DrawSetTransform( Vector2.Zero, 0f, Vector2.One );
 			}
 		}
 	}

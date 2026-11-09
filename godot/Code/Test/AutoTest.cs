@@ -846,6 +846,12 @@ public partial class AutoTest : Node
 			GD.Print( $"[autotest] credited 3 kills before/at wave {wave}: kills {director.Kills}, state {director.State}, remaining {director.ZombiesRemaining}" );
 		}
 		GD.Print( $"[autotest] weapons held (no dock here): {DockHouse.WeaponsHeld} (expect False)" );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Afflictions?.Splattered( new Color( 0.3f, 0.95f, 0.25f ), 7 );
+		await Wait( 0.15f );
+		await Shot( "screen_goo" );
+		await Wait( 0.8f );
+		await Shot( "screen_goo_sliding" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

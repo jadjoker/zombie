@@ -67,11 +67,28 @@ public partial class Health : Node
 /// <summary> Port of s&box DevFlags: switches the dev menu flips. </summary>
 public static class DevFlags
 {
+	/// <summary> Any hit on an enemy kills it. </summary>
 	public static bool OneShot;
+	/// <summary> Enemies stop thinking; projectiles hang in the air. </summary>
 	public static bool FreezeEnemies;
+	/// <summary> Fly through walls (the dev menu drives the player). </summary>
 	public static bool Noclip;
+	public static bool HideHud;
 	public static bool HideWeapon;
+	/// <summary> Camera detached from the player and flown separately. </summary>
 	public static bool FreeCam;
+	public static Vector3 FreeCamPosition;
+	public static Angles FreeCamAngles;
+	/// <summary> Placing enemies: left click spawns at the crosshair, so the gun doesn't fire. </summary>
 	public static bool Placing;
+	/// <summary> Field of view override; 0 = the game's own. </summary>
 	public static float Fov;
+	public static bool ShowHitboxes;
+	public static bool ShowStats;
+
+	public static void Reset()
+	{
+		FreezeEnemies = Noclip = Placing = HideHud = HideWeapon = FreeCam = OneShot = ShowHitboxes = ShowStats = false;
+		Fov = 0f;
+	}
 }

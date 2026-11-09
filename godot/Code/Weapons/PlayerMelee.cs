@@ -41,7 +41,7 @@ public partial class PlayerMelee : Node
 
 	public override void _Process( double delta )
 	{
-		if ( Input.IsActionJustPressed( "melee" ) && Swing >= Cooldown ) TestSwing();
+		if ( Input.IsActionJustPressed( "melee" ) && Swing >= Cooldown && !DevFlags.Placing && !DevFlags.FreeCam ) TestSwing();
 		if ( !struck && Swing >= WindUp && Swing < Cooldown )
 		{
 			struck = true;
@@ -105,7 +105,7 @@ public partial class PlayerMelee : Node
 
 	void UpdateView()
 	{
-		var show = !controller.ThirdPerson && Swing < Cooldown;
+		var show = !controller.ThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && Swing < Cooldown;
 		if ( !show ) { if ( axe is not null ) axe.Visible = false; return; }
 		if ( axe is null )
 		{

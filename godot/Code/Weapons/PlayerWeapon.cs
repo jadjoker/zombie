@@ -151,7 +151,7 @@ public partial class PlayerWeapon : Node
 		EnsureViewModel();
 
 		var melee = MeleeActive?.Invoke() ?? false;
-		if ( ViewModel is not null ) ViewModel.Visible = !controller.ThirdPerson && !melee;
+		if ( ViewModel is not null ) ViewModel.Visible = !controller.ThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && !melee;
 
 		if ( InfiniteAmmo ) { Ammo = MagazineSize; Reserve = Math.Max( Reserve, StartingReserve ); }
 
@@ -162,7 +162,7 @@ public partial class PlayerWeapon : Node
 
 		if ( Input.IsActionJustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
-		if ( melee ) return;
+		if ( DevFlags.Placing || melee ) return;   // left click is placing an enemy; the axe is out
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )

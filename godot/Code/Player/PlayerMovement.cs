@@ -546,6 +546,10 @@ public partial class PlayerMovement : Node, ICameraModifier
 		cam.Fov += fovBoost;
 		cam.GlobalBasis = cam.GlobalBasis * new Angles( landDip, 0f, tilt + wallRoll ).ToBasis();
 		cam.GlobalPosition += Vector3.Down * landDip * 0.6f * U.In;
+
+		// Dev menu camera tools.
+		if ( DevFlags.Fov > 0f ) cam.Fov = DevFlags.Fov;
+		if ( DevFlags.FreeCam ) cam.GlobalTransform = new Transform3D( DevFlags.FreeCamAngles.ToBasis(), DevFlags.FreeCamPosition );
 	}
 
 	void Kick( float fov ) => fovKick = MathF.Max( fovKick, fov );

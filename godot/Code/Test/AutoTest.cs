@@ -255,6 +255,38 @@ public partial class AutoTest : Node
 		var userArgs = OS.GetCmdlineUserArgs();
 		MC61.PoseHands = !userArgs.Contains( "--rest-hands" );
 		if ( userArgs.Contains( "--boss" ) ) goto Boss;
+		if ( userArgs.Contains( "--devmenu" ) )
+		{
+			var menu = GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu;
+			foreach ( var t in new[] { "Enemies", "Player", "Look", "World" } ) { menu.TestShow( t ); await Wait( 0.2f ); await Shot( $"devmenu_{t.ToLower()}" ); }
+			menu.TestShow( "Enemies", "boss" );
+			await Wait( 0.2f );
+			await Shot( "devmenu_search_boss" );
+			menu.TestShow( "Player" );
+			GD.Print( $"[autotest] devmenu: god pressed {menu.TestPress( "God mode" )}, god {survivor.Health.Invulnerable}" );
+			survivor.Health.Invulnerable = false;
+			menu.TestPress( "God mode" );
+			menu.TestShow( "Enemies" );
+			var squBefore = Squilien.All.Count;
+			menu.TestPress( "Spawn" );   // first row: Zombie (not ported, nothing happens)
+			var spawnButtons = 0;
+			foreach ( var b in menu.FindChildren( "*", "Button", true, false ).OfType<Button>() ) if ( b.Text == "Spawn" ) spawnButtons++;
+			menu.TestShow( "Enemies", "squilien" );
+			menu.TestPress( "Spawn" );
+			await Wait( 0.3f );
+			GD.Print( $"[autotest] devmenu: spawn buttons {spawnButtons}, squiliens {squBefore} to {Squilien.All.Count}, god now {survivor.Health.Invulnerable}" );
+			menu.TestShow( "World" );
+			menu.TestPress( "Stats overlay" );
+			menu.TestPress( "0.25x" );
+			GD.Print( $"[autotest] devmenu: time scale {Engine.TimeScale} stats {DevFlags.ShowStats}" );
+			menu.TestPress( "1x" );
+			menu.SetOpen( false );
+			await Wait( 0.5f );
+			await Shot( "devmenu_closed_stats" );
+			GD.Print( "[autotest] done" );
+			GetTree().Quit();
+			return;
+		}
 
 		// Squilien: two hovering in front.
 		player.EyeAngles = new Angles( -10f, 180f, 0f );

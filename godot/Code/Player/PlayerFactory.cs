@@ -28,6 +28,7 @@ public static class PlayerFactory
 		var hud = new CanvasLayer { Name = "Hud" };
 		parent.AddChild( hud );
 		hud.AddChild( HudOverlays.Create( survivor ) );
+		if ( parent.GetTree().Root.FindChild( "DevMenu", true, false ) is null ) parent.AddChild( new DevMenu() );
 		hud.AddChild( WeaponHud.Create( player ) );
 		hud.AddChild( GameHud.Create( survivor ) );
 		return player;

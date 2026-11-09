@@ -8,6 +8,18 @@ using Godot;
 /// </summary>
 public partial class GameHud : Control
 {
+	// A soft round blob (solid to 48% of the radius, gone by 64%) and a streak fading in toward the bottom.
+	static readonly Texture2D Blob = new GradientTexture2D
+	{
+		Width = 64, Height = 64, Fill = GradientTexture2D.FillEnum.Radial, FillFrom = new Vector2( 0.5f, 0.5f ), FillTo = new Vector2( 0.5f, 0f ),
+		Gradient = new Gradient { Offsets = new[] { 0f, 0.679f, 0.905f, 1f }, Colors = new[] { Colors.White, Colors.White, new Color( 1, 1, 1, 0 ), new Color( 1, 1, 1, 0 ) } },   // CSS 48% / 64% of the corner distance
+	};
+	static readonly Texture2D Streak = new GradientTexture2D
+	{
+		Width = 8, Height = 64, FillFrom = new Vector2( 0.5f, 0f ), FillTo = new Vector2( 0.5f, 1f ),
+		Gradient = new Gradient { Offsets = new[] { 0f, 1f }, Colors = new[] { new Color( 1, 1, 1, 0 ), Colors.White } },
+	};
+
 	PlayerSurvivor player;
 	WaveDirector Director => WaveDirector.Current;
 
@@ -220,17 +232,39 @@ public partial class GameHud : Control
 			DrawRect( new Rect2( bar, new Vector2( 10, 240 * DockHouse.DiveProgress ) ), new Color( "5fe3ff" ) );
 		}
 
-		// Goo splatted on the camera by close kills: blobs that slide down and fade.
+		// Goo splatted on the camera by close kills (port of the s&box HUD): soft blobs that pop in, leave a streak
+		// running down the lens, throw a few flecks, and fade after a moment. (They were hard flat circles.)
 		var afflictions = player?.Afflictions;
-		if ( afflictions is not null )
+		if ( afflictions is not null && afflictions.Drips.Count > 0 )
 		{
 			var now = (float)Clock.Now;
+			var scale = Size.Y / 1080f;   // s&box UI px are 1080p px
 			foreach ( var drip in afflictions.Drips )
 			{
 				var age = now - drip.Born;
-				var fade = MathX.Clamp( 1f - age / PlayerAfflictions.DripLife, 0f, 1f );
-				var pos = new Vector2( drip.X / 100f * Size.X, drip.Y / 100f * Size.Y + age * drip.Slide * 6f );
-				DrawCircle( pos, drip.Size * 0.5f * (0.6f + 0.4f * fade), drip.Color with { A = 0.75f * fade } );
+				var fade = MathX.Clamp( 1f - (age - 0.6f) / (PlayerAfflictions.DripLife - 0.6f), 0f, 1f );
+				var pop = MathX.Clamp( age / 0.06f, 0.3f, 1f );
+				var size = drip.Size * pop * scale;
+				var slide = MathF.Max( 0f, age - 0.25f ) * drip.Slide;   // % of the screen height
+				var c = drip.Color;
+				var x = drip.X / 100f * Size.X;
+				var y = drip.Y / 100f * Size.Y;
+				if ( slide > 0.3f )
+				{
+					var w = size * 0.28f;
+					DrawTextureRect( Streak, new Rect2( x - w * 0.5f, y, w, slide / 100f * Size.Y ), false, c with { A = fade * 0.55f * 0.8f } );
+				}
+				var h = size * (1f + slide * 0.03f);
+				DrawTextureRect( Blob, new Rect2( x - size * 0.5f, y + slide / 100f * Size.Y - h * 0.5f, size, h ), false, c with { A = fade * 0.85f * 0.92f } );
+				var r = new Random( (int)(drip.Born * 1000f) ^ (int)(drip.X * 37f) );
+				var flecks = 3 + r.Next( 0, 3 );
+				for ( var i = 0; i < flecks; i++ )
+				{
+					var angle = (float)r.NextDouble() * MathF.PI * 2f;
+					var dist = drip.Size * (0.5f + (float)r.NextDouble() * 0.6f) * scale;
+					var fs = drip.Size * (0.1f + (float)r.NextDouble() * 0.18f) * scale;
+					DrawTextureRect( Blob, new Rect2( x + MathF.Cos( angle ) * dist - fs * 0.5f, y + MathF.Sin( angle ) * dist - fs * 0.5f, fs, fs ), false, c with { A = fade * 0.8f * 0.92f } );
+				}
 			}
 		}
 	}

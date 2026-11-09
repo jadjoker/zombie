@@ -29,6 +29,8 @@ public partial class DockHouse : Node3D
 	public static float DiveDepth { get; private set; }
 	public static Basis CameraTumble { get; private set; } = Basis.Identity;
 	public static DockHouse Current { get; private set; }
+	/// <summary> No shooting on the dock or in the air: guns come out once you're in the water. </summary>
+	public static bool WeaponsHeld => Current is { } d && !d.dived && !d.splashed;
 
 	float Deck => SurfaceHeight + 18f;
 	Vector3 DivePoint => new( Origin.X + PierLength - 20f, Origin.Y, Deck );
@@ -236,6 +238,10 @@ public partial class DockHouse : Node3D
 		controller.Velocity = Vector3.Zero;
 		controller.GetNodeOrNull<Jetpack>( "Jetpack" )?.BeginDiveRam();
 		BeginDiveFx( controller );
+		var start = controller.GlobalPosition;   // already past the pier, just under the surface
+		var floorHit = Trace.Ray( controller, start, start + Vector3.Down * 5000f, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+		seabedY = floorHit.Hit ? floorHit.HitPosition.Y : 0f;
+		offEdge = false;
 	}
 
 	void UpdateDive( PlayerSurvivor player, PlayerController controller, float dt )
@@ -316,6 +322,33 @@ public partial class DockHouse : Node3D
 
 				// Hitting the seabed: full speed, straight in.
 				var ground = Trace.Ray( controller, controller.GlobalPosition + Vector3.Up * 10f * U.In, pos + Vector3.Down * 20f * U.In, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+				// Playtest 1 (fell forever): the seabed only covers the arena, so steering past its edge fell into the
+				// void. Past the edge the water pushes you back in; and if you still drop below the seabed, you're put
+				// down on the nearest floor.
+				if ( !ground.Hit && splashed )
+				{
+					if ( timeSinceEdgeCheck > 0.1f )
+					{
+						timeSinceEdgeCheck = 0f;
+						var below = Trace.Ray( controller, pos, pos.WithY( seabedY - 20f ), Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+						offEdge = !below.Hit;
+					}
+					if ( offEdge )
+					{
+						var home = (U.Sbox( DivePoint ) - pos).Flat();
+						var inward = home.SafeNormal();
+						var outward = -diveVelocity.Flat().Dot( inward );
+						if ( outward > 0f ) diveVelocity += inward * outward;               // stop drifting further out
+						diveVelocity += inward * 900f * dt;                                // and drift back toward the arena
+					}
+					if ( pos.Y < seabedY - 3f )
+					{
+						var floor = Nav.Closest( controller, pos.WithY( seabedY ) );
+						if ( floor == Vector3.Zero ) floor = pos.WithY( seabedY );
+						ground = new TraceResult { Hit = true, HitPosition = floor, Normal = Vector3.Up };
+						GD.Print( $"Dive: caught a fall past the seabed at {pos}, landing at {floor}" );
+					}
+				}
 				if ( ground.Hit )
 				{
 					pos = ground.HitPosition + Vector3.Up * 2f * U.In;
@@ -386,12 +419,20 @@ public partial class DockHouse : Node3D
 		tumble = Basis.Identity;
 		if ( controller.GetNodeOrNull<DiveHands>( "DiveHands" ) is null ) controller.AddChild( new DiveHands() );
 		if ( controller.GetNodeOrNull<DiveRush>( "DiveRush" ) is null ) controller.AddChild( new DiveRush() );
+		if ( markers is null || !IsInstanceValid( markers ) ) { markers = new DiveMarkers(); controller.AddChild( markers ); }
 	}
+
+	DiveMarkers markers;
+	float seabedY;
+	bool offEdge;
+	TimeSince timeSinceEdgeCheck;
 
 	void FinishDive( PlayerController controller )
 	{
 		controller.GetNodeOrNull<DiveHands>( "DiveHands" )?.QueueFree();
 		controller.GetNodeOrNull<DiveRush>( "DiveRush" )?.QueueFree();
+		if ( markers is not null && IsInstanceValid( markers ) ) markers.QueueFree();
+		markers = null;
 		DiveVelocity = Vector3.Zero;
 		CameraTumble = Basis.Identity;
 		tumble = Basis.Identity;
@@ -480,6 +521,8 @@ public partial class DockHouse : Node3D
 			// Spawned at a point in the water (not on the ground), so it's placed directly.
 			var b = Bloober.Spawn( GetTree().CurrentScene, at, director.BlooberBaseHealth, from - at );
 			b.Hue = Rng.Float();
+			b.Killed += _ => WaveDirector.Current?.CreditKill();
+			markers?.Targets.Add( b );
 		}
 	}
 }

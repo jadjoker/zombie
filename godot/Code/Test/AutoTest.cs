@@ -29,6 +29,9 @@ public partial class AutoTest : Node
 		Input.MouseMode = Input.MouseModeEnum.Visible;
 		if ( args.Contains( "--jitter" ) ) { await JitterTest(); return; }
 		if ( args.Contains( "--flicker" ) ) { await FlickerTest(); return; }
+		if ( args.Contains( "--playtest1" ) ) { await Playtest1Test(); return; }
+		if ( args.Contains( "--seabed" ) ) { SeabedMap(); return; }
+		if ( args.Contains( "--dive-edge" ) ) { await DiveEdgeTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -815,6 +818,73 @@ public partial class AutoTest : Node
 			}
 			GD.Print( $"[flicker] yaw {yaw}: blinking pixels per frame {blinks / (float)(frames - 2):0.0} of 57600, worst frame {worstFrame}" );
 		}
+		GetTree().Quit();
+	}
+
+	/// <summary> Playtest 1 fixes: ammo pickups refill, kills before a wave shorten it. </summary>
+	async Task Playtest1Test()
+	{
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var rifle = inventory.Weapons[0];
+		while ( rifle.Reserve > 0 ) rifle.AddAmmo( -1 );
+		var before = rifle.Reserve;
+		AmmoPickup.DropChance = 1f;
+		var dummy = new Node3D();
+		GetTree().CurrentScene.AddChild( dummy );
+		dummy.GlobalPosition = player.GlobalPosition + player.GlobalBasis.Z * -10f * U.In;
+		AmmoPickup.MaybeDrop( dummy );
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] ammo pickup: reserve {before} -> {rifle.Reserve} (expect +{rifle.MagazineSize})" );
+
+		var director = WaveDirector.Current;
+		if ( director is not null )
+		{
+			director.SpawningPaused = true;
+			var wave = director.Wave;
+			for ( var i = 0; i < 3; i++ ) director.CreditKill();
+			GD.Print( $"[autotest] credited 3 kills before/at wave {wave}: kills {director.Kills}, state {director.State}, remaining {director.ZombiesRemaining}" );
+		}
+		GD.Print( $"[autotest] weapons held (no dock here): {DockHouse.WeaponsHeld} (expect False)" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Prints a map of where a ray straight down hits ground (#) or not (.) around the dive line. </summary>
+	void SeabedMap()
+	{
+		var center = new Vector3( 8.9f, 0f, -18.8f );
+		for ( var z = -40; z <= 40; z += 4 )
+		{
+			var row = "";
+			for ( var x = -40; x <= 40; x += 4 )
+			{
+				var at = center + new Vector3( x, 0f, z );
+				var hit = Trace.Ray( player, at + Vector3.Up * 800f, at + Vector3.Down * 200f, Layers.World, new Godot.Collections.Array<Rid> { player.GetRid() } );
+				row += !hit.Hit ? "." : hit.HitPosition.Y > 600f ? "^" : "#";
+			}
+			GD.Print( $"[seabed] z {center.Z + z,6:0} {row}" );
+		}
+		var probe = Trace.Ray( player, center + Vector3.Up * 800f, center + Vector3.Down * 200f, Layers.World, new Godot.Collections.Array<Rid> { player.GetRid() } );
+		GD.Print( $"[seabed] at dive line: hit {probe.Hit} {probe.HitPosition} node {probe.Node?.Name} parent {probe.Node?.GetParent()?.Name}" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Dives while steering hard sideways the whole way (the playtest endless fall). Should still land. </summary>
+	async Task DiveEdgeTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		await Wait( 1f );
+		DockHouse.Current.TestDive();
+		Input.ActionPress( "right" );
+		Input.ActionPress( "duck" );   // full speed
+		var start = Time.GetTicksMsec();
+		await Wait( 1f );
+		while ( DockHouse.Diving && Time.GetTicksMsec() - start < 90000 ) await Wait( 0.5f );
+		Input.ActionRelease( "right" );
+		Input.ActionRelease( "duck" );
+		await Wait( 1f );
+		GD.Print( $"[autotest] dive edge: still diving {DockHouse.Diving}, at {player.GlobalPosition}, on ground {player.IsOnGround}, took {(Time.GetTicksMsec() - start) / 1000f:0} s" );
+		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
 

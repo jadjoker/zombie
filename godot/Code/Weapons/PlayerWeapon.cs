@@ -163,6 +163,7 @@ public partial class PlayerWeapon : Node
 		if ( Input.IsActionJustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
 		if ( DevFlags.Placing || melee ) return;   // left click is placing an enemy; the axe is out
+		if ( DockHouse.WeaponsHeld ) return;          // not until we're in the water
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )

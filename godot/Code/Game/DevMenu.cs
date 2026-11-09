@@ -127,7 +127,8 @@ public partial class DevMenu : CanvasLayer
 
 	public override void _Process( double delta )
 	{
-		if ( !OS.IsDebugBuild() ) return;
+		// Release builds have it too while playtesting (project setting game/dev_menu_in_builds; turn off to ship).
+		if ( !OS.IsDebugBuild() && !(bool)ProjectSettings.GetSetting( "game/dev_menu_in_builds", false ) ) return;
 		if ( Input.IsActionJustPressed( "dev_menu" ) && !searchEntry.HasFocus() ) SetOpen( !open );
 		var dt = (float)(delta / MathF.Max( 0.0001f, (float)Engine.TimeScale ));
 		UpdateNoclip( dt );

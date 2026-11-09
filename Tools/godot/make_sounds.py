@@ -2,7 +2,8 @@
 Placeholder sound effects for the Godot port, made from code (no downloads, nothing to license).
 Writes 16-bit mono .wav files into godot/assets/sounds, one per Sfx name. Rerun after tweaking:
 
-    python Tools/godot/make_sounds.py
+    python Tools/godot/make_sounds.py            (all)
+    python Tools/godot/make_sounds.py rifle_shoot  (just that one)
 
 Every sound is built from a few pieces: noise and tones shaped by envelopes and filters, plus a little room
 reverb. Swap any file for a real recording later; keep the name and the game picks it up.
@@ -228,7 +229,14 @@ def pluck(freq, seconds=0.6, damp=0.996):
 def build():
     s = {}
     # Guns and reloads.
-    s["rifle_shoot"] = gunshot(boom_hz=90, body_hi=4200, tail=0.4)
+    # Playtest 1: the old one boomed and smeared under rapid fire. Now a tight crack, a short punch and a
+    # quick metallic action, with only a small room tail.
+    crack = spectral(noise(0.012), lo=3000) * env(int(SR * 0.012), 0.0002, 0.004)
+    snap = spectral(noise(0.06), lo=1200, hi=7000) * env(int(SR * 0.06), 0.0003, 0.02)
+    punch = tone(0.12, 220, 90) * env(int(SR * 0.12), 0.0005, 0.04)
+    body = spectral(noise(0.15), lo=400, hi=2800) * env(int(SR * 0.15), 0.0005, 0.045)
+    action = click(4200, 0.03, 0.008)
+    s["rifle_shoot"] = reverb(drive(mix((crack, 0, 1.4), (snap, 0, 0.9), (punch, 0, 1.0), (body, 0, 0.7), (action, 0.035, 0.18)), 3.0), room=0.25, wet=0.18)
     s["shotgun_shoot"] = mix((gunshot(boom_hz=60, body_hi=2600, tail=0.7, scale=1.5), 0, 1.0),
                              (click(1800, 0.05, 0.02), 0.32, 0.25), (click(1500, 0.06, 0.025), 0.42, 0.3))   # pump
     s["dry_fire"] = click(4200, 0.05, 0.01)
@@ -302,7 +310,12 @@ def build():
 
 
 if __name__ == "__main__":
+    import sys
+    # Pass names to rewrite only those (the others would come out slightly different, since they share one
+    # random sequence): python Tools/godot/make_sounds.py rifle_shoot
+    only = set(sys.argv[1:])
     sounds = build()
     for name, x in sounds.items():
-        save(name, x)
-    print(f"wrote {len(sounds)} sounds to {os.path.normpath(OUT)}")
+        if not only or name in only:
+            save(name, x)
+    print(f"wrote {len(only) or len(sounds)} sounds to {os.path.normpath(OUT)}")

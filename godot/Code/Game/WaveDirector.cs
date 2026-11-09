@@ -289,10 +289,21 @@ public partial class WaveDirector : Node3D
 		}
 	}
 
+	int credited;
+
+	/// <summary> A kill outside the wave's own spawns (the dive's Bloobers): counts toward the current or first wave. </summary>
+	public void CreditKill()
+	{
+		Kills++;
+		if ( State == WaveState.Fighting && toSpawn > 0 ) toSpawn--;
+		else if ( State != WaveState.Fighting ) credited++;
+	}
+
 	void StartWave()
 	{
 		Wave++;
-		toSpawn = BaseZombies + ZombiesPerWave * (Wave - 1);
+		toSpawn = Math.Max( 0, BaseZombies + ZombiesPerWave * (Wave - 1) - credited );
+		credited = 0;
 		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
 		FloatRound = AnchorSnapEvery > 0 && Wave % AnchorSnapEvery == 0;
 		bossPending = BossWave;

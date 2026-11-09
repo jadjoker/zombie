@@ -32,6 +32,7 @@ public partial class Health : Node
 	public void OnDamage( DamageInfo damage )
 	{
 		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
+		if ( DockHouse.Diving && GetParent() is PlayerController or PlayerSurvivor ) return;   // can't be hurt on the way down
 		if ( DevFlags.OneShot && GetParent() is not PlayerController ) damage.Damage = MathF.Max( damage.Damage, Current );
 		Current = MathF.Max( 0f, Current - damage.Damage );
 		TimeSinceDamaged = 0f;
@@ -40,7 +41,11 @@ public partial class Health : Node
 		{
 			IsDead = true;
 			Died?.Invoke();
-			if ( GetParent() is Node3D body && body is not PlayerController ) Sfx.Play( "creature_death", body.GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
+			if ( GetParent() is Node3D body && body is not PlayerController )
+			{
+				Sfx.Play( "creature_death", body.GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
+				if ( !DockHouse.Diving ) AmmoPickup.MaybeDrop( body );   // none mid-dive: they'd land far away
+			}
 		}
 	}
 

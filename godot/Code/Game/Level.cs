@@ -35,6 +35,20 @@ public partial class Level : Node3D
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );
+		if ( settings.TryGetProperty( "stylize", out var sty ) )
+		{
+			var ink = sty.GetProperty( "ink" );
+			Player.Camera.AddChild( new GlobalStylize
+			{
+				Style = Enum.Parse<GlobalStylize.Look>( sty.GetProperty( "style" ).GetString() ),
+				Strength = sty.GetProperty( "strength" ).GetSingle(),
+				Outline = sty.GetProperty( "outline" ).GetSingle(),
+				OutlineWidth = sty.GetProperty( "outline_width" ).GetSingle(),
+				InkColor = new Color( ink[0].GetSingle(), ink[1].GetSingle(), ink[2].GetSingle() ),
+				Bands = sty.GetProperty( "bands" ).GetSingle(),
+				PixelSize = sty.GetProperty( "pixel_size" ).GetSingle(),
+			} );
+		}
 		if ( WaveDirector.Current is null ) AddChild( new WaveDirector() );
 		if ( !OS.GetCmdlineUserArgs().Contains( "--waves" ) && WaveDirector.Current is { } d ) d.SpawningPaused = true;
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );
@@ -55,6 +69,10 @@ public partial class Level : Node3D
 			AmbientLightColor = s.TryGetProperty( "ambient", out var amb ) ? Col( amb ) : new Color( 0.2f, 0.2f, 0.2f ),
 			AmbientLightEnergy = 3f,
 			TonemapMode = Godot.Environment.ToneMapper.Aces,
+			// s&box ColorAdjustments on the main camera.
+			AdjustmentEnabled = true,
+			AdjustmentContrast = 1.08f,
+			AdjustmentSaturation = 1.05f,
 			GlowEnabled = true,
 			GlowIntensity = 0.6f,
 			GlowBloom = 0.08f,

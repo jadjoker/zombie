@@ -448,7 +448,11 @@ public partial class AutoTest : Node
 		player.GlobalPosition = new Vector3( 0f, player.GlobalPosition.Y, 0f );
 		player.Velocity = Vector3.Zero;
 		var boss = MC61.Spawn( range, player.GlobalPosition + new Vector3( 0f, 160f, 500f ) * U.In, 2000f );
-		await Wait( 2.5f );
+		await Wait( 0.9f );
+		LookAt( boss.GlobalPosition );
+		await Wait( 0.1f );
+		await Shot( "mc61_spawn_in" );
+		await Wait( 1.5f );
 		LookAt( boss.GlobalPosition );
 		await Wait( 0.2f );
 		LookAt( boss.GlobalPosition );

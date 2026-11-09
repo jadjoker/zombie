@@ -1,0 +1,48 @@
+using Godot;
+
+/// <summary>
+/// Sound hooks. The s&box sounds were Facepunch cloud assets (not ours), so every place that played one calls
+/// <see cref="Play"/> with a name instead; drop a file named after it into res://assets/sounds (.ogg, .wav or .mp3)
+/// and it plays. Missing files are silent. Names: see assets/sounds/README.md.
+/// </summary>
+public static class Sfx
+{
+	static readonly Dictionary<string, AudioStream> streams = new();
+
+	static AudioStream Find( string name )
+	{
+		if ( streams.TryGetValue( name, out var s ) ) return s;
+		foreach ( var ext in new[] { "ogg", "wav", "mp3" } )
+		{
+			var path = $"res://assets/sounds/{name}.{ext}";
+			if ( ResourceLoader.Exists( path ) ) { s = GD.Load<AudioStream>( path ); break; }
+		}
+		streams[name] = s;
+		return s;
+	}
+
+	/// <summary> A sound at a point in the world (volume 0-1, pitch 1 = normal). </summary>
+	public static void Play( string name, Vector3 at, float volume = 1f, float pitch = 1f )
+	{
+		var stream = Find( name );
+		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
+		if ( stream is null || root is null ) return;
+		var player = new AudioStreamPlayer3D { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch, UnitSize = 4f };
+		root.AddChild( player );
+		player.GlobalPosition = at;
+		player.Finished += player.QueueFree;
+		player.Play();
+	}
+
+	/// <summary> A sound for the local player only (UI, own gun, wave banners). </summary>
+	public static void Play2D( string name, float volume = 1f, float pitch = 1f )
+	{
+		var stream = Find( name );
+		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
+		if ( stream is null || root is null ) return;
+		var player = new AudioStreamPlayer { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch };
+		root.AddChild( player );
+		player.Finished += player.QueueFree;
+		player.Play();
+	}
+}

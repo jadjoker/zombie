@@ -40,8 +40,9 @@ public partial class BuyStation : Node
 	public bool Press( PlayerSurvivor buyer )
 	{
 		if ( buyer is null || SoldOut ) return false;
-		if ( !CanUse( buyer ) || !buyer.TrySpend( CurrentCost ) ) return false;
+		if ( !CanUse( buyer ) || !buyer.TrySpend( CurrentCost ) ) { Sfx.Play( "deny", buyer.Controller.GlobalPosition ); return false; }
 		Apply( buyer );
+		Sfx.Play( "buy", buyer.Controller.GlobalPosition );
 		Purchases++;
 		return true;
 	}

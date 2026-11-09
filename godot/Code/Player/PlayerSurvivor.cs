@@ -91,6 +91,7 @@ public partial class PlayerSurvivor : Node
 
 	void OnHurt( DamageInfo damage )
 	{
+		if ( damage.Attacker is not PlayerAfflictions ) Sfx.Play( "hurt", damage.Position );
 		// Our own afflictions ticking (venom): just a nudge.
 		if ( damage.Attacker == this || damage.Attacker == Controller || damage.Attacker is PlayerAfflictions ) { Juice?.Shake( 0.08f ); return; }
 		Juice?.Shake( HurtShake );
@@ -105,6 +106,7 @@ public partial class PlayerSurvivor : Node
 
 	void OnDied()
 	{
+		Sfx.Play( "death", Controller.GlobalPosition + Vector3.Up * 60f * U.In );
 		Controller.UseInputControls = false;
 		Controller.UseLookControls = false;
 		Juice?.Shake( 1f );

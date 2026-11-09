@@ -207,6 +207,7 @@ public partial class WaveDirector : Node3D
 			nextWaveAt = IntermissionSeconds;
 			FloatRound = false;
 			TimeSinceWaveCleared = 0f;
+			Sfx.Play2D( "wave_cleared" );
 			var index = 0;
 			foreach ( var survivor in PlayerSurvivor.All.ToList() )
 			{
@@ -298,6 +299,7 @@ public partial class WaveDirector : Node3D
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
 		TimeSinceWaveStarted = 0f;
+		Sfx.Play2D( "wave_start" );
 	}
 
 	// ---- Dev tools ----

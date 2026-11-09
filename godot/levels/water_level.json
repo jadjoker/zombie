@@ -39,7 +39,20 @@
    0.38,
    0.48,
    1.0
-  ]
+  ],
+  "stylize": {
+   "style": "Flat",
+   "strength": 1,
+   "outline": 0.9,
+   "outline_width": 1.6,
+   "ink": [
+    0.05,
+    0.05,
+    0.08
+   ],
+   "bands": 4,
+   "pixel_size": 3
+  }
  },
  "objects": [
   {

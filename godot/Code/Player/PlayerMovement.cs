@@ -123,6 +123,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		Controller.WalkSpeed = MoveSpeed;
 		Controller.GroundOverride = () => OverridesGround ? GroundVelocity : null;
 		Controller.Landed += OnLanded;
+		Controller.Jumped += () => Sfx.Play( "jump", Controller.GlobalPosition, 0.6f );
 		AirJumpsLeft = AirJumps;
 		Stamina = MaxStamina;
 		ProcessPhysicsPriority = -10;   // runs before the controller moves, like s&box OnFixedUpdate before the physics step
@@ -522,6 +523,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 	void OnLanded( float distance, Vector3 impactVelocity )
 	{
 		var hardness = MathX.Clamp( -impactVelocity.Y / (700f * U.In), 0f, 1f );
+		if ( hardness > 0.1f ) Sfx.Play( "land", Controller.GlobalPosition, hardness );
 		landDip = MathF.Max( landDip, hardness * 6f );
 		if ( hardness > 0.25f ) Juice?.Shake( hardness * 0.3f );
 	}

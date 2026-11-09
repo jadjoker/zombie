@@ -64,6 +64,7 @@ public static class Shapes
 	/// <summary> Sets a piece's colour (s&box ModelRenderer.Tint). </summary>
 	public static void Tint( MeshInstance3D mesh, Color color )
 	{
+		if ( mesh?.MaterialOverride is ShaderMaterial sm ) { sm.SetShaderParameter( "tint", color ); return; }
 		if ( mesh?.MaterialOverride is StandardMaterial3D m )
 		{
 			m.AlbedoColor = color;

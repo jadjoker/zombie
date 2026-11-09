@@ -169,7 +169,7 @@ public partial class PlayerWeapon : Node
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
-			// (dry fire: no sound yet)
+			else Sfx.Play2D( "dry_fire" );
 		}
 	}
 
@@ -200,6 +200,7 @@ public partial class PlayerWeapon : Node
 	void Shoot()
 	{
 		TimeSinceShot = 0f;
+		Sfx.Play2D( $"{ModelName}_shoot" );
 		Ammo--;
 		var camera = controller.Camera;
 		var basis = camera.GlobalBasis;
@@ -244,6 +245,7 @@ public partial class PlayerWeapon : Node
 			var wasAlive = !shootable.IsDead;
 			if ( wasAlive ) TimeSinceHit = 0f;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
+			Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
 			shootable.ReceiveShot( CurrentDamage, tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
 			if ( wasAlive && shootable.IsDead ) TimeSinceKill = 0f;
 			return;
@@ -264,6 +266,7 @@ public partial class PlayerWeapon : Node
 		}
 
 		Fx.ImpactWorld( tr.HitPosition, tr.Normal );
+		Sfx.Play( "hit_world", tr.HitPosition, 0.6f );
 	}
 
 	public void MarkKill() => TimeSinceKill = 0f;
@@ -273,6 +276,7 @@ public partial class PlayerWeapon : Node
 	{
 		if ( IsReloading || Ammo >= MagazineSize || Reserve <= 0 ) return;
 		IsReloading = true;
+		Sfx.Play2D( "mag_out" );
 		if ( ShellReload )
 		{
 			firstShell = Ammo == 0;
@@ -312,6 +316,7 @@ public partial class PlayerWeapon : Node
 	void FinishReload()
 	{
 		IsReloading = false;
+		Sfx.Play2D( "mag_in" );
 		var taken = Math.Min( MagazineSize - Ammo, Reserve );
 		Ammo += taken;
 		Reserve -= taken;

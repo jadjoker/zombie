@@ -369,11 +369,38 @@ public partial class DevMenu : CanvasLayer
 		}
 
 		// ======== LOOK
-		if ( Sec( "Look", "Lighting", "sun lighting time of day morning noon dusk night" ) )
+		var stylize = GlobalStylize.Current;
+		var lookNames = string.Join( " ", Enum.GetValues<GlobalStylize.Look>().Select( LookName ) );
+		if ( Sec( "Look", "Style", "look style shader post toon flat bands ink outline " + lookNames ) )
 		{
-			Section( "Lighting" );
-			Row( "Sun" );
-			foreach ( var preset in SunPresets ) { var p = preset; Pick( p, sunPreset == p, () => SetSun( p ) ); }
+			Section( "Style" );
+			if ( Show( "Style", "look style shader post toon flat " + lookNames ) )
+			{
+				Row( "Look" );
+				foreach ( var look in Enum.GetValues<GlobalStylize.Look>() ) { var l = look; Pick( LookName( l ), stylize?.Style == l, () => { if ( stylize is not null ) stylize.Style = l; } ); }
+			}
+			if ( Show( "Style", "bands ink outline" ) )
+			{
+				Row( "Bands" );
+				foreach ( var n in BandCounts ) { var v = n; Pick( $"{v}", stylize is not null && stylize.Bands == v, () => { if ( stylize is not null ) stylize.Bands = v; } ); }
+				Row( "Ink" );
+				foreach ( var o in InkLevels ) { var v = o; Pick( v == 0f ? "None" : $"{v}", stylize is not null && MathF.Abs( stylize.Outline - v ) < 0.01f, () => { if ( stylize is not null ) stylize.Outline = v; } ); }
+			}
+		}
+
+		if ( Sec( "Look", "Lighting and effects", "sun lighting time of day morning noon dusk night skin effect dissolve ghost holo iridescent" ) )
+		{
+			Section( "Lighting and effects" );
+			if ( Show( "Lighting and effects", "sun lighting time of day " + string.Join( " ", SunPresets ) ) )
+			{
+				Row( "Sun" );
+				foreach ( var preset in SunPresets ) { var p = preset; Pick( p, sunPreset == p, () => SetSun( p ) ); }
+			}
+			if ( Show( "Lighting and effects", "skin effect creature " + string.Join( " ", SkinFx ) ) )
+			{
+				Row( "Creature skin" );
+				foreach ( var fx in SkinFx ) { var v = fx; Pick( v, skinFx == v, () => SetSkinFx( v ) ); }
+			}
 		}
 
 		if ( Sec( "Look", "Camera and screenshots", "camera fov free camera hide hud hide weapon screenshot" ) )
@@ -454,6 +481,37 @@ public partial class DevMenu : CanvasLayer
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
 	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };
 	static readonly string[] SunPresets = { "Default", "Morning", "Noon", "Dusk", "Night" };
+	static readonly float[] BandCounts = { 2f, 3f, 4f, 6f };
+	static readonly float[] InkLevels = { 0f, 0.5f, 0.9f };
+	static readonly string[] SkinFx = { "Off", "Dissolve", "Ghost", "Holo", "Iridescent" };
+	string skinFx = "Off";
+	readonly Dictionary<MeshInstance3D, Material> skinOriginals = new();
+
+	static string LookName( GlobalStylize.Look look ) => look switch
+	{
+		GlobalStylize.Look.InkOutlines => "Ink",
+		GlobalStylize.Look.Painterly => "Paint",
+		GlobalStylize.Look.Storybook => "Book",
+		GlobalStylize.Look.Watercolor => "Water",
+		_ => look.ToString(),
+	};
+
+	/// <summary> Creature skin shaders (experiment): swaps the creature body skins, puts them back on Off. </summary>
+	void SetSkinFx( string fx )
+	{
+		skinFx = fx;
+		foreach ( var (r, original) in skinOriginals ) if ( IsInstanceValid( r ) ) r.MaterialOverride = original;
+		skinOriginals.Clear();
+		if ( fx == "Off" ) return;
+		foreach ( var part in CreaturePart.All )
+			foreach ( var r in part.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+			{
+				// Only the body skins (textured creature materials), so eyes and props keep their look.
+				if ( skinOriginals.ContainsKey( r ) || r.MaterialOverride is not StandardMaterial3D { AlbedoTexture: not null } current ) continue;
+				skinOriginals[r] = current;
+				r.MaterialOverride = FxMaterials.ByName( fx, current.AlbedoColor );
+			}
+	}
 
 	// ---- actions ----
 

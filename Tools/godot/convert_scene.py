@@ -139,6 +139,10 @@ def convert(name):
             elif t == "GradientFog":
                 settings["fog"] = {"color": color(c.get("Color")), "start": c.get("StartDistance", 0) * IN, "end": c.get("EndDistance", 4000) * IN,
                                    "falloff": c.get("FalloffExponent", 1), "height": c.get("Height", 0) * IN}
+            elif t == "GlobalStylize":
+                ink = [float(v) for v in str(c.get("InkColor", "0.05,0.05,0.08,1")).split(",")]
+                settings["stylize"] = {"style": c.get("Style", "Flat"), "strength": c.get("Strength", 1), "outline": c.get("Outline", 0.9),
+                                       "outline_width": c.get("OutlineWidth", 1.6), "ink": ink[:3], "bands": c.get("Bands", 4), "pixel_size": c.get("PixelSize", 3)}
             elif t == "SkyBox2D":
                 settings["sky_tint"] = color(c.get("Tint"))
             elif t == "DockHouse":

@@ -38,7 +38,7 @@ public partial class GoreSystem : Node
 		foreach ( var old in gibs.Where( g => !g.IsFading ).Take( Math.Max( 0, excess ) ).ToList() ) old.BeginFade();
 	}
 
-	public void Squelch( Vector3 position, float loudness = 1f, float pitch = 1f ) { }
+	public void Squelch( Vector3 position, float loudness = 1f, float pitch = 1f ) => Sfx.Play( "splat", position, loudness, pitch );
 
 	// ---- Goo ----
 

@@ -217,13 +217,13 @@ public partial class PlayerRig : Node
 			for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
 			{
 				var slot = mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
+				if ( slot == "glow" ) { mesh.SetSurfaceOverrideMaterial( i, FxMaterials.GlowBulb( CharacterSkins.GlowOf( appliedSkin ), 2.5f ) ); continue; }
 				StandardMaterial3D m = slot switch
 				{
 					"frame" => Shapes.Material( paint[0], "smooth" ),
 					"body" => Shapes.Material( paint[1], "smooth" ),
 					"accent" => Shapes.Material( paint[2], "smooth" ),
 					"metal" => Shapes.Material( paint[3], "smooth" ),
-					"glow" => new StandardMaterial3D { AlbedoColor = CharacterSkins.GlowOf( appliedSkin ), EmissionEnabled = true, Emission = CharacterSkins.GlowOf( appliedSkin ), EmissionEnergyMultiplier = 2.5f },
 					_ => null,
 				};
 				if ( m is null ) continue;

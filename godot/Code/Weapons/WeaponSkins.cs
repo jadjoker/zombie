@@ -87,6 +87,15 @@ public static class WeaponSkins
 	/// <summary> Puts a skin on every mesh under a model by matching surface material names to slots. </summary>
 	public static void Apply( Node model, string skin )
 	{
+		if ( skin is "Iridescent" or "Hologram" )
+		{
+			var fx = skin == "Iridescent" ? (Material)FxMaterials.Iridescent( Colors.White ) : FxMaterials.Hologram();
+			foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+					if ( Array.IndexOf( new[] { "metal", "metal2", "accent", "glove", "sleeve" }, mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName ?? "" ) >= 0 )
+						mesh.SetSurfaceOverrideMaterial( i, fx );
+			return;
+		}
 		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
 			for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )

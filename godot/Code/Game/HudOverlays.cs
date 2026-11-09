@@ -58,8 +58,8 @@ public partial class HudOverlays : Control
 		boss.SetAnchorsPreset( LayoutPreset.FullRect );
 		AddChild( boss );
 		speech = Text( this, 64, new Color( "ff4fd8" ) );
-		speech.SetAnchorsPreset( LayoutPreset.CenterTop );
-		speech.AnchorTop = speech.AnchorBottom = 0.26f; speech.GrowHorizontal = GrowDirection.Both;
+		speech.AnchorLeft = 0f; speech.AnchorRight = 1f; speech.AnchorTop = speech.AnchorBottom = 0.26f;
+		speech.OffsetLeft = speech.OffsetRight = 0f; speech.OffsetBottom = 80f;
 		speech.AddThemeColorOverride( "font_outline_color", new Color( 1f, 0f, 0.67f, 0.6f ) );
 		speech.AddThemeConstantOverride( "outline_size", 14 );
 

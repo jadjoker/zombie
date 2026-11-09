@@ -37,6 +37,11 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	public float TailHealth = 60f;
 	public float HandScale = 1.2f;
 	public float EyeHealth = 350f;
+	public enum Surface { Plain, RimGlow, Sheen }
+	/// <summary> How his ghostly body (and tail) is shaded: plain, a blue rim glow with drifting mist, or a rainbow sheen. </summary>
+	public Surface Look = Surface.RimGlow;
+	/// <summary> He scans in from the floor up as a hologram for this long when he appears (0 = off). </summary>
+	public float SpawnInTime = 1.8f;
 	/// <summary> Debug: false leaves the hand rigs in their rest pose. </summary>
 	public static bool PoseHands = true;
 
@@ -178,6 +183,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		seenState = State;
 		health.Died += OnDied;
 		lastRigPosition = lastHandRigPosition = GlobalPosition;
+		sinceSpawned = 0f;
 		Build();
 	}
 
@@ -269,6 +275,49 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	}
 
 	static readonly Dictionary<string, PackedScene> sculpts = new();
+	readonly List<MeshInstance3D> styleRenderers = new();
+	readonly List<(MeshInstance3D Renderer, Material Original)> spawnSaved = new();
+	ShaderMaterial hologramMaterial;
+	TimeSince sinceSpawned = 0f;
+	bool spawnDone;
+
+	Material LookMaterial( Color color ) => Look switch
+	{
+		Surface.RimGlow => FxMaterials.Ghost( color ),
+		Surface.Sheen => FxMaterials.Iridescent( color ),
+		_ => Shapes.Material( color, "smooth" ),
+	};
+
+	/// <summary> Puts the chosen surface shader on the ghost body and tail. </summary>
+	public void ApplyLook()
+	{
+		foreach ( var r in styleRenderers ) if ( IsInstanceValid( r ) ) r.MaterialOverride = LookMaterial( GhostBody );
+	}
+
+	/// <summary> The scan-in: every piece wears the hologram shader while a glowing line sweeps up him, then the real materials return. </summary>
+	void UpdateSpawnIn()
+	{
+		if ( spawnDone ) return;
+		if ( SpawnInTime <= 0f ) { spawnDone = true; return; }
+		if ( hologramMaterial is null )
+		{
+			hologramMaterial = FxMaterials.Hologram();
+			foreach ( var part in parts )
+			{
+				if ( part is null ) continue;
+				foreach ( var (renderer, _) in part.Renderers )
+					if ( IsInstanceValid( renderer ) ) spawnSaved.Add( (renderer, renderer.MaterialOverride) );
+			}
+			foreach ( var (renderer, _) in spawnSaved ) renderer.MaterialOverride = hologramMaterial;
+		}
+		var progress = MathX.Clamp( (float)sinceSpawned / SpawnInTime, 0f, 1f );
+		var centre = parts[Torso].Go.GlobalPosition.Y / U.In;
+		hologramMaterial.SetShaderParameter( "reveal_z", MathX.Lerp( centre - 60f * Size, centre + 95f * Size, progress ) );
+		if ( progress < 1f ) return;
+		foreach ( var (renderer, original) in spawnSaved ) if ( IsInstanceValid( renderer ) ) renderer.MaterialOverride = original;
+		spawnSaved.Clear();
+		spawnDone = true;
+	}
 
 	void Sculpt( Part part, string model, Color color, bool ghost = false, StandardMaterial3D material = null )
 	{
@@ -279,18 +328,9 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		part.Go.AddChild( node );
 		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
-			var m = material ?? Shapes.Material( color, "smooth" );
-			if ( ghost )
-			{
-				// Stand-in for fx_ghost (step 7c): a blue rim glow.
-				m.RimEnabled = true;
-				m.Rim = 0.9f;
-				m.RimTint = 0.2f;
-				m.EmissionEnabled = true;
-				m.Emission = new Color( 0.25f, 0.4f, 0.8f );
-				m.EmissionEnergyMultiplier = 0.25f;
-			}
-			mesh.MaterialOverride = m;
+			// His ghostly body and tail wear the chosen surface look (RimGlow: fx_ghost).
+			mesh.MaterialOverride = ghost ? LookMaterial( color ) : material ?? Shapes.Material( color, "smooth" );
+			if ( ghost ) styleRenderers.Add( mesh );
 			part.Renderers.Add( (mesh, color) );
 		}
 	}
@@ -398,6 +438,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		if ( State != seenState ) { seenState = State; localStateTime = 0f; }
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Torso ) ) CreatureGore.BleedTrail( parts[Torso].Go.GlobalPosition, Goo, health.Fraction, ref bleedTimer );
+		UpdateSpawnIn();
 		Animate( dt );
 		DrawBeam();
 		Tint( dt );
@@ -669,7 +710,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
 			foreach ( var (renderer, tint) in part.Renderers )
 			{
-				if ( !IsInstanceValid( renderer ) ) continue;
+				if ( !IsInstanceValid( renderer ) || !spawnDone ) continue;
 				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
 				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
 				// The eye glows as it charges (after the tint, which would set its glow to its colour).

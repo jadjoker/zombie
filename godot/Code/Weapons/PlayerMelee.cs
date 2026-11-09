@@ -57,6 +57,7 @@ public partial class PlayerMelee : Node
 	public void TestSwing()
 	{
 		Swing = 0f;
+		Sfx.Play2D( "axe_swing" );
 		struck = false;
 		leftSwing = !leftSwing;
 		hitThisSwing.Clear();

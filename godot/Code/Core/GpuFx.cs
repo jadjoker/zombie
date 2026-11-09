@@ -22,7 +22,7 @@ public static class GpuFx
 			Emitting = true,
 			LocalCoords = false,
 			ProcessMaterial = new ShaderMaterial { Shader = GD.Load<Shader>( $"res://assets/shaders/{process}.gdshader" ) },
-			DrawPass1 = new QuadMesh { Size = Vector2.One, Material = new ShaderMaterial { Shader = GD.Load<Shader>( $"res://assets/shaders/{draw}.gdshader" ) } },
+			DrawPass1 = new QuadMesh { Size = Vector2.One, Material = SpriteMaterial( draw ) },
 			VisibilityAabb = new Aabb( -Vector3.One * 5000f, Vector3.One * 10000f ),
 			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
 		};
@@ -33,6 +33,16 @@ public static class GpuFx
 	const GpuParticles3D.EmitFlags Flags = GpuParticles3D.EmitFlags.Position | GpuParticles3D.EmitFlags.Velocity | GpuParticles3D.EmitFlags.Color | GpuParticles3D.EmitFlags.Custom;
 
 	/// <summary> One bubble (size in s&box units, life and delay in seconds). </summary>
+	/// <summary> The draw material, with its Blender-rendered sprite (Tools/blender/sprites.py) when there is one. </summary>
+	static ShaderMaterial SpriteMaterial( string draw )
+	{
+		var m = new ShaderMaterial { Shader = GD.Load<Shader>( $"res://assets/shaders/{draw}.gdshader" ) };
+		var file = draw == "sprite_bubble" ? "bubble" : "puff";
+		var path = $"res://assets/textures/fx/{file}.png";
+		if ( ResourceLoader.Exists( path ) ) { m.SetShaderParameter( "sprite", GD.Load<Texture2D>( path ) ); m.SetShaderParameter( "use_sprite", true ); }
+		return m;
+	}
+
 	public static void Bubble( Vector3 position, float size, float delay, float life )
 	{
 		var p = Pool( ref bubbles, "Bubbles", "bubbles", "sprite_bubble", 4000, 4f );

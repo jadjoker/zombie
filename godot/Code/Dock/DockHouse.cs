@@ -83,6 +83,17 @@ public partial class DockHouse : Node3D
 		return go;
 	}
 
+	/// <summary> A Blender prop (Tools/blender/dock_props.py) under a parent, or null if the model is missing. </summary>
+	static Node3D Prop( Node3D parent, string file, Vector3 localPosition )
+	{
+		var path = $"res://assets/models/dock/{file}.glb";
+		if ( !ResourceLoader.Exists( path ) ) return null;
+		var prop = GD.Load<PackedScene>( path ).Instantiate<Node3D>();
+		parent.AddChild( prop );
+		prop.Position = localPosition;
+		return prop;
+	}
+
 	void Build()
 	{
 		root = new Node3D { Name = "Dock" };
@@ -105,8 +116,16 @@ public partial class DockHouse : Node3D
 			barrel.GlobalPosition = U.Sbox( o.X + 120f + i * 70f, o.Y + (i % 2 == 0 ? -1f : 1f) * (170f + i * 25f), SurfaceHeight + 20f );
 			barrel.ResetPhysicsInterpolation();
 			var size = new Vector3( 26f, 34f, 26f ) * U.In;
-			barrel.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = new StandardMaterial3D { AlbedoColor = i % 3 == 0 ? Roof : WoodPale } } );
-			barrel.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = size } } );
+			if ( Prop( barrel, "barrel", Vector3.Zero ) is { } model )
+			{
+				model.Rotation = new Vector3( 0f, Rng.Float( 0f, MathF.Tau ), 0f );
+				barrel.AddChild( new CollisionShape3D { Shape = new CylinderShape3D { Radius = size.X * 0.5f, Height = size.Y } } );
+			}
+			else
+			{
+				barrel.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = new StandardMaterial3D { AlbedoColor = i % 3 == 0 ? Roof : WoodPale } } );
+				barrel.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = size } } );
+			}
 			barrel.AddChild( new WaveFloater { Surface = SurfaceHeight * U.In } );
 		}
 
@@ -130,10 +149,22 @@ public partial class DockHouse : Node3D
 
 		Box( "Diving Board", new Vector3( o.X + PierLength + 22f, o.Y, deck + 4f ), new Vector3( 70f, 34f, 3f ), new Color( 0.92f, 0.9f, 0.84f ), solid: true, rotation: new Angles( -4f, 0f, 0f ) );
 		Box( "Board Stand", new Vector3( o.X + PierLength - 4f, o.Y, deck + 1f ), new Vector3( 14f, 30f, 6f ), Roof );
-		Box( "Rope Coil", new Vector3( o.X + PierLength - 40f, o.Y + 40f, deck + 4f ), new Vector3( 18f, 18f, 5f ), Rope );
+		if ( Prop( root, "rope_coil", U.Sbox( o.X + PierLength - 40f, o.Y + 40f, deck + 1.5f ) ) is null )
+			Box( "Rope Coil", new Vector3( o.X + PierLength - 40f, o.Y + 40f, deck + 4f ), new Vector3( 18f, 18f, 5f ), Rope );
 		Box( "Lamp Post", new Vector3( o.X + PierLength - 30f, o.Y - 50f, deck + 40f ), new Vector3( 5f, 5f, 80f ), WoodDark );
-		var lamp = Box( "Lamp", new Vector3( o.X + PierLength - 30f, o.Y - 50f, deck + 82f ), new Vector3( 10f, 10f, 10f ), new Color( 1f, 0.85f, 0.5f ) );
-		if ( lamp.GetChild( 0 ) is MeshInstance3D lm && lm.MaterialOverride is StandardMaterial3D lmat ) { lmat.EmissionEnabled = true; lmat.Emission = new Color( 1f, 0.85f, 0.5f ); lmat.EmissionEnergyMultiplier = 2f; }
+		if ( Prop( root, "lamp", U.Sbox( o.X + PierLength - 30f, o.Y - 50f, deck + 79f ) ) is { } lantern )
+		{
+			// Its glass glows.
+			var lit = new StandardMaterial3D { AlbedoColor = new Color( 1f, 0.85f, 0.5f ), EmissionEnabled = true, Emission = new Color( 1f, 0.85f, 0.5f ), EmissionEnergyMultiplier = 2f };
+			foreach ( var mesh in lantern.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+					if ( mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName == "LampGlow" ) mesh.SetSurfaceOverrideMaterial( i, lit );
+		}
+		else
+		{
+			var lamp = Box( "Lamp", new Vector3( o.X + PierLength - 30f, o.Y - 50f, deck + 82f ), new Vector3( 10f, 10f, 10f ), new Color( 1f, 0.85f, 0.5f ) );
+			if ( lamp.GetChild( 0 ) is MeshInstance3D lm && lm.MaterialOverride is StandardMaterial3D lmat ) { lmat.EmissionEnabled = true; lmat.Emission = new Color( 1f, 0.85f, 0.5f ); lmat.EmissionEnergyMultiplier = 2f; }
+		}
 		var light = new OmniLight3D { LightColor = new Color( 1f, 0.75f, 0.45f ), LightEnergy = 2.5f, OmniRange = 500f * U.In };
 		root.AddChild( light );
 		light.GlobalPosition = U.Sbox( o.X + PierLength - 30f, o.Y - 50f, deck + 80f );

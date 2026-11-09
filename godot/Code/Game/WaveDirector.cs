@@ -117,6 +117,13 @@ public partial class WaveDirector : Node3D
 			c.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return c;
 		},
+		[EnemyKind.Boss] = ( d, at, health ) =>
+		{
+			var m = MC61.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * d.BossSpawnHeight * U.In, health );
+			m.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
+			m.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return m;
+		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
 			var s = SeaSpider.Spawn( d.GetTree().CurrentScene, at, health );
@@ -360,6 +367,7 @@ public partial class WaveDirector : Node3D
 		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
 		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
 		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
+		foreach ( var m in MC61.All.ToList() ) m.QueueFree();
 		alive.Clear();
 		Wave = 0;
 		Kills = 0;

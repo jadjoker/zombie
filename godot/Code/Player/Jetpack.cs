@@ -449,5 +449,6 @@ public static class CreatureRegistry
 		foreach ( var s in SeaSpider.All ) if ( !s.IsDead && !s.IsAlly ) yield return s;
 		foreach ( var q in Squilien.All ) if ( !q.IsDead ) yield return q;
 		foreach ( var c in JunkCrab.All ) if ( !c.IsDead ) yield return c;
+		foreach ( var m in MC61.All ) if ( !m.IsDead ) yield return m;
 	}
 }

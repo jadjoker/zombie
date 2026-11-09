@@ -205,6 +205,10 @@ public partial class AutoTest : Node
 		inventory.Select( inventory.Weapons[0] );
 		var range = GetTree().CurrentScene;
 
+		var userArgs = OS.GetCmdlineUserArgs();
+		MC61.PoseHands = !userArgs.Contains( "--rest-hands" );
+		if ( userArgs.Contains( "--boss" ) ) goto Boss;
+
 		// Squilien: two hovering in front.
 		player.EyeAngles = new Angles( -10f, 180f, 0f );
 		for ( var k = 0; k < 2; k++ )
@@ -286,6 +290,76 @@ public partial class AutoTest : Node
 		for ( var k = 0; k < 40; k++ ) { var c2 = JunkCrab.All.LastOrDefault(); if ( c2 is not null ) LookAt( c2.GlobalPosition ); await Wait( 0.1f ); }
 		GD.Print( $"[autotest] crab pinch: health {before:0} to {survivor.Health.Current:0}" );
 		await Shot( "crab_pinch" );
+
+	Boss:
+		// MC61: spawn, look at him, run each move, then shoot the hat and eye off and kill him.
+		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
+		survivor.Health.Invulnerable = true;
+		player.GlobalPosition = new Vector3( 0f, player.GlobalPosition.Y, 0f );
+		player.Velocity = Vector3.Zero;
+		var boss = MC61.Spawn( range, player.GlobalPosition + new Vector3( 0f, 160f, 500f ) * U.In, 2000f );
+		await Wait( 2.5f );
+		LookAt( boss.GlobalPosition );
+		await Wait( 0.2f );
+		LookAt( boss.GlobalPosition );
+		await Shot( "mc61_float" );
+		DevFlags.FreezeEnemies = true;
+		var bf = -boss.GlobalBasis.Z;
+		player.GlobalPosition = (boss.GlobalPosition + bf * 200f * U.In).WithY( player.GlobalPosition.Y );
+		player.Velocity = Vector3.Zero;
+		LookAt( boss.GlobalPosition + Vector3.Up * 20f * U.In );
+		await Wait( 0.4f );
+		LookAt( boss.GlobalPosition + Vector3.Up * 20f * U.In );
+		await Shot( "mc61_face" );
+		var handL = CreaturePart.All.First( p => p.Creature == boss && p.Name.ToString().Contains( "Hand L" ) );
+		// Straight on at hand height (the camera floats; physics is frozen for the creature only, so pin the player).
+		player.Scripted = true;
+		player.GlobalPosition = handL.GlobalPosition + bf * 45f * U.In - Vector3.Up * 64f * U.In;
+		LookAt( handL.GlobalPosition );
+		await Wait( 0.3f );
+		LookAt( handL.GlobalPosition );
+		await Shot( "mc61_hand" );
+		var bs = boss.GlobalBasis.X;
+		player.GlobalPosition = handL.GlobalPosition - bs * 45f * U.In - Vector3.Up * 64f * U.In;
+		LookAt( handL.GlobalPosition );
+		await Wait( 0.3f );
+		LookAt( handL.GlobalPosition );
+		await Shot( "mc61_hand_side" );
+		player.Scripted = false;
+		player.GlobalPosition = (boss.GlobalPosition + bf * 200f * U.In).WithY( player.GlobalPosition.Y );
+		DevFlags.FreezeEnemies = false;
+		boss.ForceState( MC61.Mode.Charge );
+		await Wait( 1.2f );
+		await Shot( "mc61_charge" );
+		await Wait( 1.2f );
+		await Shot( "mc61_beam" );
+		await Wait( 2.6f );
+		boss.ForceState( MC61.Mode.Cards );
+		await Wait( 0.4f );
+		await Shot( "mc61_cards_hold" );
+		await Wait( 0.7f );
+		await Shot( "mc61_cards" );
+		await Wait( 1.2f );
+		boss.ForceState( MC61.Mode.Dance );
+		await Wait( 1.2f );
+		LookAt( boss.GlobalPosition );
+		await Wait( 0.1f );
+		await Shot( "mc61_dance" );
+		await Wait( 3.5f );
+		DevFlags.FreezeEnemies = true;
+		var bweapon = inventory.Current;
+		var hatPart = CreaturePart.All.FirstOrDefault( p => p.Creature == boss && p.Name.ToString().Contains( "Hat" ) );
+		for ( var k = 0; k < 4 && hatPart is not null && IsInstanceValid( hatPart ); k++ ) { LookAt( hatPart.GlobalPosition ); bweapon.TestFire(); await Wait( 0.13f ); }
+		var eyePart = CreaturePart.All.FirstOrDefault( p => p.Creature == boss && p.Name.ToString().Contains( "Eye" ) );
+		for ( var k = 0; k < 14 && eyePart is not null && IsInstanceValid( eyePart ) && !boss.IsDead; k++ ) { LookAt( eyePart.GlobalPosition ); bweapon.TestFire(); await Wait( 0.13f ); }
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] mc61 after hat and eye: health {boss.Health?.Current:0} line {boss.Line}" );
+		await Shot( "mc61_cut" );
+		boss.Health.OnDamage( new DamageInfo { Damage = 99999f, Position = boss.GlobalPosition, Origin = player.GlobalPosition, Attacker = player } );
+		DevFlags.FreezeEnemies = false;
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] mc61 dead {boss.IsDead}" );
+		await Shot( "mc61_dead" );
 
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();

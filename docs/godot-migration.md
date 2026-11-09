@@ -61,7 +61,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [ ] Pull tuning numbers (weapon stats, creature stats, wave tables, dive/jetpack values) out of code into one data
       file per system, so they move as data rather than being hunted through scripts.
 - [ ] Add glTF export next to FBX in `Tools/blender/creature_helpers.py` and the weapon scripts.
-- [ ] Decide what not to port: the zombies (the game is now sea creatures) and the forest/indoor maps are candidates.
+- [x] Decide what not to port: the zombies (citizen model, off in s&box too). Forest/indoor maps: decide in step 9.
 - [ ] Write the feature parity checklist (below) into the GitHub issue.
 
 ## Progress (keep this current: the auto-continue job reads it)
@@ -70,7 +70,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [x] 4. Bloober end to end + WaveDirector + Health + basic HUD (gore detail still to do: mesh dents, s&box GooJet look, decals art)
 - [x] 5. Water level: seabed map, WaterFeel, Jetpack/surge, Sea Spider ally (jet power bar and surge HUD come with the full HUD in 7)
 - [x] 6. Dock, dive, crater, surface waves (water shader ported to water.gdshader)
-- [ ] 7. Squilien, Junk Crab, MC61, zombies (if kept), skins, dev menu, buy stations, afflictions, full HUD
+- [x] 7. Squilien, Junk Crab, MC61, skins, dev menu, buy stations, afflictions, full HUD (zombies dropped: citizen model; MC61 ghost look and spawn-in hologram come with 7c)
 - [ ] 7b. Robot third-person model + animation set, world gun, PlayerRig poses
 - [ ] 7c. Shaders (water, ghost, dissolve, hologram, iridescent, glowbulb, stylize looks), sounds hooks
 - [ ] 8. Upgrades: real ragdolls, GPU particles, ocean shader

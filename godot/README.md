@@ -39,3 +39,12 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
 - Dock: `DockHouse` (build, physics dive, tumbles, landing ragdoll, impact), `water.gdshader` + `WaterWaves`, `WaveFloater`,
   `WaterSurfaceFx`, `SplashFx`, `DiveHands`, `DiveRush`, `DiveCrater` (ground-hugging mesh, hot core), `DebrisChunk`,
   `SandCloud`, dive HUD in `GameHud`.
+- Step 7: `Squilien` + `InkBall`, `JunkCrab`, `MC61` (skinned hands curled by code, painted live eye, beam, card rings,
+  worm dance) + `Card` curses, `BuyStation` + `PlayerUse` (E), `HudOverlays` (hurt/venom/burn/slow glows from
+  `vignette.gdshader`, ink blots, stamina pips, jet bar, slam flash, surge lines, boss bar and speech, buy prompt),
+  `DevMenu` (P: tabs, search, spawning and placing, cheats, skins, noclip, free camera, FOV, sun, time scale, travel,
+  stats), `CharacterSkins` (data; applied by the robot in 7b).
+- Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
+  The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
+- Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),
+  `--stations` (water level: buy stations and HUD overlays).

@@ -221,6 +221,7 @@ public partial class DockHouse : Node3D
 	{
 		var velocity = controller.Velocity / U.In;
 		phase = Phase.Torpedo;
+		Sfx.Play2D( "dive_whoosh", 0.8f );
 		phaseTime = 0f;
 		splashed = false;
 		Diving = true;
@@ -411,6 +412,7 @@ public partial class DockHouse : Node3D
 	void Impact( PlayerSurvivor player, Vector3 at, float speed )
 	{
 		var power = MathX.Clamp( speed / DiveBoostSpeed, 0.4f, 1f );
+		Sfx.Play( "dive_impact", at, 0.7f + 0.3f * power );
 		var radius = 170f + 100f * power;
 		DiveCrater.Build( this, at, power );
 

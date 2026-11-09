@@ -42,6 +42,7 @@ public partial class PopProbe : Node
 		Dump( "spike", spikes );
 		Dump( "flash", flashes );
 		if ( spawnPops.Count + spikes.Count + flashes.Count == 0 ) GD.Print( "[pops] none" );
+		GD.Print( "[sounds] " + string.Join( ", ", Sfx.Requested.OrderBy( x => x.Key ).Select( x => $"{x.Key} x{x.Value.Count}{(x.Value.Found ? "" : " MISSING")}" ) ) );
 	}
 
 	static string Label( Node n )

@@ -43,6 +43,8 @@ public partial class BuyStation : Node
 		if ( !CanUse( buyer ) || !buyer.TrySpend( CurrentCost ) ) { Sfx.Play( "deny", buyer.Controller.GlobalPosition ); return false; }
 		Apply( buyer );
 		Sfx.Play( "buy", buyer.Controller.GlobalPosition );
+		if ( Kind == BuyStationKind.Health ) Sfx.Play2D( "heal", 0.6f );
+		else if ( Kind == BuyStationKind.Ammo ) Sfx.Play2D( "mag_in", 0.7f );
 		Purchases++;
 		return true;
 	}

@@ -123,7 +123,10 @@ public partial class JunkCrab : Node3D, ICreature
 		health.Died += OnDied;
 		var down = Trace.Ray( this, GlobalPosition + Vector3.Up * 40f * U.In, GlobalPosition + Vector3.Down * 4000f * U.In, Layers.World );
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
+		agent?.Snap();
 		Build( hue );
+		// Built after this frame's update, so hide it until the first pose (the claws sat out of place for a frame).
+		if ( rig is not null ) rig.Visible = false;
 	}
 
 	// ---- Building ----
@@ -362,6 +365,7 @@ public partial class JunkCrab : Node3D, ICreature
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
 		Animate( dt );
 		Tint( dt );
+		rig.Visible = true;
 	}
 
 	void Animate( float dt )
@@ -481,6 +485,7 @@ public partial class JunkCrab : Node3D, ICreature
 
 	void Pinch( PlayerSurvivor target )
 	{
+		Sfx.Play( "crab_snap", GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
 		var damage = ClawDamage * (ClawsLeft switch { 2 => 1f, 1 => 0.7f, _ => 0.4f });
 		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 20f * U.In, Origin = GlobalPosition } );
 	}

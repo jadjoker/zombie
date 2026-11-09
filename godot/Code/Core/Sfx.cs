@@ -9,6 +9,16 @@ public static class Sfx
 {
 	static readonly Dictionary<string, AudioStream> streams = new();
 
+	/// <summary> How often each name was asked for this run, and whether it had a file (for tests). </summary>
+	public static readonly Dictionary<string, (int Count, bool Found)> Requested = new();
+
+	static AudioStream Track( string name )
+	{
+		var s = Find( name );
+		Requested[name] = (Requested.GetValueOrDefault( name ).Count + 1, s is not null);
+		return s;
+	}
+
 	static AudioStream Find( string name )
 	{
 		if ( streams.TryGetValue( name, out var s ) ) return s;
@@ -24,7 +34,7 @@ public static class Sfx
 	/// <summary> A sound at a point in the world (volume 0-1, pitch 1 = normal). </summary>
 	public static void Play( string name, Vector3 at, float volume = 1f, float pitch = 1f )
 	{
-		var stream = Find( name );
+		var stream = Track( name );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( stream is null || root is null ) return;
 		var player = new AudioStreamPlayer3D { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch, UnitSize = 4f };
@@ -37,7 +47,7 @@ public static class Sfx
 	/// <summary> A sound for the local player only (UI, own gun, wave banners). </summary>
 	public static void Play2D( string name, float volume = 1f, float pitch = 1f )
 	{
-		var stream = Find( name );
+		var stream = Track( name );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( stream is null || root is null ) return;
 		var player = new AudioStreamPlayer { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch };

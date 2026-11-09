@@ -55,5 +55,6 @@ public partial class WeaponInventory : Node
 		timeSinceSwitch = 0f;
 		foreach ( var w in weapons ) w.Active = w == weapon;
 		Current = weapon;
+		if ( !force ) Sfx.Play2D( "weapon_switch", 0.7f );
 	}
 }

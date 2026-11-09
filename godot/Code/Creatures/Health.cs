@@ -40,6 +40,7 @@ public partial class Health : Node
 		{
 			IsDead = true;
 			Died?.Invoke();
+			if ( GetParent() is Node3D body && body is not PlayerController ) Sfx.Play( "creature_death", body.GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
 		}
 	}
 

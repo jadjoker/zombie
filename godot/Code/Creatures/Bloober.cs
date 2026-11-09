@@ -495,6 +495,7 @@ public partial class Bloober : Node3D, ICreature
 
 	void Bite( PlayerSurvivor target )
 	{
+		Sfx.Play( "creature_attack", GlobalPosition, 0.8f, Rng.Float( 0.95f, 1.15f ) );
 		target.Health?.OnDamage( new DamageInfo { Damage = BiteDamage, Attacker = this, Position = target.WorldPosition + Vector3.Up * AimHeight * U.In, Origin = GlobalPosition } );
 		target.Afflictions?.Bitten();
 	}

@@ -582,6 +582,7 @@ public partial class InkBall : MeshInstance3D
 
 	public static void Spawn( Vector3 position, Vector3 velocity, float gravity, Color color, float damage, Node attacker )
 	{
+		Sfx.Play( "ink_throw", position, 0.7f, Rng.Float( 0.9f, 1.1f ) );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		var ball = new InkBall { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Roughness = 0.2f }, velocity = velocity, gravity = gravity, color = color, damage = damage, attacker = attacker };
 		root?.AddChild( ball );

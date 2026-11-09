@@ -82,6 +82,13 @@ public sealed class NavAgent
 		path = Array.Empty<Vector3>();
 	}
 
+	/// <summary> Puts the owner on the navmesh now (at spawn), so its first step does not hop there. </summary>
+	public void Snap()
+	{
+		var snapped = Nav.Closest( owner, owner.GlobalPosition );
+		if ( snapped != Vector3.Zero && snapped.DistanceTo( owner.GlobalPosition ) < 4f ) owner.GlobalPosition = snapped;
+	}
+
 	public void SetAgentPosition( Vector3 position )
 	{
 		owner.GlobalPosition = Nav.Closest( owner, position );

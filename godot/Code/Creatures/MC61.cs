@@ -154,6 +154,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		var boss = new MC61 { Name = "MC61" };
 		parent.AddChild( boss );
 		boss.GlobalPosition = position;
+		Sfx.Play( "boss_spawn", position, 1f );
 		var h = new Health();
 		h.ResetTo( maxHealth );
 		boss.AddChild( h );
@@ -780,6 +781,8 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	{
 		State = mode;
 		stateTime = 0f;
+		if ( mode == Mode.Charge ) Sfx.Play( "beam_charge", GlobalPosition, 0.9f );
+		else if ( mode == Mode.Beam ) Sfx.Play( "beam_fire", GlobalPosition, 1f );
 	}
 
 	void Think( float dt )
@@ -994,6 +997,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 
 	void ThrowCards( Vector3 origin, float angleOffset, float slope )
 	{
+		Sfx.Play( "card_throw", origin, 0.9f, Rng.Float( 0.95f, 1.1f ) );
 		var count = Math.Max( 1, CardsPerRing );
 		for ( var i = 0; i < count; i++ )
 		{

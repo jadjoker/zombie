@@ -203,6 +203,7 @@ public partial class DevMenu : CanvasLayer
 	static Button Button( string text, bool? on, Action click )
 	{
 		var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None };
+		b.Pressed += () => Sfx.Play2D( "ui_click", 0.5f );
 		b.AddThemeFontSizeOverride( "font_size", 16 );
 		var bg = on switch { true => new Color( "1f8f7a" ), false => new Color( "2a2f3a" ), null => new Color( "343b4a" ) };
 		foreach ( var state in new[] { "normal", "hover", "pressed" } )

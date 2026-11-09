@@ -92,6 +92,7 @@ public partial class PlayerMelee : Node
 			if ( shootable.IsDead || !hitThisSwing.Add( tr.Node ) ) return false;
 			var wasAlive = !shootable.IsDead;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
+			Sfx.Play( "axe_hit", tr.HitPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
 			shootable.ReceiveShot( Damage, tr.Node, direction, tr.HitPosition, start, controller, hitThisSwing.Add( shootable.ShotOwner ) );
 			if ( wasAlive && shootable.IsDead ) Weapon?.MarkKill();
 			return true;
@@ -100,6 +101,7 @@ public partial class PlayerMelee : Node
 		{
 			if ( !hitThisSwing.Add( gib ) ) return false;
 			gib.TakeHit( tr.HitPosition, direction, Damage, Impulse * 0.5f / U.In );
+			Sfx.Play( "axe_hit", tr.HitPosition, 0.6f, 1.15f );
 			return true;
 		}
 		if ( tr.Node is RigidBody3D body && !body.Freeze && hitThisSwing.Add( body ) )

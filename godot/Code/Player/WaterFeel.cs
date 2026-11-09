@@ -32,6 +32,7 @@ public partial class WaterFeel : Node, ICameraModifier
 
 	public float Blend { get; private set; }
 	public float Swimming { get; private set; }
+	TimeSince timeSinceSwish;
 
 	PlayerController controller;
 	PlayerMovement movement;
@@ -68,6 +69,12 @@ public partial class WaterFeel : Node, ICameraModifier
 		var want = alive && underwater && (IsOn() || floating) ? 1f : 0f;
 		Blend = MathX.Approach( Blend, want, dt * 2f );
 		Swimming = MathX.Approach( Swimming, Blend > 0.5f && (!controller.IsOnGround || floating) ? 1f : 0f, dt * 5f );
+		// A swish now and then while swimming along.
+		if ( Swimming > 0.5f && controller.Velocity.Length() > 120f * U.In && timeSinceSwish > 0.75f )
+		{
+			timeSinceSwish = 0f;
+			Sfx.Play( "swim", controller.GlobalPosition, 0.35f, Rng.Float( 0.85f, 1.15f ) );
+		}
 		ApplyTuning();
 		UpdateSound();
 		if ( Blend > 0.3f ) SpawnBubbles();

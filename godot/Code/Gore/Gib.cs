@@ -27,6 +27,8 @@ public partial class Gib : RigidBody3D
 	/// Makes an existing piece loose: puts it in a physics body where it is, with a sphere collider (radius in inches),
 	/// health, mass and a starting velocity (m/s). Returns the gib.
 	/// </summary>
+	static double lastTearSound = -1;
+
 	public static Gib Attach( Node3D piece, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor, bool addCollider = true )
 	{
 		var root = (Engine.GetMainLoop() as SceneTree).CurrentScene;
@@ -49,6 +51,12 @@ public partial class Gib : RigidBody3D
 		if ( addCollider ) gib.AddChild( new CollisionShape3D { Shape = new SphereShape3D { Radius = MathF.Max( 0.5f, radius ) * U.In } } );
 		// Start drawn where it is (the piece and its wounds too), not sliding in from an old spot.
 		gib.ResetPhysicsInterpolation();
+
+		if ( Clock.Now - lastTearSound > 0.08 && radius > 2f )
+		{
+			lastTearSound = Clock.Now;
+			Sfx.Play( "gib", piece.GlobalPosition, MathX.Clamp( radius / 8f, 0.4f, 1f ), Rng.Float( 0.9f, 1.15f ) );
+		}
 		gib.LinearVelocity = velocity;
 		gib.AngularVelocity = Rng.InSphere( 12f );
 		gib.Begin();

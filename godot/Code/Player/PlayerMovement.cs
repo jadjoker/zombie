@@ -169,6 +169,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		var controller = Controller;
 		var onGround = controller.IsOnGround;
 		RegenStamina( (float)delta );
+		Footsteps( controller, onGround, (float)delta );
 		if ( onGround ) AirJumpsLeft = AirJumps;
 		if ( mantle is not null ) { wasOnGround = onGround; return; }
 
@@ -274,6 +275,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		dashDirection = WishDirection();
 		timeSinceDash = 0f;
 		dashFromGround = onGround;
+		Sfx.Play( "dash", Controller.GlobalPosition, 0.8f, Rng.Float( 0.95f, 1.05f ) );
 		var c = Controller;
 		if ( onGround )
 		{
@@ -371,6 +373,20 @@ public partial class PlayerMovement : Node, ICameraModifier
 		c.PreventGrounding( 0.1f );
 		Kick( 1.5f );
 		return true;
+	}
+
+	float stepDistance;
+
+	/// <summary> A footstep every stride while walking or running on the ground (not sliding or dashing). </summary>
+	void Footsteps( PlayerController controller, bool onGround, float dt )
+	{
+		var speed = controller.Velocity.Flat().Length() / U.In;
+		if ( !onGround || speed < 60f || IsSliding || IsDashing || (Controller.GetNodeOrNull<WaterFeel>( "WaterFeel" )?.Swimming ?? 0f) > 0.5f ) { stepDistance = Math.Min( stepDistance, 40f ); return; }
+		stepDistance += speed * dt;
+		var stride = speed > 400f ? 78f : 64f;
+		if ( stepDistance < stride ) return;
+		stepDistance = 0f;
+		Sfx.Play( "footstep", controller.GlobalPosition, MathX.Clamp( speed / 470f, 0.35f, 0.8f ), Rng.Float( 0.88f, 1.12f ) );
 	}
 
 	public void TestPressJump() => testJump = true;
@@ -513,6 +529,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 			timeSinceSlideBoost = 0f;
 			Kick( 2.5f );
 		}
+		Sfx.Play( "slide", Controller.GlobalPosition, 0.6f, Rng.Float( 0.95f, 1.05f ) );
 		SetGroundMode( GroundMode.Slide, horizontal.Normalized() * MathF.Min( speed, MaxHorizontalSpeed ) );
 	}
 

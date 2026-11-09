@@ -149,6 +149,7 @@ public partial class SeaSpider : Node3D, ICreature
 		// Stand on the ground (spawns can come in from a point in the air).
 		var down = Trace.Ray( this, GlobalPosition + Vector3.Up * 40f * U.In, GlobalPosition + Vector3.Down * 4000f * U.In, Layers.World );
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
+		agent?.Snap();
 		Build();
 	}
 
@@ -820,6 +821,7 @@ public partial class SeaSpider : Node3D, ICreature
 		if ( (to - from).Length() > HarpoonRange * U.In ) return;
 		var tr = Trace.Ray( this, from, to, Layers.World );
 		if ( tr.Hit && tr.Distance < (to - from).Length() - 40f * U.In ) return;
+		Sfx.Play( "harpoon", from, 0.7f, Rng.Float( 0.95f, 1.1f ) );
 		timeSinceHarpoon = 0f;
 		SpiderStrand.Create( from, to, glowColor );
 		Strike( enemy, owner, HarpoonDamage );
@@ -1081,6 +1083,7 @@ public partial class SeaSpider : Node3D, ICreature
 
 	void Stab( PlayerSurvivor target )
 	{
+		Sfx.Play( "creature_attack", GlobalPosition, 0.8f, Rng.Float( 0.8f, 0.95f ) );
 		var frontLegs = (Has( FirstThigh ) ? 1 : 0) + (Has( FirstThigh + 3 ) ? 1 : 0);
 		var damage = StabDamage * (frontLegs switch { 2 => 1f, 1 => 0.7f, _ => 0.4f });
 		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 20f * U.In, Origin = GlobalPosition } );

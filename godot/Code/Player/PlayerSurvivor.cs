@@ -98,10 +98,18 @@ public partial class PlayerSurvivor : Node
 		Controller.EyeAngles += new Angles( -3f, Rng.Float( -4f, 4f ), 0f );
 	}
 
+	TimeSince timeSinceHeartbeat;
+
 	public override void _Process( double delta )
 	{
 		if ( !IsAlive ) return;
 		if ( Health.TimeSinceDamaged > RegenDelay ) Health.Heal( RegenPerSecond * (float)delta );
+		// A heartbeat when nearly dead.
+		if ( Health.Fraction < 0.25f && timeSinceHeartbeat > 1.1f )
+		{
+			timeSinceHeartbeat = 0f;
+			Sfx.Play2D( "low_health", 0.55f );
+		}
 	}
 
 	void OnDied()

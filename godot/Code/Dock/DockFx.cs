@@ -117,6 +117,7 @@ public partial class WaterSurfaceFx : Node3D
 	{
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( root is null ) return;
+		Sfx.Play( "splash", at, MathX.Clamp( speed / 900f, 0.35f, 1f ), Rng.Float( 0.9f, 1.1f ) );
 		var splash = new SplashFx { Power = MathX.Clamp( speed / 900f, 0.4f, 1.6f ), Position = at };   // placed before _Ready, which builds around it
 		root.AddChild( splash );
 		splash.GlobalPosition = at;

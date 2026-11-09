@@ -43,6 +43,7 @@ public partial class Jetpack : Node
 	public float Power { get; private set; }
 	public bool Stalled { get; private set; }
 	public bool Thrusting { get; private set; }
+	TimeSince timeSinceThrustSound = 999f;
 	public bool Surging => surgeLeft > 0f;
 	public bool Charging { get; private set; }
 	public float Charge { get; private set; }
@@ -104,6 +105,11 @@ public partial class Jetpack : Node
 		var airborne = !controller.IsOnGround && controller.TimeSinceGrounded > ThrustDelay;
 		var wantThrust = (Input.IsActionPressed( "jump" ) || TestHold) && airborne && !(movement?.IsFloating ?? false) && !(movement?.IsMantling ?? false);
 		Thrusting = wantThrust && !Stalled && Power > 0f && !Surging && !Charging;
+		if ( Thrusting && timeSinceThrustSound > 0.42f )
+		{
+			timeSinceThrustSound = 0f;
+			Sfx.Play( "jet_thrust", controller.GlobalPosition, 0.45f, Rng.Float( 0.95f, 1.05f ) );
+		}
 		if ( wantThrust && Stalled && Input.IsActionJustPressed( "jump" ) ) TimeSinceRefused = 0f;
 		UpdateSurgeInput( dt );
 
@@ -213,6 +219,7 @@ public partial class Jetpack : Node
 		}
 		if ( controller.IsOnGround && direction.Y < 0.15f ) direction = (direction.Flat().SafeNormal() + Vector3.Up * 0.18f).SafeNormal();
 		surgeDirection = direction;
+		Sfx.Play( "surge", controller.GlobalPosition, 0.6f + 0.4f * strength );
 		surgeSpeed = MathX.Lerp( SurgeSpeedMin, SurgeSpeedMax, strength );
 		surgeTotal = surgeLeft = MathX.Lerp( SurgeTimeMin, SurgeTimeMax, strength );
 		Power = 0f;

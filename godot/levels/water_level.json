@@ -43,8 +43,75 @@
  },
  "objects": [
   {
+   "name": "Main Camera",
+   "path": "/Main Camera",
+   "parent": "",
+   "pos": [
+    -0.0,
+    2.54,
+    7.62
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Directional Light",
+   "path": "/Directional Light",
+   "parent": "",
+   "pos": [
+    -0.0,
+    5.08,
+    -0.0
+   ],
+   "rot": [
+    -0.56058073,
+    0.243276104,
+    0.176750422,
+    0.771573186
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Arena",
+   "path": "/Arena",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
    "name": "Floor",
    "path": "/Arena/Floor",
+   "parent": "/Arena",
    "pos": [
     -0.0,
     -0.254,
@@ -89,6 +156,7 @@
   {
    "name": "Wall North",
    "path": "/Arena/Wall North",
+   "parent": "/Arena",
    "pos": [
     -0.0,
     2.032,
@@ -130,6 +198,7 @@
   {
    "name": "Wall South",
    "path": "/Arena/Wall South",
+   "parent": "/Arena",
    "pos": [
     -0.0,
     2.032,
@@ -171,6 +240,7 @@
   {
    "name": "Wall West",
    "path": "/Arena/Wall West",
+   "parent": "/Arena",
    "pos": [
     -38.1,
     2.032,
@@ -212,6 +282,7 @@
   {
    "name": "Wall East",
    "path": "/Arena/Wall East",
+   "parent": "/Arena",
    "pos": [
     38.1,
     2.032,
@@ -253,6 +324,7 @@
   {
    "name": "Crate 0",
    "path": "/Arena/Crate 0",
+   "parent": "/Arena",
    "pos": [
     23.2918,
     0.7874,
@@ -294,6 +366,7 @@
   {
    "name": "Crate 1",
    "path": "/Arena/Crate 1",
+   "parent": "/Arena",
    "pos": [
     -20.8534,
     1.1176,
@@ -335,6 +408,7 @@
   {
    "name": "Crate 2",
    "path": "/Arena/Crate 2",
+   "parent": "/Arena",
    "pos": [
     18.6436,
     0.8255,
@@ -376,6 +450,7 @@
   {
    "name": "Crate 3",
    "path": "/Arena/Crate 3",
+   "parent": "/Arena",
    "pos": [
     12.166599999999999,
     0.7746999999999999,
@@ -417,6 +492,7 @@
   {
    "name": "Crate 4",
    "path": "/Arena/Crate 4",
+   "parent": "/Arena",
    "pos": [
     27.406599999999997,
     1.0541,
@@ -458,6 +534,7 @@
   {
    "name": "Crate 5",
    "path": "/Arena/Crate 5",
+   "parent": "/Arena",
    "pos": [
     -23.2918,
     1.1049,
@@ -499,6 +576,7 @@
   {
    "name": "Crate 6",
    "path": "/Arena/Crate 6",
+   "parent": "/Arena",
    "pos": [
     30.0228,
     0.8635999999999999,
@@ -540,6 +618,7 @@
   {
    "name": "Crate 7",
    "path": "/Arena/Crate 7",
+   "parent": "/Arena",
    "pos": [
     -27.5082,
     0.6858,
@@ -581,6 +660,7 @@
   {
    "name": "Crate 8",
    "path": "/Arena/Crate 8",
+   "parent": "/Arena",
    "pos": [
     2.3367999999999998,
     0.8509,
@@ -622,6 +702,7 @@
   {
    "name": "Crate 9",
    "path": "/Arena/Crate 9",
+   "parent": "/Arena",
    "pos": [
     -20.9296,
     1.0541,
@@ -663,6 +744,7 @@
   {
    "name": "Crate 10",
    "path": "/Arena/Crate 10",
+   "parent": "/Arena",
    "pos": [
     -7.7978,
     1.1049,
@@ -704,6 +786,7 @@
   {
    "name": "Crate 12",
    "path": "/Arena/Crate 12",
+   "parent": "/Arena",
    "pos": [
     -2.032,
     0.9017,
@@ -745,6 +828,7 @@
   {
    "name": "Crate 13",
    "path": "/Arena/Crate 13",
+   "parent": "/Arena",
    "pos": [
     23.7744,
     1.0922,
@@ -786,6 +870,7 @@
   {
    "name": "Barricade A",
    "path": "/Arena/Barricade A",
+   "parent": "/Arena",
    "pos": [
     -7.62,
     0.762,
@@ -827,6 +912,7 @@
   {
    "name": "Barricade B",
    "path": "/Arena/Barricade B",
+   "parent": "/Arena",
    "pos": [
     10.16,
     0.762,
@@ -868,6 +954,7 @@
   {
    "name": "Barricade C",
    "path": "/Arena/Barricade C",
+   "parent": "/Arena",
    "pos": [
     -15.24,
     0.762,
@@ -907,8 +994,31 @@
    }
   },
   {
+   "name": "Dressing",
+   "path": "/Arena/Dressing",
+   "parent": "/Arena",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
    "name": "Sand",
    "path": "/Arena/Dressing/Sand",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.0,
     0.0,
@@ -951,6 +1061,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     36.781066646,
     0.0,
@@ -993,6 +1104,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.472082011799998,
     0.0,
@@ -1035,6 +1147,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     12.3598882088,
     0.0,
@@ -1077,6 +1190,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.38435890361999997,
     0.0,
@@ -1119,6 +1233,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -12.7592366862,
     0.0,
@@ -1161,6 +1276,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -23.803089731799997,
     0.0,
@@ -1203,6 +1319,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -37.088995164,
     0.0,
@@ -1245,6 +1362,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     37.100101314,
     0.0,
@@ -1287,6 +1405,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.689206749,
     0.0,
@@ -1329,6 +1448,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     12.182964127799998,
     0.0,
@@ -1371,6 +1491,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.55963657694,
     0.0,
@@ -1413,6 +1534,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -12.812865966799999,
     0.0,
@@ -1455,6 +1577,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -23.4996617382,
     0.0,
@@ -1497,6 +1620,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -37.429504516,
     0.0,
@@ -1539,6 +1663,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1581,6 +1706,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1623,6 +1749,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1665,6 +1792,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1707,6 +1835,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1749,6 +1878,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1791,6 +1921,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     -39.623999999999995,
     0.0,
@@ -1833,6 +1964,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -1875,6 +2007,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -1917,6 +2050,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -1959,6 +2093,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -2001,6 +2136,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -2043,6 +2179,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -2085,6 +2222,7 @@
   {
    "name": "Cliff",
    "path": "/Arena/Dressing/Cliff",
+   "parent": "/Arena/Dressing",
    "pos": [
     39.623999999999995,
     0.0,
@@ -2127,6 +2265,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.2918,
     0.6929120177799999,
@@ -2169,6 +2308,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -20.8534,
     0.9834880304799999,
@@ -2211,6 +2351,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     18.6436,
     0.7264400101599999,
@@ -2253,6 +2394,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     12.166599999999999,
     0.68173600508,
@@ -2295,6 +2437,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     27.406599999999997,
     0.9276080127,
@@ -2337,6 +2480,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -23.2918,
     0.97231196952,
@@ -2379,6 +2523,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     30.0228,
     0.75996800254,
@@ -2421,6 +2566,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -27.5082,
     0.6035039568199999,
@@ -2463,6 +2609,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     2.3367999999999998,
     0.7487919873,
@@ -2505,6 +2652,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -20.9296,
     0.9276080127,
@@ -2547,6 +2695,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -7.7978,
     0.97231196952,
@@ -2589,6 +2738,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     -2.032,
     0.79349599492,
@@ -2631,6 +2781,7 @@
   {
    "name": "Boulder",
    "path": "/Arena/Dressing/Boulder",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.7744,
     0.96113600508,
@@ -2673,6 +2824,7 @@
   {
    "name": "Reef",
    "path": "/Arena/Dressing/Reef",
+   "parent": "/Arena/Dressing",
    "pos": [
     -7.62,
     0.0,
@@ -2715,6 +2867,7 @@
   {
    "name": "Reef",
    "path": "/Arena/Dressing/Reef",
+   "parent": "/Arena/Dressing",
    "pos": [
     10.16,
     0.0,
@@ -2757,6 +2910,7 @@
   {
    "name": "Reef",
    "path": "/Arena/Dressing/Reef",
+   "parent": "/Arena/Dressing",
    "pos": [
     -15.24,
     0.0,
@@ -2799,6 +2953,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     33.484377785999996,
     -0.0508,
@@ -2845,6 +3000,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     33.91550494,
     -0.0508,
@@ -2891,6 +3047,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     33.668989812,
     -0.0508,
@@ -2937,6 +3094,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     6.3920962582,
     -0.0508,
@@ -2983,6 +3141,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     6.6394823268000005,
     -0.0508,
@@ -3029,6 +3188,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     6.756848030599999,
     -0.0508,
@@ -3075,6 +3235,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     7.194849211999999,
     -0.0508,
@@ -3121,6 +3282,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -16.7025277836,
     -0.0508,
@@ -3167,6 +3329,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -15.709451969399998,
     -0.0508,
@@ -3213,6 +3376,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -17.5534386294,
     -0.0508,
@@ -3259,6 +3423,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -16.7589956666,
     -0.0508,
@@ -3305,6 +3470,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -11.598851707,
     -0.0508,
@@ -3351,6 +3517,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -11.1541835082,
     -0.0508,
@@ -3397,6 +3564,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -11.691043750199999,
     -0.0508,
@@ -3443,6 +3611,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -12.2642638128,
     -0.0508,
@@ -3489,6 +3658,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -11.771293907199999,
     -0.0508,
@@ -3535,6 +3705,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     25.905124212,
     -0.0508,
@@ -3581,6 +3752,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.0090265752,
     -0.0508,
@@ -3627,6 +3799,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     22.671363445599997,
     -0.0508,
@@ -3673,6 +3846,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     23.390719538,
     -0.0508,
@@ -3719,6 +3893,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     24.1715866072,
     -0.0508,
@@ -3765,6 +3940,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     24.4844031774,
     -0.0508,
@@ -3811,6 +3987,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     5.1624093094,
     -0.0508,
@@ -3857,6 +4034,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     7.3255357934,
     -0.0508,
@@ -3903,6 +4081,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     6.509439889399999,
     -0.0508,
@@ -3949,6 +4128,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     7.1754294642000005,
     -0.0508,
@@ -3995,6 +4175,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     5.590644419399999,
     -0.0508,
@@ -4041,6 +4222,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -5.7619420956,
     -0.0508,
@@ -4087,6 +4269,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -6.9144593485999994,
     -0.0508,
@@ -4133,6 +4316,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -7.777978728999999,
     -0.0508,
@@ -4179,6 +4363,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -6.165198871,
     -0.0508,
@@ -4225,6 +4410,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -5.485036527999999,
     -0.0508,
@@ -4271,6 +4457,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -28.04426954,
     -0.0508,
@@ -4317,6 +4504,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -30.109284713999998,
     -0.0508,
@@ -4363,6 +4551,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -30.610320796,
     -0.0508,
@@ -4409,6 +4598,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -2.14416989758,
     -0.0508,
@@ -4455,6 +4645,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.130128394302,
     -0.0508,
@@ -4501,6 +4692,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -2.13425809876,
     -0.0508,
@@ -4547,6 +4739,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -1.55531184746,
     -0.0508,
@@ -4593,6 +4786,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -2.0221792805,
     -0.0508,
@@ -4639,6 +4833,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     3.2443418983999996,
     -0.0508,
@@ -4685,6 +4880,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     5.299702100599999,
     -0.0508,
@@ -4731,6 +4927,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     3.4170829042,
     -0.0508,
@@ -4777,6 +4974,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     5.4592144562,
     -0.0508,
@@ -4823,6 +5021,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     6.1864076678,
     -0.0508,
@@ -4869,6 +5068,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     4.740642411,
     -0.0508,
@@ -4915,6 +5115,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.473236036,
     -0.0508,
@@ -4961,6 +5162,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     0.044537785448,
     -0.0508,
@@ -5007,6 +5209,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -3.317882366,
     -0.0508,
@@ -5053,6 +5256,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     -2.686151346,
     -0.0508,
@@ -5099,6 +5303,7 @@
   {
    "name": "Kelp",
    "path": "/Arena/Dressing/Kelp",
+   "parent": "/Arena/Dressing",
    "pos": [
     0.03829087973,
     -0.0508,
@@ -5145,6 +5350,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     4.3571359898,
     -0.0508,
@@ -5184,6 +5390,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     13.844584401199999,
     -0.0508,
@@ -5223,6 +5430,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -6.628979858599999,
     -0.0508,
@@ -5262,6 +5470,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -17.5835003676,
     -0.0508,
@@ -5301,6 +5510,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     28.508610242,
     -0.0508,
@@ -5340,6 +5550,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -15.2689858196,
     -0.0508,
@@ -5379,6 +5590,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -0.7406546934399999,
     -0.0508,
@@ -5418,6 +5630,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     10.964577257999998,
     -0.0508,
@@ -5457,6 +5670,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     30.521262554,
     -0.0508,
@@ -5496,6 +5710,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -4.474012184799999,
     -0.0508,
@@ -5535,6 +5750,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     21.1776189604,
     -0.0508,
@@ -5574,6 +5790,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -27.875731142,
     -0.0508,
@@ -5613,6 +5830,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -17.113268592799997,
     -0.0508,
@@ -5652,6 +5870,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     30.435596481999998,
     -0.0508,
@@ -5691,6 +5910,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     1.4237278256399999,
     -0.0508,
@@ -5730,6 +5950,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -30.84266628,
     -0.0508,
@@ -5769,6 +5990,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     9.219774448399999,
     -0.0508,
@@ -5808,6 +6030,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     1.03772212318,
     -0.0508,
@@ -5847,6 +6070,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     20.684411869599998,
     -0.0508,
@@ -5886,6 +6110,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -10.1725596904,
     -0.0508,
@@ -5925,6 +6150,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -12.03711334,
     -0.0508,
@@ -5964,6 +6190,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     9.6571702208,
     -0.0508,
@@ -6003,6 +6230,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     14.577927232199999,
     -0.0508,
@@ -6042,6 +6270,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     7.0294166752,
     -0.0508,
@@ -6081,6 +6310,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     4.126026063399999,
     -0.0508,
@@ -6120,6 +6350,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     16.863175341399998,
     -0.0508,
@@ -6159,6 +6390,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     4.4338778225999995,
     -0.0508,
@@ -6198,6 +6430,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     26.343412133999998,
     -0.0508,
@@ -6237,6 +6470,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     12.2516343486,
     -0.0508,
@@ -6276,6 +6510,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -13.9453317486,
     -0.0508,
@@ -6315,6 +6550,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     0.037413604877999995,
     -0.0508,
@@ -6354,6 +6590,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -34.198997896,
     -0.0508,
@@ -6393,6 +6630,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -21.949609059799997,
     -0.0508,
@@ -6432,6 +6670,7 @@
   {
    "name": "Coral",
    "path": "/Arena/Dressing/Coral",
+   "parent": "/Arena/Dressing",
    "pos": [
     -25.481058512,
     -0.0508,
@@ -6471,6 +6710,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -26.98192216,
     0.0,
@@ -6513,6 +6753,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     22.745213209,
     0.0,
@@ -6555,6 +6796,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     32.265500366,
     0.0,
@@ -6597,6 +6839,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     11.205258691800001,
     0.0,
@@ -6639,6 +6882,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     16.193436371,
     0.0,
@@ -6681,6 +6925,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     16.9726849268,
     0.0,
@@ -6723,6 +6968,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -19.7833412816,
     0.0,
@@ -6765,6 +7011,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -4.663039416599999,
     0.0,
@@ -6807,6 +7054,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -32.994237287999994,
     0.0,
@@ -6849,6 +7097,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -5.1337699712,
     0.0,
@@ -6891,6 +7140,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -19.6423483454,
     0.0,
@@ -6933,6 +7183,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     18.530923161599997,
     0.0,
@@ -6975,6 +7226,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -4.4467797272,
     0.0,
@@ -7017,6 +7269,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     15.622767331999999,
     0.0,
@@ -7059,6 +7312,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -22.8840434876,
     0.0,
@@ -7101,6 +7355,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -9.725965257199999,
     0.0,
@@ -7143,6 +7398,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -25.714337446,
     0.0,
@@ -7185,6 +7441,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     12.8809742126,
     0.0,
@@ -7227,6 +7484,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     20.268691492,
     0.0,
@@ -7269,6 +7527,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -9.898578754999999,
     0.0,
@@ -7311,6 +7570,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     11.7876487132,
     0.0,
@@ -7353,6 +7613,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -26.209023528,
     0.0,
@@ -7395,6 +7656,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     14.422200314800001,
     0.0,
@@ -7437,6 +7699,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -10.2614565916,
     0.0,
@@ -7479,6 +7742,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -6.898061896,
     0.0,
@@ -7521,6 +7785,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     7.3339345065999995,
     0.0,
@@ -7563,6 +7828,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -26.461876209999996,
     0.0,
@@ -7605,6 +7871,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     -8.9949114234,
     0.0,
@@ -7647,6 +7914,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     10.252919905599999,
     0.0,
@@ -7689,6 +7957,7 @@
   {
    "name": "Pebbles",
    "path": "/Arena/Dressing/Pebbles",
+   "parent": "/Arena/Dressing",
    "pos": [
     15.3544255776,
     0.0,
@@ -7729,8 +7998,31 @@
    "shadows": true
   },
   {
+   "name": "Zombie Spawns",
+   "path": "/Zombie Spawns",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
    "name": "Spawn 1",
    "path": "/Zombie Spawns/Spawn 1",
+   "parent": "/Zombie Spawns",
    "pos": [
     -34.29,
     0.0,
@@ -7753,6 +8045,7 @@
   {
    "name": "Spawn 2",
    "path": "/Zombie Spawns/Spawn 2",
+   "parent": "/Zombie Spawns",
    "pos": [
     34.29,
     0.0,
@@ -7775,6 +8068,7 @@
   {
    "name": "Spawn 3",
    "path": "/Zombie Spawns/Spawn 3",
+   "parent": "/Zombie Spawns",
    "pos": [
     -34.29,
     0.0,
@@ -7797,6 +8091,7 @@
   {
    "name": "Spawn 4",
    "path": "/Zombie Spawns/Spawn 4",
+   "parent": "/Zombie Spawns",
    "pos": [
     34.29,
     0.0,
@@ -7819,6 +8114,7 @@
   {
    "name": "Spawn 5",
    "path": "/Zombie Spawns/Spawn 5",
+   "parent": "/Zombie Spawns",
    "pos": [
     -0.0,
     0.0,
@@ -7841,6 +8137,7 @@
   {
    "name": "Spawn 6",
    "path": "/Zombie Spawns/Spawn 6",
+   "parent": "/Zombie Spawns",
    "pos": [
     -0.0,
     0.0,
@@ -7863,6 +8160,7 @@
   {
    "name": "Spawn 7",
    "path": "/Zombie Spawns/Spawn 7",
+   "parent": "/Zombie Spawns",
    "pos": [
     -34.29,
     0.0,
@@ -7885,6 +8183,7 @@
   {
    "name": "Spawn 8",
    "path": "/Zombie Spawns/Spawn 8",
+   "parent": "/Zombie Spawns",
    "pos": [
     34.29,
     0.0,
@@ -7907,6 +8206,7 @@
   {
    "name": "Game",
    "path": "/Game",
+   "parent": "",
    "pos": [
     -0.0,
     0.0,
@@ -7927,8 +8227,53 @@
    "wave_director": true
   },
   {
+   "name": "Buy Stations",
+   "path": "/Buy Stations",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ammo Station",
+   "path": "/Buy Stations/Ammo Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    -0.0,
+    0.0,
+    -7.112
+   ],
+   "rot": [
+    -0.0,
+    1.0,
+    -0.0,
+    -4.37113883e-08
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
    "name": "Body",
    "path": "/Buy Stations/Ammo Station/Body",
+   "parent": "/Buy Stations/Ammo Station",
    "pos": [
     -0.0,
     0.762,
@@ -7965,11 +8310,74 @@
      0.0,
      -0.0
     ]
+   },
+   "buy_station": {
+    "Cost": 250,
+    "CostIncrease": 0,
+    "HealthPerPurchase": 25,
+    "Kind": "Ammo",
+    "MaxPurchases": 0,
+    "Title": "Ammo"
    }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Ammo Station/Label",
+   "parent": "/Buy Stations/Ammo Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Health Station",
+   "path": "/Buy Stations/Health Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    -5.588,
+    0.0,
+    5.588
+   ],
+   "rot": [
+    -0.0,
+    -0.382683456,
+    -0.0,
+    0.923879504
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
   },
   {
    "name": "Body",
    "path": "/Buy Stations/Health Station/Body",
+   "parent": "/Buy Stations/Health Station",
    "pos": [
     -0.0,
     0.762,
@@ -8006,11 +8414,74 @@
      0.0,
      -0.0
     ]
+   },
+   "buy_station": {
+    "Cost": 500,
+    "CostIncrease": 250,
+    "HealthPerPurchase": 25,
+    "Kind": "Health",
+    "MaxPurchases": 4,
+    "Title": "Health"
    }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Health Station/Label",
+   "parent": "/Buy Stations/Health Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Damage Station",
+   "path": "/Buy Stations/Damage Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    5.588,
+    0.0,
+    5.588
+   ],
+   "rot": [
+    -0.0,
+    0.382683456,
+    -0.0,
+    0.923879504
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
   },
   {
    "name": "Body",
    "path": "/Buy Stations/Damage Station/Body",
+   "parent": "/Buy Stations/Damage Station",
    "pos": [
     -0.0,
     0.762,
@@ -8047,11 +8518,96 @@
      0.0,
      -0.0
     ]
+   },
+   "buy_station": {
+    "Cost": 1000,
+    "CostIncrease": 500,
+    "HealthPerPurchase": 25,
+    "Kind": "Damage",
+    "MaxPurchases": 5,
+    "Title": "Damage"
    }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Damage Station/Label",
+   "parent": "/Buy Stations/Damage Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Atmosphere",
+   "path": "/Atmosphere",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Sky",
+   "path": "/Sky",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
   },
   {
    "name": "Marine Snow",
    "path": "/Marine Snow",
+   "parent": "",
    "pos": [
     -0.0,
     9.652,
@@ -8074,6 +8630,7 @@
   {
    "name": "Dock House",
    "path": "/Dock House",
+   "parent": "",
    "pos": [
     -0.0,
     0.0,

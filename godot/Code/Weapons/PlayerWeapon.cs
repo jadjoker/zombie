@@ -207,16 +207,15 @@ public partial class PlayerWeapon : Node
 		var start = camera.GlobalPosition;
 		var spread = MathF.Tan( MathX.Rad( SpreadDegrees * MathX.Lerp( 1f, AimSpreadScale, AimAmount ) ) );
 
+		var trailStart = start + forward * 24f * U.In - basis.Y * 7f * U.In + basis.X * 7f * U.In;
 		if ( ViewModel is not null && ViewModel.Visible )
 		{
 			ViewModel.Fire();
-			Fx.MuzzleFlash( ViewModel.Muzzle(), MuzzleFlashScale, ViewModel );
+			var barrel = ViewModel.Muzzle();
+			trailStart = barrel.Origin;
+			Fx.MuzzleFlash( barrel, MuzzleFlashScale, ViewModel );
 		}
-		else
-		{
-			var muzzle = start + forward * 24f * U.In - basis.Y * 7f * U.In + basis.X * 7f * U.In;
-			Fx.MuzzleFlash( new Transform3D( basis, muzzle ), MuzzleFlashScale );
-		}
+		else Fx.MuzzleFlash( new Transform3D( basis, trailStart ), MuzzleFlashScale );
 
 		hitThisShot.Clear();
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
@@ -226,6 +225,7 @@ public partial class PlayerWeapon : Node
 			// World and creatures in one ray: creature parts are areas/bodies on their own layer.
 			var tr = Trace.Ray( controller, start, start + direction * Range, Layers.World | Layers.Creature | Layers.Gib, exclude );
 			if ( tr.Hit ) HandleHit( tr, start, direction );
+			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
 		juice?.Shake( ShakePerShot );

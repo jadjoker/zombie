@@ -41,6 +41,8 @@ public partial class PlayerController : CharacterBody3D
 	public float StepHeight = 18f * U.In;
 	public float GroundAngle = 45f;
 	public float Gravity = U.Gravity;
+	/// <summary> Scales gravity (water, jetpack). </summary>
+	public float GravityScale = 1f;
 
 	// ---- Look and camera ----
 	public bool UseInputControls = true;
@@ -209,7 +211,7 @@ public partial class PlayerController : CharacterBody3D
 		else
 		{
 			v = AirAccelerate( v, wishDir, wishSpeed, AirAcceleration, AirSpeedCap, dt );
-			v.Y -= Gravity * dt;
+			v.Y -= Gravity * GravityScale * dt;
 			v /= 1f + MathF.Max( AirFriction, 0f ) * dt;
 		}
 
@@ -221,7 +223,7 @@ public partial class PlayerController : CharacterBody3D
 			{
 				// s&box MovementMath.Jump: ducked jumps set the speed, others add to what you had (0 on the ground).
 				v.Y = IsDucking ? JumpSpeed : (IsOnGround ? 0f : v.Y) + JumpSpeed;
-				v.Y -= Gravity * dt * 0.5f;   // s&box splits the jump tick's gravity in half (FinishGravity)
+				v.Y -= Gravity * GravityScale * dt * 0.5f;   // s&box splits the jump tick's gravity in half (FinishGravity)
 				jumped = true;
 				canCoyote = false;
 				preventGrounding = 0.05f;

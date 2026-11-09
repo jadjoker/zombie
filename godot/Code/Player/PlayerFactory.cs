@@ -18,6 +18,7 @@ public static class PlayerFactory
 		player.AddChild( PlayerWeapon.Rifle() );
 		player.AddChild( PlayerWeapon.Shotgun() );
 		player.AddChild( new PlayerMelee() );
+		player.AddChild( new WaterFeel() );
 		var survivor = new PlayerSurvivor();
 		player.AddChild( survivor );
 

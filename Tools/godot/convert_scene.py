@@ -107,7 +107,7 @@ def convert(name):
         if not go.get("Enabled", True):
             return
         path = parent_path + "/" + go.get("Name", "")
-        entry = {"name": go.get("Name", ""), "path": path, "pos": pos(go.get("Position", "0,0,0")),
+        entry = {"name": go.get("Name", ""), "path": path, "parent": parent_path, "pos": pos(go.get("Position", "0,0,0")),
                  "rot": quat(go.get("Rotation", "0,0,0,1")), "scale": scl(go.get("Scale", "1,1,1")), "children": []}
         for c in go.get("Components", []):
             t = c["__type"].split(".")[-1]
@@ -143,6 +143,10 @@ def convert(name):
                 settings["sky_tint"] = color(c.get("Tint"))
             elif t == "DockHouse":
                 entry["dock_house"] = {k: v for k, v in c.items() if not k.startswith("__") and k not in ("Flags",) and not k.startswith("On")}
+            elif t == "BuyStation":
+                entry["buy_station"] = {k: v for k, v in c.items() if not k.startswith("__") and k != "Flags" and not k.startswith("On") and not isinstance(v, dict)}
+            elif t == "TextRenderer":
+                entry["text"] = {"text": c.get("Text", ""), "color": color(c.get("Color")), "scale": c.get("Scale", 1)}
             elif t == "WaveDirector":
                 entry["wave_director"] = True
             elif t == "ParticleEffect" and "Snow" in go.get("Name", ""):
@@ -156,7 +160,8 @@ def convert(name):
 
     for go in scene["GameObjects"]:
         walk(go, "")
-    out = {"name": name, "settings": settings, "objects": [o for o in objects if any(k in o for k in ("box", "sphere", "model", "collider", "sway", "spawn_point", "dock_house", "wave_director", "marine_snow"))]}
+    # Keep every object (containers too) so children keep their parents' transforms.
+    out = {"name": name, "settings": settings, "objects": objects}
     os.makedirs(os.path.join(DST, "levels"), exist_ok=True)
     json.dump(out, open(os.path.join(DST, "levels", name + ".json"), "w"), indent=1)
     print(f"{name}: {len(out['objects'])} objects, settings {list(settings.keys())}")

@@ -14,6 +14,7 @@ public partial class Level : Node3D
 	public static Level Current { get; private set; }
 
 	static readonly Dictionary<string, Material> materials = new();
+	readonly Dictionary<string, Node3D> byPath = new();
 	static readonly Dictionary<string, PackedScene> models = new();
 
 	public override void _Ready()
@@ -85,7 +86,9 @@ public partial class Level : Node3D
 	void Build( JsonElement o )
 	{
 		var node = new Node3D { Name = o.GetProperty( "name" ).GetString() };
-		AddChild( node );
+		var parentPath = o.TryGetProperty( "parent", out var pp ) ? pp.GetString() : "";
+		( byPath.TryGetValue( parentPath, out var parent ) ? parent : this ).AddChild( node );
+		byPath[o.GetProperty( "path" ).GetString()] = node;
 		node.Transform = new Transform3D( new Basis( Quat( o.GetProperty( "rot" ) ) ) * Basis.FromScale( V3( o.GetProperty( "scale" ) ) ), V3( o.GetProperty( "pos" ) ) );
 
 		var tint = o.TryGetProperty( "tint", out var t ) ? Col( t ) : Colors.White;
@@ -128,6 +131,7 @@ public partial class Level : Node3D
 		if ( o.TryGetProperty( "sway", out var sway ) )
 			node.AddChild( new Sway { Amount = sway.GetProperty( "amount" ).GetSingle(), Period = sway.GetProperty( "period" ).GetSingle() } );
 		if ( o.TryGetProperty( "spawn_point", out _ ) ) node.AddToGroup( "spawn_point" );
+		if ( o.TryGetProperty( "marine_snow", out _ ) ) AddChild( new MarineSnow() );
 		if ( o.TryGetProperty( "wave_director", out _ ) && WaveDirector.Current is null )
 		{
 			var director = new WaveDirector();

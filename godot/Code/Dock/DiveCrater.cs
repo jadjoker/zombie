@@ -271,7 +271,7 @@ public partial class SandCloud : Node3D
 	public override void _Ready()
 	{
 		age = 0f;
-		ring = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.8f, 0.72f, 0.55f ) }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		ring = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.8f, 0.72f, 0.55f ) }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Scale = Vector3.One * 0.001f };
 		AddChild( ring );
 		CallDeferred( MethodName.EmitPuffs );   // once it has been placed
 	}

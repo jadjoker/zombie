@@ -29,8 +29,8 @@ public partial class DockHouse : Node3D
 	public static float DiveDepth { get; private set; }
 	public static Basis CameraTumble { get; private set; } = Basis.Identity;
 	public static DockHouse Current { get; private set; }
-	/// <summary> No shooting on the dock or in the air: guns come out once you're in the water. </summary>
-	public static bool WeaponsHeld => Current is { } d && !d.dived && !d.splashed;
+	/// <summary> No shooting on the dock or during the dive: guns come out once you've landed on the seabed. </summary>
+	public static bool WeaponsHeld => Current is { } d && !d.dived;
 
 	float Deck => SurfaceHeight + 18f;
 	Vector3 DivePoint => new( Origin.X + PierLength - 20f, Origin.Y, Deck );

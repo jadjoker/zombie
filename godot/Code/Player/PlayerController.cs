@@ -140,7 +140,7 @@ public partial class PlayerController : CharacterBody3D
 			lookDelta += motion.Relative;
 		if ( e is InputEventKey { Pressed: true, Keycode: Key.Escape } )
 			Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
-		if ( e is InputEventMouseButton { Pressed: true } && Input.MouseMode != Input.MouseModeEnum.Captured )
+		if ( e is InputEventMouseButton { Pressed: true } && Input.MouseMode != Input.MouseModeEnum.Captured && !DevMenu.IsOpen )
 			Input.MouseMode = Input.MouseModeEnum.Captured;
 	}
 

@@ -188,6 +188,8 @@ public partial class Bloober : Node3D, ICreature
 		nextPuff = Rng.Float( PuffEvery.X, PuffEvery.Y );
 		health.Died += OnDied;
 		BuildBody( hue );
+		// Built after this frame's update: pose it now, or its parts draw at full mesh size for a frame.
+		_Process( 0.0 );
 	}
 
 	public override void _ExitTree()

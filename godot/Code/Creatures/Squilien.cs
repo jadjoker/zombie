@@ -133,6 +133,8 @@ public partial class Squilien : Node3D, ICreature
 		seenPulses = PulseCount;
 		health.Died += OnDied;
 		Build( hue );
+		// Built after this frame's update: pose it now, or its parts draw at full mesh size for a frame.
+		_Process( 0.0 );
 	}
 
 	static readonly Dictionary<string, PackedScene> models = new();

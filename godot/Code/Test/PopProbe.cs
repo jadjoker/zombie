@@ -14,13 +14,14 @@ public partial class PopProbe : Node
 	{
 		public string Name;
 		public Vector3 P0, P1;   // last two drawn positions (P1 newest)
+		public float S0, S1;     // last two sizes (bounding radius, m)
 		public int Frames;
 		public bool Seen0, Seen1;   // visible on the last two frames
 		public bool New;
 	}
 
 	readonly Dictionary<ulong, Track> tracks = new();
-	readonly Dictionary<string, int> spawnPops = new(), spikes = new(), flashes = new();
+	readonly Dictionary<string, int> spawnPops = new(), spikes = new(), flashes = new(), sizePops = new();
 	readonly Dictionary<string, float> worst = new();
 	int frame;
 
@@ -41,7 +42,8 @@ public partial class PopProbe : Node
 		Dump( "spawn", spawnPops );
 		Dump( "spike", spikes );
 		Dump( "flash", flashes );
-		if ( spawnPops.Count + spikes.Count + flashes.Count == 0 ) GD.Print( "[pops] none" );
+		Dump( "size", sizePops );
+		if ( spawnPops.Count + spikes.Count + flashes.Count + sizePops.Count == 0 ) GD.Print( "[pops] none" );
 		GD.Print( "[sounds] " + string.Join( ", ", Sfx.Requested.OrderBy( x => x.Key ).Select( x => $"{x.Key} x{x.Value.Count}{(x.Value.Found ? "" : " MISSING")}" ) ) );
 	}
 
@@ -71,9 +73,11 @@ public partial class PopProbe : Node
 			seen.Add( id );
 			var visible = g.IsVisibleInTree() && g.GlobalBasis.Scale.Length() > 0.01f;   // shrunk to nothing counts as hidden
 			var p = g.IsPhysicsInterpolatedAndEnabled() ? g.GetGlobalTransformInterpolated().Origin : g.GlobalPosition;
+			var aabb = g.GetAabb();
+			var sz = (g.GlobalBasis * aabb.Size).Length() * 0.5f;
 			if ( !tracks.TryGetValue( id, out var t ) )
 			{
-				tracks[id] = new Track { Name = Label( g ), P1 = p, Frames = 1, Seen1 = visible, New = frame > 30 };
+				tracks[id] = new Track { Name = Label( g ), P1 = p, S1 = sz, Frames = 1, Seen1 = visible, New = frame > 30 };
 				continue;
 			}
 			// Spawn pop: its first drawn frame is far off the path it then follows (not just moving fast).
@@ -91,6 +95,12 @@ public partial class PopProbe : Node
 					Bump( spawnPops, "spawn", t.Name, first );
 				}
 			}
+			// Size pop: its first drawn frame much bigger than the next (a unit mesh shown before it was sized).
+			if ( t.Frames == 1 && t.New && t.Seen1 && visible && t.S1 > 0.3f && t.S1 > sz * 3f )
+			{
+				if ( !sizePops.ContainsKey( t.Name ) ) GD.Print( $"[pops] detail size {t.Name}: {t.S1:0.00} m then {sz:0.00} m" );
+				Bump( sizePops, "size", t.Name, t.S1 );
+			}
 			// Spike: jumped away last frame and came back now.
 			if ( t.Frames >= 2 && t.Seen1 )
 			{
@@ -105,6 +115,7 @@ public partial class PopProbe : Node
 			// Flash: shown for exactly one frame between hidden frames (after its first frames).
 			if ( t.Frames >= 3 && t.Seen1 && !t.Seen0 && !visible ) Bump( flashes, "flash", t.Name, 0f );
 			t.P0 = t.P1; t.P1 = p;
+			t.S0 = t.S1; t.S1 = sz;
 			t.Seen0 = t.Seen1; t.Seen1 = visible;
 			t.Frames++;
 		}

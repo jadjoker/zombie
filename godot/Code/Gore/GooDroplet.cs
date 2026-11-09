@@ -32,7 +32,9 @@ public partial class GooDroplet : MeshInstance3D
 			lifetime = Rng.Float( 0.45f, 0.8f ) * lifeScale,
 		};
 		root.AddChild( drop );
-		drop.GlobalPosition = position;
+		// Sized now: the unit sphere drew as a 1 m ball for its first frame (playtest 1's "giant green spheres").
+		var r = size * 2f * U.In;
+		drop.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * r ), position );
 		drop.age = 0f;
 		live++;
 	}

@@ -32,6 +32,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--playtest1" ) ) { await Playtest1Test(); return; }
 		if ( args.Contains( "--seabed" ) ) { SeabedMap(); return; }
 		if ( args.Contains( "--dive-edge" ) ) { await DiveEdgeTest(); return; }
+		if ( args.Contains( "--hitframes" ) ) { await HitFramesTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -884,6 +885,36 @@ public partial class AutoTest : Node
 		Input.ActionRelease( "duck" );
 		await Wait( 1f );
 		GD.Print( $"[autotest] dive edge: still diving {DockHouse.Diving}, at {player.GlobalPosition}, on ground {player.IsOnGround}, took {(Time.GetTicksMsec() - start) / 1000f:0} s" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Shoots each creature kind at a few distances and saves the frames right after each hit. </summary>
+	async Task HitFramesTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		DevFlags.FreezeEnemies = true;
+		var range = GetTree().CurrentScene;
+		foreach ( var weaponIndex in new[] { 0, 1 } )
+		foreach ( var dist in new[] { 120f, 300f } )
+		{
+			inventory.Select( inventory.Weapons[weaponIndex], force: true );
+			await Wait( 0.6f );
+			var target = Bloober.Spawn( range, player.GlobalPosition + new Vector3( 0f, 60f, -dist ) * U.In, 400f );
+			await Wait( 0.5f );
+			LookAt( target.GlobalPosition );
+			await Wait( 0.2f );
+			inventory.Weapons[weaponIndex].TestFire();
+			for ( var f = 0; f < 10; f++ )
+			{
+				await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+				if ( f % 2 == 0 ) await Shot( $"hit_w{weaponIndex}_{dist:0}_f{f}" );
+			}
+			await Wait( 1f );
+			target.QueueFree();
+			await Wait( 0.3f );
+		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

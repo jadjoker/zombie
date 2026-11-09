@@ -136,6 +136,8 @@ def convert(name):
         entry = {"name": go.get("Name", ""), "path": path, "parent": parent_path, "pos": pos(go.get("Position", "0,0,0")),
                  "rot": quat(go.get("Rotation", "0,0,0,1")), "scale": scl(go.get("Scale", "1,1,1")), "children": []}
         for c in go.get("Components", []):
+            if c.get("__enabled", True) is False:
+                continue   # switched off in s&box (the old arena blocks keep only their colliders, so they're invisible)
             t = c["__type"].split(".")[-1]
             if t == "ModelRenderer":
                 model = path_of(c.get("Model"))

@@ -151,6 +151,8 @@ public partial class SeaSpider : Node3D, ICreature
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
 		agent?.Snap();
 		Build();
+		// Built after this frame's update: pose it now, or its parts draw at full mesh size for a frame.
+		_Process( 0.0 );
 	}
 
 	// ---- Building ----
@@ -267,7 +269,7 @@ public partial class SeaSpider : Node3D, ICreature
 		lureBulb.AddChild( lureLight );
 		// Top-level pieces start at the spider (not the map origin) until the first lure update.
 		foreach ( var m in lureSeg.Concat( lureJoint ).Append( lureBulb ) )
-			if ( m is not null ) m.GlobalPosition = rig.GlobalPosition;
+			if ( m is not null ) m.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), rig.GlobalPosition );
 	}
 
 	void ComputeLureRest()

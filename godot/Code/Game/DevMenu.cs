@@ -110,6 +110,7 @@ public partial class DevMenu : CanvasLayer
 
 	public override void _ExitTree()
 	{
+		IsOpen = false;
 		DevFlags.Reset();
 		Engine.TimeScale = 1f;
 		if ( placeMarker is not null && IsInstanceValid( placeMarker ) ) placeMarker.QueueFree();
@@ -169,10 +170,14 @@ public partial class DevMenu : CanvasLayer
 		return button is not null;
 	}
 
+	/// <summary> True while the menu is up: clicks belong to it, not the gun. </summary>
+	public static bool IsOpen { get; private set; }
+
 	public void SetOpen( bool value )
 	{
 		if ( open == value ) return;
 		open = value;
+		IsOpen = value;
 		window.Visible = open;
 		Input.MouseMode = open ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
 		var controller = Controller;

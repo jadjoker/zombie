@@ -142,17 +142,6 @@
     60.0
    ],
    "children": [],
-   "tint": [
-    0.93,
-    0.84,
-    0.66,
-    1.0
-   ],
-   "box": true,
-   "material": {
-    "name": "reflectivity_50b.vmat"
-   },
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -187,14 +176,6 @@
     0.800000012
    ],
    "children": [],
-   "tint": [
-    0.42,
-    0.55,
-    0.6,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -229,14 +210,6 @@
     0.800000012
    ],
    "children": [],
-   "tint": [
-    0.42,
-    0.55,
-    0.6,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -271,14 +244,6 @@
     60.0
    ],
    "children": [],
-   "tint": [
-    0.42,
-    0.55,
-    0.6,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -313,14 +278,6 @@
     60.0
    ],
    "children": [],
-   "tint": [
-    0.42,
-    0.55,
-    0.6,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -355,14 +312,6 @@
     1.24000001
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.5,
-    0.55,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -397,14 +346,6 @@
     1.75999999
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.66,
-    0.35,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -439,14 +380,6 @@
     1.29999995
    ],
    "children": [],
-   "tint": [
-    0.62,
-    0.45,
-    0.95,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -481,14 +414,6 @@
     1.22000003
    ],
    "children": [],
-   "tint": [
-    0.3,
-    0.85,
-    0.78,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -523,14 +448,6 @@
     1.65999997
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.42,
-    0.75,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -565,14 +482,6 @@
     1.74000001
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.5,
-    0.55,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -607,14 +516,6 @@
     1.36000001
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.66,
-    0.35,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -649,14 +550,6 @@
     1.08000004
    ],
    "children": [],
-   "tint": [
-    0.62,
-    0.45,
-    0.95,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -691,14 +584,6 @@
     1.34000003
    ],
    "children": [],
-   "tint": [
-    0.3,
-    0.85,
-    0.78,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -733,14 +618,6 @@
     1.65999997
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.42,
-    0.75,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -775,14 +652,6 @@
     1.74000001
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.5,
-    0.55,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -817,14 +686,6 @@
     1.41999996
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.66,
-    0.35,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -859,14 +720,6 @@
     1.72000003
    ],
    "children": [],
-   "tint": [
-    0.62,
-    0.45,
-    0.95,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -901,14 +754,6 @@
     0.600000024
    ],
    "children": [],
-   "tint": [
-    0.3,
-    0.85,
-    0.78,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -943,14 +788,6 @@
     6.0
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.42,
-    0.75,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,
@@ -985,14 +822,6 @@
     0.600000024
    ],
    "children": [],
-   "tint": [
-    1.0,
-    0.5,
-    0.55,
-    1.0
-   ],
-   "box": true,
-   "shadows": true,
    "collider": {
     "size": [
      50.0,

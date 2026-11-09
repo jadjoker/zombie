@@ -255,6 +255,77 @@ public partial class AutoTest : Node
 		var userArgs = OS.GetCmdlineUserArgs();
 		MC61.PoseHands = !userArgs.Contains( "--rest-hands" );
 		if ( userArgs.Contains( "--boss" ) ) goto Boss;
+		if ( userArgs.Contains( "--robot" ) )
+		{
+			// Third person and a free camera looking at the robot from the front-left.
+			player.ThirdPerson = true;
+			player.EyeAngles = new Angles( 0f, 180f, 0f );
+			await Wait( 0.5f );
+			async Task Look( string name, float yawAround = 35f, float dist = 120f, float height = 50f )
+			{
+				var feet = player.GlobalPosition;
+				var facing = new Angles( 0f, player.EyeAngles.Yaw + yawAround, 0f ).Forward;
+				DevFlags.FreeCamPosition = feet + facing * dist * U.In + Vector3.Up * height * U.In;
+				var dir = (feet + Vector3.Up * 36f * U.In) - DevFlags.FreeCamPosition;
+				DevFlags.FreeCamAngles = new Angles( -MathX.Deg( MathF.Atan2( dir.Y, dir.Flat().Length() ) ), MathX.Deg( MathF.Atan2( -dir.X, -dir.Z ) ), 0f );
+				DevFlags.FreeCam = true;
+				await Wait( 0.05f );
+				await Shot( name );
+			}
+			await Look( "robot_idle", 0f );
+			await Look( "robot_side", 90f );
+			player.EyeAngles = new Angles( 40f, 180f, 0f );
+			await Wait( 0.3f );
+			await Look( "robot_aim_down" );
+			player.EyeAngles = new Angles( -40f, 180f, 0f );
+			await Wait( 0.3f );
+			await Look( "robot_aim_up" );
+			player.EyeAngles = new Angles( 0f, 180f, 0f );
+			Input.ActionPress( "forward" );
+			Input.ActionPress( "run" );
+			for ( var k = 0; k < 4; k++ ) { await Wait( 0.17f ); await Look( $"robot_run_{k}", 60f, 160f ); }
+			Input.ActionRelease( "run" );
+			Input.ActionRelease( "forward" );
+			await Wait( 0.6f );
+			Input.ActionPress( "duck" );
+			await Wait( 0.5f );
+			await Look( "robot_crouch" );
+			Input.ActionRelease( "duck" );
+			await Wait( 0.4f );
+			Input.ActionPress( "jump" );
+			await Wait( 0.05f );
+			Input.ActionRelease( "jump" );
+			await Wait( 0.25f );
+			await Look( "robot_jump" );
+			await Wait( 1f );
+			Input.ActionPress( "forward" );
+			Input.ActionPress( "run" );
+			await Wait( 0.6f );
+			Input.ActionPress( "duck" );
+			await Wait( 0.25f );
+			await Look( "robot_slide", 70f, 150f );
+			Input.ActionRelease( "duck" );
+			Input.ActionRelease( "run" );
+			Input.ActionRelease( "forward" );
+			await Wait( 0.8f );
+			player.GetNode<PlayerMelee>( "PlayerMelee" ).TestSwing();
+			await Wait( 0.15f );
+			await Look( "robot_axe_up" );
+			await Wait( 0.1f );
+			await Look( "robot_axe_hit" );
+			await Wait( 0.6f );
+			inventory.Select( inventory.Weapons[1] );
+			await Wait( 0.6f );
+			CharacterSkins.Current = "Hazard";
+			await Wait( 0.1f );
+			await Look( "robot_shotgun_hazard" );
+			DevFlags.FreeCam = false;
+			await Wait( 0.1f );
+			await Shot( "robot_third_person_cam" );
+			GD.Print( "[autotest] done" );
+			GetTree().Quit();
+			return;
+		}
 		if ( userArgs.Contains( "--devmenu" ) )
 		{
 			var menu = GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu;

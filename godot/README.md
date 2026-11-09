@@ -44,6 +44,10 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   `vignette.gdshader`, ink blots, stamina pips, jet bar, slam flash, surge lines, boss bar and speech, buy prompt),
   `DevMenu` (P: tabs, search, spawning and placing, cheats, skins, noclip, free camera, FOV, sun, time scale, travel,
   stats), `CharacterSkins` (data; applied by the robot in 7b).
+- Step 7b: `PlayerRig` (the survivor robot: s&box two-bone IK, slide, swim, surge, jet-foot propellers, axe swing,
+  paint jobs from `CharacterSkins`, over-the-shoulder camera from PlayerAppearance). The citizen animation driver
+  is replaced by a small procedural one (walk cycle, crouch, lean, aim pitch, hands on the gun). The world gun is our
+  first-person gun model with its arm surfaces hidden, playing idle/reload. Test: `--creatures --robot`.
 - Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
   The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
 - Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),

@@ -71,7 +71,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [x] 5. Water level: seabed map, WaterFeel, Jetpack/surge, Sea Spider ally (jet power bar and surge HUD come with the full HUD in 7)
 - [x] 6. Dock, dive, crater, surface waves (water shader ported to water.gdshader)
 - [x] 7. Squilien, Junk Crab, MC61, skins, dev menu, buy stations, afflictions, full HUD (zombies dropped: citizen model; MC61 ghost look and spawn-in hologram come with 7c)
-- [ ] 7b. Robot third-person model + animation set, world gun, PlayerRig poses
+- [x] 7b. Robot third-person model, world gun, PlayerRig poses (a procedural walk/crouch/aim driver replaces the citizen animation set)
 - [ ] 7c. Shaders (water, ghost, dissolve, hologram, iridescent, glowbulb, stylize looks), sounds hooks
 - [ ] 8. Upgrades: real ragdolls, GPU particles, ocean shader
 - [ ] 9. Parity pass against the checklist below, then co-op later

@@ -16,6 +16,9 @@ public partial class PlayerMelee : Node
 	public float WindUp = 0.24f;
 
 	public bool IsSwinging => Swing < Cooldown;
+	/// <summary> Seconds since the swing started, and which way it goes (for the third-person body). </summary>
+	public float SwingTime => Swing;
+	public bool LeftSwing => leftSwing;
 	TimeSince Swing = 999f;
 	bool struck;
 	bool leftSwing;

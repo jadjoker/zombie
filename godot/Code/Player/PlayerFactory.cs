@@ -22,6 +22,7 @@ public static class PlayerFactory
 		player.AddChild( new Jetpack() );
 		player.AddChild( new AllyCommander() );
 		player.AddChild( new PlayerUse() );
+		player.AddChild( new PlayerRig() );
 		var survivor = new PlayerSurvivor();
 		player.AddChild( survivor );
 

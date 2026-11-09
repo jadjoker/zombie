@@ -125,6 +125,7 @@ public partial class Gib : RigidBody3D
 			splats++;
 			if ( gore.TraceWorld( GlobalPosition + Vector3.Up * 10f * U.In, GlobalPosition + Vector3.Down * 60f * U.In ) is { } hit && goo is Color c )
 				gore.GooSplat( hit.Position, hit.Normal, Rng.Float( 0.7f, 1.4f ), c );
+			gore.Squelch( GlobalPosition, MathX.Clamp( lastSpeed / 600f, 0.2f, 1f ) * MathX.Clamp( Mass / 6f, 0.4f, 1f ), 1.1f );
 			if ( piece is not null ) CreatureGore.Jiggle( piece, MathX.Clamp( lastSpeed / 400f, 0.4f, 1.6f ) );
 		}
 

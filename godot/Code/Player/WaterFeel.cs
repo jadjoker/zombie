@@ -162,19 +162,11 @@ public partial class WaterFeel : Node, ICameraModifier
 }
 
 /// <summary>
-/// Port of s&box WaterBubble: one bubble that wobbles up, grows in and pops. Sizes are s&box radii in inches.
-/// Trail() leaves a line of them along a bullet's path.
+/// Port of s&box WaterBubble: bubbles that wobble up, grow in and pop, drawn as GPU particles (bubbles.gdshader).
+/// Sizes are s&box radii in inches. Trail() leaves a line of them along a bullet's path.
 /// </summary>
-public partial class WaterBubble : MeshInstance3D
+public static class WaterBubble
 {
-	float life = 1.8f;
-	float size = 1f;
-	float phase;
-	float delay;
-	TimeSince born;
-	Vector3 drift;
-	static StandardMaterial3D material;
-
 	public static void Trail( Vector3 from, Vector3 to )
 	{
 		var length = (to - from).Length() / U.In;
@@ -186,61 +178,8 @@ public partial class WaterBubble : MeshInstance3D
 		}
 	}
 
-	public static void Create( Vector3 position, float size, float delay = 0f, float lifetime = 0f )
-	{
-		// Step 8: bubbles are GPU particles now (same rise, wobble, drift, grow and pop; see bubbles.gdshader).
+	public static void Create( Vector3 position, float size, float delay = 0f, float lifetime = 0f ) =>
 		GpuFx.Bubble( position, size, delay, lifetime > 0f ? lifetime : Rng.Float( 1.4f, 2.6f ) );
-	}
-
-	/// <summary> The original per-node bubble (kept for reference and comparison). </summary>
-	public static void CreateNode( Vector3 position, float size, float delay = 0f, float lifetime = 0f )
-	{
-		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
-		if ( root is null ) return;
-		// Pale, see-through and bright at the rim, like the s&box ghost shader they used.
-		material ??= new StandardMaterial3D
-		{
-			AlbedoColor = new Color( 0.8f, 0.96f, 1f, 0.35f ),
-			Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-			RimEnabled = true,
-			Rim = 1f,
-			RimTint = 0.2f,
-			EmissionEnabled = true,
-			Emission = new Color( 0.35f, 0.75f, 1f ),
-			EmissionEnergyMultiplier = 0.5f,
-			Roughness = 0.05f,
-			ShadingMode = BaseMaterial3D.ShadingModeEnum.PerPixel,
-		};
-		var bubble = new WaterBubble
-		{
-			Mesh = Shapes.Sphere,
-			MaterialOverride = material,
-			CastShadow = ShadowCastingSetting.Off,
-			size = size,
-			delay = delay,
-			life = lifetime > 0f ? lifetime : Rng.Float( 1.4f, 2.6f ),
-			phase = Rng.Float( 0f, 6.28f ),
-			drift = Rng.InSphere( 6f ).Flat() * U.In,
-			Scale = Vector3.Zero,
-		};
-		root.AddChild( bubble );
-		bubble.GlobalPosition = position;
-		bubble.born = 0f;
-	}
-
-	public override void _Process( double delta )
-	{
-		var age = born - delay;
-		if ( age < 0f ) return;
-		var t = age / life;
-		if ( t >= 1f ) { QueueFree(); return; }
-		var rise = (38f + 40f * t) * U.In;
-		var wobble = new Vector3( MathF.Sin( age * 4f + phase ), 0f, MathF.Cos( age * 3.3f + phase ) ) * 7f * U.In;
-		GlobalPosition += (Vector3.Up * rise + wobble + drift) * (float)delta;
-		var grow = MathX.Clamp( t * 8f, 0f, 1f );
-		var pop = t > 0.88f ? 1f - (t - 0.88f) / 0.12f : 1f;
-		Scale = Vector3.One * size * (0.6f + 0.4f * grow) * pop * 2f * U.In;
-	}
 }
 
 /// <summary> Marine snow: specks of drifting silt around the camera (the s&box particle box emitter). </summary>

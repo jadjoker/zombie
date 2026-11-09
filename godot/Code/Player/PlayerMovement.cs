@@ -312,6 +312,12 @@ public partial class PlayerMovement : Node, ICameraModifier
 			if ( CrouchHeld ) TryStartSlide();
 			else StartCarry( GroundVelocity );
 		}
+		else if ( timeSinceDust > 0.05f )
+		{
+			// A dust trail behind the dash (s&box StepDash).
+			timeSinceDust = 0f;
+			Puff( Controller.GlobalPosition, 0.35f );
+		}
 	}
 
 	void DashJump()
@@ -529,6 +535,13 @@ public partial class PlayerMovement : Node, ICameraModifier
 
 		GroundVelocity = direction * speed;
 		if ( alongSlope > 0.3f && slope > 0.1f ) timeSinceGroundMode = MathF.Min( timeSinceGroundMode, SlideMaxTime * 0.5f );
+
+		// Dust kicked up ahead of the slide (s&box StepSlide).
+		if ( timeSinceDust > 0.07f )
+		{
+			timeSinceDust = 0f;
+			Puff( Controller.GlobalPosition + direction * 12f * U.In, 0.4f );
+		}
 	}
 
 	void SlideJump()

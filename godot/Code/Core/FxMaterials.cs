@@ -91,6 +91,10 @@ public partial class GlobalStylize : Node
 	public override void _ExitTree()
 	{
 		if ( Current == this ) Current = null;
+		// Free the GPU resources now: the effect object can outlive the level (and leaked them on every travel and on quit).
+		if ( GetParent() is Camera3D cam ) cam.Compositor = null;
+		effect?.Release();
+		effect = null;
 	}
 
 	public override void _Process( double delta )
@@ -135,13 +139,27 @@ public partial class StylizeEffect : CompositorEffect
 		sampler = rd.SamplerCreate( new RDSamplerState { MinFilter = RenderingDevice.SamplerFilter.Linear, MagFilter = RenderingDevice.SamplerFilter.Linear, RepeatU = RenderingDevice.SamplerRepeatMode.ClampToEdge, RepeatV = RenderingDevice.SamplerRepeatMode.ClampToEdge } );
 	}
 
-	public override void _Notification( int what )
+	/// <summary> Frees the shaders, pipelines, sampler and copy texture (on the render thread). Safe to call twice. </summary>
+	public void Release()
 	{
-		if ( what != NotificationPredelete || rd is null ) return;
+		Enabled = false;
+		RenderingServer.CallOnRenderThread( Callable.From( FreeGpu ) );
+	}
+
+	void FreeGpu()
+	{
+		if ( rd is null ) return;
+		// Pipelines are freed with their shaders.
 		if ( copyTex.IsValid ) rd.FreeRid( copyTex );
 		if ( copyShader.IsValid ) rd.FreeRid( copyShader );
 		if ( sampler.IsValid ) rd.FreeRid( sampler );
 		if ( shader.IsValid ) rd.FreeRid( shader );
+		copyTex = copyShader = sampler = shader = pipeline = copyPipeline = default;
+	}
+
+	public override void _Notification( int what )
+	{
+		if ( what == NotificationPredelete ) FreeGpu();
 	}
 
 	public override void _RenderCallback( int effectCallbackType, RenderData renderData )

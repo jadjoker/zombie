@@ -16,7 +16,7 @@ public partial class CreaturePart : StaticBody3D, IShootable
 	public Node3D Creature;
 	public int Index;
 	public CollisionShape3D Collider;
-	ICreature Owner => Creature as ICreature;
+	new ICreature Owner => Creature as ICreature;   // hides Node.Owner on purpose (the s&box name)
 
 	/// <summary> Every creature part in the scene. </summary>
 	public static readonly List<CreaturePart> All = new();

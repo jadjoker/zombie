@@ -177,6 +177,7 @@ public static class CreatureGore
 		var blobs = Rng.Int( 3, 5 );
 		for ( var i = 0; i < blobs; i++ )
 			gore.ThrowBlob( at, (direction + Rng.InSphere( 1f ) * 0.9f + Vector3.Up * 0.4f).SafeNormal(), skin, goo, Rng.Float( 2.5f, 4.5f ) * scale );
+		gore.Squelch( at, 1.4f, 0.7f );
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			var distance = (player.Controller.GlobalPosition + Vector3.Up * 60f * U.In).DistanceTo( at ) / U.In;
@@ -283,42 +284,82 @@ public partial class Twitch : Node
 	}
 }
 
-/// <summary> Goo trickling out of a wound or stump for a while. </summary>
+/// <summary>
+/// Goo leaking from a wound or stump: drops fall (splatting where they land) and slow to a stop over
+/// its lifetime. A fresh stump spurts with the heartbeat for the first second or two. (Port of s&box GooOoze.)
+/// </summary>
 public partial class GooOoze : Node3D
 {
 	public Color Color;
 	public float Lifetime = 3f;
-	public float Interval = 0.2f;
+	public float Interval = 0.3f;
+	public bool Spurt;
 	TimeSince age;
-	TimeSince last;
+	TimeSince lastDrop;
+
+	public override void _Ready()
+	{
+		age = 0f;
+		lastDrop = 0f;
+	}
 
 	public override void _Process( double delta )
 	{
 		if ( age > Lifetime ) { QueueFree(); return; }
-		if ( last < Interval ) return;
-		last = 0f;
-		GooDroplet.Spawn( GlobalPosition, (Vector3.Down * 40f + Rng.InSphere( 15f )) * U.In, Color, Rng.Float( 0.3f, 0.6f ) );
+
+		// Drips come slower as it runs dry.
+		var t = age / MathF.Max( 0.1f, Lifetime );
+		if ( lastDrop < Interval * (1f + t * 3f) ) return;
+		lastDrop = 0f;
+
+		var at = GlobalPosition;
+		var outward = -GlobalBasis.Z.SafeNormal();
+		if ( Spurt && age < 1.6f )
+		{
+			// Pulsing spurts out of a fresh stump.
+			if ( MathF.Sin( age * 9f ) > 0.3f )
+				for ( var i = 0; i < 2; i++ )
+					GooDroplet.Spawn( at, (outward + Rng.InSphere( 1f ) * 0.35f).SafeNormal() * Rng.Float( 90f, 200f ) * U.In, Color, Rng.Float( 0.8f, 1.6f ) );
+			return;
+		}
+		GooDroplet.Spawn( at + Rng.InSphere( 1.5f ) * U.In, (Vector3.Down * 20f + Rng.InSphere( 10f )) * U.In, Color, Rng.Float( 0.6f, 1.2f ) );
 	}
 }
 
-/// <summary> Pulsing jets of goo out of a fresh stump, with the heartbeat. </summary>
+/// <summary>
+/// Arterial spray from a fresh stump: a tight stream of goo that surges with each heartbeat, arcing out
+/// and pattering down, weakening as it bleeds out. Follows the stump as the creature moves. (Port of s&box GooJet.)
+/// </summary>
 public partial class GooJet : Node3D
 {
 	public Color Color;
-	public float Lifetime = 2f;
+	public float Lifetime = 2.4f;
 	public float Strength = 1f;
 	TimeSince age;
-	TimeSince last;
+	float owed;
+
+	public override void _Ready() => age = 0f;
 
 	public override void _Process( double delta )
 	{
 		if ( age > Lifetime ) { QueueFree(); return; }
-		var beat = MathF.Max( 0f, MathF.Sin( (float)age * MathF.Tau * 1.6f ) );
-		if ( last < 0.04f || beat < 0.3f ) return;
-		last = 0f;
-		var forward = -GlobalBasis.Z.SafeNormal();
-		var fade = 1f - age / Lifetime;
-		GooDroplet.Spawn( GlobalPosition, (forward + Rng.InSphere( 0.3f )).SafeNormal() * Rng.Float( 120f, 260f ) * U.In * Strength * beat * fade, Color, Rng.Float( 0.4f, 0.8f ) * Strength );
+		var life = 1f - age / Lifetime;
+
+		// Heartbeat: a hard surge, then a thin weak stream until the next one.
+		var phase = (age * 2.2f) % 1f;
+		var surge = phase < 0.25f ? MathF.Sin( phase / 0.25f * MathF.PI ) : 0f;
+		var flow = 0.25f + surge * 0.75f;
+
+		owed += 260f * flow * Strength * (0.3f + 0.7f * life) * (float)delta;
+		var outward = -GlobalBasis.Z.SafeNormal();
+		var speed = (160f + 300f * surge) * (0.45f + 0.55f * life) * MathF.Sqrt( Strength );
+		while ( owed >= 1f )
+		{
+			owed -= 1f;
+			var dir = (outward + Rng.InSphere( 1f ) * (0.035f + 0.06f * (1f - surge))).SafeNormal();
+			GooDroplet.Spawn( GlobalPosition + dir * Rng.Float( 0f, 2f ) * U.In, dir * speed * Rng.Float( 0.85f, 1.1f ) * U.In, Color,
+				Rng.Float( 0.45f, 0.95f ) * MathF.Sqrt( Strength ), 1.8f );
+		}
 	}
 }
 

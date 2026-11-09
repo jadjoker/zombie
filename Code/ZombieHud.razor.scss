@@ -528,3 +528,289 @@ ZombieHud
 		margin-top: 8px;
 	}
 }
+
+
+.jet
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	margin-left: -45px;
+	margin-top: 46px;
+	width: 90px;
+	height: 5px;
+	background-color: rgba( black, 0.45 );
+	border-radius: 3px;
+	overflow: hidden;
+
+	.fill
+	{
+		height: 100%;
+		background-color: rgba( #ffd27a, 0.85 );
+	}
+
+	.restart
+	{
+		position: absolute;
+		top: 0;
+		width: 1px;
+		height: 100%;
+		background-color: rgba( white, 0.5 );
+	}
+
+	&.docked .fill
+	{
+		background-color: rgba( #5fffe0, 0.9 );
+	}
+
+	&.stalled .fill
+	{
+		background-color: rgba( #ff6a4d, 0.85 );
+	}
+
+	&.refused
+	{
+		background-color: rgba( #ff3b2e, 0.6 );
+	}
+}
+
+
+.jet .charge
+{
+	position: absolute;
+	left: 0;
+	top: 0;
+	height: 100%;
+	background-color: rgba( white, 0.85 );
+}
+
+.speedlines
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 0;
+	height: 0;
+	pointer-events: none;
+
+	.sline
+	{
+		position: absolute;
+		left: -1px;
+		top: 0;
+		width: 3px;
+		background-color: rgba( #e8fbff, 0.55 );
+		border-radius: 2px;
+		transform-origin: 50% 0%;
+	}
+}
+
+
+// ---- Scope view: black outside a round lens, a faint tint and vignette inside, a duplex reticle with mil dots ----
+.scope
+{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+
+	.scope-mask
+	{
+		position: absolute;
+		background-image: radial-gradient( circle, rgba( black, 0 ) 0%, rgba( black, 0 ) 30%, rgba( black, 0.35 ) 34%, rgba( #05080a, 0.97 ) 36.5%, rgba( black, 1 ) 45% );
+	}
+
+	.scope-tint
+	{
+		position: absolute;
+		left: 0;
+		top: 0;
+		right: 0;
+		bottom: 0;
+		background-image: radial-gradient( circle, rgba( #7fd8ff, 0.05 ) 0%, rgba( #0a2a33, 0.12 ) 30% );
+	}
+
+	.reticle
+	{
+		position: absolute;
+		left: 50%;
+		top: 50%;
+		width: 0;
+		height: 0;
+
+		.wire
+		{
+			position: absolute;
+			background-color: rgba( #0b0f10, 0.9 );
+		}
+
+		.wire.h
+		{
+			left: -220px;
+			top: -1px;
+			width: 440px;
+			height: 2px;
+		}
+
+		.wire.v
+		{
+			left: -1px;
+			top: -150px;
+			width: 2px;
+			height: 300px;
+		}
+
+		.post
+		{
+			position: absolute;
+			background-color: rgba( #0b0f10, 0.95 );
+		}
+
+		.post.left { left: -420px; top: -4px; width: 200px; height: 8px; }
+		.post.right { left: 220px; top: -4px; width: 200px; height: 8px; }
+		.post.top { left: -4px; top: -410px; width: 8px; height: 260px; }
+		.post.bottom { left: -4px; top: 150px; width: 8px; height: 260px; }
+
+		.mil
+		{
+			position: absolute;
+			width: 4px;
+			height: 4px;
+			border-radius: 2px;
+			background-color: rgba( #0b0f10, 0.9 );
+		}
+
+		.dot
+		{
+			position: absolute;
+			left: -2.5px;
+			top: -2.5px;
+			width: 5px;
+			height: 5px;
+			border-radius: 3px;
+			background-color: #ff3b2e;
+		}
+	}
+}
+
+
+.slam-flash
+{
+	position: absolute;
+	left: 0;
+	top: 0;
+	right: 0;
+	bottom: 0;
+	pointer-events: none;
+	background-image: radial-gradient( circle, rgba( white, 0.9 ) 0%, rgba( #bff4ff, 0.5 ) 40%, rgba( #0a3040, 0 ) 80% );
+}
+
+
+.dock-prompt
+{
+	position: absolute;
+	left: 50%;
+	top: 50%;
+	width: 400px;
+	margin-left: -200px;
+	margin-top: 60px;
+	justify-content: center;
+	padding: 8px 16px;
+	border-radius: 8px;
+	background-color: rgba( #0c1016, 0.75 );
+	border: 1px solid rgba( #5fffe0, 0.7 );
+	font-size: 20px;
+	font-weight: 800;
+	color: #d6fff7;
+}
+
+
+.dive-hud
+{
+	position: absolute;
+	left: 50%;
+	top: 110px;
+	width: 600px;
+	margin-left: -300px;
+	flex-direction: column;
+	align-items: center;
+
+	.dive-count
+	{
+		font-size: 26px;
+		font-weight: 900;
+		letter-spacing: 2px;
+		color: #d6fff7;
+		text-shadow: 0 2px 4px rgba( black, 0.8 );
+
+		b
+		{
+			margin-left: 10px;
+			color: #ffd24a;
+		}
+	}
+
+	.dive-help
+	{
+		margin-top: 4px;
+		font-size: 14px;
+		opacity: 0.7;
+	}
+}
+
+
+.dive-depth
+{
+	position: absolute;
+	right: 60px;
+	top: 50%;
+	margin-top: -170px;
+	flex-direction: column;
+	align-items: center;
+
+	.depth-num
+	{
+		font-size: 44px;
+		font-weight: 900;
+		color: #d6fff7;
+		text-shadow: 0 2px 6px rgba( black, 0.8 );
+
+		span { font-size: 22px; margin-left: 4px; opacity: 0.7; }
+	}
+
+	.depth-speed
+	{
+		font-size: 16px;
+		color: #ffd24a;
+		margin-bottom: 10px;
+	}
+
+	.depth-bar
+	{
+		width: 10px;
+		height: 240px;
+		background-color: rgba( #d6fff7, 0.15 );
+		border-radius: 5px;
+		flex-direction: column;
+
+		.depth-fill
+		{
+			width: 100%;
+			background-color: #5fe3ff;
+			border-radius: 5px;
+		}
+	}
+}
+
+.dive-dark
+{
+	position: absolute;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	pointer-events: none;
+	background: radial-gradient( circle, rgba( #000814, 0 ) 60%, rgba( #000814, 1 ) 100% );
+}

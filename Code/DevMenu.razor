@@ -26,143 +26,266 @@
 		<div class="window">
 			<div class="header">
 				<div class="title">DEV MENU</div>
+				<div class="search-box">
+					<TextEntry @ref="searchEntry" class="search" Value:bind=@search Placeholder="Search... (god, boss, skin, time)"></TextEntry>
+					@if ( Searching )
+					{
+						<div class="clear" onclick=@(() => search = "")>x</div>
+					}
+				</div>
 				<div class="header-right">
 					<div class="hint">P to close</div>
 					<div class="close" onclick=@(() => SetOpen( false ))>X</div>
 				</div>
 			</div>
 
+			<div class="tabs @(Searching ? "searching" : "")">
+				@foreach ( var t in Tabs )
+				{
+					<div class="tab @(tab == t && !Searching ? "active" : "")" onclick=@(() => { tab = t; search = ""; })>@t</div>
+				}
+				@if ( Searching )
+				{
+					<div class="tab-note">Showing matches from every tab</div>
+				}
+			</div>
+
 			<div class="body">
-				<div class="column">
+				@{ sectionsShown = 0; }
+				@* ================================================================ ENEMIES *@
+				@if ( Sec( "Enemies", "Wave spawning", "spawning pause zombies bloobers squiliens junk crabs sea spiders boss waves kill all enemies skip wave" ) )
+				{
 					<div class="section">
-						<div class="heading">Spawning</div>
+						<div class="heading">Wave spawning</div>
 						<div class="chips">
-							<div class=@Chip( !Paused ) onclick=@(() => Pause( !Paused ))>Spawning: @(Paused ? "PAUSED" : "ON")</div>
-							<div class=@Chip( Zombies ) onclick=@(() => ToggleZombies())>Zombies</div>
-							<div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div>
-							<div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div>
-							<div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div>
-							<div class=@Chip( Spiders ) onclick=@(() => ToggleSpiders())>Sea Spiders</div>
-							<div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div>
+							@if ( Show( "Wave spawning", "spawning pause" ) ) { <div class=@Chip( !Paused ) onclick=@(() => Pause( !Paused ))>Spawning: @(Paused ? "PAUSED" : "ON")</div> }
+							@if ( Show( "Wave spawning", "zombies" ) ) { <div class=@Chip( Zombies ) onclick=@(() => ToggleZombies())>Zombies</div> }
+							@if ( Show( "Wave spawning", "bloobers" ) ) { <div class=@Chip( Bloobers ) onclick=@(() => ToggleBloobers())>Bloobers</div> }
+							@if ( Show( "Wave spawning", "squiliens" ) ) { <div class=@Chip( Squiliens ) onclick=@(() => ToggleSquiliens())>Squiliens</div> }
+							@if ( Show( "Wave spawning", "junk crabs" ) ) { <div class=@Chip( Crabs ) onclick=@(() => ToggleCrabs())>Junk Crabs</div> }
+							@if ( Show( "Wave spawning", "sea spiders" ) ) { <div class=@Chip( Spiders ) onclick=@(() => ToggleSpiders())>Sea Spiders</div> }
+							@if ( Show( "Wave spawning", "boss waves mc61" ) ) { <div class=@Chip( BossWaves ) onclick=@(() => ToggleBossWaves())>Boss waves</div> }
 						</div>
 						<div class="chips">
-							<div class="chip action" onclick=@(() => KillAll())>Kill all enemies</div>
-							<div class="chip action" onclick=@(() => SkipWave())>Skip wave</div>
+							@if ( Show( "Wave spawning", "kill all enemies clear" ) ) { <div class="chip action" onclick=@(() => KillAll())>Kill all enemies</div> }
+							@if ( Show( "Wave spawning", "skip wave" ) ) { <div class="chip action" onclick=@(() => SkipWave())>Skip wave</div> }
 						</div>
 					</div>
+				}
 
+				@if ( Sec( "Enemies", "Spawn an enemy", string.Join( " ", EnemyKinds.Select( k => k.Name ) ) + " spawn place crosshair" ) )
+				{
 					<div class="section">
-						<div class="heading">Spawn one</div>
-						<div class="chips">
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Spider ))>Sea Spider</div>
-							<div class="chip action" onclick=@(() => SpawnAlly())>Ally Spider</div>
-							<div class="chip action" onclick=@(() => SpawnOne( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+						<div class="heading">Spawn an enemy</div>
+						<div class="spawn-grid">
+							@foreach ( var k in EnemyKinds )
+							{
+								@if ( Show( "Spawn an enemy", k.Name + " spawn place crosshair" ) )
+								{
+									<div class="spawn-row">
+										<div class="row-label wide">@k.Name</div>
+										<div class="chip action" onclick=@(() => SpawnOne( k.Kind ))>Spawn</div>
+										<div class="chip action" onclick=@(() => StartPlacing( k.Kind ))>Place at crosshair</div>
+									</div>
+								}
+							}
 						</div>
 					</div>
+				}
 
+				@if ( Sec( "Enemies", "Allies", "ally spider spawn despawn allies friendly" ) )
+				{
 					<div class="section">
-						<div class="heading">Place at crosshair</div>
+						<div class="heading">Allies</div>
 						<div class="chips">
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Zombie ))>Zombie</div>
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Bloober ))>Bloober</div>
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Squilien ))>Squilien</div>
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Crab ))>Junk Crab</div>
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Spider ))>Sea Spider</div>
-							<div class="chip action" onclick=@(() => StartPlacing( WaveDirector.EnemyKind.Boss ))>MC61 boss</div>
+							<div class="chip action" onclick=@(() => SpawnAlly())>Spawn ally spider</div>
+							<div class="chip action" onclick=@(() => DespawnAllies())>Despawn allies</div>
 						</div>
 					</div>
+				}
 
+				@if ( Sec( "Enemies", "Enemy debug", "freeze enemies one-shot kills show hitboxes" ) )
+				{
 					<div class="section">
-						<div class="heading">Enemies</div>
+						<div class="heading">Enemy debug</div>
 						<div class="chips">
-							<div class=@Chip( DevFlags.FreezeEnemies ) onclick=@(() => DevFlags.FreezeEnemies = !DevFlags.FreezeEnemies)>Freeze enemies</div>
-							<div class=@Chip( DevFlags.OneShot ) onclick=@(() => DevFlags.OneShot = !DevFlags.OneShot)>One-shot kills</div>
-							<div class=@Chip( DevFlags.ShowHitboxes ) onclick=@(() => DevFlags.ShowHitboxes = !DevFlags.ShowHitboxes)>Show hitboxes</div>
+							@if ( Show( "Enemy debug", "freeze enemies" ) ) { <div class=@Chip( DevFlags.FreezeEnemies ) onclick=@(() => DevFlags.FreezeEnemies = !DevFlags.FreezeEnemies)>Freeze enemies</div> }
+							@if ( Show( "Enemy debug", "one-shot kills" ) ) { <div class=@Chip( DevFlags.OneShot ) onclick=@(() => DevFlags.OneShot = !DevFlags.OneShot)>One-shot kills</div> }
+							@if ( Show( "Enemy debug", "show hitboxes" ) ) { <div class=@Chip( DevFlags.ShowHitboxes ) onclick=@(() => DevFlags.ShowHitboxes = !DevFlags.ShowHitboxes)>Show hitboxes</div> }
 						</div>
+					</div>
+				}
+
+				@if ( Sec( "Enemies", "MC61 boss", "boss mc61 float charge beam cards dance 10% hp teleport" ) )
+				{
+					<div class="section">
+						<div class="heading">MC61 boss</div>
 						<div class="chips">
-							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Float ))>MC61 float</div>
+							<div class="row-label wide">Force move</div>
+							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Float ))>Float</div>
 							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Charge ))>Charge</div>
 							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Beam ))>Beam</div>
 							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Cards ))>Cards</div>
 							<div class="chip action" onclick=@(() => ForceBoss( MC61.Mode.Dance ))>Dance</div>
-							<div class="chip action" onclick=@(() => BossToTenPercent())>MC61 to 10% HP</div>
+						</div>
+						<div class="chips">
+							<div class="chip action" onclick=@(() => BossToTenPercent())>Boss to 10% HP</div>
+							<div class="chip action" onclick=@(() => TeleportToBoss())>Teleport to MC61</div>
 						</div>
 					</div>
+				}
 
+				@* ================================================================ PLAYER *@
+				@if ( Sec( "Player", "Cheats", "god mode infinite ammo heal refill ammo points money +1000" ) )
+				{
 					<div class="section">
-						<div class="heading">Player</div>
+						<div class="heading">Cheats</div>
 						<div class="chips">
-							<div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div>
-							<div class=@Chip( InfiniteAmmo ) onclick=@(() => ToggleInfiniteAmmo())>Infinite ammo</div>
-							<div class="chip action" onclick=@(() => Heal())>Heal</div>
-							<div class="chip action" onclick=@(() => RefillAmmo())>Refill ammo</div>
-							<div class="chip action" onclick=@(() => AddPoints())>+1000 points</div>
+							@if ( Show( "Cheats", "god mode invulnerable" ) ) { <div class=@Chip( GodMode ) onclick=@(() => ToggleGodMode())>God mode</div> }
+							@if ( Show( "Cheats", "infinite ammo" ) ) { <div class=@Chip( InfiniteAmmo ) onclick=@(() => ToggleInfiniteAmmo())>Infinite ammo</div> }
+							@if ( Show( "Cheats", "heal health" ) ) { <div class="chip action" onclick=@(() => Heal())>Heal</div> }
+							@if ( Show( "Cheats", "refill ammo" ) ) { <div class="chip action" onclick=@(() => RefillAmmo())>Refill ammo</div> }
+							@if ( Show( "Cheats", "+1000 points money" ) ) { <div class="chip action" onclick=@(() => AddPoints())>+1000 points</div> }
 						</div>
 					</div>
-				</div>
+				}
 
-				<div class="column">
+				@if ( Sec( "Player", "Appearance", "robot paint outfit skin gun skin weapon " + string.Join( " ", CharacterSkins.Names ) + " " + string.Join( " ", WeaponSkins.Names ) ) )
+				{
 					<div class="section">
-						<div class="heading">Screenshots</div>
+						<div class="heading">Appearance</div>
+						@if ( Show( "Appearance", "robot paint outfit " + string.Join( " ", CharacterSkins.Names ) ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Robot paint</div>
+								@foreach ( var outfit in CharacterSkins.Names )
+								{
+									<div class=@Pick( CharacterSkins.Current == outfit ) onclick=@(() => CharacterSkins.Current = outfit)>@outfit</div>
+								}
+							</div>
+						}
+						@if ( Show( "Appearance", "gun skin weapon " + string.Join( " ", WeaponSkins.Names ) ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Gun skin</div>
+								@foreach ( var skin in WeaponSkins.Names )
+								{
+									<div class=@Pick( WeaponSkins.Current == skin ) onclick=@(() => WeaponSkins.Current = skin)>@skin</div>
+								}
+							</div>
+						}
+					</div>
+				}
+
+				@if ( Sec( "Player", "Movement", "water feel swim underwater noclip fly" ) )
+				{
+					<div class="section">
+						<div class="heading">Movement</div>
+						@if ( Show( "Movement", "water feel swim underwater" ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Water feel</div>
+								<div class=@Pick( WaterFeel.Force == null ) onclick=@(() => WaterFeel.Force = null)>Auto</div>
+								<div class=@Pick( WaterFeel.Force == true ) onclick=@(() => WaterFeel.Force = true)>On</div>
+								<div class=@Pick( WaterFeel.Force == false ) onclick=@(() => WaterFeel.Force = false)>Off</div>
+							</div>
+						}
+						@if ( Show( "Movement", "noclip fly" ) )
+						{
+							<div class="chips">
+								<div class=@Chip( DevFlags.Noclip ) onclick=@(() => SetNoclip( !DevFlags.Noclip ))>Noclip</div>
+							</div>
+						}
+					</div>
+				}
+
+				@* ================================================================ LOOK *@
+				@if ( Sec( "Look", "Style", "look style shader post toon flat bands ink outline " + string.Join( " ", LookNames ) ) )
+				{
+					<div class="section">
+						<div class="heading">Style</div>
+						@if ( Show( "Style", "look style shader post toon flat " + string.Join( " ", LookNames ) ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Look</div>
+								@foreach ( var look in Enum.GetValues<GlobalStylize.Look>() )
+								{
+									<div class=@Pick( Stylize?.Style == look ) onclick=@(() => SetLook( look ))>@LookName( look )</div>
+								}
+							</div>
+						}
+						@if ( Show( "Style", "bands ink outline" ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Bands</div>
+								@foreach ( var n in BandCounts )
+								{
+									<div class=@Pick( Stylize is { } z && z.Bands == n ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Bands = n; })>@n</div>
+								}
+							</div>
+							<div class="chips">
+								<div class="row-label wide">Ink</div>
+								@foreach ( var o in InkLevels )
+								{
+									<div class=@Pick( Stylize is { } z && MathF.Abs( z.Outline - o ) < 0.01f ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Outline = o; })>@(o == 0f ? "None" : $"{o}")</div>
+								}
+							</div>
+						}
+					</div>
+				}
+
+				@if ( Sec( "Look", "Lighting and effects", "sun lighting time of day morning noon dusk night skin effect dissolve ghost holo iridescent" ) )
+				{
+					<div class="section">
+						<div class="heading">Lighting and effects</div>
+						@if ( Show( "Lighting and effects", "sun lighting time of day " + string.Join( " ", SunPresets ) ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Sun</div>
+								@foreach ( var preset in SunPresets )
+								{
+									<div class=@Pick( sunPreset == preset ) onclick=@(() => SetSun( preset ))>@preset</div>
+								}
+							</div>
+						}
+						@if ( Show( "Lighting and effects", "skin effect creature " + string.Join( " ", SkinFx ) ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Creature skin</div>
+								@foreach ( var fx in SkinFx )
+								{
+									<div class=@Pick( skinFx == fx ) onclick=@(() => SetSkinFx( fx ))>@fx</div>
+								}
+							</div>
+						}
+					</div>
+				}
+
+				@if ( Sec( "Look", "Camera and screenshots", "camera fov free camera hide hud hide weapon screenshot" ) )
+				{
+					<div class="section">
+						<div class="heading">Camera and screenshots</div>
+						@if ( Show( "Camera and screenshots", "fov field of view" ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">FOV</div>
+								@foreach ( var f in Fovs )
+								{
+									<div class=@Pick( DevFlags.Fov == f ) onclick=@(() => DevFlags.Fov = f)>@(f == 0f ? "Game" : $"{f}")</div>
+								}
+							</div>
+						}
 						<div class="chips">
-							<div class=@Chip( DevFlags.Noclip ) onclick=@(() => SetNoclip( !DevFlags.Noclip ))>Noclip</div>
-							<div class=@Chip( DevFlags.FreeCam ) onclick=@(() => SetFreeCam( !DevFlags.FreeCam ))>Free camera</div>
-							<div class=@Chip( DevFlags.HideHud ) onclick=@(() => DevFlags.HideHud = !DevFlags.HideHud)>Hide HUD</div>
-							<div class=@Chip( DevFlags.HideWeapon ) onclick=@(() => DevFlags.HideWeapon = !DevFlags.HideWeapon)>Hide weapon</div>
-						</div>
-						<div class="chips">
-							<div class="row-label">Time</div>
-							@foreach ( var t in TimeScales )
-							{
-								<div class=@Pick( MathF.Abs( TimeScale - t ) < 0.01f ) onclick=@(() => SetTimeScale( t ))>@(t == 0f ? "Stop" : $"{t}x")</div>
-							}
-						</div>
-						<div class="chips">
-							<div class="row-label">FOV</div>
-							@foreach ( var f in Fovs )
-							{
-								<div class=@Pick( DevFlags.Fov == f ) onclick=@(() => DevFlags.Fov = f)>@(f == 0f ? "Game" : $"{f}")</div>
-							}
-						</div>
-						<div class="chips">
-							<div class="row-label">Look</div>
-							@foreach ( var look in Enum.GetValues<GlobalStylize.Look>() )
-							{
-								<div class=@Pick( Stylize?.Style == look ) onclick=@(() => SetLook( look ))>@(look switch { GlobalStylize.Look.InkOutlines => "Ink", GlobalStylize.Look.Painterly => "Paint", GlobalStylize.Look.Storybook => "Book", GlobalStylize.Look.Watercolor => "Water", _ => look.ToString() })</div>
-							}
-						</div>
-						<div class="chips">
-							<div class="row-label">Bands</div>
-							@foreach ( var n in BandCounts )
-							{
-								<div class=@Pick( Stylize is { } z && z.Bands == n ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Bands = n; })>@n</div>
-							}
-							<div class="row-label">Ink</div>
-							@foreach ( var o in InkLevels )
-							{
-								<div class=@Pick( Stylize is { } z && MathF.Abs( z.Outline - o ) < 0.01f ) onclick=@(() => { if ( Stylize is { } z2 ) z2.Outline = o; })>@(o == 0f ? "None" : $"{o}")</div>
-							}
-						</div>
-						<div class="chips">
-							<div class="row-label">Skin</div>
-							@foreach ( var fx in SkinFx )
-							{
-								<div class=@Pick( skinFx == fx ) onclick=@(() => SetSkinFx( fx ))>@fx</div>
-							}
-						</div>
-						<div class="chips">
-							<div class="row-label">Sun</div>
-							@foreach ( var preset in SunPresets )
-							{
-								<div class=@Pick( sunPreset == preset ) onclick=@(() => SetSun( preset ))>@preset</div>
-							}
+							@if ( Show( "Camera and screenshots", "free camera" ) ) { <div class=@Chip( DevFlags.FreeCam ) onclick=@(() => SetFreeCam( !DevFlags.FreeCam ))>Free camera</div> }
+							@if ( Show( "Camera and screenshots", "hide hud" ) ) { <div class=@Chip( DevFlags.HideHud ) onclick=@(() => DevFlags.HideHud = !DevFlags.HideHud)>Hide HUD</div> }
+							@if ( Show( "Camera and screenshots", "hide weapon gun" ) ) { <div class=@Chip( DevFlags.HideWeapon ) onclick=@(() => DevFlags.HideWeapon = !DevFlags.HideWeapon)>Hide weapon</div> }
 						</div>
 					</div>
+				}
 
+				@* ================================================================ WORLD *@
+				@if ( Sec( "World", "Waves", "wave next +5 boss wave state kills enemies left phase" ) )
+				{
 					<div class="section">
 						<div class="heading">Waves</div>
 						<div class="chips">
@@ -173,29 +296,6 @@
 								<div class="chip action" onclick=@(() => d.JumpToWave( d.NextBossWave ))>Boss wave (@d.NextBossWave)</div>
 							}
 						</div>
-					</div>
-
-					<div class="section">
-						<div class="heading">Travel</div>
-						<div class="chips">
-							<div class="chip action" onclick=@(() => TeleportToBoss())>To MC61</div>
-							<div class="chip action" onclick=@(() => TeleportToSpawnPoint())>To a spawn point</div>
-							<div class="chip action" onclick=@(() => SaveSpot())>Save spot</div>
-							<div class=@(savedSpot is null ? "chip off" : "chip action") onclick=@(() => LoadSpot())>Go to saved spot</div>
-						</div>
-						<div class="chips">
-							<div class="row-label">Scene</div>
-							<div class="chip action" onclick=@(() => LoadScene( "scenes/indoor.scene" ))>Indoor</div>
-							<div class="chip action" onclick=@(() => LoadScene( "scenes/forest.scene" ))>Forest</div>
-							<div class="chip action" onclick=@(() => LoadScene( "scenes/water_level.scene" ))>Water level</div>
-						</div>
-					</div>
-
-					<div class="section">
-						<div class="heading">State</div>
-						<div class="chips">
-							<div class=@Chip( DevFlags.ShowStats ) onclick=@(() => DevFlags.ShowStats = !DevFlags.ShowStats)>Stats overlay</div>
-						</div>
 						<div class="info">
 							<span>Wave <b>@Wave</b></span>
 							<span>Kills <b>@Kills</b></span>
@@ -203,7 +303,59 @@
 							<span>Phase <b>@Phase</b></span>
 						</div>
 					</div>
-				</div>
+				}
+
+				@if ( Sec( "World", "Time", "time scale slow motion stop pause speed" ) )
+				{
+					<div class="section">
+						<div class="heading">Time</div>
+						<div class="chips">
+							@foreach ( var t in TimeScales )
+							{
+								<div class=@Pick( MathF.Abs( TimeScale - t ) < 0.01f ) onclick=@(() => SetTimeScale( t ))>@(t == 0f ? "Stop" : $"{t}x")</div>
+							}
+						</div>
+					</div>
+				}
+
+				@if ( Sec( "World", "Travel", "travel teleport spawn point save spot go to saved scene level indoor forest water" ) )
+				{
+					<div class="section">
+						<div class="heading">Travel</div>
+						@if ( Show( "Travel", "teleport spawn point save spot go to saved" ) )
+						{
+							<div class="chips">
+								<div class="chip action" onclick=@(() => TeleportToSpawnPoint())>To a spawn point</div>
+								<div class="chip action" onclick=@(() => SaveSpot())>Save spot</div>
+								<div class=@(savedSpot is null ? "chip off" : "chip action") onclick=@(() => LoadSpot())>Go to saved spot</div>
+							</div>
+						}
+						@if ( Show( "Travel", "scene level load indoor forest water" ) )
+						{
+							<div class="chips">
+								<div class="row-label wide">Scene</div>
+								<div class="chip action" onclick=@(() => LoadScene( "scenes/indoor.scene" ))>Indoor</div>
+								<div class="chip action" onclick=@(() => LoadScene( "scenes/forest.scene" ))>Forest</div>
+								<div class="chip action" onclick=@(() => LoadScene( "scenes/water_level.scene" ))>Water level</div>
+							</div>
+						}
+					</div>
+				}
+
+				@if ( Sec( "World", "Debug", "stats overlay fps performance" ) )
+				{
+					<div class="section">
+						<div class="heading">Debug</div>
+						<div class="chips">
+							<div class=@Chip( DevFlags.ShowStats ) onclick=@(() => DevFlags.ShowStats = !DevFlags.ShowStats)>Stats overlay (fps)</div>
+						</div>
+					</div>
+				}
+
+				@if ( Searching && sectionsShown == 0 )
+				{
+					<div class="no-results">Nothing matches "@search"</div>
+				}
 			</div>
 		</div>
 	}
@@ -232,7 +384,8 @@
 	{
 		// Dev tool: only in the editor, never in a published build.
 		if ( !Game.IsEditor ) return;
-		if ( Input.Pressed( "DevMenu" ) ) SetOpen( !open );
+		// (not while typing in the search box: P is a letter there)
+		if ( Input.Pressed( "DevMenu" ) && !(searchEntry?.HasFocus ?? false) ) SetOpen( !open );
 		UpdateNoclip();
 		UpdateFreeCam();
 		UpdatePlacing();
@@ -288,8 +441,16 @@
 	void ToggleBloobers() { if ( Director is { } d ) d.SpawnBloobers = !d.SpawnBloobers; }
 	void ToggleSquiliens() { if ( Director is { } d ) d.SpawnSquiliens = !d.SpawnSquiliens; }
 	void ToggleCrabs() { if ( Director is { } d ) d.SpawnCrabs = !d.SpawnCrabs; }
+	/// <summary> Removes every ally and stops them coming back (spawning one again turns that back on). </summary>
+	void DespawnAllies()
+	{
+		AllyCommander.KeepAlly = false;
+		foreach ( var a in Scene.GetAllComponents<SeaSpider>().Where( s => s.IsAlly ).ToList() ) a.GameObject.Destroy();
+	}
+
 	void SpawnAlly()
 	{
+		AllyCommander.KeepAlly = true;
 		foreach ( var a in Scene.GetAllComponents<SeaSpider>().Where( s => s.IsAlly ).ToList() ) a.GameObject.Destroy();
 		if ( Player.IsValid() ) SeaSpider.SpawnAlly( Scene, Player );
 	}
@@ -309,6 +470,44 @@
 	void RefillAmmo() { foreach ( var weapon in PlayerWeapons() ) weapon.RefillAmmo(); }
 	void AddPoints() { Player?.AddPoints( 1000 ); }
 
+	// ---- tabs and search ----
+	string search = "";
+	string tab = "Enemies";
+	TextEntry searchEntry;
+	int sectionsShown;
+	static readonly string[] Tabs = { "Enemies", "Player", "Look", "World" };
+	bool Searching => !string.IsNullOrWhiteSpace( search );
+	bool Has( string text ) => text.Contains( search.Trim(), StringComparison.OrdinalIgnoreCase );
+	/// <summary> A section shows on its own tab, or, while searching, wherever its name or contents match. </summary>
+	bool Sec( string tabName, string section, string keywords )
+	{
+		var show = Searching ? Has( section ) || Has( keywords ) : tab == tabName;
+		if ( show ) sectionsShown++;
+		return show;
+	}
+	/// <summary> One control inside a section: hidden while searching unless it (or its section) matches. </summary>
+	bool Show( string section, string keywords ) => !Searching || Has( section ) || Has( keywords );
+
+	readonly record struct EnemyEntry( string Name, WaveDirector.EnemyKind Kind );
+	static readonly EnemyEntry[] EnemyKinds =
+	{
+		new( "Zombie", WaveDirector.EnemyKind.Zombie ),
+		new( "Bloober", WaveDirector.EnemyKind.Bloober ),
+		new( "Squilien", WaveDirector.EnemyKind.Squilien ),
+		new( "Junk Crab", WaveDirector.EnemyKind.Crab ),
+		new( "Sea Spider", WaveDirector.EnemyKind.Spider ),
+		new( "MC61 boss", WaveDirector.EnemyKind.Boss ),
+	};
+	static string LookName( GlobalStylize.Look look ) => look switch
+	{
+		GlobalStylize.Look.InkOutlines => "Ink",
+		GlobalStylize.Look.Painterly => "Paint",
+		GlobalStylize.Look.Storybook => "Book",
+		GlobalStylize.Look.Watercolor => "Water",
+		_ => look.ToString(),
+	};
+	static IEnumerable<string> LookNames => Enum.GetValues<GlobalStylize.Look>().Select( LookName );
+
 	string Chip( bool on ) => on ? "chip on" : "chip off";
 	string Pick( bool on ) => on ? "chip on" : "chip";
 
@@ -321,7 +520,9 @@
 		var c = System.HashCode.Combine( DevFlags.FreeCam, DevFlags.Fov, DevFlags.OneShot, DevFlags.ShowHitboxes, DevFlags.ShowStats, TimeScale, sunPreset, savedSpot is null );
 		// The stats overlay ticks a few times a second.
 		var d = DevFlags.ShowStats ? (int)(RealTime.Now * 4f) : 0;
-		return System.HashCode.Combine( a, b, c, d );
+		// While open it also redraws ten times a second, so every chip shows the current state (skins, looks...).
+		var e = open ? (int)(RealTime.Now * 10f) : 0;
+		return System.HashCode.Combine( a, b, c, d, e, search, tab );
 	}
 
 	// ---- hands-on tools: noclip, placing enemies at the crosshair, hiding the HUD ----

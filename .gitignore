@@ -27,3 +27,6 @@ code/Properties/*
 
 # Exported / standalone games
 Exports/
+
+# Blender auto-backups
+*.blend1

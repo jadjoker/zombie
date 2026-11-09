@@ -286,7 +286,8 @@ public sealed class PlayerMovement : Component, PlayerController.IEvents
 
 		// Keep chained moves from getting silly.
 		var horizontal = body.Velocity.WithZ( 0 );
-		if ( horizontal.Length > MaxHorizontalSpeed )
+		var surging = GetComponent<Jetpack>() is { } jet && (jet.Surging || jet.TimeSinceSurgeEnded < 1.2f);
+		if ( !surging && horizontal.Length > MaxHorizontalSpeed )
 			body.Velocity = horizontal.Normal * MaxHorizontalSpeed + Vector3.Up * body.Velocity.z;
 	}
 

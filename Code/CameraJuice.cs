@@ -40,9 +40,22 @@ public sealed class CameraJuice : Component, PlayerController.IEvents
 		var inventory = GetComponent<WeaponInventory>();
 		var weapon = inventory is not null && inventory.Current.IsValid() ? inventory.Current : GetComponent<PlayerWeapon>();
 		if ( weapon.IsValid() && weapon.AimAmount > 0.001f )
+		{
 			cam.FieldOfView *= MathX.Lerp( 1f, weapon.AimFovScale, weapon.AimAmount );
+			if ( weapon.ScopeAmount > 0.001f )
+			{
+				cam.FieldOfView *= MathX.Lerp( 1f, weapon.ScopeFovScale / MathF.Max( 0.05f, weapon.AimFovScale ), weapon.ScopeAmount );
+				// Breathing: the reticle drifts in a slow figure-eight (it's real: shots go where it points).
+				var t = Time.Now;
+				var drift = new Angles( MathF.Sin( t * 0.9f ) * 0.12f, MathF.Sin( t * 0.45f ) * 0.16f, 0f ) * weapon.ScopeAmount;
+				cam.WorldRotation *= drift.ToRotation();
+			}
+		}
 
 		cam.FieldOfView += fovKick;
+
+		// Tumbling in the dive (or ragdolled by the landing): the view spins with the body.
+		if ( DockHouse.Diving ) cam.WorldRotation *= DockHouse.CameraTumble;
 
 		// On death the view slumps to the floor and tips over.
 		var survivor = GetComponent<PlayerSurvivor>();

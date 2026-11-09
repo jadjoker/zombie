@@ -70,6 +70,9 @@ public sealed class PlayerSurvivor : Component
 		Health.Damaged += OnHurt;
 		Health.Died += OnDied;
 		if ( !IsProxy && !Components.Get<PlayerMelee>().IsValid() ) AddComponent<PlayerMelee>();
+		if ( !Components.Get<PlayerRig>().IsValid() ) AddComponent<PlayerRig>();
+		if ( !IsProxy && !Components.Get<WaterFeel>().IsValid() ) AddComponent<WaterFeel>();
+		if ( !IsProxy && !Components.Get<Jetpack>().IsValid() ) AddComponent<Jetpack>();
 		if ( !IsProxy && !Components.Get<AllyCommander>().IsValid() ) AddComponent<AllyCommander>();
 	}
 

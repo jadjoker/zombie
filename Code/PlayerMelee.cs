@@ -1,5 +1,5 @@
 /// <summary>
-/// Quick melee: press Melee (X) to swing a fire axe. It works with any gun in hand, hides the gun during
+/// Quick melee: press Melee (mouse 5) to swing a fire axe. It works with any gun in hand, hides the gun during
 /// the swing and cleaves everything in front of you, so it's great for shearing legs and claws off.
 /// Added to the local player by PlayerSurvivor; no scene setup needed.
 /// </summary>
@@ -22,6 +22,9 @@ public sealed class PlayerMelee : Component
 	bool struck;
 	bool leftSwing;
 	GameObject axe;
+	SkinnedModelRenderer axeModel;
+	string axeSkin;
+	float lastAxeSeconds = 999f;
 	readonly HashSet<object> hitThisSwing = new();
 
 	PlayerWeapon Weapon => GetComponent<WeaponInventory>()?.Current ?? GetComponent<PlayerWeapon>();
@@ -32,7 +35,8 @@ public sealed class PlayerMelee : Component
 
 		var survivor = GetComponent<PlayerSurvivor>();
 		var alive = survivor.IsValid() && survivor.IsAlive;
-		var blocked = !alive || DevFlags.Placing || DevFlags.FreeCam || (GetComponent<PlayerController>()?.ThirdPerson ?? false);
+		var blocked = !alive || DevFlags.Placing || DevFlags.FreeCam;
+		var thirdPerson = GetComponent<PlayerController>()?.ThirdPerson ?? false;
 
 		if ( !blocked && Input.Pressed( "Melee" ) && Swing >= Cooldown )
 		{
@@ -40,6 +44,7 @@ public sealed class PlayerMelee : Component
 			struck = false;
 			leftSwing = !leftSwing;
 			hitThisSwing.Clear();
+			GetComponent<PlayerRig>()?.PlaySwing( leftSwing );   // the body swings too, for everyone
 		}
 
 		if ( !struck && Swing >= WindUp && Swing < Cooldown )
@@ -48,7 +53,7 @@ public sealed class PlayerMelee : Component
 			Strike();
 		}
 
-		UpdateView( blocked );
+		UpdateView( blocked || thirdPerson );   // the first-person axe only shows in first person
 	}
 
 	/// <summary> Testing aid: when 0 or more, the axe is held at this many seconds into the swing. </summary>
@@ -61,6 +66,7 @@ public sealed class PlayerMelee : Component
 		struck = false;
 		leftSwing = !leftSwing;
 		hitThisSwing.Clear();
+		GetComponent<PlayerRig>()?.PlaySwing( leftSwing );
 	}
 
 	// ---- the hit ----------------------------------------------------------------------------
@@ -210,6 +216,28 @@ public sealed class PlayerMelee : Component
 		axe.Enabled = true;
 		axe.SetParent( camera.GameObject, false );
 
+		// The rigged axe (gloved hands and all): its two swing animations are scrubbed to the swing's clock.
+		if ( axeModel.IsValid() && axeModel.SceneModel is not null )
+		{
+			// (overrides are dropped each time the axe is hidden and shown again, so check for them)
+			if ( axeSkin != WeaponSkins.Current || !axeModel.Materials.HasOverride( 0 ) ) { WeaponSkins.Apply( axeModel, WeaponSkins.Current ); axeSkin = WeaponSkins.Current; }
+			var seconds = scrubbing ? ScrubTime : (float)Swing;
+			var sequence = leftSwing ? "swing_l" : "swing_r";
+			// A new swing (or the other side): start its animation from the top and let it play.
+			if ( axeModel.Sequence.Name != sequence || seconds < lastAxeSeconds - 0.01f )
+			{
+				axeModel.Sequence.Name = sequence;
+				axeModel.Sequence.Looping = false;
+				axeModel.Sequence.Time = 0f;
+			}
+			lastAxeSeconds = seconds;
+			axeModel.PlaybackRate = scrubbing ? 0f : 1f;
+			if ( scrubbing ) axeModel.Sequence.Time = seconds;
+			axe.LocalPosition = Vector3.Zero;
+			axe.LocalRotation = Rotation.Identity;
+			return;
+		}
+
 		// Four beats: lift into view, haul back, slash through, drop away.
 		var time = scrubbing ? ScrubTime : (float)Swing;
 		var side = leftSwing ? -1f : 1f;
@@ -229,10 +257,21 @@ public sealed class PlayerMelee : Component
 	}
 
 	/// <summary> A fire axe from boxes, origin at the grip: wooden haft, red grip band, steel head with a bit and a spike. </summary>
-	static GameObject BuildAxe( GameObject camera )
+	GameObject BuildAxe( GameObject camera )
 	{
 		var root = new GameObject( camera, true, "Melee Axe" );
 		root.Tags.Add( "viewmodel" );
+
+		var model = Model.Load( "models/weapons/axe/axe.vmdl" );
+		if ( model is not null && !model.IsError )
+		{
+			axeModel = root.AddComponent<SkinnedModelRenderer>();
+			axeModel.Model = model;
+			axeModel.RenderType = ModelRenderer.ShadowRenderType.Off;
+			axeSkin = null;
+			return root;
+		}
+		// Fallback if the model is missing: the old box-built axe.
 
 		// The haft points along +X (away from the camera); the head sits at the far end.
 		Part( root, "Haft", new Vector3( 14f, 0, 0 ), new Vector3( 30f, 1.8f, 1.8f ), new Color( 0.45f, 0.28f, 0.14f ) );

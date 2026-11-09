@@ -68,6 +68,17 @@ public sealed class PlayerWeapon : Component
 	[Property, Group( "Aiming" )] public float AimRecoilScale { get; set; } = 0.55f;
 	[Property, Group( "Aiming" )] public float AimMoveSpeedScale { get; set; } = 0.6f;
 	[Property, Group( "Aiming" )] public float AimSpeed { get; set; } = 9f;
+	/// <summary> Seconds to bring the sights up (or the scope to the eye). </summary>
+	[Property, Group( "Aiming" )] public float AimTime { get; set; } = 0.2f;
+	/// <summary> Zoom while looking through a scope (field of view multiplier). </summary>
+	[Property, Group( "Aiming" )] public float ScopeFovScale { get; set; } = 0.3f;
+
+	/// <summary> This gun has a working scope (the custom rifle, in first person). </summary>
+	public bool HasScope => UseCustomViewModels && DisplayName == "Rifle" && !InThirdPerson;
+	/// <summary> 0 to 1: how far into the scope view you are (it takes over at the end of aiming). </summary>
+	public float ScopeAmount { get; private set; }
+	float aimLinear;
+	float baseSensitivity = -1f;
 
 	/// <summary> Holding Attack2 (right mouse) and allowed to aim. </summary>
 	public bool IsAiming { get; private set; }
@@ -83,7 +94,19 @@ public sealed class PlayerWeapon : Component
 	{
 		var controller = GetComponent<PlayerController>();
 		IsAiming = (Input.Down( "Attack2" ) || ForceAim) && !IsReloading;
-		AimAmount = MathX.Lerp( AimAmount, IsAiming ? 1f : 0f, Time.Delta * AimSpeed );
+		// Eased both ways: it starts gently, moves quickly through the middle and settles softly at the eye.
+		aimLinear = MathX.Approach( aimLinear, IsAiming ? 1f : 0f, Time.Delta / MathF.Max( 0.05f, AimTime ) );
+		AimAmount = aimLinear * aimLinear * (3f - 2f * aimLinear);
+		var scope = HasScope ? MathX.Clamp( (AimAmount - 0.78f) / 0.22f, 0f, 1f ) : 0f;
+		ScopeAmount = scope * scope * (3f - 2f * scope);
+
+		// Look slower when zoomed, in step with the zoom, so the crosshair moves across the world at the same rate.
+		if ( !IsProxy && controller.IsValid() )
+		{
+			if ( baseSensitivity < 0f ) baseSensitivity = controller.LookSensitivity;
+			var zoom = MathX.Lerp( 1f, AimFovScale, AimAmount ) * MathX.Lerp( 1f, ScopeFovScale / MathF.Max( 0.05f, AimFovScale ), ScopeAmount );
+			controller.LookSensitivity = baseSensitivity * MathX.Lerp( 1f, zoom, 0.85f );
+		}
 
 		// Slow the player while aiming; remember the original speeds the first time through.
 		if ( !controller.IsValid() ) return;
@@ -131,6 +154,28 @@ public sealed class PlayerWeapon : Component
 	[Property, Group( "View Model" )] public Model ViewModelGun { get; set; }
 	[Property, Group( "View Model" )] public Model ViewModelArms { get; set; }
 
+	/// <summary> A Blender-made first-person model (gun and arms together). Used instead of the gun and arms above when set. </summary>
+	[Property, Group( "View Model" )] public Model CustomViewModel { get; set; }
+
+	/// <summary> Dev switch: the custom first-person models are used where a weapon has one. </summary>
+	public static bool UseCustomViewModels { get; set; } = true;
+
+	static readonly Dictionary<string, Model> customByName = new();
+	Model ResolveCustomViewModel()
+	{
+		if ( !UseCustomViewModels ) return null;
+		if ( CustomViewModel is not null ) return CustomViewModel;
+		var path = DisplayName switch { "Rifle" => "models/weapons/rifle/rifle.vmdl", "Shotgun" => "models/weapons/shotgun/shotgun.vmdl", _ => null };
+		if ( path is null ) return null;
+		if ( !customByName.TryGetValue( path, out var model ) || model is null )
+		{
+			model = Model.Load( path );
+			if ( model is null || model.IsError ) return null;
+			customByName[path] = model;
+		}
+		return model;
+	}
+
 	public ViewModel ViewModel { get; private set; }
 
 	bool ammoInitialised;
@@ -162,14 +207,25 @@ public sealed class PlayerWeapon : Component
 		}
 		IsAiming = false;
 		AimAmount = 0f;
+		aimLinear = 0f;
+		ScopeAmount = 0f;
+		var aimCtrl = GetComponent<PlayerController>();
+		if ( aimCtrl.IsValid() && baseSensitivity > 0f ) aimCtrl.LookSensitivity = baseSensitivity;
 	}
 
 	/// <summary> The camera isn't always ready when we start, so build the view model on demand. </summary>
 	void EnsureViewModel()
 	{
-		if ( ViewModel.IsValid() || IsProxy || ViewModelGun is null ) return;
+		if ( ViewModel.IsValid() || IsProxy ) return;
+		var customModel = ResolveCustomViewModel();
+		if ( customModel is null && ViewModelGun is null ) return;
 		var camera = Scene.Camera;
 		if ( !camera.IsValid() ) return;
+		if ( customModel is not null )
+		{
+			ViewModel = ViewModel.CreateCustom( camera.GameObject, customModel, GetComponent<PlayerController>(), this );
+			return;
+		}
 		ViewModel = ViewModel.Create( camera.GameObject, ViewModelGun, ViewModelArms, GetComponent<PlayerController>(), this );
 	}
 
@@ -261,16 +317,19 @@ public sealed class PlayerWeapon : Component
 		if ( shot.IsValid() ) shot.Pitch = Game.Random.Float( 0.95f, 1.05f );
 		ShotEffectsForOthers();
 
+		var trailStart = muzzle;
 		// With a view model, the flash comes out of the real barrel and rides along with the gun.
 		GameObject flash = null;
 		if ( InThirdPerson && Appearance.IsValid() )
 		{
 			Appearance.PlayFire( this, MuzzleFlash, MuzzleFlashScale * 2f );
+			trailStart = Appearance.WorldGunFor( this )?.GetComponent<SkinnedModelRenderer>()?.GetAttachment( "muzzle" )?.Position ?? muzzle;
 		}
 		else if ( ViewModel.IsValid() )
 		{
 			ViewModel.Fire();
 			var barrel = ViewModel.Muzzle();
+			trailStart = barrel.Position;
 			flash = SpawnEffect( MuzzleFlash, barrel.Position, barrel.Rotation, ViewModel.GameObject );
 		}
 		else
@@ -300,6 +359,7 @@ public sealed class PlayerWeapon : Component
 			if ( creature.Hit && (!tr.Hit || creature.Distance < tr.Distance) ) tr = creature;
 
 			if ( tr.Hit ) HandleHit( tr, start, direction );
+			if ( WaterFeel.IsOn( Scene ) ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f ) );
 		}
 
 		var juice = GetComponent<CameraJuice>();

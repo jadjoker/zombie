@@ -10,6 +10,9 @@ public sealed class AllyCommander : Component
 	SeaSpider ally;
 	TimeUntil nextCheck;
 
+	/// <summary> Keep a spider ally around, respawning it if it's lost. Off after the dev menu despawns allies. </summary>
+	public static bool KeepAlly { get; set; } = true;
+
 	protected override void OnUpdate()
 	{
 		if ( IsProxy ) return;
@@ -17,7 +20,7 @@ public sealed class AllyCommander : Component
 		if ( !survivor.IsValid() || !survivor.IsAlive ) return;
 
 		// Keep an ally around (it's lost on game over, or if the dev menu removed it).
-		if ( nextCheck )
+		if ( nextCheck && KeepAlly )
 		{
 			nextCheck = 2f;
 			ally = Scene.GetAllComponents<SeaSpider>().FirstOrDefault( s => s.IsAlly && s.OwnerPlayer == GameObject && !s.IsDead );

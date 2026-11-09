@@ -37,15 +37,16 @@ DevMenu
 		background-color: rgba( black, 0.45 );
 	}
 
+	// The window fills most of the screen whatever its size, and the body scrolls, so new rows never get cut off.
 	.window
 	{
 		position: absolute;
-		left: 50%;
-		top: 50%;
-		width: 1180px;
-		height: 760px;
-		margin-left: -590px;
-		margin-top: -380px;
+		left: 4%;
+		right: 4%;
+		top: 4%;
+		bottom: 4%;
+		max-width: 1500px;
+		margin: 0 auto;
 		flex-direction: column;
 		background-color: rgba( #0c1016, 0.96 );
 		border: 2px solid #2fd08a;
@@ -105,24 +106,34 @@ DevMenu
 		}
 	}
 
+	// Columns share the width and wrap under each other when the window is narrow; the whole body scrolls down.
 	.body
 	{
+		flex-grow: 1;
 		flex-direction: row;
+		flex-wrap: wrap;
+		align-items: flex-start;
+		align-content: flex-start;
 		padding: 14px 16px;
-		overflow: scroll;
+		overflow-y: scroll;
+		overflow-x: hidden;
 	}
 
 	.column
 	{
 		flex-direction: column;
-		width: 560px;
-		flex-shrink: 0;
+		flex-grow: 1;
+		flex-shrink: 1;
+		flex-basis: 0;
+		min-width: 460px;
 		padding-right: 12px;
 	}
 
+	// Row labels size to their text (with a minimum so short ones still line up), so long names never overlap the chips.
 	.row-label
 	{
-		width: 52px;
+		min-width: 52px;
+		margin-right: 8px;
 		flex-shrink: 0;
 		font-size: 13px;
 		font-weight: 800;
@@ -166,6 +177,8 @@ DevMenu
 	{
 		flex-wrap: wrap;
 		flex-shrink: 0;
+		align-items: flex-start;
+		max-width: 100%;
 	}
 
 	.chip
@@ -224,5 +237,123 @@ DevMenu
 			color: #ffd24a;
 			margin-left: 6px;
 		}
+	}
+
+	// ---- search, tabs, single-column cards ----
+	.search-box
+	{
+		flex-grow: 1;
+		flex-direction: row;
+		align-items: center;
+		margin: 0 24px;
+	}
+
+	.search
+	{
+		flex-grow: 1;
+		height: 30px;
+		padding: 4px 12px;
+		border-radius: 6px;
+		background-color: rgba( white, 0.08 );
+		border: 1px solid rgba( #2fd08a, 0.5 );
+		font-size: 15px;
+		color: white;
+		pointer-events: all;
+	}
+
+	.clear
+	{
+		margin-left: 6px;
+		width: 26px;
+		height: 26px;
+		align-items: center;
+		justify-content: center;
+		border-radius: 6px;
+		background-color: rgba( white, 0.1 );
+		cursor: pointer;
+	}
+
+	.tabs
+	{
+		flex-shrink: 0;
+		flex-direction: row;
+		align-items: center;
+		padding: 8px 16px 0 16px;
+		border-bottom: 1px solid rgba( #2fd08a, 0.35 );
+
+		&.searching .tab
+		{
+			opacity: 0.45;
+		}
+	}
+
+	.tab
+	{
+		padding: 7px 18px;
+		margin-right: 6px;
+		border-radius: 8px 8px 0 0;
+		font-size: 15px;
+		font-weight: 800;
+		letter-spacing: 1px;
+		text-transform: uppercase;
+		background-color: rgba( white, 0.05 );
+		color: rgba( white, 0.7 );
+		cursor: pointer;
+
+		&:hover
+		{
+			background-color: rgba( white, 0.12 );
+		}
+
+		&.active
+		{
+			background-color: rgba( #2fd08a, 0.3 );
+			color: #d6ffe9;
+		}
+	}
+
+	.tab-note
+	{
+		margin-left: 12px;
+		font-size: 13px;
+		opacity: 0.6;
+	}
+
+	.body
+	{
+		flex-direction: column;
+		flex-wrap: nowrap;
+	}
+
+	.section
+	{
+		padding: 10px 12px 6px 12px;
+		margin-bottom: 10px;
+		border-radius: 8px;
+		background-color: rgba( white, 0.03 );
+		border: 1px solid rgba( white, 0.06 );
+	}
+
+	.row-label.wide
+	{
+		min-width: 110px;
+	}
+
+	.spawn-grid
+	{
+		flex-direction: column;
+	}
+
+	.spawn-row
+	{
+		flex-direction: row;
+		align-items: flex-start;
+	}
+
+	.no-results
+	{
+		padding: 30px;
+		font-size: 16px;
+		opacity: 0.6;
 	}
 }

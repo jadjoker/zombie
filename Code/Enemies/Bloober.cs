@@ -321,6 +321,10 @@ public sealed class Bloober : Component, ICreature
 			if ( timeSinceDeath > 1f ) GameObject.Destroy();
 			return;
 		}
+		else if ( knockUntil > 0f )
+		{
+			Tumble();
+		}
 		else if ( !DevFlags.FreezeEnemies )
 		{
 			Think();
@@ -338,6 +342,30 @@ public sealed class Bloober : Component, ICreature
 		mouthOpen = MathX.Approach( mouthOpen, Biting ? 1f : 0f, Time.Delta * (Biting ? 14f : 5f) );
 
 		UpdateBody();
+	}
+
+	Vector3 knockVelocity;
+	Vector3 knockSpin;
+	TimeUntil knockUntil;
+
+	/// <summary> True while it is tumbling limp after being knocked. </summary>
+	public bool Knocked => knockUntil > 0f;
+
+	/// <summary> Knocked limp: it flies off spinning, its body flopping behind, until the water slows it and it comes round. </summary>
+	public void Knock( Vector3 velocity, Vector3 spin, float duration )
+	{
+		knockVelocity = velocity;
+		knockSpin = spin;
+		knockUntil = duration;
+	}
+
+	void Tumble()
+	{
+		var dt = Time.Delta;
+		knockVelocity *= MathF.Exp( -1.6f * dt );
+		knockSpin *= MathF.Exp( -1.2f * dt );
+		WorldPosition += knockVelocity * dt;
+		WorldRotation = Rotation.From( knockSpin.x * dt, knockSpin.y * dt, knockSpin.z * dt ) * WorldRotation;
 	}
 
 	/// <summary> Drags each segment along behind the one in front, then poses skin, spots and face. </summary>

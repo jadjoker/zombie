@@ -61,7 +61,94 @@
 		</div>
 	}
 
-	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(1f - (Weapon?.AimAmount ?? 0f))">
+	@if ( Jet is { } jet && JetOpacity > 0f )
+	{
+		<div class="jet @(jet.DockedTo.IsValid() ? "docked" : "") @(jet.Stalled ? "stalled" : "") @(jet.TimeSinceRefused < 0.35f ? "refused" : "")" style="opacity: @JetOpacity">
+			<div class="fill" style="width: @(jet.PowerFraction * 100f)%"></div>
+			@if ( jet.Charging )
+			{
+				<div class="charge" style="width: @(jet.Charge * jet.PowerFraction * 100f)%"></div>
+			}
+			<div class="restart" style="left: @(jet.RestartAt * 100f)%"></div>
+		</div>
+	}
+
+	@if ( Jet is { } slam && slam.TimeSinceSlam < 0.35f )
+	{
+		// Slam: a white flash that fades, and a ring of light.
+		var k = 1f - slam.TimeSinceSlam / 0.35f;
+		<div class="slam-flash" style="opacity: @(k * k * 0.55f * slam.LastSlamStrength)"></div>
+	}
+
+	@if ( DockHouse.Prompt is { } dockPrompt )
+	{
+		<div class="dock-prompt">@dockPrompt</div>
+	}
+	@if ( DockHouse.Diving )
+	{
+		<div class="dive-hud">
+			<div class="dive-count">BLOOBERS CRUSHED <b>@DockHouse.DiveCrushed</b></div>
+			@if ( DockHouse.DiveKnocked > 0 )
+			{
+				<div class="dive-help">KNOCKED ASIDE @DockHouse.DiveKnocked</div>
+			}
+			<div class="dive-help">WASD tilt to glide   Ctrl tuck   Space spread out</div>
+		</div>
+		<div class="dive-depth">
+			<div class="depth-num">@(DockHouse.DiveDepth.ToString( "0" ))<span>m</span></div>
+			<div class="depth-speed">@((DockHouse.DiveVelocity.Length / 39.37f * 3.6f).ToString( "0" )) km/h</div>
+			<div class="depth-bar"><div class="depth-fill" style="height: @(DockHouse.DiveProgress * 100f)%"></div></div>
+		</div>
+		<div class="dive-dark" style="opacity: @(DockHouse.DiveProgress * 0.3f)"></div>
+		<div class="speedlines" style="opacity: 0.35">
+			@for ( var i = 0; i < 26; i++ )
+			{
+				var angle = i * (360f / 26f) + (i % 3) * 5f;
+				var distance = 150f + ((Time.Now * 1600f + i * 157f) % 320f);
+				<div class="sline" style="height: @(70f + (i % 4) * 30f)px; transform: rotate( @(angle)deg ) translateY( -@(distance)px );"></div>
+			}
+		</div>
+	}
+
+	@if ( Jet is { } surge && (surge.Surging || surge.Charging) )
+	{
+		// Speed lines: streaks rushing out from the middle during a surge (a faint pull inward while winding up).
+		var strength = surge.Surging ? surge.SurgeStrength * surge.SurgeLeftFraction : surge.Charge * 0.35f;
+		<div class="speedlines" style="opacity: @(MathX.Clamp( strength * 1.4f, 0f, 0.9f ))">
+			@for ( var i = 0; i < 22; i++ )
+			{
+				var angle = i * (360f / 22f) + (i % 3) * 6f;
+				var travel = (Time.Now * (surge.Surging ? 1400f : -300f) + i * 157f) % 300f;
+				if ( travel < 0f ) travel += 300f;
+				var distance = 160f + travel;
+				var length = 60f + (i % 4) * 25f;
+				<div class="sline" style="height: @(length)px; transform: rotate( @(angle)deg ) translateY( -@(distance)px );"></div>
+			}
+		</div>
+	}
+
+	@if ( Weapon is { } scoped && scoped.ScopeAmount > 0.01f )
+	{
+		var drift = ScopeDrift();
+		<div class="scope" style="opacity: @(scoped.ScopeAmount)">
+			<div class="scope-mask" style="left: @(drift.x - 40f)px; top: @(drift.y - 40f)px; right: @(-drift.x - 40f)px; bottom: @(-drift.y - 40f)px;"></div>
+			<div class="scope-tint"></div>
+			<div class="reticle">
+				<div class="post left"></div><div class="post right"></div><div class="post top"></div><div class="post bottom"></div>
+				<div class="wire h"></div><div class="wire v"></div>
+				@for ( var i = 1; i <= 4; i++ )
+				{
+					<div class="mil" style="left: @(-2 + i * 24)px; top: -2px;"></div>
+					<div class="mil" style="left: @(-2 - i * 24)px; top: -2px;"></div>
+					<div class="mil" style="left: -2px; top: @(-2 + i * 24)px;"></div>
+					<div class="mil" style="left: -2px; top: @(-2 - i * 24)px;"></div>
+				}
+				<div class="dot"></div>
+			</div>
+		</div>
+	}
+
+	<div class="crosshair" style="transform: scale( @CrosshairScale ); opacity: @(MathF.Max( 0f, 1f - (Weapon?.AimAmount ?? 0f) * 1.6f ))">
 		<div class="dot"></div>
 	</div>
 
@@ -207,6 +294,36 @@
 
 	PlayerAfflictions Afflictions => Player?.GetComponent<PlayerAfflictions>();
 	PlayerMovement Movement => Player?.GetComponent<PlayerMovement>();
+	Jetpack Jet => Player?.GetComponent<Jetpack>();
+
+	// The scope's shadow lags a little behind fast turns, like the eye isn't quite centred behind the glass.
+	Vector2 scopeDrift;
+	Angles lastScopeLook;
+	Vector2 ScopeDrift()
+	{
+		var controller = Player?.GetComponent<PlayerController>();
+		if ( controller is null ) return Vector2.Zero;
+		var look = controller.EyeAngles;
+		var delta = new Vector2( Angles.NormalizeAngle( look.yaw - lastScopeLook.yaw ), Angles.NormalizeAngle( look.pitch - lastScopeLook.pitch ) );
+		lastScopeLook = look;
+		var target = new Vector2( delta.x * 60f, -delta.y * 60f ).ClampLength( 36f );
+		scopeDrift = Vector2.Lerp( scopeDrift, target, MathX.Clamp( Time.Delta * 8f, 0f, 1f ) );
+		return scopeDrift;
+	}
+
+	// The jetpack's power bar shows while it's in use or refilling, then fades.
+	float jetShown;
+	float JetOpacity
+	{
+		get
+		{
+			var j = Jet;
+			if ( j is null ) return 0f;
+			var wanted = j.Power < j.MaxPower - 0.5f || j.Thrusting || j.Surging || j.Charging || j.TimeSinceRefused < 0.6f ? 1f : 0f;
+			jetShown = MathX.Approach( jetShown, wanted, Time.Delta * (wanted > 0f ? 8f : 1.5f) );
+			return jetShown;
+		}
+	}
 
 	// Stamina pips show while they're refilling (or you tried to spend one you didn't have), then fade.
 	float staminaShown;

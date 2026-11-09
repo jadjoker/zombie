@@ -535,12 +535,12 @@
           "__enabled": true,
           "Flags": 0,
           "DeathSound": {
-            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
+            "Id": "bfaedb76-868d-4eeb-9248-b930451fe6f0",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "HurtShake": 0.5,
           "HurtSound": {
-            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
+            "Id": "bfaedb76-868d-4eeb-9248-b930451fe6f0",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "OnComponentDestroy": null,
@@ -565,23 +565,25 @@
           "AimRecoilScale": 0.55,
           "AimSpeed": 9,
           "AimSpreadScale": 0.15,
+          "AimTime": 0.2,
           "Automatic": true,
           "BulletImpulse": 150,
+          "CustomViewModel": null,
           "Damage": 34,
           "DamagePerLevel": 0.25,
           "DisplayName": "Rifle",
           "DryFireSound": {
-            "Id": "9bac4cec-8b16-4430-ba13-0f0fb870b3b4",
+            "Id": "d68bb56b-6064-48f3-8109-cf1be28cf566",
             "Path": "sounds/player_use_fail.sound"
           },
           "FireRate": 8,
           "FovKickPerShot": 1.5,
           "HitFleshSound": {
-            "Id": "201d084a-4feb-4863-89fa-9497678312d4",
+            "Id": "76c4843b-47c8-48c9-b0fa-16207feb00b2",
             "Path": "sounds/impacts/bullets/impact-bullet-flesh.sound"
           },
           "HitWorldSound": {
-            "Id": "3c45254b-fb3d-43b7-ae2c-e5a1eb029238",
+            "Id": "63bcc4b9-eedb-457d-9ca5-9fb3951b672f",
             "Path": "sounds/impacts/bullets/impact-bullet-concrete.sound"
           },
           "HoldType": "Rifle",
@@ -595,11 +597,11 @@
           },
           "MagazineSize": 30,
           "MagInSound": {
-            "Id": "fd982b3c-6964-4e89-b2b1-29c62dcfed60",
+            "Id": "0017bd2a-e70b-4587-8d54-e3044b2c78c9",
             "Path": "sound/vidya/weapons/reload_mag_in.sound"
           },
           "MagOutSound": {
-            "Id": "38952191-6d18-413e-8ca4-b4f3daa5749e",
+            "Id": "d0fa53e3-721f-4677-b82b-31cb43c622de",
             "Path": "sound/vidya/weapons/reload_mag_out.sound"
           },
           "MuzzleFlash": {
@@ -617,11 +619,12 @@
           "Range": 5000,
           "Recoil": 0.6,
           "ReloadTime": 1.6,
+          "ScopeFovScale": 0.3,
           "ShakePerShot": 0.12,
           "ShellReload": false,
           "ShellTime": 0.5,
           "ShootSound": {
-            "Id": "53538e88-3e87-4ad3-89e1-195c073fe124",
+            "Id": "49c13b5f-64f1-4393-a272-a63c7c801058",
             "Path": "sound/vidya/weapons/smg/smg_shoot.sound"
           },
           "Slot": 1,
@@ -678,11 +681,11 @@
             "prefab": "particles/surfaces/impact.generic.prefab"
           },
           "JumpSound": {
-            "Id": "477ca2ab-eadd-4ce6-bf32-b202c6631d06",
+            "Id": "6ab4f451-c8b1-4528-99fc-bd171c4662a3",
             "Path": "sounds/footsteps/footstep-concrete-jump.sound"
           },
           "LandSound": {
-            "Id": "c878e111-7a81-4166-8134-6124ac90d8b8",
+            "Id": "10df0398-caab-4b95-825c-eed9dae6e81e",
             "Path": "sounds/footsteps/footstep-concrete-land.sound"
           },
           "MantleHeight": 95,
@@ -744,23 +747,25 @@
           "AimRecoilScale": 0.7,
           "AimSpeed": 9,
           "AimSpreadScale": 0.6,
+          "AimTime": 0.2,
           "Automatic": false,
           "BulletImpulse": 120,
+          "CustomViewModel": null,
           "Damage": 14,
           "DamagePerLevel": 0.25,
           "DisplayName": "Shotgun",
           "DryFireSound": {
-            "Id": "9bac4cec-8b16-4430-ba13-0f0fb870b3b4",
+            "Id": "d68bb56b-6064-48f3-8109-cf1be28cf566",
             "Path": "sounds/player_use_fail.sound"
           },
           "FireRate": 1.4,
           "FovKickPerShot": 4,
           "HitFleshSound": {
-            "Id": "201d084a-4feb-4863-89fa-9497678312d4",
+            "Id": "76c4843b-47c8-48c9-b0fa-16207feb00b2",
             "Path": "sounds/impacts/bullets/impact-bullet-flesh.sound"
           },
           "HitWorldSound": {
-            "Id": "3c45254b-fb3d-43b7-ae2c-e5a1eb029238",
+            "Id": "63bcc4b9-eedb-457d-9ca5-9fb3951b672f",
             "Path": "sounds/impacts/bullets/impact-bullet-concrete.sound"
           },
           "HoldType": "Shotgun",
@@ -774,7 +779,7 @@
           },
           "MagazineSize": 6,
           "MagInSound": {
-            "Id": "fd982b3c-6964-4e89-b2b1-29c62dcfed60",
+            "Id": "0017bd2a-e70b-4587-8d54-e3044b2c78c9",
             "Path": "sound/vidya/weapons/reload_mag_in.sound"
           },
           "MagOutSound": null,
@@ -793,11 +798,12 @@
           "Range": 2600,
           "Recoil": 3.5,
           "ReloadTime": 1.6,
+          "ScopeFovScale": 0.3,
           "ShakePerShot": 0.45,
           "ShellReload": true,
           "ShellTime": 0.5,
           "ShootSound": {
-            "Id": "67efa082-9e84-41d7-9ded-4c3bd29eb37d",
+            "Id": "147717ed-6760-4f35-b4e8-302edc5bf966",
             "Path": "sound/vidya/weapons/shotgun/shotgun_shoot.sound"
           },
           "Slot": 2,
@@ -839,6 +845,8 @@
           "__enabled": true,
           "Flags": 0,
           "AimShoulderOffset": "55,22,2",
+          "ExtraPullBack": "25,0,4",
+          "FlyingPullBack": "55,4,14",
           "FollowHandRotation": true,
           "GunAngleOffset": "0,0,0",
           "HandAttachment": "hold_R",
@@ -1608,7 +1616,7 @@
               "Children": []
             },
             {
-              "__guid": "97df8e36-762f-4f31-931d-f9e2f32d1550",
+              "__guid": "63045d12-7e30-4461-be73-ba7f7fead878",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - cargo_pants_army",
@@ -1625,7 +1633,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "d91b2a65-cba2-4f2c-9307-079b11165694",
+                  "__guid": "757d3110-a220-4275-b145-91c7b8ec8dbb",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -1675,7 +1683,7 @@
               "Children": []
             },
             {
-              "__guid": "36a69708-e65d-46f1-8af9-a353a2cb5fa3",
+              "__guid": "b6bbd94c-194b-4ded-b461-28d1c4ed3ce3",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - army_boots",
@@ -1692,7 +1700,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "b67acd82-b734-4b62-90cc-6c723dc0bfa4",
+                  "__guid": "47377c26-c2bc-4525-a421-068c0fe207d6",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -1742,7 +1750,7 @@
               "Children": []
             },
             {
-              "__guid": "d77b8ce7-1e52-4820-be9a-f5e896250b65",
+              "__guid": "93fcce1e-f878-4f4b-8e2d-f72e6cd99d77",
               "__version": 2,
               "Flags": 0,
               "Name": "Clothing - tactical_vest_army",
@@ -1759,7 +1767,7 @@
               "Components": [
                 {
                   "__type": "Sandbox.SkinnedModelRenderer",
-                  "__guid": "6deb4beb-fe90-42a9-b44c-235c13846bba",
+                  "__guid": "fe4a9824-c25a-48e8-a8a7-3fb4794b720c",
                   "__enabled": true,
                   "Flags": 0,
                   "AnimationGraph": null,
@@ -12389,9 +12397,14 @@
           "SpawnCrabs": true,
           "SpawningPaused": false,
           "SpawnInterval": 1,
+          "SpawnSpiders": false,
           "SpawnSquiliens": true,
           "SpawnZombies": false,
           "SpeedPerWave": 10,
+          "SpiderBaseHealth": 110,
+          "SpiderChance": 0.2,
+          "SpiderFromWave": 2,
+          "SpiderHealthPerWave": 12,
           "SquilienBaseHealth": 130,
           "SquilienChance": 0.25,
           "SquilienFromWave": 1,
@@ -12401,7 +12414,7 @@
           "TopSpeed": 280,
           "WaveClearBonus": 50,
           "WaveClearedSound": {
-            "Id": "6c7c325f-f4f6-4e16-ba27-8c9c5cf744a6",
+            "Id": "e7902355-5dfe-4b79-bcb2-2b89456a25ec",
             "Path": "sounds/kenney/ui/ui.upvote.sound"
           },
           "WaveStartSound": null,
@@ -12412,7 +12425,7 @@
           },
           "ZombieDeathSound": null,
           "ZombieModel": {
-            "Id": "2307a336-9a70-42a0-abb7-184672ddc5e2",
+            "Id": "dd181a56-2767-4432-8fc1-d95e290d8cba",
             "Path": "zombie_project/models/zombie_male.vmdl"
           },
           "ZombiePrefab": null,
@@ -12506,35 +12519,35 @@
           "MaxSplatsPerTick": 3,
           "MeatModels": [
             {
-              "Id": "3013dfec-1ff9-4ebd-9707-8fb67ea9aa8b",
+              "Id": "9253ecb4-d07e-41e9-9ac2-083b01cca1c2",
               "Path": "models/citizen_gibs/models/torn_torso_gib.vmdl"
             },
             {
-              "Id": "0b62ddae-2bd0-41ac-baa7-3cba8a7dc44d",
+              "Id": "bbea4835-59aa-4baf-ab15-4270f1dff667",
               "Path": "models/citizen_gibs/models/torn_arm_gib.vmdl"
             },
             {
-              "Id": "904aafc5-c54f-4f65-bee9-a63c6beb6887",
+              "Id": "1fb8cc6b-48a9-4876-b0c8-10a3a671f4f0",
               "Path": "models/citizen_gibs/models/torn_hand_gib.vmdl"
             },
             {
-              "Id": "dbb06281-d5fd-4d26-ba32-74590a660e4e",
+              "Id": "0eb17ae7-2698-4a04-9071-146acd07a96b",
               "Path": "models/citizen_gibs/models/left_foot_gib_cap.vmdl"
             },
             {
-              "Id": "08bdbe2c-f24c-48b8-9f18-ca678d620e0c",
+              "Id": "5d0755f4-83c8-4aad-93b1-9e9e1e97c952",
               "Path": "models/citizen_gibs/models/right_foot_gib_cap.vmdl"
             },
             {
-              "Id": "9ec35567-732b-4224-82a5-4f384a29cb95",
+              "Id": "03f02e96-7f7d-4768-8e15-ba023b66393c",
               "Path": "models/citizen_gibs/models/right_leg_gib_cap.vmdl"
             },
             {
-              "Id": "5097c064-548e-46de-9be5-a5f5b3447b02",
+              "Id": "9973654a-1ec3-47ca-99fc-107daa18edef",
               "Path": "models/citizen_gibs/models/left_arm_gib_cap.vmdl"
             },
             {
-              "Id": "2ae9687f-42b5-4a5f-92b0-222661434d32",
+              "Id": "f75f4888-d9a1-4042-bc48-47fa1a3092e6",
               "Path": "models/citizen_gibs/models/pelvis_gib_cap.vmdl"
             }
           ],
@@ -12547,16 +12560,16 @@
           "OnComponentUpdate": null,
           "OrganModels": [
             {
-              "Id": "dd755aba-5abe-4e02-b3d9-2cd53d846b4f",
+              "Id": "eaac5894-7b2e-4480-ba9f-741a003a24a9",
               "Path": "models/citizen_gibs/models/organ_gib.vmdl"
             },
             {
-              "Id": "6d416713-6160-470a-80d4-d8768279778e",
+              "Id": "c36a2d9d-da30-452e-9223-029c129b73fb",
               "Path": "models/citizen_gibs/models/intestine_gib.vmdl"
             }
           ],
           "SplatSound": {
-            "Id": "8259f126-f462-4a70-82cf-8d89a116f01f",
+            "Id": "bfaedb76-868d-4eeb-9248-b930451fe6f0",
             "Path": "sounds/impacts/melee/impact-melee-flesh.sound"
           },
           "SplatVolume": 0.55,
@@ -12740,13 +12753,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "794109e9-134b-4bec-80f6-074027946281",
+                    "Id": "ab80006d-3899-4967-a02d-08af06a6c38b",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 250,
                   "CostIncrease": 0,
                   "DenySound": {
-                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
+                    "Id": "992da07d-e075-469f-893f-cbc2e6c59d80",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -12940,13 +12953,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "794109e9-134b-4bec-80f6-074027946281",
+                    "Id": "ab80006d-3899-4967-a02d-08af06a6c38b",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 500,
                   "CostIncrease": 250,
                   "DenySound": {
-                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
+                    "Id": "992da07d-e075-469f-893f-cbc2e6c59d80",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -13140,13 +13153,13 @@
                   "__enabled": true,
                   "Flags": 0,
                   "BuySound": {
-                    "Id": "794109e9-134b-4bec-80f6-074027946281",
+                    "Id": "ab80006d-3899-4967-a02d-08af06a6c38b",
                     "Path": "sounds/kenney/ui/ui.button.press.sound"
                   },
                   "Cost": 1000,
                   "CostIncrease": 500,
                   "DenySound": {
-                    "Id": "0f392033-3154-4b60-971d-b38ca45878fd",
+                    "Id": "992da07d-e075-469f-893f-cbc2e6c59d80",
                     "Path": "sounds/kenney/ui/ui.button.deny.sound"
                   },
                   "HealthPerPurchase": 25,
@@ -13504,6 +13517,45 @@
           },
           "StartingAnimationName": "Default",
           "TextureFilter": "Bilinear"
+        }
+      ],
+      "Children": []
+    },
+    {
+      "__guid": "05d147c8-a20b-4881-87d5-1c564af21f27",
+      "__version": 2,
+      "Flags": 0,
+      "Name": "Dock House",
+      "Position": "0,0,0",
+      "Rotation": "0,0,0,1",
+      "Scale": "1,1,1",
+      "Tags": "",
+      "Enabled": true,
+      "NetworkMode": 2,
+      "NetworkFlags": 0,
+      "NetworkOrphaned": 0,
+      "NetworkTransmit": true,
+      "OwnerTransfer": 1,
+      "Components": [
+        {
+          "__type": "DockHouse",
+          "__guid": "22a029af-3ad3-42a5-8ca7-258c4f597814",
+          "__enabled": true,
+          "Flags": 0,
+          "DiveBloobers": 60,
+          "DiveBoostSpeed": 2600,
+          "DiveBrakeSpeed": 650,
+          "DiveSpeed": 1500,
+          "DiveSteerSpeed": 750,
+          "OnComponentDestroy": null,
+          "OnComponentDisabled": null,
+          "OnComponentEnabled": null,
+          "OnComponentFixedUpdate": null,
+          "OnComponentStart": null,
+          "OnComponentUpdate": null,
+          "Origin": "-150,-350,0",
+          "PierLength": 460,
+          "SurfaceHeight": 32000
         }
       ],
       "Children": []

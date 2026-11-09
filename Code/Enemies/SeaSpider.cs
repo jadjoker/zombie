@@ -39,6 +39,8 @@ public sealed class SeaSpider : Component, ICreature
 	[Sync] public GameObject AttackTarget { get; set; }
 
 	public bool IsDead => health?.IsDead ?? false;
+	/// <summary> Where the glowing bulb is: strands start here. </summary>
+	public Vector3 LureTip => lureBulb.IsValid() ? lureBulb.WorldPosition : WorldPosition + Vector3.Up * 60f * Size;
 	public event System.Action<SeaSpider> Killed;
 
 	const int Body = 0, EyePart = 1, FirstThigh = 2, LegCount = 6, FirstShin = FirstThigh + LegCount;
@@ -70,6 +72,7 @@ public sealed class SeaSpider : Component, ICreature
 
 	Color shellColor, darkColor, gooColor, glowColor;
 	TimeSince timeSinceAttack = 999f;
+	TimeSince timeSinceCharging = 999f;
 	TimeSince timeSinceRepath = 999f;
 	TimeSince timeSinceStab = 999f;
 	Vector3 wanderGoal;
@@ -359,6 +362,7 @@ public sealed class SeaSpider : Component, ICreature
 		var tip = lureP[LureNodes - 1];
 		var glow = 1f + 0.22f * MathF.Sin( Time.Now * 2.6f ) + 0.08f * MathF.Sin( Time.Now * 9.1f );
 		if ( Stabbing || timeSinceStab < 0.5f ) glow *= 1.7f;
+		if ( IsAlly && timeSinceCharging < 0.3f ) glow *= 2f;      // lit up while it's charging a diver
 		lureBulb.WorldPosition = tip;
 		lureBulb.WorldScale = Vector3.One * Shapes.SphereScale( 4.4f * Size );
 		lureBulbRenderer.Attributes.Set( "GlowColor", new Vector3( glowColor.r, glowColor.g, glowColor.b ) );
@@ -515,27 +519,60 @@ public sealed class SeaSpider : Component, ICreature
 		return tr.Hit ? tr.HitPosition.z : WorldPosition.z;
 	}
 
-	Vector3 Grounded( Vector3 at ) => at.WithZ( GroundZ( at ) );
+	/// <summary> Up in the spider's own frame: straight up on the floor, the wall's normal while it climbs. </summary>
+	Vector3 SurfUp => rig.IsValid() ? rig.WorldRotation.Up : Vector3.Up;
+
+	/// <summary> A vector flattened onto the surface the spider is standing on. </summary>
+	Vector3 Flat( Vector3 v )
+	{
+		var up = SurfUp;
+		return v - up * Vector3.Dot( v, up );
+	}
+
+	Vector3 Grounded( Vector3 at )
+	{
+		var up = SurfUp;
+		if ( up.z > 0.98f ) return at.WithZ( GroundZ( at ) );
+		// On a wall: land on the wall, found by looking into it.
+		var tr = Scene.Trace.Ray( at + up * 90f, at - up * 160f )
+			.WithoutTags( "creature", "zombieblocker", "gib", "player", "viewmodel", "gore" )
+			.Run();
+		return tr.Hit ? tr.HitPosition : at - up * Vector3.Dot( at - rig.WorldPosition, up );
+	}
 
 	/// <summary> Where leg i would like its foot: out from the body at rest, leaning the way it's travelling. </summary>
 	Vector3 DesiredFoot( int i, Vector3 velocity, float leadSeconds = 0.1f )
 	{
 		var outward = Rotation.FromYaw( LegYaws[i] ).Forward;
 		var reach = (Crawling ? RestReach * 0.7f : RestReach) * Size;
-		var lead = (velocity.WithZ( 0 ) * leadSeconds).ClampLength( 95f * Size );
+		var lead = (Flat( velocity ) * leadSeconds).ClampLength( 95f * Size );
 		return Grounded( rig.WorldPosition + rig.WorldRotation * (outward * reach) + lead );
 	}
 
 	void Animate()
 	{
-		var velocity = NetVelocity.WithZ( 0 );
+		var velocity = Flat( NetVelocity );
 		var speed = velocity.Length;
 		gait += Time.Delta * MathX.Clamp( speed / 60f, 0f, 5f );
 		var moving = MathX.Clamp( speed / 60f, 0f, 1f );
 
 		AnimateLegs( velocity, moving );
+		Beacon();
 		UpdateEye();
 		UpdateLure();
+	}
+
+	TimeSince timeSinceBeacon;
+
+	/// <summary> When its owner is swimming far above, the lure throws a pulse of light straight up: a "here I am" marker. </summary>
+	void Beacon()
+	{
+		if ( !IsAlly || timeSinceBeacon < 1.6f || !OwnerPlayer.IsValid() ) return;
+		var above = OwnerPlayer.WorldPosition.z - WorldPosition.z;
+		if ( above < 260f ) return;
+		timeSinceBeacon = 0f;
+		var tip = LureTip;
+		SpiderStrand.Create( tip, tip + Vector3.Up * MathF.Min( above, 600f ), glowColor, 0.9f, 0.45f );
 	}
 
 	void AnimateLegs( Vector3 velocity, float moving )
@@ -563,7 +600,7 @@ public sealed class SeaSpider : Component, ICreature
 		for ( var i = 0; i < LegCount; i++ )
 		{
 			if ( !Has( FirstThigh + i ) ) continue;
-			var z = feet[i].Pos.z;
+			var z = Vector3.Dot( feet[i].Pos - rig.WorldPosition, SurfUp );
 			grounded++;
 			avg += z;
 			if ( i % 3 == 0 ) front += z;
@@ -576,7 +613,7 @@ public sealed class SeaSpider : Component, ICreature
 				supportCount++;
 			}
 		}
-		var targetZ = grounded > 0 ? avg / grounded : rig.WorldPosition.z;
+		var targetZ = grounded > 0 ? avg / grounded : 0f;   // height above the surface, along its normal
 
 		// Weight shift: the body drifts toward the middle of the feet that are on the ground, so it sways with every step.
 		var supportTarget = (supportCount > 0 ? support / supportCount : Vector2.Zero) * 0.4f;
@@ -613,7 +650,7 @@ public sealed class SeaSpider : Component, ICreature
 		var breathe = MathF.Sin( Time.Now * 1.6f ) * 0.9f * (1f - moving);
 		var crouch = moving * 4f + (stab ? -4f : 0f);   // low and fast when running, tall when it rears up
 		var wantedBodyZ = targetZ + (BodyHeight - sink - crouch) * scale + MathF.Sin( gait * 2f ) * 1.2f * moving + breathe - hitFlinch * 4f * scale;
-		bodyZ = float.IsNaN( bodyZ ) ? wantedBodyZ : MathX.Lerp( bodyZ, wantedBodyZ, MathX.Clamp( dt * 9f, 0f, 1f ) );
+		bodyZ = float.IsNaN( bodyZ ) ? wantedBodyZ : MathX.Lerp( bodyZ, wantedBodyZ, MathX.Clamp( dt * 9f, 0f, 1f ) );   // relative to the spider's feet plane
 		var span = MathF.Max( 1, grounded / 3 );
 		var pitch = MathX.RadianToDegree( MathF.Atan2( back - front, 100f * scale * span ) );
 		var roll = MathX.RadianToDegree( MathF.Atan2( left - right, 90f * scale * span ) );
@@ -623,21 +660,21 @@ public sealed class SeaSpider : Component, ICreature
 		hitFlinch = MathX.Lerp( hitFlinch, 0f, MathX.Clamp( dt * 6f, 0f, 1f ) );
 		var body = parts[Body].Go;
 		var offset = rig.WorldRotation * (supportShift + new Vector3( lungeAmount, 0f, 0f ) * scale) + hitKick;
-		body.WorldPosition = rig.WorldPosition.WithZ( bodyZ ) + offset;
+		body.WorldPosition = rig.WorldPosition + SurfUp * bodyZ + offset;
 		body.LocalRotation = new Angles( tilt.x + pitchLean + (Crawling ? 8f : 0f), lookYaw, -tilt.y ).ToRotation();
 
 		// Which feet want to move, most stretched first. Opposite tripods never step together, and at most three at a time.
 		var stepping = feet.Count( f => f.T >= 0f );
 		var order = Enumerable.Range( 0, LegCount )
 			.Where( i => Has( FirstThigh + i ) && feet[i].T < 0f )
-			.OrderByDescending( i => (feet[i].Pos - DesiredFoot( i, velocity )).WithZ( 0 ).Length )
+			.OrderByDescending( i => Flat( feet[i].Pos - DesiredFoot( i, velocity ) ).Length )
 			.ToList();
 		foreach ( var i in order )
 		{
 			if ( stab && (i == 0 || i == 3) ) continue;   // the front pair are busy stabbing
 			var foot = feet[i];
 			var desired = DesiredFoot( i, velocity );
-			var stretch = (foot.Pos - desired).WithZ( 0 ).Length;
+			var stretch = Flat( foot.Pos - desired ).Length;
 			var threshold = MathX.Lerp( 12f, 20f, moving ) * scale * (1f + MathX.Clamp( velocity.Length / 350f, 0f, 1f ) * 1.8f);
 			var probing = moving < 0.2f && foot.NextProbe;
 			if ( stretch < threshold && !probing ) continue;
@@ -661,9 +698,9 @@ public sealed class SeaSpider : Component, ICreature
 			foot.Duration = MathX.Lerp( 0.4f, 0.25f, MathX.Clamp( velocity.Length / 350f, 0f, 1f ) ) * Game.Random.Float( 0.9f, 1.15f );
 			StepCount++;
 			// Land where the body will be by the time the foot arrives.
-			foot.To = probing && stretch < threshold ? Grounded( desired + Vector3.Random.WithZ( 0 ) * 14f * scale ) : DesiredFoot( i, velocity, foot.Duration + 0.12f );
+			foot.To = probing && stretch < threshold ? Grounded( desired + Flat( Vector3.Random ) * 14f * scale ) : DesiredFoot( i, velocity, foot.Duration + 0.12f );
 			var mid = (foot.From + foot.To) * 0.5f;
-			var rise = MathF.Max( 0f, MathF.Max( foot.To.z, GroundZ( mid ) ) - MathF.Min( foot.From.z, foot.To.z ) );
+			var rise = SurfUp.z > 0.98f ? MathF.Max( 0f, MathF.Max( foot.To.z, GroundZ( mid ) ) - MathF.Min( foot.From.z, foot.To.z ) ) : 0f;
 			foot.Lift = (13f + Game.Random.Float( 0f, 9f ) + rise + moving * 9f) * scale;
 			foot.T = 0f;
 			foot.NextProbe = Game.Random.Float( 3f, 7f );
@@ -683,7 +720,7 @@ public sealed class SeaSpider : Component, ICreature
 				// Front legs stab: up, then down hard at the spot in front.
 				var side = rig.WorldRotation.Right * (i == 0 ? -1f : 1f) * 16f * scale;
 				var down = MathF.Sin( Time.Now * 18f + i ) > 0f;
-				footPos = rig.WorldPosition + forward * 66f * scale + side + Vector3.Up * (down ? 6f : 58f) * scale;
+				footPos = rig.WorldPosition + forward * 66f * scale + side + SurfUp * (down ? 6f : 58f) * scale;
 				foot.Pos = footPos;
 				foot.T = -1f;
 			}
@@ -694,7 +731,7 @@ public sealed class SeaSpider : Component, ICreature
 				var along = t * t * (3f - 2f * t);
 				footPos = Vector3.Lerp( foot.From, foot.To, along );
 				// The arc peaks early, then the foot plunges at the spot: it grabs for the ground.
-				footPos += Vector3.Up * foot.Lift * MathF.Sin( MathF.PI * MathF.Pow( t, 0.65f ) );
+				footPos += SurfUp * foot.Lift * MathF.Sin( MathF.PI * MathF.Pow( t, 0.65f ) );
 				if ( foot.T >= 1f )
 				{
 					foot.Pos = foot.To;
@@ -707,7 +744,7 @@ public sealed class SeaSpider : Component, ICreature
 
 			// The toes dig in for a moment after landing.
 			foot.Plant = MathF.Max( 0f, foot.Plant - Time.Delta * 7f );
-			footPos -= Vector3.Up * foot.Plant * 2.5f * scale;
+			footPos -= SurfUp * foot.Plant * 2.5f * scale;
 
 			SolveLeg( i, thigh, shin, footPos );
 		}
@@ -727,9 +764,9 @@ public sealed class SeaSpider : Component, ICreature
 
 		// Knee sits off the hip-to-foot line toward up and outward, like a spider's.
 		var outward = rig.WorldRotation * Rotation.FromYaw( LegYaws[i] ).Forward;
-		var pole = outward * (0.5f + 0.5f * moveAmount) + Vector3.Up;
+		var pole = outward * (0.5f + 0.5f * moveAmount) + SurfUp;
 		pole -= direction * Vector3.Dot( pole, direction );
-		pole = pole.IsNearlyZero() ? Vector3.Up : pole.Normal;
+		pole = pole.IsNearlyZero() ? SurfUp : pole.Normal;
 
 		var along = (distance * distance + a * a - b * b) / (2f * distance);
 		var height = MathF.Sqrt( MathF.Max( 0f, a * a - along * along ) );
@@ -742,6 +779,9 @@ public sealed class SeaSpider : Component, ICreature
 
 	void Tint()
 	{
+		if ( IsAlly )
+			foreach ( var jet in Scene.GetAllComponents<Jetpack>() )
+				if ( jet.DockedTo == this && jet.Power < jet.MaxPower - 0.5f ) timeSinceCharging = 0f;
 		foreach ( var part in parts )
 		{
 			if ( part is null || part.Gone ) continue;
@@ -883,14 +923,14 @@ public sealed class SeaSpider : Component, ICreature
 	};
 
 	/// <summary> The nearest living enemy to a point (optionally also near the owner). </summary>
-	Component FindEnemy( Vector3 around, float range, Vector3? alsoNear = null, float nearRange = 0f )
+	Component FindEnemy( Vector3 around, float range, Vector3? alsoNear = null, float nearRange = 0f, bool flat = true )
 	{
 		Component best = null;
 		var bestDistance = range;
 		void Consider( Component c )
 		{
 			if ( !c.IsValid() || EnemyDead( c ) ) return;
-			var d = (c.WorldPosition - around).WithZ( 0 ).Length;
+			var d = flat ? (c.WorldPosition - around).WithZ( 0 ).Length : (c.WorldPosition - around).Length;
 			if ( d >= bestDistance ) return;
 			if ( alsoNear is { } n && (c.WorldPosition - n).WithZ( 0 ).Length > nearRange ) return;
 			best = c;
@@ -905,6 +945,193 @@ public sealed class SeaSpider : Component, ICreature
 		return best;
 	}
 
+	// ---- Harpoon strands ---------------------------------------------------------
+
+	[Property, Group( "Ally" )] public float HarpoonRange { get; set; } = 650f;
+	[Property, Group( "Ally" )] public float HarpoonCooldown { get; set; } = 1.4f;
+	[Property, Group( "Ally" )] public float HarpoonDamage { get; set; } = 0.85f;
+	TimeSince timeSinceHarpoon = 999f;
+	TimeUntil nextHarpoonScan;
+
+	/// <summary> A sticky strand shot from the lure at something up out of reach. </summary>
+	void Harpoon( Component enemy, PlayerSurvivor owner )
+	{
+		if ( timeSinceHarpoon < HarpoonCooldown || !enemy.IsValid() ) return;
+		var from = lureBulb.IsValid() ? lureBulb.WorldPosition : WorldPosition + Vector3.Up * 60f * Size;
+		var to = enemy.WorldPosition + Vector3.Up * 20f;
+		if ( (to - from).Length > HarpoonRange ) return;
+		var tr = Scene.Trace.Ray( from, to ).WithoutTags( "creature", "gib", "player", "viewmodel", "gore", "zombieblocker" ).Run();
+		if ( tr.Hit && tr.Distance < (to - from).Length - 40f ) return;   // something solid in the way
+		timeSinceHarpoon = 0f;
+		StrandEverywhere( from, to );
+		Strike( enemy, owner, HarpoonDamage );
+	}
+
+	[Rpc.Broadcast( NetFlags.Unreliable )]
+	void StrandEverywhere( Vector3 from, Vector3 to ) => SpiderStrand.Create( from, to, glowColor );
+
+	// ---- Climbing: up walls toward a swimming owner ------------------------------
+
+	enum ClimbPhase { None, Approach, Scale, Perch, Descend }
+	ClimbPhase climbPhase;
+	Vector3 climbWall, climbNormal = Vector3.Backward;
+	TimeSince climbTimer;
+	TimeUntil nextClimbCheck;
+	Vector3 climbVelocity, climbGround;
+	const float ClimbSpeed = 120f;
+
+	/// <summary> True while it's up on a wall (or heading for one). </summary>
+	public bool IsClimbing => climbPhase != ClimbPhase.None;
+	public string ClimbInfo => $"{climbPhase} n={climbNormal} agent={(agent.IsValid() ? agent.Enabled : false)} g={climbGround} rotUp={rig.IsValid() && true}";
+
+	static readonly string[] NotWall = { "creature", "zombieblocker", "gib", "player", "viewmodel", "gore" };
+
+	/// <summary> The best steep surface near it to climb toward the owner: one that rises at least a little above it. </summary>
+	bool FindWall( Vector3 ownerPos, out Vector3 point, out Vector3 normal )
+	{
+		point = default;
+		normal = Vector3.Backward;
+		var toOwner = (ownerPos - WorldPosition).WithZ( 0 );
+		toOwner = toOwner.IsNearlyZero() ? Vector3.Forward : toOwner.Normal;
+		var best = float.MaxValue;
+		var origin = WorldPosition + Vector3.Up * 45f;
+		for ( var i = 0; i < 16; i++ )
+		{
+			var d = Rotation.FromYaw( i * 22.5f ).Forward;
+			var tr = Scene.Trace.Ray( origin, origin + d * 380f ).WithoutTags( NotWall ).Run();
+			if ( !tr.Hit || MathF.Abs( tr.Normal.z ) > 0.5f ) continue;
+			// It has to keep going up for a good way.
+			var above = Scene.Trace.Ray( tr.HitPosition + tr.Normal * 12f + Vector3.Up * 120f, tr.HitPosition - tr.Normal * 20f + Vector3.Up * 120f ).WithoutTags( NotWall ).Run();
+			if ( !above.Hit ) continue;
+			var score = tr.Distance / 380f - 1.5f * Vector3.Dot( d, toOwner );
+			if ( score >= best ) continue;
+			best = score;
+			point = tr.HitPosition;
+			normal = tr.Normal;
+		}
+		return best < float.MaxValue;
+	}
+
+	void EndClimb()
+	{
+		climbPhase = ClimbPhase.None;
+		nextClimbCheck = 1.5f;
+		if ( agent.IsValid() ) agent.Enabled = true;
+		for ( var i = 0; i < LegCount; i++ ) feet[i] = null;      // stand the feet flat on the floor again
+		bodyZ = float.NaN;
+	}
+
+	/// <summary> Runs the climb: returns true while it's in charge of moving the spider. </summary>
+	bool ClimbThink( PlayerSurvivor owner, Vector3 ownerPos )
+	{
+		climbVelocity = Vector3.Zero;
+		var dt = Time.Delta;
+		var above = ownerPos.z - WorldPosition.z;
+		var flatDistance = (ownerPos - WorldPosition).WithZ( 0 ).Length;
+
+		switch ( climbPhase )
+		{
+			case ClimbPhase.None:
+			{
+				if ( !nextClimbCheck ) return false;
+				nextClimbCheck = 0.4f;
+				if ( above < 110f || flatDistance > 700f || AllyMode == ModeHold || currentEnemy.IsValid() ) return false;
+				if ( !FindWall( ownerPos, out climbWall, out climbNormal ) ) return false;
+				climbPhase = ClimbPhase.Approach;
+				climbTimer = 0f;
+				return true;
+			}
+
+			case ClimbPhase.Approach:
+			{
+				var stand = (climbWall + climbNormal * 55f).WithZ( WorldPosition.z );
+				var distance = (stand - WorldPosition).WithZ( 0 ).Length;
+				if ( above < 60f || climbTimer > 6f ) { EndClimb(); return false; }
+				if ( distance < 70f )
+				{
+					// Reached the foot of it: leave the navmesh and go up.
+					climbGround = WorldPosition;
+					agent?.Stop();
+					if ( agent.IsValid() ) agent.Enabled = false;
+					for ( var i = 0; i < LegCount; i++ ) feet[i] = null;
+					climbPhase = ClimbPhase.Scale;
+					climbTimer = 0f;
+					return true;
+				}
+				if ( nextMove ) { nextMove = 0.25f; agent?.MoveTo( stand ); }
+				var v = agent.IsValid() ? agent.Velocity.WithZ( 0 ) : Vector3.Zero;
+				Face( v.Length > 10f ? v : -climbNormal, 8f );
+				agent.MaxSpeed = MoveSpeed * 1.15f * Size;
+				climbVelocity = agent.IsValid() ? agent.Velocity : Vector3.Zero;
+				return true;
+			}
+
+			case ClimbPhase.Scale:
+			case ClimbPhase.Perch:
+			case ClimbPhase.Descend:
+			{
+				var n = climbNormal;
+				var upDir = (Vector3.Up - n * Vector3.Dot( Vector3.Up, n ));
+				upDir = upDir.IsNearlyZero() ? Vector3.Up : upDir.Normal;
+
+				var direction = 0f;
+				if ( climbPhase == ClimbPhase.Scale ) direction = 1f;
+				else if ( climbPhase == ClimbPhase.Descend ) direction = -1f;
+
+				// Phase changes.
+				if ( climbPhase == ClimbPhase.Scale && ownerPos.z - WorldPosition.z < 50f ) climbPhase = ClimbPhase.Perch;
+				if ( climbPhase == ClimbPhase.Perch && ownerPos.z - WorldPosition.z > 120f && climbTimer > 0.5f ) { climbPhase = ClimbPhase.Scale; climbTimer = 0f; }
+				if ( climbPhase != ClimbPhase.Descend && (ownerPos.z < WorldPosition.z - 70f || flatDistance > 900f || owner is null) ) climbPhase = ClimbPhase.Descend;
+
+				var step = direction * (climbPhase == ClimbPhase.Descend ? 150f : ClimbSpeed) * dt;
+				var next = WorldPosition + upDir * step;
+
+				// Stay glued to the wall: look into it from just off it.
+				var probe = upDir * 45f;      // look from above the floor, so a trace along the floor doesn't start inside it
+				var tr = Scene.Trace.Ray( next + probe + n * 90f, next + probe - n * 220f ).WithoutTags( NotWall ).Run();
+				if ( !tr.Hit || tr.StartedSolid || MathF.Abs( tr.Normal.z ) > 0.6f )
+				{
+					// Ran out of wall: at the top, stay put; at the bottom, step off.
+					if ( climbPhase == ClimbPhase.Scale ) { climbPhase = ClimbPhase.Perch; climbTimer = 0f; }
+					else if ( climbPhase == ClimbPhase.Descend ) { WorldPosition = climbGround; WorldRotation = Rotation.FromYaw( WorldRotation.Yaw() ); EndClimb(); agent?.SetAgentPosition( climbGround ); return false; }
+				}
+				else
+				{
+					climbNormal = Vector3.Lerp( climbNormal, tr.Normal, MathX.Clamp( dt * 6f, 0f, 1f ) ).Normal;
+					WorldPosition = Vector3.Lerp( next, tr.HitPosition - probe + climbNormal * 1.5f, MathX.Clamp( dt * 9f, 0f, 1f ) );   // up the wall, easing in against it
+					climbVelocity = upDir * direction * (climbPhase == ClimbPhase.Descend ? 150f : ClimbSpeed);
+				}
+
+				// Back on the floor after a descent.
+				if ( climbPhase == ClimbPhase.Descend )
+				{
+					var floor = Scene.Trace.Ray( WorldPosition + Vector3.Up * 10f, WorldPosition + Vector3.Down * 28f ).WithoutTags( NotWall ).Run();
+					if ( floor.Hit && floor.Normal.z > 0.7f )
+					{
+						WorldPosition = floor.HitPosition;
+						WorldRotation = Rotation.FromYaw( WorldRotation.Yaw() );
+						EndClimb();
+						agent?.SetAgentPosition( WorldPosition );
+						return false;
+					}
+				}
+
+				// Turn onto the wall (head up the wall, feet into it), easing in.
+				var wanted = Rotation.LookAt( upDir, climbNormal );
+				WorldRotation = Rotation.Slerp( WorldRotation, wanted, MathX.Clamp( dt * 6f, 0f, 1f ) );
+
+				// While it hangs there it still spits at whatever it can see.
+				if ( climbPhase == ClimbPhase.Perch && nextHarpoonScan )
+				{
+					nextHarpoonScan = 0.4f;
+					if ( FindEnemy( WorldPosition, HarpoonRange, flat: false ) is { } target ) Harpoon( target, owner );
+				}
+				return true;
+			}
+		}
+		return false;
+	}
+
 	void ThinkAlly()
 	{
 		Stabbing = false;
@@ -912,6 +1139,13 @@ public sealed class SeaSpider : Component, ICreature
 		if ( owner is null || !owner.IsAlive ) owner = PlayerSurvivor.FindNearestAlive( Scene, WorldPosition );
 		var ownerPos = owner?.WorldPosition ?? WorldPosition;
 		var velocity = agent.IsValid() ? agent.Velocity.WithZ( 0 ) : Vector3.Zero;
+
+		// Following up a wall when you're swimming above it (takes over movement while it's climbing).
+		if ( ClimbThink( owner, ownerPos ) )
+		{
+			NetVelocity = climbVelocity;
+			return;
+		}
 
 		// Pick something to fight: what it was told to attack, else the nearest enemy to it (or to its post).
 		if ( AllyMode == ModeAttack )
@@ -927,6 +1161,16 @@ public sealed class SeaSpider : Component, ICreature
 				: FindEnemy( WorldPosition, 460f, ownerPos, 800f );
 		}
 		if ( currentEnemy.IsValid() && EnemyDead( currentEnemy ) ) currentEnemy = null;
+
+		// Something above its reach: spit a strand up at it.
+		if ( currentEnemy.IsValid() && currentEnemy.WorldPosition.z - WorldPosition.z > 70f )
+			Harpoon( currentEnemy, owner );
+		else if ( !currentEnemy.IsValid() && nextHarpoonScan )
+		{
+			nextHarpoonScan = 0.4f;
+			if ( FindEnemy( WorldPosition + Vector3.Up * 200f, HarpoonRange, flat: false ) is { } high && high.WorldPosition.z - WorldPosition.z > 70f )
+				Harpoon( high, owner );
+		}
 
 		var speedScale = 1f;
 		if ( currentEnemy.IsValid() )
@@ -994,9 +1238,9 @@ public sealed class SeaSpider : Component, ICreature
 	}
 
 	/// <summary> A stab on an enemy: hits one of its parts, so it can take legs and claws off. Kills score for the owner. </summary>
-	void Strike( Component enemy, PlayerSurvivor owner )
+	void Strike( Component enemy, PlayerSurvivor owner, float scale = 1f )
 	{
-		var damage = StabDamage * 2.5f;
+		var damage = StabDamage * 2.5f * scale;
 		var direction = (enemy.WorldPosition - WorldPosition).WithZ( 0 ).Normal;
 		if ( enemy is Zombie zombie )
 		{

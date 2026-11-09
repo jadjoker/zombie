@@ -12,6 +12,11 @@ public sealed class PlayerAppearance : Component
 	[Property] public Vector3 ShoulderOffset { get; set; } = new( 95f, 26f, 4f );
 	/// <summary> Camera offset while aiming down the sights in third person. </summary>
 	[Property] public Vector3 AimShoulderOffset { get; set; } = new( 55f, 22f, 2f );
+	/// <summary> Pulled back on top of the shoulder offset, always (not while aiming). </summary>
+	[Property] public Vector3 ExtraPullBack { get; set; } = new( 25f, 0f, 4f );
+	/// <summary> Pulled back further while swimming, jetting or floating, so you can see around you in open water. </summary>
+	[Property] public Vector3 FlyingPullBack { get; set; } = new( 55f, 4f, 14f );
+	float flyingCam;
 	/// <summary> The hand attachment on the body model that guns hang from. </summary>
 	[Property] public string HandAttachment { get; set; } = "hold_R";
 
@@ -78,7 +83,7 @@ public sealed class PlayerAppearance : Component
 		EnsureWorldGuns( body );
 		foreach ( var (weapon, gun) in worldGuns )
 		{
-			if ( gun.IsValid() ) gun.Enabled = show && weapon == held;
+			if ( gun.IsValid() ) gun.Enabled = show && weapon == held && !(GetComponent<PlayerRig>()?.AxeOut ?? false);
 		}
 
 		// Hold pose for the gun in hand (rifle, shotgun...). Everything else the controller animates.
@@ -94,7 +99,18 @@ public sealed class PlayerAppearance : Component
 		if ( !IsProxy && controller.IsValid() && controller.ThirdPerson )
 		{
 			var aim = held?.AimAmount ?? 0f;
-			controller.CameraOffset = Vector3.Lerp( ShoulderOffset, AimShoulderOffset, aim );
+			// Ducking moves the eye by up to 36 units (in the air it drops, on the ground it doesn't), so ducking in mid-air and
+			// then landing in a slide made the camera dip and pop back up. Third person holds the camera at standing height instead.
+			var standingEye = controller.BodyHeight - controller.EyeDistanceFromTop;
+			var eyeNow = controller.EyePosition.z - controller.WorldPosition.z;
+			var heightFix = Vector3.Up * (standingEye - eyeNow);
+			var movement = GetComponent<PlayerMovement>();
+			var jet = GetComponent<Jetpack>();
+			var flying = (movement?.IsFloating ?? false) || (jet is not null && (jet.Thrusting || jet.Surging || jet.Charging))
+				|| (!controller.IsOnGround && (GetComponent<WaterFeel>()?.Swimming ?? 0f) > 0.5f);
+			flyingCam = MathX.Lerp( flyingCam, flying ? 1f : 0f, 1f - MathF.Exp( -2.5f * Time.Delta ) );
+			var pull = (ExtraPullBack + FlyingPullBack * flyingCam) * (1f - aim);
+			controller.CameraOffset = Vector3.Lerp( ShoulderOffset, AimShoulderOffset, aim ) + pull + heightFix;
 		}
 	}
 

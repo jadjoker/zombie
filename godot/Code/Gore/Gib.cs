@@ -42,7 +42,9 @@ public partial class Gib : RigidBody3D
 			ContinuousCd = true,
 		};
 		root.AddChild( gib );
+		gib.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.On;
 		gib.GlobalTransform = new Transform3D( Basis.Identity, piece.GlobalPosition );
+		gib.ResetPhysicsInterpolation();   // start drawn where it spawned, not sliding in from the origin
 		piece.Reparent( gib, true );
 		gib.piece = piece;
 		if ( addCollider ) gib.AddChild( new CollisionShape3D { Shape = new SphereShape3D { Radius = MathF.Max( 0.5f, radius ) * U.In } } );

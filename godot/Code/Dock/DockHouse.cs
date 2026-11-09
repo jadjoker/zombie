@@ -99,7 +99,9 @@ public partial class DockHouse : Node3D
 		{
 			var barrel = new RigidBody3D { Name = "Floating Barrel", Mass = 20f, CollisionLayer = Layers.World, CollisionMask = Layers.World | Layers.Player };
 			root.AddChild( barrel );
+			barrel.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.On;
 			barrel.GlobalPosition = U.Sbox( o.X + 120f + i * 70f, o.Y + (i % 2 == 0 ? -1f : 1f) * (170f + i * 25f), SurfaceHeight + 20f );
+			barrel.ResetPhysicsInterpolation();
 			var size = new Vector3( 26f, 34f, 26f ) * U.In;
 			barrel.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = size }, MaterialOverride = new StandardMaterial3D { AlbedoColor = i % 3 == 0 ? Roof : WoodPale } } );
 			barrel.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = size } } );

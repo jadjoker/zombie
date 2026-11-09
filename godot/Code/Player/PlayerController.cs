@@ -94,8 +94,14 @@ public partial class PlayerController : CharacterBody3D
 	bool duckInput;
 	float duckElapsed;
 
+	/// <summary> Where the player is drawn this frame (between physics ticks). Use for anything placed per frame. </summary>
+	public Vector3 DrawnPosition => GetGlobalTransformInterpolated().Origin;
+
+	Vector3 lastTickPosition;
+
 	public override void _Ready()
 	{
+		PhysicsInterpolationMode = PhysicsInterpolationModeEnum.On;
 		capsule = new CapsuleShape3D { Radius = BodyRadius, Height = BodyHeight };
 		shape = new CollisionShape3D { Shape = capsule, Position = Vector3.Up * BodyHeight * 0.5f };
 		AddChild( shape );
@@ -111,6 +117,7 @@ public partial class PlayerController : CharacterBody3D
 
 		Camera = new Camera3D { KeepAspect = Camera3D.KeepAspectEnum.Width, Fov = FieldOfView, Near = 0.04f, Far = 3000f };
 		Camera.TopLevel = true;
+		Camera.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off;   // placed every frame from DrawnPosition
 		AddChild( Camera );
 		Camera.MakeCurrent();
 
@@ -153,6 +160,9 @@ public partial class PlayerController : CharacterBody3D
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
+		// Teleported (spawn, travel, dive): snap the drawn position instead of sliding there.
+		if ( GlobalPosition.DistanceTo( lastTickPosition ) > 3f ) ResetPhysicsInterpolation();
+		lastTickPosition = GlobalPosition;
 		if ( UseLookControls )
 		{
 			var e = EyeAngles;
@@ -394,7 +404,7 @@ public partial class PlayerController : CharacterBody3D
 
 	void UpdateCamera( float dt )
 	{
-		var origin = GetGlobalTransformInterpolated().Origin;
+		var origin = DrawnPosition;
 		var height = CurrentHeight;
 		if ( IsDuckTransition && IsOnGround ) height = BodyHeight - (BodyHeight - DuckedHeight) * DuckInputFraction;
 		var eye = origin + Vector3.Up * (height - EyeDistanceFromTop);

@@ -77,7 +77,7 @@ public partial class TestRange : Node3D
 		}
 		for ( var i = 0; i < 6; i++ )
 		{
-			var crate = new RigidBody3D { Mass = 20f, CollisionLayer = Layers.World, CollisionMask = Layers.World | Layers.Player, Position = new Vector3( 400f + (i % 3) * 40f, 20f + (i / 3) * 40f, 1400f ) * U.In };
+			var crate = new RigidBody3D { PhysicsInterpolationMode = PhysicsInterpolationModeEnum.On, Mass = 20f, CollisionLayer = Layers.World, CollisionMask = Layers.World | Layers.Player, Position = new Vector3( 400f + (i % 3) * 40f, 20f + (i / 3) * 40f, 1400f ) * U.In };
 			crate.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = Vector3.One * 36f * U.In }, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.55f, 0.4f, 0.25f ) } } );
 			crate.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = Vector3.One * 36f * U.In } } );
 			AddChild( crate );

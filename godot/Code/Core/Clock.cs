@@ -14,6 +14,10 @@ public partial class Clock : Node
 	{
 		ProcessPriority = -1000;
 		ProcessPhysicsPriority = -1000;
+		// Physics interpolation smooths bodies that move on physics ticks (the player, gibs, ragdolls). Most of the
+		// game (creatures, effects, the camera, the player rig) moves every frame, where interpolation makes it
+		// lag and stutter, so it is off by default and those bodies opt in.
+		GetTree().Root.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off;
 	}
 
 	double lastPhysics;

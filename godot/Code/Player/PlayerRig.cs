@@ -112,7 +112,7 @@ public partial class PlayerRig : Node
 		melee = controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" );
 		inventory = controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" );
 
-		rigRoot = new Node3D { Name = "Survivor Rig", TopLevel = true };
+		rigRoot = new Node3D { Name = "Survivor Rig", TopLevel = true, PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off };
 		controller.AddChild( rigRoot );
 		rigRoot.GlobalTransform = new Transform3D( Basis.Identity, controller.GlobalPosition );
 		model = GD.Load<PackedScene>( "res://assets/models/characters/survivor/survivor.fbx" ).Instantiate<Node3D>();
@@ -250,7 +250,7 @@ public partial class PlayerRig : Node
 	/// <summary> The character frame: feet and facing, tilted for the slide, swimming and the surge (the s&box driver moves). </summary>
 	void PlaceFrame( float dt )
 	{
-		var feet = controller.GlobalPosition;
+		var feet = controller.DrawnPosition;
 		var wantYaw = controller.EyeAngles.Yaw;
 		if ( !hasYaw ) { bodyYaw = wantYaw; hasYaw = true; }
 		bodyYaw += Mathf.Wrap( wantYaw - bodyYaw, -180f, 180f ) * MathX.Clamp( dt * 14f, 0f, 1f );
@@ -438,7 +438,7 @@ public partial class PlayerRig : Node
 				var ease = slideBlend * slideBlend * (3f - 2f * slideBlend);
 				var lead = s == "R";
 				var spot = lead ? new Vector3( 34f, -5.5f, 6.5f ) : new Vector3( -2f, 7.5f, 5.2f );
-				var slideTarget = Char( controller.GlobalPosition + slideYaw * U.Sbox( spot ) );
+				var slideTarget = Char( controller.DrawnPosition + slideYaw * U.Sbox( spot ) );
 				ankleTarget = ankleTarget.Lerp( slideTarget, ease );
 				var slidePole = CharDir( slideYaw * ToG( Basis.Identity ) * U.Sbox( lead ? new Vector3( 0.4f, 0f, 1f ) : new Vector3( 0.6f, 0f, 1f ) ) ) / U.In;
 				kneePole = kneePole.Lerp( slidePole * 30f, ease );

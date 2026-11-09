@@ -407,7 +407,7 @@ public partial class SeaSpider : Node3D, ICreature
 			sideways = sideways.IsNearlyZero() ? Vector3.Up : sideways.Normalized();
 			look = (Vector3.Forward * limit + sideways * MathF.Sqrt( 1f - limit * limit )).Normalized();
 		}
-		gazeRot = gazeRot.Slerp( Shapes.LookAt( look ).GetRotationQuaternion(), MathX.Clamp( dt * 14f, 0f, 1f ) );
+		gazeRot = gazeRot.Normalized().Slerp( Shapes.LookAt( look ).Orthonormalized().GetRotationQuaternion().Normalized(), MathX.Clamp( dt * 14f, 0f, 1f ) );
 		eyeGaze.Quaternion = gazeRot;
 		var now = (float)Clock.Now;
 		var upper = shocked ? 0.02f : angry ? 0.4f : 0.15f + 0.04f * MathF.Sin( now * 0.7f );

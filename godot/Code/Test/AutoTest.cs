@@ -23,6 +23,8 @@ public partial class AutoTest : Node
 		player = GetTree().Root.FindChild( "Player", true, false ) as PlayerController;
 		movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
 		Input.MouseMode = Input.MouseModeEnum.Visible;
+		if ( args.Contains( "--jitter" ) ) { await JitterTest(); return; }
+		if ( args.Contains( "--flicker" ) ) { await FlickerTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -710,6 +712,106 @@ public partial class AutoTest : Node
 	{
 		var v = player.Velocity;
 		GD.Print( $"[autotest] {label}: horizontal {v.Flat().Length() / U.In:0} u/s, vertical {v.Y / U.In:0}, ground={player.IsOnGround}, mode={movement.Ground}, pos {player.GlobalPosition / U.In}" );
+	}
+
+	/// <summary> Frame-to-frame smoothness of what is drawn while walking past creatures at 144 fps. </summary>
+	async Task JitterTest()
+	{
+		Engine.MaxFps = 144;
+		player.ThirdPerson = OS.GetCmdlineUserArgs().Contains( "--third" );
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		var at = player.GlobalPosition - player.GlobalBasis.Z * 300f * U.In;
+		var tracked = new System.Collections.Generic.List<(string, Node3D)> { ("camera", player.Camera) };
+		var bloober = Bloober.Spawn( GetTree().CurrentScene, at + Vector3.Up * 60f * U.In, 1000f );
+		var squilien = Squilien.Spawn( GetTree().CurrentScene, at + Vector3.Right * 150f * U.In, 1000f );
+		var crab = JunkCrab.Spawn( GetTree().CurrentScene, at + Vector3.Left * 150f * U.In, 1000f );
+		await Wait( 1f );
+		tracked.Add( ("bloober", bloober) );
+		tracked.Add( ("squilien", squilien) );
+		tracked.Add( ("crab", crab) );
+		foreach ( var (name, n) in tracked.ToArray() )
+			if ( n.FindChildren( "*", "MeshInstance3D", true, false ) is { Count: > 2 } meshes ) tracked.Add( (name + " part", (Node3D)meshes[2]) );
+		var rig = player.FindChild( "Survivor Rig", true, false ) as Node3D;
+		if ( rig is not null ) tracked.Add( ("rig", rig) );
+		// Everything the player carries (only the rough ones are printed).
+		var all = OS.GetCmdlineUserArgs().Contains( "--all" );
+		if ( all )
+			foreach ( var n in player.FindChildren( "*", "Node3D", true, false ) )
+				if ( n is Node3D n3 && n3.IsVisibleInTree() ) tracked.Add( (player.GetPathTo( n3 ).ToString(), n3) );
+
+		var samples = new System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<Vector3>>();
+		var errors = new System.Collections.Generic.Dictionary<string, float>();
+		foreach ( var (name, _) in tracked ) { samples[name] = new(); errors[name] = 0f; }
+		Input.ActionPress( "forward" );
+		var frames = 0;
+		var start = Time.GetTicksMsec();
+		while ( Time.GetTicksMsec() - start < 3000 )
+		{
+			await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePreDraw );
+			frames++;
+			player.EyeAngles = new Angles( 0f, player.EyeAngles.Yaw + 0.4f, 0f );
+			foreach ( var (name, n) in tracked )
+			{
+				if ( !IsInstanceValid( n ) ) continue;
+				var drawn = n.IsPhysicsInterpolatedAndEnabled() ? n.GetGlobalTransformInterpolated().Origin : n.GlobalPosition;
+				samples[name].Add( drawn );
+				errors[name] = MathF.Max( errors[name], drawn.DistanceTo( n.GlobalPosition ) );
+			}
+		}
+		Input.ActionRelease( "forward" );
+		GD.Print( $"[jitter] {frames} frames in 3 s, interpolation {(GetTree().PhysicsInterpolation ? "on" : "off")}" );
+		foreach ( var (name, list) in samples )
+		{
+			// Roughness: how much the per-frame step changes, relative to the average step (0 = perfectly even motion).
+			float sum = 0, change = 0; var steps = 0; var still = 0;
+			for ( var i = 2; i < list.Count; i++ )
+			{
+				var a = list[i - 1] - list[i - 2]; var b = list[i] - list[i - 1];
+				sum += b.Length(); change += (b - a).Length(); steps++;
+				if ( b.Length() < 1e-5f && a.Length() > 1e-4f ) still++;
+			}
+			var mean = sum / MathF.Max( steps, 1 );
+			if ( name.Contains( '/' ) && (mean < 0.05f * U.In || change / steps / mean < 0.2f) ) continue;
+			GD.Print( $"[jitter] {name,-14} mean step {mean / U.In:0.00} u, roughness {(mean > 0 ? change / steps / mean : 0):0.00}, frozen frames {still}, max drawn-vs-real {errors[name] / U.In:0.0} u" );
+		}
+		GetTree().Quit();
+	}
+
+	/// <summary> Camera held still: counts pixels that blink (change and change back) between frames. </summary>
+	async Task FlickerTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		await Wait( 2f );
+		var views = new[] { 0f, 90f, 180f, 270f };
+		foreach ( var yaw in views )
+		{
+			player.EyeAngles = new Angles( 8f, yaw, 0f );
+			await Wait( 0.5f );
+			Image prev = null, prev2 = null;
+			int blinks = 0, worstFrame = 0; var frames = 30;
+			for ( var f = 0; f < frames; f++ )
+			{
+				await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+				var img = GetViewport().GetTexture().GetImage();
+				img.Resize( 320, 180, Image.Interpolation.Nearest );
+				if ( prev2 is not null )
+				{
+					var count = 0;
+					for ( var y = 0; y < 180; y++ )
+						for ( var x = 0; x < 320; x++ )
+						{
+							float a = prev2.GetPixel( x, y ).Luminance, b = prev.GetPixel( x, y ).Luminance, c = img.GetPixel( x, y ).Luminance;
+							if ( MathF.Abs( b - a ) > 0.15f && MathF.Abs( b - c ) > 0.15f && MathF.Abs( c - a ) < 0.05f ) count++;
+						}
+					blinks += count;
+					if ( count > worstFrame ) { worstFrame = count; if ( !string.IsNullOrEmpty( shots ) ) { prev.SavePng( System.IO.Path.Combine( shots, $"blink_{yaw}_b.png" ) ); prev2.SavePng( System.IO.Path.Combine( shots, $"blink_{yaw}_a.png" ) ); } }
+				}
+				prev2 = prev; prev = img;
+			}
+			GD.Print( $"[flicker] yaw {yaw}: blinking pixels per frame {blinks / (float)(frames - 2):0.0} of 57600, worst frame {worstFrame}" );
+		}
+		GetTree().Quit();
 	}
 
 	async Task Wait( float seconds )

@@ -80,7 +80,9 @@ public partial class RobotRagdoll : Node3D
 				LinearVelocity = velocity,
 			};
 			AddChild( body );
+			body.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.On;
 			body.GlobalTransform = new Transform3D( basis, from + axis * 0.5f );
+			body.ResetPhysicsInterpolation();
 			var shape = bone == "head"
 				? (Shape3D)new SphereShape3D { Radius = radius * U.In }
 				: new CapsuleShape3D { Radius = radius * U.In, Height = MathF.Max( length, radius * 2f * U.In ) };

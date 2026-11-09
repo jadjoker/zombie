@@ -196,6 +196,53 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary> A converted level: look around from the spawn, then let some Bloobers in. </summary>
+	/// <summary> Buy stations: walk up to each, look at it, buy with and without the points. Also shows the HUD overlays. </summary>
+	async Task StationTest()
+	{
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var use = player.GetNode<PlayerUse>( "PlayerUse" );
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var spawn = player.GlobalPosition;
+		foreach ( var node in GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>() )
+		{
+			var station = node.GetNode<BuyStation>( "BuyStation" );
+			// Stand on the floor between the station and the spawn, a step away from it.
+			var toward = (node.GlobalPosition - spawn).Flat().SafeNormal();
+			if ( toward == Vector3.Zero ) toward = Vector3.Forward;
+			var stand = node.GlobalPosition - toward * 70f * U.In;
+			var floor = Trace.Ray( player, stand + Vector3.Up * 60f * U.In, stand + Vector3.Down * 400f * U.In, Layers.World );
+			GD.Print( $"[autotest] station {station.Title} at {node.GlobalPosition / U.In}, floor hit {floor.Hit} {floor.HitPosition / U.In}" );
+			player.GlobalPosition = (floor.Hit ? floor.HitPosition : stand) + Vector3.Up * 2f * U.In;
+			player.Velocity = Vector3.Zero;
+			for ( var k = 0; k < 3; k++ ) { LookAt( node.GlobalPosition ); await Wait( 0.1f ); }
+			var hovered = use.Hovered == station;
+			var poor = use.TryPress();
+			survivor.AddPoints( 5000 );
+			if ( station.Kind == BuyStationKind.Health ) survivor.Health.OnDamage( new DamageInfo { Damage = 30f } );
+			var before = (survivor.Points, survivor.Health.MaxHealth);
+			var bought = use.TryPress();
+			GD.Print( $"[autotest] station {station.Title}: hovered {hovered}, poor buy {poor}, buy {bought}, points {before.Points} to {survivor.Points}, max health {before.MaxHealth} to {survivor.Health.MaxHealth}, next cost {station.CurrentCost}" );
+			await Shot( $"station_{station.Title.ToLower()}" );
+		}
+
+		// Overlays: burn, slow, ink, venom, low health, stamina, jet bar and the boss bar with a line.
+		var a = survivor.Afflictions;
+		a.Cursed( PlayerAfflictions.Curse.Burn );
+		a.Cursed( PlayerAfflictions.Curse.Slow );
+		a.Cursed( PlayerAfflictions.Curse.Ink );
+		a.Inked(); a.Inked();
+		await Wait( 0.3f );
+		await Shot( "hud_curses" );
+		var boss = MC61.Spawn( GetTree().CurrentScene, player.GlobalPosition + new Vector3( 0f, 200f, 600f ) * U.In, 2000f );
+		await Wait( 2.5f );
+		boss.ForceState( MC61.Mode.Cards );
+		await Wait( 0.2f );
+		await Shot( "hud_boss" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	/// <summary> The step 7 creatures on the test range: spawn each, look at it, shoot it apart. </summary>
 	async Task CreatureTest()
 	{
@@ -367,6 +414,7 @@ public partial class AutoTest : Node
 
 	async Task LevelTest()
 	{
+		if ( OS.GetCmdlineUserArgs().Contains( "--stations" ) ) { await StationTest(); return; }
 		if ( DockHouse.Current is { } dock )
 		{
 			await Wait( 0.5f );

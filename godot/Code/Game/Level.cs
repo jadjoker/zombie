@@ -132,6 +132,20 @@ public partial class Level : Node3D
 		if ( o.TryGetProperty( "sway", out var sway ) )
 			node.AddChild( new Sway { Amount = sway.GetProperty( "amount" ).GetSingle(), Period = sway.GetProperty( "period" ).GetSingle() } );
 		if ( o.TryGetProperty( "spawn_point", out _ ) ) node.AddToGroup( "spawn_point" );
+		if ( o.TryGetProperty( "buy_station", out var bs ) )
+		{
+			node.AddChild( new BuyStation
+			{
+				Name = "BuyStation",
+				Kind = Enum.Parse<BuyStationKind>( bs.GetProperty( "Kind" ).GetString() ),
+				Title = bs.GetProperty( "Title" ).GetString(),
+				Cost = bs.GetProperty( "Cost" ).GetInt32(),
+				CostIncrease = bs.GetProperty( "CostIncrease" ).GetInt32(),
+				MaxPurchases = bs.GetProperty( "MaxPurchases" ).GetInt32(),
+				HealthPerPurchase = bs.GetProperty( "HealthPerPurchase" ).GetSingle(),
+			} );
+			node.AddToGroup( "buy_station" );
+		}
 		if ( o.TryGetProperty( "marine_snow", out _ ) ) AddChild( new MarineSnow() );
 		if ( o.TryGetProperty( "dock_house", out var dock ) )
 		{

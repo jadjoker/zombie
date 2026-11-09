@@ -21,11 +21,13 @@ public static class PlayerFactory
 		player.AddChild( new WaterFeel() );
 		player.AddChild( new Jetpack() );
 		player.AddChild( new AllyCommander() );
+		player.AddChild( new PlayerUse() );
 		var survivor = new PlayerSurvivor();
 		player.AddChild( survivor );
 
 		var hud = new CanvasLayer { Name = "Hud" };
 		parent.AddChild( hud );
+		hud.AddChild( HudOverlays.Create( survivor ) );
 		hud.AddChild( WeaponHud.Create( player ) );
 		hud.AddChild( GameHud.Create( survivor ) );
 		return player;

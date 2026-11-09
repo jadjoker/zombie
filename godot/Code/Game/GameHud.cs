@@ -232,8 +232,6 @@ public partial class GameHud : Control
 				var pos = new Vector2( drip.X / 100f * Size.X, drip.Y / 100f * Size.Y + age * drip.Slide * 6f );
 				DrawCircle( pos, drip.Size * 0.5f * (0.6f + 0.4f * fade), drip.Color with { A = 0.75f * fade } );
 			}
-			// Venom: a sickly green edge.
-			if ( afflictions.Venomed ) DrawRect( new Rect2( Vector2.Zero, Size ), new Color( 0.2f, 1f, 0.1f, 0.08f + 0.04f * MathF.Sin( now * 6f ) ) );
 		}
 	}
 }

@@ -204,6 +204,9 @@ public partial class DockHouse : Node3D
 	}
 
 	/// <summary> Testing aid: dive from just past the board. </summary>
+	/// <summary> Testing aid: count the dive as done, so going below the surface doesn't start one. </summary>
+	public void SkipDive() => dived = true;
+
 	public void TestDive()
 	{
 		var player = LocalPlayer;

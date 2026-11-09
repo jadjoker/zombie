@@ -30,3 +30,9 @@ Exports/
 
 # Blender auto-backups
 *.blend1
+
+# Godot port
+!godot/*.csproj
+godot/.godot/
+godot/*.csproj.old*
+Tools/godot_shots/

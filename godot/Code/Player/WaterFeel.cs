@@ -64,9 +64,10 @@ public partial class WaterFeel : Node, ICameraModifier
 		if ( !captured ) ApplyTuning();
 		var alive = controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.IsAlive ?? true;
 		var underwater = Sea.SurfaceY is not float surface || controller.GlobalPosition.Y < surface;
-		var want = alive && underwater && IsOn() ? 1f : 0f;
+		var floating = movement?.IsFloating ?? false;
+		var want = alive && underwater && (IsOn() || floating) ? 1f : 0f;
 		Blend = MathX.Approach( Blend, want, dt * 2f );
-		Swimming = MathX.Approach( Swimming, Blend > 0.5f && !controller.IsOnGround ? 1f : 0f, dt * 5f );
+		Swimming = MathX.Approach( Swimming, Blend > 0.5f && (!controller.IsOnGround || floating) ? 1f : 0f, dt * 5f );
 		ApplyTuning();
 		UpdateSound();
 		if ( Blend > 0.3f ) SpawnBubbles();

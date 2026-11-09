@@ -179,6 +179,14 @@ public partial class PlayerController : CharacterBody3D
 	{
 		var dt = (float)delta;
 		if ( Scripted ) { Velocity = Vector3.Zero; IsOnGround = false; return; }
+		// Anchor snapped: the float mode moves us (s&box MoveModeFloat outscores the walk mode).
+		if ( GetNodeOrNull<MoveModeFloat>( "MoveModeFloat" ) is { Active: true } floating )
+		{
+			Velocity = floating.Step( dt );
+			MoveAndSlide();
+			IsOnGround = false;
+			return;
+		}
 		var wasGrounded = IsOnGround;
 
 		// Wish velocity from the movement keys (yaw only), or the active ground move's velocity.

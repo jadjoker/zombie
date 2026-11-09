@@ -434,7 +434,7 @@ public partial class DevMenu : CanvasLayer
 			foreach ( var t in TimeScales ) { var v = t; Pick( v == 0f ? "Stop" : $"{v}x", MathF.Abs( (float)Engine.TimeScale - v ) < 0.01f, () => Engine.TimeScale = MathF.Max( v, 0.0001f ) ); }
 		}
 
-		if ( Sec( "World", "Travel", "travel teleport spawn point save spot go to saved scene level water test range" ) )
+		if ( Sec( "World", "Travel", "travel teleport spawn point save spot go to saved scene level indoor forest water test range" ) )
 		{
 			Section( "Travel" );
 			if ( Show( "Travel", "teleport spawn point save spot go to saved" ) )
@@ -444,9 +444,11 @@ public partial class DevMenu : CanvasLayer
 				Action( "Save spot", () => { if ( Controller is { } c ) savedSpot = (c.GlobalPosition, c.EyeAngles); } );
 				if ( savedSpot is not null ) Action( "Go to saved spot", () => MovePlayer( savedSpot.Value.Position, savedSpot.Value.Angles ) );
 			}
-			if ( Show( "Travel", "scene level load water test range" ) )
+			if ( Show( "Travel", "scene level load indoor forest water test range" ) )
 			{
 				Row( "Scene" );
+				Action( "Indoor", () => LoadScene( "res://scenes/indoor.tscn" ) );
+				Action( "Forest", () => LoadScene( "res://scenes/forest.tscn" ) );
 				Action( "Water level", () => LoadScene( "res://scenes/water_level.tscn" ) );
 				Action( "Test range", () => LoadScene( "res://scenes/test_range.tscn" ) );
 			}

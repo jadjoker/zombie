@@ -102,7 +102,7 @@ public partial class Jetpack : Node
 		if ( !CanAct ) { Thrusting = false; Charging = false; Charge = 0f; return; }
 
 		var airborne = !controller.IsOnGround && controller.TimeSinceGrounded > ThrustDelay;
-		var wantThrust = (Input.IsActionPressed( "jump" ) || TestHold) && airborne && !(movement?.IsMantling ?? false);
+		var wantThrust = (Input.IsActionPressed( "jump" ) || TestHold) && airborne && !(movement?.IsFloating ?? false) && !(movement?.IsMantling ?? false);
 		Thrusting = wantThrust && !Stalled && Power > 0f && !Surging && !Charging;
 		if ( wantThrust && Stalled && Input.IsActionJustPressed( "jump" ) ) TimeSinceRefused = 0f;
 		UpdateSurgeInput( dt );

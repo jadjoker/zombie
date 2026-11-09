@@ -1,0 +1,2359 @@
+{
+ "name": "indoor",
+ "settings": {
+  "stylize": {
+   "style": "Flat",
+   "strength": 1,
+   "outline": 0.9,
+   "outline_width": 1.6,
+   "ink": [
+    0.05,
+    0.05,
+    0.08
+   ],
+   "bands": 4,
+   "pixel_size": 3
+  },
+  "sun": {
+   "rot": [
+    -0.491200536,
+    0.25775516,
+    0.154874936,
+    0.817494988
+   ],
+   "color": [
+    1.0,
+    0.95,
+    0.85,
+    1.0
+   ],
+   "shadows": false
+  },
+  "ambient": [
+   0.3,
+   0.31,
+   0.36,
+   1.0
+  ],
+  "fog": {
+   "color": [
+    0.74,
+    0.84,
+    0.93,
+    1.0
+   ],
+   "start": 71.11999999999999,
+   "end": 457.2,
+   "falloff": 2,
+   "height": 10.16
+  },
+  "sky_tint": [
+   0.35,
+   0.35,
+   0.38,
+   1.0
+  ]
+ },
+ "objects": [
+  {
+   "name": "Main Camera",
+   "path": "/Main Camera",
+   "parent": "",
+   "pos": [
+    -0.0,
+    2.54,
+    7.62
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Directional Light",
+   "path": "/Directional Light",
+   "parent": "",
+   "pos": [
+    -0.0,
+    5.08,
+    -0.0
+   ],
+   "rot": [
+    -0.491200536,
+    0.25775516,
+    0.154874936,
+    0.817494988
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Arena",
+   "path": "/Arena",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Floor",
+   "path": "/Arena/Floor",
+   "parent": "/Arena",
+   "pos": [
+    -0.0,
+    -0.254,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    0.400000006,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.93,
+    0.84,
+    0.66,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "reflectivity_50b.vmat"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall North",
+   "path": "/Arena/Wall North",
+   "parent": "/Arena",
+   "pos": [
+    -0.0,
+    2.032,
+    -38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    3.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall South",
+   "path": "/Arena/Wall South",
+   "parent": "/Arena",
+   "pos": [
+    -0.0,
+    2.032,
+    38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    3.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall West",
+   "path": "/Arena/Wall West",
+   "parent": "/Arena",
+   "pos": [
+    -38.1,
+    2.032,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    3.20000005,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall East",
+   "path": "/Arena/Wall East",
+   "parent": "/Arena",
+   "pos": [
+    38.1,
+    2.032,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    3.20000005,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    0.42,
+    0.55,
+    0.6,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Dressing",
+   "path": "/Arena/Dressing",
+   "parent": "/Arena",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Floor",
+   "path": "/Arena/Dressing/Floor",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    -0.254,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    68.0,
+    0.400000006,
+    68.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_floor",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 13.6,
+    "albedo": "res://assets/materials/ground/indoor_floor_color.png",
+    "normal": "res://assets/materials/ground/indoor_floor_normal.png",
+    "rough": "res://assets/materials/ground/indoor_floor_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Ceiling",
+   "path": "/Arena/Dressing/Ceiling",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    10.921999999999999,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    68.0,
+    0.400000006,
+    68.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_ceiling",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 8.0,
+    "albedo": "res://assets/materials/ground/indoor_ceiling_color.png",
+    "normal": "res://assets/materials/ground/indoor_ceiling_normal.png",
+    "rough": "res://assets/materials/ground/indoor_ceiling_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Wall North",
+   "path": "/Arena/Dressing/Wall North",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -38.1,
+    5.334,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    8.39999962,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_long",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 7.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall South",
+   "path": "/Arena/Dressing/Wall South",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    38.1,
+    5.334,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    8.39999962,
+    60.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_long",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 7.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall West",
+   "path": "/Arena/Dressing/Wall West",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    5.334,
+    38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    8.39999962,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_long",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 7.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Wall East",
+   "path": "/Arena/Dressing/Wall East",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    5.334,
+    -38.1
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    60.0,
+    8.39999962,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_long",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 7.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Divider N",
+   "path": "/Arena/Dressing/Divider N",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -22.098,
+    5.334,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    24.3999996,
+    8.39999962,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_short",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Divider S",
+   "path": "/Arena/Dressing/Divider S",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    22.098,
+    5.334,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    24.3999996,
+    8.39999962,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_short",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Divider E",
+   "path": "/Arena/Dressing/Divider E",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    5.334,
+    -22.098
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    8.39999962,
+    24.3999996
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_short",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Divider W",
+   "path": "/Arena/Dressing/Divider W",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    5.334,
+    22.098
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.800000012,
+    8.39999962,
+    24.3999996
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_wall_short",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 3.0,
+    "albedo": "res://assets/materials/ground/indoor_wall_color.png",
+    "normal": "res://assets/materials/ground/indoor_wall_normal.png",
+    "rough": "res://assets/materials/ground/indoor_wall_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Trim N",
+   "path": "/Arena/Dressing/Trim N",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -37.236399999999996,
+    0.30479999999999996,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.400000006,
+    0.479999989,
+    59.2000008
+   ],
+   "children": [],
+   "tint": [
+    0.45,
+    0.45,
+    0.5,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_trim",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 60.0,
+    "albedo": "res://assets/materials/ground/indoor_ceiling_color.png",
+    "normal": "res://assets/materials/ground/indoor_ceiling_normal.png",
+    "rough": "res://assets/materials/ground/indoor_ceiling_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Trim S",
+   "path": "/Arena/Dressing/Trim S",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    37.236399999999996,
+    0.30479999999999996,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.400000006,
+    0.479999989,
+    59.2000008
+   ],
+   "children": [],
+   "tint": [
+    0.45,
+    0.45,
+    0.5,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_trim",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 60.0,
+    "albedo": "res://assets/materials/ground/indoor_ceiling_color.png",
+    "normal": "res://assets/materials/ground/indoor_ceiling_normal.png",
+    "rough": "res://assets/materials/ground/indoor_ceiling_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Trim W",
+   "path": "/Arena/Dressing/Trim W",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    0.30479999999999996,
+    37.236399999999996
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    59.2000008,
+    0.479999989,
+    0.400000006
+   ],
+   "children": [],
+   "tint": [
+    0.45,
+    0.45,
+    0.5,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_trim",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 60.0,
+    "albedo": "res://assets/materials/ground/indoor_ceiling_color.png",
+    "normal": "res://assets/materials/ground/indoor_ceiling_normal.png",
+    "rough": "res://assets/materials/ground/indoor_ceiling_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Trim E",
+   "path": "/Arena/Dressing/Trim E",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    0.30479999999999996,
+    -37.236399999999996
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    59.2000008,
+    0.479999989,
+    0.400000006
+   ],
+   "children": [],
+   "tint": [
+    0.45,
+    0.45,
+    0.5,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "indoor_trim",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 60.0,
+    "albedo": "res://assets/materials/ground/indoor_ceiling_color.png",
+    "normal": "res://assets/materials/ground/indoor_ceiling_normal.png",
+    "rough": "res://assets/materials/ground/indoor_ceiling_rough.png"
+   },
+   "shadows": true
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -19.304,
+    10.16,
+    -19.304
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -19.304,
+    10.16,
+    19.304
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    19.304,
+    10.16,
+    -19.304
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    19.304,
+    10.16,
+    19.304
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    10.16,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    10.16,
+    -22.86
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    10.16,
+    22.86
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -22.86,
+    10.16,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ceiling Light",
+   "path": "/Arena/Dressing/Ceiling Light",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    22.86,
+    10.16,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Door Frames",
+   "path": "/Arena/Dressing/Door Frames",
+   "parent": "/Arena/Dressing",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -6.604,
+    5.334000380999999,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.319999993,
+    8.39999962,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -37.592,
+    5.334000380999999,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.319999993,
+    8.39999962,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    37.592,
+    5.334000380999999,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.319999993,
+    8.39999962,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    6.604,
+    5.334000380999999,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    0.319999993,
+    8.39999962,
+    1.0
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -0.0,
+    5.334000380999999,
+    -6.604
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    8.39999962,
+    0.319999993
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -0.0,
+    5.334000380999999,
+    -37.592
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    8.39999962,
+    0.319999993
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -0.0,
+    5.334000380999999,
+    37.592
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    8.39999962,
+    0.319999993
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Frame",
+   "path": "/Arena/Dressing/Door Frames/Frame",
+   "parent": "/Arena/Dressing/Door Frames",
+   "pos": [
+    -0.0,
+    5.334000380999999,
+    6.604
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    8.39999962,
+    0.319999993
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    1.0,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "material": {
+    "name": "steel",
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "metal": 0.0,
+    "uv": 1.0,
+    "albedo": "res://assets/materials/ground/steel_color.png",
+    "normal": "res://assets/materials/ground/steel_normal.png",
+    "rough": "res://assets/materials/ground/steel_rough.png"
+   },
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   }
+  },
+  {
+   "name": "Zombie Spawns",
+   "path": "/Zombie Spawns",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Spawn 1",
+   "path": "/Zombie Spawns/Spawn 1",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    -26.669999999999998,
+    0.0,
+    -26.669999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 2",
+   "path": "/Zombie Spawns/Spawn 2",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    -31.75,
+    0.0,
+    -13.208
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 3",
+   "path": "/Zombie Spawns/Spawn 3",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    26.669999999999998,
+    0.0,
+    -26.669999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 4",
+   "path": "/Zombie Spawns/Spawn 4",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    31.75,
+    0.0,
+    -13.208
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 5",
+   "path": "/Zombie Spawns/Spawn 5",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    -26.669999999999998,
+    0.0,
+    26.669999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 6",
+   "path": "/Zombie Spawns/Spawn 6",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    -31.75,
+    0.0,
+    13.208
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 7",
+   "path": "/Zombie Spawns/Spawn 7",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    26.669999999999998,
+    0.0,
+    26.669999999999998
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Spawn 8",
+   "path": "/Zombie Spawns/Spawn 8",
+   "parent": "/Zombie Spawns",
+   "pos": [
+    31.75,
+    0.0,
+    13.208
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "spawn_point": true
+  },
+  {
+   "name": "Game",
+   "path": "/Game",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "wave_director": true
+  },
+  {
+   "name": "Buy Stations",
+   "path": "/Buy Stations",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Ammo Station",
+   "path": "/Buy Stations/Ammo Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    -0.0,
+    0.0,
+    -7.112
+   ],
+   "rot": [
+    -0.0,
+    1.0,
+    -0.0,
+    -4.37113883e-08
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Ammo Station/Body",
+   "parent": "/Buy Stations/Ammo Station",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    1.0,
+    0.82,
+    0.25,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   },
+   "buy_station": {
+    "Cost": 250,
+    "CostIncrease": 0,
+    "HealthPerPurchase": 25,
+    "Kind": "Ammo",
+    "MaxPurchases": 0,
+    "Title": "Ammo"
+   }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Ammo Station/Label",
+   "parent": "/Buy Stations/Ammo Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Health Station",
+   "path": "/Buy Stations/Health Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    -5.588,
+    0.0,
+    5.588
+   ],
+   "rot": [
+    -0.0,
+    -0.382683456,
+    -0.0,
+    0.923879504
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Health Station/Body",
+   "parent": "/Buy Stations/Health Station",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.95,
+    0.3,
+    0.3,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   },
+   "buy_station": {
+    "Cost": 500,
+    "CostIncrease": 250,
+    "HealthPerPurchase": 25,
+    "Kind": "Health",
+    "MaxPurchases": 4,
+    "Title": "Health"
+   }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Health Station/Label",
+   "parent": "/Buy Stations/Health Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Damage Station",
+   "path": "/Buy Stations/Damage Station",
+   "parent": "/Buy Stations",
+   "pos": [
+    5.588,
+    0.0,
+    5.588
+   ],
+   "rot": [
+    -0.0,
+    0.382683456,
+    -0.0,
+    0.923879504
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Body",
+   "path": "/Buy Stations/Damage Station/Body",
+   "parent": "/Buy Stations/Damage Station",
+   "pos": [
+    -0.0,
+    0.762,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.20000005,
+    1.20000005,
+    0.800000012
+   ],
+   "children": [],
+   "tint": [
+    0.65,
+    0.4,
+    1.0,
+    1.0
+   ],
+   "box": true,
+   "shadows": true,
+   "collider": {
+    "size": [
+     50.0,
+     50.0,
+     50.0
+    ],
+    "center": [
+     -0.0,
+     0.0,
+     -0.0
+    ]
+   },
+   "buy_station": {
+    "Cost": 1000,
+    "CostIncrease": 500,
+    "HealthPerPurchase": 25,
+    "Kind": "Damage",
+    "MaxPurchases": 5,
+    "Title": "Damage"
+   }
+  },
+  {
+   "name": "Label",
+   "path": "/Buy Stations/Damage Station/Label",
+   "parent": "/Buy Stations/Damage Station",
+   "pos": [
+    -0.0,
+    1.9304,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": [],
+   "text": {
+    "text": "",
+    "color": [
+     1,
+     1,
+     1,
+     1
+    ],
+    "scale": 0.12
+   }
+  },
+  {
+   "name": "Atmosphere",
+   "path": "/Atmosphere",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Sky",
+   "path": "/Sky",
+   "parent": "",
+   "pos": [
+    -0.0,
+    0.0,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  },
+  {
+   "name": "Reflections",
+   "path": "/Reflections",
+   "parent": "",
+   "pos": [
+    -0.0,
+    5.08,
+    -0.0
+   ],
+   "rot": [
+    -0.0,
+    0.0,
+    -0.0,
+    1.0
+   ],
+   "scale": [
+    1.0,
+    1.0,
+    1.0
+   ],
+   "children": []
+  }
+ ]
+}

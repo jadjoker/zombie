@@ -203,7 +203,7 @@ public partial class PlayerRig : Node
 	{
 		if ( !controller.ThirdPerson ) return;
 		var aim = Held?.AimAmount ?? 0f;
-		var flying = (jet is not null && (jet.Thrusting || jet.Surging || jet.Charging)) || (!controller.IsOnGround && (water?.Swimming ?? 0f) > 0.5f);
+		var flying = (movement?.IsFloating ?? false) || (jet is not null && (jet.Thrusting || jet.Surging || jet.Charging)) || (!controller.IsOnGround && (water?.Swimming ?? 0f) > 0.5f);
 		flyingCam = MathX.Lerp( flyingCam, flying ? 1f : 0f, 1f - MathF.Exp( -2.5f * dt ) );
 		var pull = (ExtraPullBack + FlyingPullBack * flyingCam) * (1f - aim);
 		var offset = ShoulderOffset.Lerp( AimShoulderOffset, aim ) + pull;

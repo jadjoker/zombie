@@ -255,6 +255,33 @@ public partial class AutoTest : Node
 		var userArgs = OS.GetCmdlineUserArgs();
 		MC61.PoseHands = !userArgs.Contains( "--rest-hands" );
 		if ( userArgs.Contains( "--boss" ) ) goto Boss;
+		if ( userArgs.Contains( "--float" ) )
+		{
+			// Anchor snapped: no gravity, swim where you look.
+			var fm = player.GetNode<MoveModeFloat>( "MoveModeFloat" );
+			WaveDirector.Current.FloatRound = true;
+			var start = player.GlobalPosition;
+			await Wait( 1f );
+			GD.Print( $"[autotest] float idle: moved {(player.GlobalPosition - start).Length() / U.In:0} u (should stay put)" );
+			fm.TestInput = Vector3.Up;
+			start = player.GlobalPosition;
+			await Wait( 1.5f );
+			GD.Print( $"[autotest] float up: rose {(player.GlobalPosition.Y - start.Y) / U.In:0} u, speed {player.Velocity.Length() / U.In:0}" );
+			fm.TestInput = null;
+			start = player.GlobalPosition;
+			await Wait( 1.5f );
+			GD.Print( $"[autotest] float drift after letting go: {(player.GlobalPosition - start).Length() / U.In:0} u, speed {player.Velocity.Length() / U.In:0}" );
+			player.GetNode<PlayerMovement>( "PlayerMovement" ).TestPressDash();
+			await Wait( 0.1f );
+			GD.Print( $"[autotest] float dash: speed {player.Velocity.Length() / U.In:0}" );
+			await Shot( "float_round" );
+			WaveDirector.Current.FloatRound = false;
+			await Wait( 1.5f );
+			GD.Print( $"[autotest] anchor back: on ground {player.IsOnGround}" );
+			GD.Print( "[autotest] done" );
+			GetTree().Quit();
+			return;
+		}
 		if ( userArgs.Contains( "--robot" ) )
 		{
 			// Third person and a free camera looking at the robot from the front-left.

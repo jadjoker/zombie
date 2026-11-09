@@ -58,6 +58,8 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   `water.gdshader` from the depth buffer. `GlobalStylize` is now a compositor effect (`StylizeEffect`,
   `stylize_compute.glsl`, `copy_compute.glsl`) after the transparent pass, so water and particles get the look too;
   it tonemaps (ACES) itself like the s&box order. MSAA is off (compute can't write an MSAA colour buffer), FXAA on.
+- Step 9: `MoveModeFloat` (anchor-snapped float rounds), forest and indoor maps (`scenes/forest.tscn`,
+  `scenes/indoor.tscn`). Parity notes and known differences: `../docs/godot-migration.md`. Test: `--creatures --float`.
 - Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
   The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
 - Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),

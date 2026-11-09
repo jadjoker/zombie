@@ -67,6 +67,21 @@ public partial class PlayerMovement : Node, ICameraModifier
 	public bool IsSliding => Ground == GroundMode.Slide;
 	public bool IsDashing => Ground == GroundMode.Dash || timeSinceDash < DashTime + 0.1f;
 	public bool IsMantling => mantle is not null;
+	public bool IsFloating => MoveModeFloat.IsActive && (Controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.IsAlive ?? true);
+
+	/// <summary> A burst wherever you're swimming (or looking), which the water then eases back out. </summary>
+	void FloatDash()
+	{
+		if ( timeSinceDash < DashTime + 0.05f ) return;
+		if ( !TrySpend() ) return;
+		var swim = Controller.GetNodeOrNull<MoveModeFloat>( "MoveModeFloat" )?.WishSwim() ?? Vector3.Zero;
+		dashDirection = swim.IsNearlyZero() ? -Controller.EyeAngles.ToBasis().Z : swim.Normalized();
+		timeSinceDash = 0f;
+		dashFromGround = false;
+		Controller.Velocity = dashDirection * AirDashSpeed * 1.1f;
+		Kick( 7f );
+		Juice?.Shake( 0.06f );
+	}
 	public bool OverridesGround => Ground != GroundMode.None;
 	public Vector3 GroundVelocity { get; private set; }
 
@@ -157,6 +172,16 @@ public partial class PlayerMovement : Node, ICameraModifier
 		if ( onGround ) AirJumpsLeft = AirJumps;
 		if ( mantle is not null ) { wasOnGround = onGround; return; }
 
+		// Anchor snapped: you're swimming. Only the dash still works (in 3D).
+		if ( IsFloating )
+		{
+			if ( testDash ) FloatDash();
+			testDash = false;
+			testJump = false;
+			wasOnGround = onGround;
+			return;
+		}
+
 		var jumpPressed = Input.IsActionJustPressed( "jump" ) || testJump;
 		var dashPressed = testDash;
 		testJump = false;
@@ -212,6 +237,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		var dt = (float)delta;
 		var controller = Controller;
 		if ( mantle is not null ) { StepMantle(); return; }
+		if ( IsFloating ) return;
 
 		if ( pendingWallKick is { } kick ) { pendingWallKick = null; WallJump( kick ); }
 

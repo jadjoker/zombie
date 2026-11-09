@@ -74,7 +74,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [x] 7b. Robot third-person model, world gun, PlayerRig poses (a procedural walk/crouch/aim driver replaces the citizen animation set)
 - [x] 7c. Shaders (water, ghost, dissolve, hologram, iridescent, glowbulb, stylize looks), sounds hooks (files go in assets/sounds; none ship, they were Facepunch cloud assets)
 - [x] 8. Upgrades: real ragdolls (robot death), GPU particles (bubbles, crater sand), ocean contact foam; stylize moved to a post-transparent compositor pass (AA is now FXAA)
-- [ ] 9. Parity pass against the checklist below, then co-op later
+- [x] 9. Parity pass against the checklist below (results under it). Co-op stays a later, separate project.
 
 ## Port order (Godot)
 1. **Skeleton project.** Godot 4 .NET project, folders mirroring `Code/`, InputMap from `Input.config`, units/axes
@@ -97,6 +97,19 @@ Systems: waves, health and afflictions, gore and gibs, buy stations, dev menu wi
 Water level: water feel underwater, dock safe house, dive (physics fall, tumbles, saw hands, crushing Bloobers),
 crater landing, surface waves and floating barrels.
 Look: stylize looks (Comic, Anime, Sketch, Watercolor, Riso, Flat), water shader.
+
+### Parity results (step 9, 2026-11-09)
+All of the above runs in Godot and is covered by the autotests (`godot/README.md` lists the flags). Added in this pass:
+float rounds (`MoveModeFloat`), and the forest and indoor maps (`levels/*.json`, `scenes/*.tscn`, dev menu Travel).
+Known differences:
+- No sounds ship: the s&box ones were Facepunch cloud assets. Every hook is in place (`Sfx`, `assets/sounds/README.md`).
+- Zombies are not ported (citizen model, off in the s&box game too).
+- The robot is posed by a procedural driver instead of the citizen animation set; it walks, crouches, aims, slides,
+  swims, surges and swings the axe, but it's simpler than a hand-animated set.
+- The third-person world gun is our first-person gun model (the s&box one was a Facepunch model).
+- The Flat look is harsh on bright floors (forest, indoor). It is the scenes' own setting; switch it in the dev menu
+  (P, Look) if it reads wrong next to s&box.
+- Anti-aliasing is FXAA (MSAA can't be used with the compute stylize pass).
 
 ## Risks
 - **Robot animation set.** Without the citizen animations we need our own. Options: animate in Blender (scripted

@@ -171,8 +171,56 @@ public partial class GameHud : Control
 		}
 		gameOver.Visible = d?.State == WaveState.GameOver;
 		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress JUMP to try again";
+		UpdateGooPhysics( (float)delta );
 		QueueRedraw();
 	}
+
+	// ---- Goo on the lens: it lags behind how you move and look, then sticks ----
+
+	readonly Dictionary<float, (Vector2 Offset, Vector2 Velocity)> gooMotion = new();
+	Angles lastEye;
+	bool hasLastEye;
+
+	static float Key( PlayerAfflictions.ScreenDrip d ) => d.Born * 1000f + d.X;
+
+	void UpdateGooPhysics( float dt )
+	{
+		var controller = player?.Controller;
+		var afflictions = player?.Afflictions;
+		if ( controller is null || afflictions is null || dt <= 0f ) return;
+		var eye = controller.EyeAngles;
+		var yawRate = hasLastEye ? Mathf.Wrap( eye.Yaw - lastEye.Yaw, -180f, 180f ) / dt : 0f;      // + turning left
+		var pitchRate = hasLastEye ? (eye.Pitch - lastEye.Pitch) / dt : 0f;                           // + looking down
+		lastEye = eye; hasLastEye = true;
+		// How we move, in the camera's frame (m/s): the dive moves us by script, not by velocity.
+		var velocity = DockHouse.Diving ? DockHouse.DiveVelocity * U.In : controller.Velocity;
+		var basis = controller.Camera.GlobalBasis;
+		var right = velocity.Dot( basis.X );
+		var up = velocity.Dot( basis.Y );
+		var forward = velocity.Dot( -basis.Z );
+		var scale = Size.Y / 1080f;
+		var center = Size * 0.5f;
+
+		var alive = new HashSet<float>();
+		foreach ( var drip in afflictions.Drips )
+		{
+			var key = Key( drip );
+			alive.Add( key );
+			var (offset, vel) = gooMotion.TryGetValue( key, out var m ) ? m : (Vector2.Zero, Vector2.Zero);
+			var at = new Vector2( drip.X / 100f * Size.X, drip.Y / 100f * Size.Y ) + offset;
+			// Turning drags it the other way, moving sideways or up pushes it opposite, rushing forward spreads it out.
+			var accel = new Vector2( yawRate * 2.2f, -pitchRate * 2.2f ) * scale
+				+ new Vector2( -right, up ) * 26f * scale
+				+ (at - center).Normalized() * MathF.Max( 0f, forward ) * 9f * scale;
+			vel += accel * dt;
+			vel *= MathF.Exp( -5f * dt );   // thick: it creeps, then sticks
+			offset += vel * dt;
+			offset = offset.LimitLength( 220f * scale );
+			gooMotion[key] = (offset, vel);
+		}
+		foreach ( var key in gooMotion.Keys.Where( k => !alive.Contains( k ) ).ToList() ) gooMotion.Remove( key );
+	}
+
 
 	string StatusText
 	{
@@ -250,8 +298,9 @@ public partial class GameHud : Control
 				var size = drip.Size * pop * scale;
 				var slide = MathF.Max( 0f, age - 0.25f ) * drip.Slide;   // % of the screen height
 				var c = drip.Color;
-				var x = drip.X / 100f * Size.X;
-				var y = drip.Y / 100f * Size.Y;
+				var moved = gooMotion.TryGetValue( Key( drip ), out var motion ) ? motion.Offset : Vector2.Zero;
+				var x = drip.X / 100f * Size.X + moved.X;
+				var y = drip.Y / 100f * Size.Y + moved.Y;
 				if ( slide > 0.3f )
 				{
 					var w = size * 0.28f;

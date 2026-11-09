@@ -62,43 +62,44 @@ def splat(seed, coll, mat):
         e.type = "ELLIPSOID"
         e.size_x, e.size_y, e.size_z = sx, sy, 0.45   # shape, relative to the radius
 
-    # Body: a few overlapping lobes.
-    for _ in range(rng.randint(5, 8)):
+    # Body: one round core with fat lobes bulging out of its edge (a paint-splat silhouette).
+    core = rng.uniform(0.36, 0.42)
+    ball(0, 0, core)
+    for _ in range(rng.randint(9, 14)):
         a = rng.uniform(0, math.tau)
-        d = rng.uniform(0, 0.2)
-        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.17, 0.27))
-    # Splash streaks thrown outward from the impact: tapering arms, each ending in a drop.
-    for _ in range(rng.randint(5, 9)):
+        d = core * rng.uniform(0.6, 0.85)
+        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.13, 0.2))
+    # Short stubby splashes: a thick neck running out to a round bead.
+    for _ in range(rng.randint(2, 4)):
         a = rng.uniform(0, math.tau)
-        reach = rng.uniform(0.35, 0.62)
-        steps = 14
+        reach = rng.uniform(0.08, 0.18)
+        steps = 8
         for k in range(steps):
             t = k / (steps - 1)
-            d = 0.15 + t * reach
-            ball(math.cos(a) * d, math.sin(a) * d, 0.07 * (1 - 0.7 * t) + 0.012)
-        d = 0.15 + reach + 0.03
-        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.035, 0.06))
-    # Satellite drops round the edge.
-    for _ in range(rng.randint(4, 8)):
+            d = core * 0.8 + t * reach
+            ball(math.cos(a) * d, math.sin(a) * d, 0.1 * (1 - 0.3 * t))
+        d = core * 0.8 + reach + 0.04
+        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.08, 0.11))
+    # Round droplets thrown round the edge.
+    for _ in range(rng.randint(6, 11)):
         a = rng.uniform(0, math.tau)
-        d = rng.uniform(0.35, 0.6)
-        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.03, 0.07))
-    # Drips running down: dense chains that melt into one smooth run, ending in a fat bead.
-    for _ in range(rng.randint(1, 3)):
-        x = rng.uniform(-0.2, 0.2)
-        y = -0.1
-        length = rng.uniform(0.3, 0.6)
-        steps = 30
-        wobble = rng.uniform(0, math.tau)
+        d = rng.uniform(0.55, 0.8)
+        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.035, 0.08))
+    # A drip or two running down, smooth, ending in a fat bead.
+    for _ in range(rng.randint(0, 2)):
+        x = rng.uniform(-0.15, 0.15)
+        y = -core * 0.7
+        length = rng.uniform(0.2, 0.42)
+        steps = 24
         for k in range(steps):
             t = k / (steps - 1)
-            ball(x + 0.012 * math.sin(wobble + t * 7), y - t * length, 0.05 * (1 - 0.3 * t), sx=0.85)
-        ball(x, y - length - 0.03, 0.075)
-    # Flung specks, further out.
-    for _ in range(rng.randint(8, 16)):
+            ball(x, y - t * length, 0.055 * (1 - 0.25 * t), sx=0.9)
+        ball(x, y - length - 0.03, 0.08)
+    # Fine specks, further out.
+    for _ in range(rng.randint(6, 12)):
         a = rng.uniform(0, math.tau)
-        d = rng.uniform(0.6, 0.9)
-        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.012, 0.03))
+        d = rng.uniform(0.7, 0.92)
+        ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.015, 0.03))
 
     obj = bpy.data.objects.new(f"Splat {seed}", mb)
     coll.objects.link(obj)

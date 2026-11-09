@@ -850,8 +850,13 @@ public partial class AutoTest : Node
 		survivor.Afflictions?.Splattered( new Color( 0.3f, 0.95f, 0.25f ), 7 );
 		await Wait( 0.15f );
 		await Shot( "screen_goo" );
-		await Wait( 0.8f );
-		await Shot( "screen_goo_sliding" );
+		// Turn hard right for half a second (the goo should drag left), then strafe left (it should drift right).
+		for ( var i = 0; i < 30; i++ ) { player.EyeAngles = new Angles( 0f, player.EyeAngles.Yaw - 3f, 0f ); await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame ); }
+		await Shot( "screen_goo_turned" );
+		Input.ActionPress( "left" );
+		await Wait( 0.6f );
+		Input.ActionRelease( "left" );
+		await Shot( "screen_goo_strafed" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

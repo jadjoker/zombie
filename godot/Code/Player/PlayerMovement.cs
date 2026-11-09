@@ -288,6 +288,18 @@ public partial class PlayerMovement : Node, ICameraModifier
 		}
 		Kick( 7f );
 		Juice?.Shake( 0.06f );
+		Puff( c.GlobalPosition, onGround ? 0.8f : 0.5f );
+	}
+
+	/// <summary> A little dust kicked up at the feet (stands in for the stock impact.generic particle). </summary>
+	static void Puff( Vector3 at, float scale )
+	{
+		var dust = new Color( 0.62f, 0.58f, 0.5f, 0.7f );
+		for ( var i = 0; i < (int)(10 * scale); i++ )
+		{
+			var dir = (Rng.OnSphere().Flat() + Vector3.Up * 0.4f).SafeNormal();
+			GpuFx.SandPuff( at + Vector3.Up * 2f * U.In, dir * Rng.Float( 40f, 120f ) * scale * U.In, dust, Rng.Float( 3f, 7f ) * scale, Rng.Float( 0.5f, 1f ) );
+		}
 	}
 
 	void StepDash( float dt )

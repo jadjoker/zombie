@@ -101,7 +101,20 @@ Look: stylize looks (Comic, Anime, Sketch, Watercolor, Riso, Flat), water shader
 ### Parity results (step 9, 2026-11-09)
 All of the above runs in Godot and is covered by the autotests (`godot/README.md` lists the flags). Added in this pass:
 float rounds (`MoveModeFloat`), and the forest and indoor maps (`levels/*.json`, `scenes/*.tscn`, dev menu Travel).
+Second pass (same day): a file-by-file and method-by-method diff of Code/ against godot/Code/, and of every scene
+component setting against the Godot defaults. Fixed:
+- The forest is the s&box open-world map again: `ProceduralMap` + `ForestLook` build the random forest (the hand-made
+  arena is switched off), and the scene's WaveDirector settings are carried over (OpenWorld, danger pacing, spawn mix).
+- Nature props use a port of `triplanar_nature.shader` (`nature.gdshader`) with all nine `materials/nature` settings.
+- Buy station labels (AMMO, HEALTH, DAMAGE), the indoor ceiling lights, and fx-shader materials now convert.
+- Creature mesh dents (`DentedMesh`) and exact skin hits for wounds (`SkinHit`).
+- Scene tunings: coyote time 0.33, 150 gibs max, splat sound rate limit, goo drying over 10 s, dash dust puffs.
+Not needed: Bloober knocks (dead code since the glancing knocks were removed), Gib.Split and BodySegments
+(zombie bodies), viewmodel dry-fire (the custom view models skip it in s&box too).
 Known differences:
+- Light brightness is set by eye: s&box light brightness and ambient don't map 1:1 to Godot energy. The indoor map
+  reads brighter than it probably should; compare with a capture from s&box and tune `Level.cs` (ambient energy,
+  point light scale).
 - No sounds ship: the s&box ones were Facepunch cloud assets. Every hook is in place (`Sfx`, `assets/sounds/README.md`).
 - Zombies are not ported (citizen model, off in the s&box game too).
 - The robot is posed by a procedural driver instead of the citizen animation set; it walks, crouches, aims, slides,

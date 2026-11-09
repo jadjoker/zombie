@@ -8,7 +8,11 @@ using Godot;
 public partial class GoreSystem : Node
 {
 	public float GibLifetime = 20f;
-	public int MaxGibs = 120;
+	public int MaxGibs = 150;
+	public int MaxSplatsPerTick = 3;
+	public float SplatVolume = 0.55f;
+	TimeSince splatWindow;
+	int splatsThisWindow;
 	public float FadeTime = 1.2f;
 	public float DecalLifetime = 40f;
 	public int MaxDecals = 200;
@@ -38,7 +42,15 @@ public partial class GoreSystem : Node
 		foreach ( var old in gibs.Where( g => !g.IsFading ).Take( Math.Max( 0, excess ) ).ToList() ) old.BeginFade();
 	}
 
-	public void Squelch( Vector3 position, float loudness = 1f, float pitch = 1f ) => Sfx.Play( "splat", position, loudness, pitch );
+	/// <summary> A wet squelch at a point, pitched a little at random. Rate-limited (a few per tenth of a second). </summary>
+	public void Squelch( Vector3 position, float loudness = 1f, float pitch = 1f )
+	{
+		if ( loudness <= 0.05f ) return;
+		if ( splatWindow > 0.1f ) { splatWindow = 0f; splatsThisWindow = 0; }
+		if ( splatsThisWindow >= MaxSplatsPerTick ) return;
+		splatsThisWindow++;
+		Sfx.Play( "splat", position, SplatVolume * MathX.Clamp( loudness, 0f, 1.5f ), pitch * Rng.Float( 0.85f, 1.15f ) );
+	}
 
 	// ---- Goo ----
 
@@ -62,7 +74,7 @@ public partial class GoreSystem : Node
 		decal.GlobalTransform = new Transform3D( basis, position + up * 1f * U.In );
 		// Goes on bright and wet, then dries darker.
 		var tween = decal.CreateTween();
-		tween.TweenProperty( decal, "modulate", color.Lerp( Colors.Black, 0.35f ), 6f );
+		tween.TweenProperty( decal, "modulate", color.Lerp( Colors.Black, 0.35f ), 10f ).SetTrans( Tween.TransitionType.Sine ).SetEase( Tween.EaseType.InOut );
 		Fx.Expire( decal, DecalLifetime );
 		decals.Enqueue( decal );
 		while ( decals.Count > MaxDecals )

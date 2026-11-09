@@ -422,6 +422,7 @@ public partial class AutoTest : Node
 		await Shot( "squilien_tentacles" );
 		for ( var k = 0; k < 14 && !q.IsDead; k++ ) { LookAt( q.GlobalPosition ); weapon.TestFire(); await Wait( 0.13f ); }
 		DevFlags.FreezeEnemies = false;
+		GD.Print( $"[autotest] dents so far {DentedMesh.Total}, shapes refused {DentedMesh.Refused}" );
 		GD.Print( $"[autotest] squilien: dead {q.IsDead}, health {q.Health?.Current:0}, alive {Squilien.All.Count( x => !x.IsDead )}" );
 		await Wait( 0.4f );
 		await Shot( "squilien_dead" );

@@ -16,6 +16,11 @@ public partial class Level : Node3D
 	static readonly Dictionary<string, Material> materials = new();
 	readonly Dictionary<string, Node3D> byPath = new();
 	static readonly Dictionary<string, PackedScene> models = new();
+	static readonly Dictionary<string, ShaderMaterial> nature = new();
+	ProceduralMap proceduralMap;
+
+	/// <summary> A nature material (nature.gdshader) seen in this level, by its s&box name (bark, leaves...). </summary>
+	public static ShaderMaterial NatureMaterial( string name ) => nature.TryGetValue( name, out var m ) ? m : null;
 
 	public override void _Ready()
 	{
@@ -31,6 +36,8 @@ public partial class Level : Node3D
 		BuildEnvironment( settings );
 
 		foreach ( var o in root.GetProperty( "objects" ).EnumerateArray() ) Build( o );
+		// The forest builds its procedural world in place of the hand-made arena (before the navmesh).
+		proceduralMap?.Build( this, path => byPath.TryGetValue( path, out var n ) && IsInstanceValid( n ) ? n : null );
 		Nav.Bake( this );
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
@@ -117,12 +124,14 @@ public partial class Level : Node3D
 		if ( o.TryGetProperty( "box", out _ ) || o.TryGetProperty( "sphere", out _ ) )
 		{
 			var box = o.TryGetProperty( "box", out _ );
-			node.AddChild( new MeshInstance3D
+			var mesh = new MeshInstance3D
 			{
 				Mesh = box ? new BoxMesh { Size = Vector3.One * 50f * U.In } : new SphereMesh { Radius = 32f * U.In, Height = 64f * U.In },
 				MaterialOverride = MakeMaterial( mat, tint, triplanar: true ),
 				CastShadow = shadows ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off,
-			} );
+			};
+			node.AddChild( mesh );
+			TintNature( mesh, tint );
 		}
 		if ( o.TryGetProperty( "model", out var model ) && model.ValueKind == JsonValueKind.String )
 		{
@@ -138,6 +147,7 @@ public partial class Level : Node3D
 				{
 					mesh.MaterialOverride = material;
 					mesh.CastShadow = shadows ? GeometryInstance3D.ShadowCastingSetting.On : GeometryInstance3D.ShadowCastingSetting.Off;
+					TintNature( mesh, tint );
 				}
 			}
 		}
@@ -173,16 +183,115 @@ public partial class Level : Node3D
 			if ( dock.TryGetProperty( "PierLength", out var pl ) ) house.PierLength = pl.GetSingle();
 			AddChild( house );
 		}
-		if ( o.TryGetProperty( "wave_director", out _ ) && WaveDirector.Current is null )
+		if ( o.TryGetProperty( "wave_director", out var wd ) && WaveDirector.Current is null )
 		{
 			var director = new WaveDirector();
+			// The scene's own settings (open world, spawn mix, health and pacing), by name.
+			if ( wd.ValueKind == JsonValueKind.Object ) ApplySettings( director, wd );
 			AddChild( director );
 			director.GlobalPosition = node.GlobalPosition;
 		}
+		if ( o.TryGetProperty( "procedural_map", out var pm ) )
+		{
+			proceduralMap = new ProceduralMap { Name = "Procedural World" };
+			ApplySettings( proceduralMap, pm );
+			AddChild( proceduralMap );
+		}
+		if ( o.TryGetProperty( "text", out var text ) && text.GetProperty( "text" ).GetString() is { Length: > 0 } words )
+		{
+			// s&box TextRenderer: world text, facing the camera.
+			var c = Col( text.GetProperty( "color" ) );
+			node.AddChild( new Label3D
+			{
+				Text = words,
+				Modulate = c,
+				FontSize = text.TryGetProperty( "size", out var fs ) ? fs.GetInt32() : 32,
+				PixelSize = (text.TryGetProperty( "scale", out var sc ) ? sc.GetSingle() : 1f) * U.In,
+				Billboard = !text.TryGetProperty( "billboard", out var bb ) || bb.GetBoolean() ? BaseMaterial3D.BillboardModeEnum.Enabled : BaseMaterial3D.BillboardModeEnum.Disabled,
+				OutlineSize = 6,
+				OutlineModulate = new Color( 0, 0, 0, 0.6f ),
+			} );
+		}
+		if ( o.TryGetProperty( "point_light", out var pl2 ) )
+		{
+			// s&box light colours carry the brightness (above 1); Godot splits colour and energy.
+			var c = Col( pl2.GetProperty( "color" ) );
+			var energy = MathF.Max( c.R, MathF.Max( c.G, c.B ) );
+			node.AddChild( new OmniLight3D
+			{
+				LightColor = energy > 0f ? new Color( c.R / energy, c.G / energy, c.B / energy ) : Colors.White,
+				LightEnergy = energy * 0.3f,   // s&box brightness is not Godot energy: tuned so a lit floor keeps its texture
+				OmniRange = pl2.GetProperty( "radius" ).GetSingle(),
+				OmniAttenuation = pl2.GetProperty( "attenuation" ).GetSingle(),
+				ShadowEnabled = pl2.GetProperty( "shadows" ).GetBoolean(),
+			} );
+		}
+	}
+
+	/// <summary> Sets public fields of a node from an s&box component's saved properties (matching names). </summary>
+	static void ApplySettings( object target, JsonElement values )
+	{
+		var type = target.GetType();
+		foreach ( var prop in values.EnumerateObject() )
+		{
+			var field = type.GetField( prop.Name );
+			if ( field is null ) continue;
+			var v = prop.Value;
+			try
+			{
+				object value = field.FieldType switch
+				{
+					var t when t == typeof( float ) => v.GetSingle(),
+					var t when t == typeof( int ) => v.GetInt32(),
+					var t when t == typeof( bool ) => v.GetBoolean(),
+					var t when t == typeof( string ) => v.GetString(),
+					var t when t.IsEnum => Enum.Parse( t, v.GetString() ),
+					_ => null,
+				};
+				if ( value is not null ) field.SetValue( target, value );
+			}
+			catch ( Exception e ) { GD.PrintErr( $"Level: setting {prop.Name}: {e.Message}" ); }
+		}
+	}
+
+	static void TintNature( MeshInstance3D mesh, Color tint )
+	{
+		if ( mesh.MaterialOverride is ShaderMaterial { Shader: { } sh } && sh.ResourcePath.EndsWith( "nature.gdshader" ) )
+			mesh.SetInstanceShaderParameter( "tint", new Vector3( tint.R, tint.G, tint.B ) );
+	}
+
+	static ShaderMaterial MakeNature( string name, JsonElement n )
+	{
+		if ( nature.TryGetValue( name, out var cached ) ) return cached;
+		var m = new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/nature.gdshader" ) };
+		foreach ( var prop in n.EnumerateObject() )
+		{
+			var v = prop.Value;
+			if ( v.ValueKind == JsonValueKind.String ) m.SetShaderParameter( prop.Name, GD.Load<Texture2D>( v.GetString() ) );
+			else if ( v.ValueKind == JsonValueKind.Number ) m.SetShaderParameter( prop.Name, v.GetSingle() );
+			else if ( v.ValueKind == JsonValueKind.Array ) m.SetShaderParameter( prop.Name, new Color( v[0].GetSingle(), v[1].GetSingle(), v[2].GetSingle() ) );
+		}
+		nature[name] = m;
+		return m;
 	}
 
 	static Material MakeMaterial( JsonElement? m, Color tint, bool triplanar )
 	{
+		if ( m is { } nm && nm.TryGetProperty( "nature", out var nat ) ) return MakeNature( nm.GetProperty( "name" ).GetString(), nat );
+		if ( m is { } fm && fm.TryGetProperty( "shader", out var fx ) && fx.GetString() is { } fxName && fxName.StartsWith( "fx_" ) )
+		{
+			Material f = fxName switch
+			{
+				"fx_ghost" => FxMaterials.Ghost( tint ),
+				"fx_dissolve" => FxMaterials.Dissolve( tint ),
+				"fx_hologram" => FxMaterials.Hologram(),
+				"fx_iridescent" => FxMaterials.Iridescent( tint ),
+				"fx_glowbulb" => FxMaterials.GlowBulb( tint ),
+				"fx_invisible" => FxMaterials.Invisible,
+				_ => null,
+			};
+			if ( f is not null ) return f;
+		}
 		var key = (m?.GetProperty( "name" ).GetString() ?? "plain") + tint.ToHtml() + triplanar;
 		if ( materials.TryGetValue( key, out var cached ) ) return cached;
 		var material = new StandardMaterial3D { AlbedoColor = tint, Roughness = 0.85f };

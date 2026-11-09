@@ -68,6 +68,32 @@ def material(rel):
         return m.group(1) if m else None
 
     out = {"name": os.path.splitext(os.path.basename(rel))[0]}
+    shader = get("shader") or ""
+    if "triplanar_nature" in shader:
+        # The nature shader: every parameter and texture, for godot/assets/shaders/nature.gdshader.
+        nature = {}
+        for key, name in (("BaseColor", "base_color"), ("BaseNormal", "base_normal"), ("BaseRough", "base_rough"),
+                          ("TopColor", "top_color"), ("TopNormal", "top_normal")):
+            t = get(key)
+            if t:
+                res = copy(t)
+                if res:
+                    nature[name] = res
+        for key, name in (("g_flBaseScale", "base_scale"), ("g_flNormalStrength", "normal_strength"), ("g_flTopScale", "top_scale"),
+                          ("g_flTopAmount", "top_amount"), ("g_flTopSharpness", "top_sharpness"), ("g_flVariationAmount", "variation_amount"),
+                          ("g_flVariationScale", "variation_scale"), ("g_flVariationContrast", "variation_contrast"),
+                          ("g_flBottomDarken", "bottom_darken"), ("g_flTopLight", "top_light"), ("g_flTopRoughness", "top_roughness")):
+            v = get(key)
+            if v:
+                nature[name] = float(v)
+        for key, name in (("g_vVariationColor", "variation_color"), ("g_vTopLightColor", "top_light_color")):
+            v = get(key)
+            if v:
+                nature[name] = [float(x) for x in v.strip("[]").split()][:3]
+        out["nature"] = nature
+        return out
+    if shader and "complex" not in shader:
+        out["shader"] = os.path.splitext(os.path.basename(shader))[0]
     tint = get("g_vColorTint")
     if tint:
         out["tint"] = [float(x) for x in tint.strip("[]").split()][:3]
@@ -150,9 +176,18 @@ def convert(name):
             elif t == "BuyStation":
                 entry["buy_station"] = {k: v for k, v in c.items() if not k.startswith("__") and k != "Flags" and not k.startswith("On") and not isinstance(v, dict)}
             elif t == "TextRenderer":
-                entry["text"] = {"text": c.get("Text", ""), "color": color(c.get("Color")), "scale": c.get("Scale", 1)}
+                scope = c.get("TextScope") or {}
+                entry["text"] = {"text": scope.get("Text", c.get("Text", "")), "color": color(scope.get("TextColor") or c.get("Color")),
+                                 "scale": c.get("Scale", 1), "size": scope.get("FontSize", 32), "billboard": c.get("Billboard", "None") != "None"}
+            elif t == "PointLight":
+                entry["point_light"] = {"color": color(c.get("LightColor")), "radius": c.get("Radius", 400) * IN, "shadows": c.get("Shadows", False),
+                                        "attenuation": c.get("Attenuation", 1)}
             elif t == "WaveDirector":
-                entry["wave_director"] = True
+                # Every plain setting, applied by name in Level.cs.
+                entry["wave_director"] = {k: v for k, v in c.items() if not k.startswith("__") and not k.startswith("On") and k != "Flags"
+                                          and isinstance(v, (int, float, bool, str))}
+            elif t == "ProceduralMap":
+                entry["procedural_map"] = {k: v for k, v in c.items() if not k.startswith("__") and not k.startswith("On") and k != "Flags"}
             elif t == "ParticleEffect" and "Snow" in go.get("Name", ""):
                 entry["marine_snow"] = True
         if go.get("Name") == "Player Template":

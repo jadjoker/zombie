@@ -27,7 +27,7 @@ public partial class PlayerController : CharacterBody3D
 	public float RunSpeed = 470f * U.In;
 	public float DuckedSpeed = 70f * U.In;
 	public float JumpSpeed = 300f * U.In;
-	public float CoyoteTime = 0.12f;
+	public float CoyoteTime = 0.33f;   // the scene value (the s&box default was 0.12)
 
 	// ---- Walk mode ----
 	public float GroundAcceleration = 10f;

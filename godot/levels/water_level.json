@@ -1,6 +1,19 @@
 {
  "name": "water_level",
  "settings": {
+  "stylize": {
+   "style": "Flat",
+   "strength": 1,
+   "outline": 0.9,
+   "outline_width": 1.6,
+   "ink": [
+    0.05,
+    0.05,
+    0.08
+   ],
+   "bands": 4,
+   "pixel_size": 3
+  },
   "sun": {
    "rot": [
     -0.56058073,
@@ -39,20 +52,7 @@
    0.38,
    0.48,
    1.0
-  ],
-  "stylize": {
-   "style": "Flat",
-   "strength": 1,
-   "outline": 0.9,
-   "outline_width": 1.6,
-   "ink": [
-    0.05,
-    0.05,
-    0.08
-   ],
-   "bands": 4,
-   "pixel_size": 3
-  }
+  ]
  },
  "objects": [
   {
@@ -8237,7 +8237,63 @@
     1.0
    ],
    "children": [],
-   "wave_director": true
+   "wave_director": {
+    "AlivePerLevel": 1.5,
+    "AmbushChance": 0.35,
+    "AnchorSnapEvery": 4,
+    "BaseAlive": 4,
+    "BaseHealth": 150,
+    "BaseSpeed": 110,
+    "BaseZombies": 6,
+    "BlooberBaseHealth": 160,
+    "BlooberChance": 0.4,
+    "BlooberFromWave": 1,
+    "BlooberHealthPerWave": 25,
+    "BlooberSpawnHeight": 90,
+    "BossBaseHealth": 2000,
+    "BossEvery": 5,
+    "BossHealthPerVisit": 800,
+    "BossSpawnHeight": 160,
+    "CellSize": 500,
+    "CellsPerLevel": 5,
+    "CrabBaseHealth": 130,
+    "CrabChance": 0.3,
+    "CrabFromWave": 1,
+    "CrabHealthPerWave": 15,
+    "DangerBy": "Time",
+    "DespawnDistance": 3200,
+    "DistancePerLevel": 1500,
+    "FirstWaveDelay": 5,
+    "HealthPerWave": 30,
+    "IntermissionSeconds": 10,
+    "MaxAlive": 24,
+    "MaxSpawnDistance": 1600,
+    "MinSpawnDistance": 700,
+    "OpenWorld": false,
+    "SecondsPerLevel": 90,
+    "SpawnBloobers": true,
+    "SpawnBossWaves": true,
+    "SpawnCrabs": true,
+    "SpawningPaused": false,
+    "SpawnInterval": 1,
+    "SpawnSpiders": false,
+    "SpawnSquiliens": true,
+    "SpawnZombies": false,
+    "SpeedPerWave": 10,
+    "SpiderBaseHealth": 110,
+    "SpiderChance": 0.2,
+    "SpiderFromWave": 2,
+    "SpiderHealthPerWave": 12,
+    "SquilienBaseHealth": 130,
+    "SquilienChance": 0.25,
+    "SquilienFromWave": 1,
+    "SquilienHealthPerWave": 20,
+    "SquilienSpawnHeight": 170,
+    "TeammateRespawnSeconds": 20,
+    "TopSpeed": 280,
+    "WaveClearBonus": 50,
+    "ZombiesPerWave": 4
+   }
   },
   {
    "name": "Buy Stations",
@@ -8355,14 +8411,16 @@
    ],
    "children": [],
    "text": {
-    "text": "",
+    "text": "AMMO",
     "color": [
-     1,
-     1,
-     1,
-     1
+     1.0,
+     0.82,
+     0.25,
+     1.0
     ],
-    "scale": 0.12
+    "scale": 0.12,
+    "size": 32,
+    "billboard": true
    }
   },
   {
@@ -8459,14 +8517,16 @@
    ],
    "children": [],
    "text": {
-    "text": "",
+    "text": "HEALTH",
     "color": [
-     1,
-     1,
-     1,
-     1
+     0.95,
+     0.3,
+     0.3,
+     1.0
     ],
-    "scale": 0.12
+    "scale": 0.12,
+    "size": 32,
+    "billboard": true
    }
   },
   {
@@ -8563,14 +8623,16 @@
    ],
    "children": [],
    "text": {
-    "text": "",
+    "text": "DAMAGE",
     "color": [
-     1,
-     1,
-     1,
-     1
+     0.65,
+     0.4,
+     1.0,
+     1.0
     ],
-    "scale": 0.12
+    "scale": 0.12,
+    "size": 32,
+    "billboard": true
    }
   },
   {

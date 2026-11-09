@@ -60,6 +60,9 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   it tonemaps (ACES) itself like the s&box order. MSAA is off (compute can't write an MSAA colour buffer), FXAA on.
 - Step 9: `MoveModeFloat` (anchor-snapped float rounds), forest and indoor maps (`scenes/forest.tscn`,
   `scenes/indoor.tscn`). Parity notes and known differences: `../docs/godot-migration.md`. Test: `--creatures --float`.
+- Parity pass 2: `ProceduralMap`/`ForestLook` (forest open world), `nature.gdshader`, scene WaveDirector settings,
+  labels, point lights, `DentedMesh`/`SkinHit`. The converter (`Tools/godot/convert_scene.py`) now carries these, so
+  rerun it after editing an s&box scene.
 - Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
   The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
 - Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),

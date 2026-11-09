@@ -36,3 +36,6 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   `NavAgent`), `WaterFeel` (blend, gravity, drag, sway, muffle, bubbles), `WaterBubble`, `MarineSnow`, `Jetpack`
   (thrust, stall, dock and launch kick, charged surge, slams), `SeaSpider` (IK legs, eye, lure, climbing, ally brain,
   harpoons), `SpiderStrand`, `AllyCommander` (Z).
+- Dock: `DockHouse` (build, physics dive, tumbles, landing ragdoll, impact), `water.gdshader` + `WaterWaves`, `WaveFloater`,
+  `WaterSurfaceFx`, `SplashFx`, `DiveHands`, `DiveRush`, `DiveCrater` (ground-hugging mesh, hot core), `DebrisChunk`,
+  `SandCloud`, dive HUD in `GameHud`.

@@ -46,6 +46,8 @@ public partial class PlayerController : CharacterBody3D
 
 	// ---- Look and camera ----
 	public bool UseInputControls = true;
+	/// <summary> Something else is moving the body (the dock dive): no physics movement while set. </summary>
+	public bool Scripted;
 	public bool UseLookControls = true;
 	public float LookSensitivity = 0.12f;   // degrees per mouse pixel
 	public float PitchClamp = 89f;
@@ -176,6 +178,7 @@ public partial class PlayerController : CharacterBody3D
 	public override void _PhysicsProcess( double delta )
 	{
 		var dt = (float)delta;
+		if ( Scripted ) { Velocity = Vector3.Zero; IsOnGround = false; return; }
 		var wasGrounded = IsOnGround;
 
 		// Wish velocity from the movement keys (yaw only), or the active ground move's velocity.

@@ -12,7 +12,8 @@ public partial class GameHud : Control
 	WaveDirector Director => WaveDirector.Current;
 
 	Label wave, status, bannerBig, bannerSmall, kills, killsCaption, points, gain, healthCaption, gameOverTitle, gameOverDetail;
-	Control banner, gameOver;
+	Control banner, gameOver, dive;
+	Label diveCount, diveHelp, depthNum, depthSpeed;
 	float lagHealth = 100f;
 	int lastKills;
 	TimeSince timeSinceKillCount = 999f;
@@ -69,6 +70,24 @@ public partial class GameHud : Control
 		healthCaption = Text( this, 16, new Color( 1, 1, 1, 0.8f ), HorizontalAlignment.Left );
 		healthCaption.SetAnchorsPreset( LayoutPreset.BottomLeft );
 		healthCaption.OffsetLeft = 40; healthCaption.OffsetTop = healthCaption.OffsetBottom = -58; healthCaption.GrowVertical = GrowDirection.Begin;
+
+		// The dive: crushed counter and controls up top, depth meter on the right.
+		dive = new Control { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
+		dive.SetAnchorsPreset( LayoutPreset.FullRect );
+		AddChild( dive );
+		var diveTop = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		diveTop.SetAnchorsPreset( LayoutPreset.CenterTop );
+		diveTop.OffsetTop = 110; diveTop.GrowHorizontal = GrowDirection.Both;
+		dive.AddChild( diveTop );
+		diveCount = Text( diveTop, 26, new Color( "d6fff7" ) );
+		diveHelp = Text( diveTop, 14, new Color( 1, 1, 1, 0.7f ) );
+		diveHelp.Text = "WASD tilt to glide   Ctrl tuck   Space spread out";
+		var depthBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		depthBox.SetAnchorsPreset( LayoutPreset.CenterRight );
+		depthBox.OffsetRight = -60; depthBox.OffsetTop = -170; depthBox.GrowHorizontal = GrowDirection.Begin;
+		dive.AddChild( depthBox );
+		depthNum = Text( depthBox, 44, new Color( "d6fff7" ) );
+		depthSpeed = Text( depthBox, 16, new Color( "ffd24a" ) );
 
 		gameOver = new ColorRect { Color = new Color( 0, 0, 0, 0.5f ), MouseFilter = MouseFilterEnum.Ignore, Visible = false };
 		gameOver.SetAnchorsPreset( LayoutPreset.FullRect );
@@ -128,6 +147,13 @@ public partial class GameHud : Control
 		healthCaption.AddThemeColorOverride( "font_color", venom ? new Color( "6dff4a" ) : burning ? new Color( "ff8a3a" ) : percent <= 30 ? new Color( "ff3b3b" ) : Colors.White );
 		lagHealth = percent > lagHealth ? percent : MathX.Lerp( lagHealth, percent, (float)delta * 3f );
 
+		dive.Visible = DockHouse.Diving;
+		if ( DockHouse.Diving )
+		{
+			diveCount.Text = $"BLOOBERS CRUSHED  {DockHouse.DiveCrushed}";
+			depthNum.Text = $"{DockHouse.DiveDepth:0} m";
+			depthSpeed.Text = $"{DockHouse.DiveVelocity.Length() / U.PerMetre * 3.6f:0} km/h";
+		}
 		gameOver.Visible = d?.State == WaveState.GameOver;
 		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress JUMP to try again";
 		QueueRedraw();
@@ -168,6 +194,30 @@ public partial class GameHud : Control
 			var bar = new Vector2( Size.X * 0.5f - 160, 32 + 44 + 30 + 8 );
 			DrawRect( new Rect2( bar, new Vector2( 320, 10 ) ), new Color( 0, 0, 0, 0.5f ) );
 			DrawRect( new Rect2( bar, new Vector2( 320 * d.DangerProgress, 10 ) ), new Color( "c8ff7a" ).Lerp( new Color( "ff5a3c" ), d.DangerProgress ) );
+		}
+
+		// The dive: darkening edges the deeper you go, speed lines rushing out, and the depth bar.
+		if ( DockHouse.Diving )
+		{
+			var c = Size * 0.5f;
+			var now = (float)Clock.Now;
+			var dark = DockHouse.DiveProgress * 0.3f;
+			for ( var r = 0; r < 12; r++ )
+			{
+				var k = r / 12f;
+				DrawArc( c, Size.Length() * (0.3f + 0.25f * k), 0f, MathF.Tau, 64, new Color( 0f, 0.03f, 0.08f, dark * k * 0.35f ), Size.Length() * 0.03f );
+			}
+			for ( var i = 0; i < 26; i++ )
+			{
+				var angle = MathX.Rad( i * (360f / 26f) + (i % 3) * 5f );
+				var distance = 150f + ((now * 1600f + i * 157f) % 320f);
+				var length = 70f + (i % 4) * 30f;
+				var dir = new Vector2( MathF.Sin( angle ), -MathF.Cos( angle ) );
+				DrawLine( c + dir * distance, c + dir * (distance + length), new Color( 1, 1, 1, 0.35f * 0.6f ), 2f );
+			}
+			var bar = new Vector2( Size.X - 60 - 60, Size.Y * 0.5f - 60 );
+			DrawRect( new Rect2( bar, new Vector2( 10, 240 ) ), new Color( "d6fff7" ) with { A = 0.15f } );
+			DrawRect( new Rect2( bar, new Vector2( 10, 240 * DockHouse.DiveProgress ) ), new Color( "5fe3ff" ) );
 		}
 
 		// Goo splatted on the camera by close kills: blobs that slide down and fade.

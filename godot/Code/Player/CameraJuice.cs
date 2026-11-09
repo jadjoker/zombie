@@ -53,6 +53,9 @@ public partial class CameraJuice : Node, ICameraModifier
 		}
 
 		cam.Fov += fovKick;
+
+		// Tumbling in the dive (or ragdolled by the landing): the view spins with the body.
+		if ( DockHouse.Diving ) cam.GlobalBasis = cam.GlobalBasis * DockHouse.CameraTumble;
 	}
 
 	static readonly FastNoiseLite noise = new() { NoiseType = FastNoiseLite.NoiseTypeEnum.Perlin, Frequency = 1f };

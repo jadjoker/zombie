@@ -197,6 +197,49 @@ public partial class AutoTest : Node
 	/// <summary> A converted level: look around from the spawn, then let some Bloobers in. </summary>
 	async Task LevelTest()
 	{
+		if ( DockHouse.Current is { } dock )
+		{
+			await Wait( 0.5f );
+			player.EyeAngles = new Angles( 8f, 0f, 0f );
+			await Shot( "dock_start" );
+			player.EyeAngles = new Angles( 15f, 60f, 0f );
+			await Wait( 0.3f );
+			await Shot( "dock_water" );
+			// Walk out onto the pier and look back at the house and out over the water.
+			var spot = player.GlobalPosition + U.Sbox( 330f, 0f, 0f );
+			player.GlobalPosition = spot;
+			player.ThirdPerson = true;
+			player.EyeAngles = new Angles( 15f, 180f, 0f );
+			await Wait( 0.5f );
+			await Shot( "dock_house" );
+			player.ThirdPerson = false;
+			player.EyeAngles = new Angles( 12f, -40f, 0f );
+			await Wait( 0.3f );
+			await Shot( "dock_sea" );
+			dock.TestDive();
+			var t0 = Clock.Real;
+			while ( !DockHouse.Diving && Clock.Real - t0 < 5 ) await Wait( 0.05f );
+			player.EyeAngles = new Angles( 85f, 0f, 0f );
+			await Wait( 1.5f );
+			await Shot( "dive_fall" );
+			await Wait( 4f );
+			await Shot( "dive_bloobers" );
+			GD.Print( $"[autotest] dive: depth {DockHouse.DiveDepth:0} m, speed {DockHouse.DiveVelocity.Length():0} u/s, crushed {DockHouse.DiveCrushed}" );
+			while ( DockHouse.Diving && DockHouse.DiveVelocity.Length() > 1f && Clock.Real - t0 < 60 ) await Wait( 0.05f );
+			GD.Print( $"[autotest] landed after {Clock.Real - t0:0.0} s, crushed {DockHouse.DiveCrushed}" );
+			await Wait( 0.2f );
+			await Shot( "dive_land" );
+			while ( DockHouse.Diving && Clock.Real - t0 < 70 ) await Wait( 0.1f );
+			player.EyeAngles = new Angles( 30f, 0f, 0f );
+			await Wait( 1.5f );
+			await Shot( "crater" );
+			player.ThirdPerson = true;
+			player.EyeAngles = new Angles( 40f, 180f, 0f );
+			await Wait( 0.5f );
+			await Shot( "crater_3p" );
+			player.ThirdPerson = false;
+		}
+
 		for ( var i = 0; i < 4; i++ )
 		{
 			player.EyeAngles = new Angles( 5f, i * 90f, 0f );

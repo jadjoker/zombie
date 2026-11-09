@@ -133,6 +133,14 @@ public partial class Level : Node3D
 			node.AddChild( new Sway { Amount = sway.GetProperty( "amount" ).GetSingle(), Period = sway.GetProperty( "period" ).GetSingle() } );
 		if ( o.TryGetProperty( "spawn_point", out _ ) ) node.AddToGroup( "spawn_point" );
 		if ( o.TryGetProperty( "marine_snow", out _ ) ) AddChild( new MarineSnow() );
+		if ( o.TryGetProperty( "dock_house", out var dock ) )
+		{
+			var house = new DockHouse();
+			if ( dock.TryGetProperty( "SurfaceHeight", out var surf ) ) house.SurfaceHeight = surf.GetSingle();
+			if ( dock.TryGetProperty( "DiveBloobers", out var db ) ) house.DiveBloobers = db.GetInt32();
+			if ( dock.TryGetProperty( "PierLength", out var pl ) ) house.PierLength = pl.GetSingle();
+			AddChild( house );
+		}
 		if ( o.TryGetProperty( "wave_director", out _ ) && WaveDirector.Current is null )
 		{
 			var director = new WaveDirector();

@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// Port of s&box CameraJuice: screen shake and FOV kick for the local player's camera.
-/// (Aim zoom, scope drift and the death slump come back with the weapons and health ports.)
+/// (The death slump comes back with the health port.)
 /// </summary>
 public partial class CameraJuice : Node, ICameraModifier
 {
@@ -37,6 +37,21 @@ public partial class CameraJuice : Node, ICameraModifier
 				(Noise( t, 100f ) * 2f - 1f) * shake * 0.5f );
 			cam.GlobalBasis = cam.GlobalBasis * offset.ToBasis();
 		}
+		// Zoom in while aiming down the sights (the gun in hand); a scope zooms further and breathes.
+		var weapon = GetParent().GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
+		if ( weapon is not null && weapon.AimAmount > 0.001f )
+		{
+			cam.Fov *= MathX.Lerp( 1f, weapon.AimFovScale, weapon.AimAmount );
+			if ( weapon.ScopeAmount > 0.001f )
+			{
+				cam.Fov *= MathX.Lerp( 1f, weapon.ScopeFovScale / MathF.Max( 0.05f, weapon.AimFovScale ), weapon.ScopeAmount );
+				// Breathing: the reticle drifts in a slow figure-eight (it's real: shots go where it points).
+				var tt = (float)Clock.Now;
+				var drift = new Angles( MathF.Sin( tt * 0.9f ) * 0.12f * weapon.ScopeAmount, MathF.Sin( tt * 0.45f ) * 0.16f * weapon.ScopeAmount, 0f );
+				cam.GlobalBasis = cam.GlobalBasis * drift.ToBasis();
+			}
+		}
+
 		cam.Fov += fovKick;
 	}
 

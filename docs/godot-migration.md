@@ -64,6 +64,18 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [ ] Decide what not to port: the zombies (the game is now sea creatures) and the forest/indoor maps are candidates.
 - [ ] Write the feature parity checklist (below) into the GitHub issue.
 
+## Progress (keep this current: the auto-continue job reads it)
+- [x] 1. Skeleton project, player movement, camera juice (`367cd92`)
+- [x] 3. Rifle, shotgun, axe, weapon HUD (weapons step)
+- [ ] 4. Bloober end to end + WaveDirector + Health + basic HUD
+- [ ] 5. Water level: seabed map, WaterFeel, Jetpack/surge, Sea Spider ally
+- [ ] 6. Dock, dive, crater, surface waves
+- [ ] 7. Squilien, Junk Crab, MC61, zombies (if kept), skins, dev menu, buy stations, afflictions, full HUD
+- [ ] 7b. Robot third-person model + animation set, world gun, PlayerRig poses
+- [ ] 7c. Shaders (water, ghost, dissolve, hologram, iridescent, glowbulb, stylize looks), sounds hooks
+- [ ] 8. Upgrades: real ragdolls, GPU particles, ocean shader
+- [ ] 9. Parity pass against the checklist below, then co-op later
+
 ## Port order (Godot)
 1. **Skeleton project.** Godot 4 .NET project, folders mirroring `Code/`, InputMap from `Input.config`, units/axes
    helpers, `Trace` helper, stylize post-process.

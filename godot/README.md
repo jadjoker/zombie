@@ -20,3 +20,10 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   wall kick and wall slide, mantle, speed FOV, slide lean, wall roll, landing dip.
 - `CameraJuice`: shake and FOV kick.
 - `TestRange`: a code-built movement range (ramps, stairs, ledges, walls, downhill).
+- Weapons: rifle and shotgun first-person models loaded straight from the s&box FBX files (animations merged from
+  the `name@anim.fbx` files), weapon skins from the .vmat colours, `ViewModel` (draw, fire, reload, shell reload,
+  sprint tuck, sway, bob, aim poses, scope tuck), `PlayerWeapon` (hitscan, pellets, spread, recoil, ADS slow-down,
+  scope zoom and sensitivity, reloads), `WeaponInventory` (1/2, wheel), `PlayerMelee` (rigged axe, mouse 5, sweep fan),
+  `WeaponHud` (centre dot, hitmarker, ammo, scope overlay), `TestTarget` dummies.
+- Not yet: sounds (the s&box ones were Facepunch cloud assets), the stock particle effects (stand-ins in `Fx`),
+  the third-person world gun (comes with the robot model), bullet bubble trails (with the water port).

@@ -15,6 +15,14 @@ public static class U
 
 	/// <summary> s&box physics gravity (850 in/s^2) in m/s^2. </summary>
 	public const float Gravity = 850f * In;
+
+	/// <summary>
+	/// An s&box-space vector (inches; x forward, y left, z up) as a Godot one (metres; -Z forward, X right, Y up).
+	/// For local offsets written in the s&box code, e.g. camera-space view model poses.
+	/// </summary>
+	public static Vector3 Sbox( float x, float y, float z ) => new( -y * In, z * In, -x * In );
+
+	public static Vector3 Sbox( Vector3 v ) => Sbox( v.X, v.Y, v.Z );
 }
 
 public static class VecExt

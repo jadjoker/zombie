@@ -70,6 +70,24 @@ public partial class TestRange : Node3D
 		movement = new PlayerMovement();
 		player.AddChild( movement );
 		player.AddChild( new CameraJuice() );
+		player.AddChild( new WeaponInventory() );
+		player.AddChild( PlayerWeapon.Rifle() );
+		player.AddChild( PlayerWeapon.Shotgun() );
+		player.AddChild( new PlayerMelee() );
+
+		// Targets to shoot: a row of dummies at 10, 20 and 40 metres, and some loose crates.
+		for ( var i = 0; i < 5; i++ )
+		{
+			var target = new TestTarget { Position = new Vector3( (i - 2) * 120f, 0f, 1200f + i * 300f ) * U.In };
+			AddChild( target );
+		}
+		for ( var i = 0; i < 6; i++ )
+		{
+			var crate = new RigidBody3D { Mass = 20f, CollisionLayer = Layers.World, CollisionMask = Layers.World | Layers.Player, Position = new Vector3( 400f + (i % 3) * 40f, 20f + (i / 3) * 40f, 1400f ) * U.In };
+			crate.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = Vector3.One * 36f * U.In }, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.55f, 0.4f, 0.25f ) } } );
+			crate.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = Vector3.One * 36f * U.In } } );
+			AddChild( crate );
+		}
 
 		var hud = new CanvasLayer();
 		AddChild( hud );
@@ -78,8 +96,7 @@ public partial class TestRange : Node3D
 		readout.AddThemeColorOverride( "font_outline_color", Colors.Black );
 		readout.AddThemeConstantOverride( "outline_size", 6 );
 		hud.AddChild( readout );
-		var cross = new ColorRect { Color = Colors.White, Size = new Vector2( 4, 4 ), AnchorLeft = 0.5f, AnchorTop = 0.5f, AnchorRight = 0.5f, AnchorBottom = 0.5f, OffsetLeft = -2, OffsetTop = -2 };
-		hud.AddChild( cross );
+		hud.AddChild( WeaponHud.Create( player ) );
 
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );
 	}
@@ -90,7 +107,8 @@ public partial class TestRange : Node3D
 		var speed = player.Velocity.Flat().Length() / U.In;
 		readout.Text = $"speed {speed:0} u/s   {(player.IsOnGround ? "ground" : "air")}   {movement.Ground}{(player.IsDucking ? "  ducked" : "")}\n"
 			+ $"stamina {movement.Stamina:0.0}/{movement.MaxStamina}   air jumps {movement.AirJumpsLeft}   {(player.ThirdPerson ? "third person" : "first person")} (C)\n"
-			+ "WASD move, Shift sprint, Space jump/air jump/wall kick/mantle, Ctrl slide/duck, Esc frees the mouse";
+			+ "WASD move, Shift sprint, Space jump/air jump/wall kick/mantle, Ctrl slide/duck\n"
+			+ "LMB fire, RMB aim (rifle scope), R reload, 1/2 or wheel switch, Mouse5 axe, Esc frees the mouse";
 	}
 
 	/// <summary> A solid box; position and rotation go on the returned body. </summary>

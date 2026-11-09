@@ -108,6 +108,15 @@ public partial class WaveDirector : Node3D
 			q.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return q;
 		},
+		[EnemyKind.Crab] = ( d, at, health ) =>
+		{
+			var c = JunkCrab.Spawn( d.GetTree().CurrentScene, at, health );
+			c.Hue = Rng.Float();
+			c.Size = Rng.Float( 0.9f, 1.15f );
+			c.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
+			c.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return c;
+		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
 			var s = SeaSpider.Spawn( d.GetTree().CurrentScene, at, health );
@@ -350,6 +359,7 @@ public partial class WaveDirector : Node3D
 		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
 		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
 		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
+		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
 		alive.Clear();
 		Wave = 0;
 		Kills = 0;

@@ -243,6 +243,50 @@ public partial class AutoTest : Node
 			await Shot( "squilien_ink" );
 		}
 
+		// Junk Crab: one walking at us, look close, shoot legs, claw and eye off, then kill it.
+		survivor.Health.Invulnerable = true;
+		foreach ( var s in Squilien.All.ToList() ) s.QueueFree();
+		player.GlobalPosition = new Vector3( 0f, player.GlobalPosition.Y, 0f );
+		player.Velocity = Vector3.Zero;
+		player.EyeAngles = new Angles( 8f, 180f, 0f );
+		var crab = JunkCrab.Spawn( range, player.GlobalPosition + new Vector3( 0f, 0f, 400f ) * U.In, 90f );
+		crab.Hue = 0.3f;
+		await Wait( 1.5f );
+		await Shot( "crab_walk" );
+		DevFlags.FreezeEnemies = true;
+		var cf = -crab.GlobalBasis.Z;
+		player.GlobalPosition = crab.GlobalPosition + cf * 75f * U.In;
+		player.Velocity = Vector3.Zero;
+		LookAt( crab.GlobalPosition + Vector3.Up * 10f * U.In );
+		await Wait( 0.4f );
+		LookAt( crab.GlobalPosition + Vector3.Up * 10f * U.In );
+		await Shot( "crab_face" );
+		player.GlobalPosition = crab.GlobalPosition + crab.GlobalBasis.X * 90f * U.In + Vector3.Up * 20f * U.In;
+		LookAt( crab.GlobalPosition + Vector3.Up * 10f * U.In );
+		await Wait( 0.4f );
+		LookAt( crab.GlobalPosition + Vector3.Up * 10f * U.In );
+		await Shot( "crab_side" );
+		var cweapon = inventory.Current;
+		var targets = CreaturePart.All.Where( p => p.Creature == crab && p.Name.ToString().Contains( "Leg" ) ).Take( 2 ).ToList();
+		targets.AddRange( CreaturePart.All.Where( p => p.Creature == crab && p.Name.ToString().Contains( "Pincer" ) ).Take( 1 ) );
+		foreach ( var t in targets )
+			for ( var k = 0; k < 3 && IsInstanceValid( t ); k++ ) { LookAt( t.GlobalPosition ); cweapon.TestFire(); await Wait( 0.13f ); }
+		await Wait( 0.3f );
+		await Shot( "crab_cut" );
+		for ( var k = 0; k < 14 && !crab.IsDead; k++ ) { LookAt( crab.GlobalPosition + Vector3.Up * 14f * U.In ); cweapon.TestFire(); await Wait( 0.13f ); }
+		DevFlags.FreezeEnemies = false;
+		GD.Print( $"[autotest] crab: dead {crab.IsDead}, health {crab.Health?.Current:0}" );
+		await Wait( 0.5f );
+		await Shot( "crab_dead" );
+
+		// One more crab to see it pinch.
+		survivor.Health.Invulnerable = false;
+		var before = survivor.Health.Current;
+		JunkCrab.Spawn( range, player.GlobalPosition + new Vector3( 0f, 0f, 250f ) * U.In, 90f );
+		for ( var k = 0; k < 40; k++ ) { var c2 = JunkCrab.All.LastOrDefault(); if ( c2 is not null ) LookAt( c2.GlobalPosition ); await Wait( 0.1f ); }
+		GD.Print( $"[autotest] crab pinch: health {before:0} to {survivor.Health.Current:0}" );
+		await Shot( "crab_pinch" );
+
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

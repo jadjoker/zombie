@@ -147,6 +147,13 @@ public static class CreatureGore
 	public static void Jiggle( Node3D part, float strength = 1f )
 	{
 		if ( part is null || !GodotObject.IsInstanceValid( part ) ) return;
+		// Physics bodies can't take a squashed scale (Jolt), so jiggle their meshes instead.
+		if ( part is CollisionObject3D )
+		{
+			foreach ( var child in part.GetChildren().OfType<Node3D>() )
+				if ( child is not CollisionShape3D and not CollisionObject3D ) Jiggle( child, strength );
+			return;
+		}
 		var jiggle = part.GetNodeOrNull<Jiggle>( "Jiggle" );
 		if ( jiggle is null ) { jiggle = new Jiggle { Name = "Jiggle" }; part.AddChild( jiggle ); }
 		jiggle.Punch( strength );

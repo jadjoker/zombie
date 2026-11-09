@@ -22,6 +22,12 @@ public partial class Level : Node3D
 	/// <summary> A nature material (nature.gdshader) seen in this level, by its s&box name (bark, leaves...). </summary>
 	public static ShaderMaterial NatureMaterial( string name ) => nature.TryGetValue( name, out var m ) ? m : null;
 
+	// Cleared on unload: travelling to the test range kept the old level (and its underwater feel) as current.
+	public override void _ExitTree()
+	{
+		if ( Current == this ) Current = null;
+	}
+
 	public override void _Ready()
 	{
 		Current = this;

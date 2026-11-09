@@ -36,3 +36,6 @@ Exports/
 godot/.godot/
 godot/*.csproj.old*
 Tools/godot_shots/
+
+# Godot export builds
+build/

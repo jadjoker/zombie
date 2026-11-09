@@ -74,6 +74,7 @@ public partial class TestRange : Node3D
 		player.AddChild( PlayerWeapon.Rifle() );
 		player.AddChild( PlayerWeapon.Shotgun() );
 		player.AddChild( new PlayerMelee() );
+		player.AddChild( new PlayerSurvivor() );
 
 		// Targets to shoot: a row of dummies at 10, 20 and 40 metres, and some loose crates.
 		for ( var i = 0; i < 5; i++ )
@@ -101,14 +102,25 @@ public partial class TestRange : Node3D
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );
 	}
 
+	public override void _UnhandledInput( InputEvent e )
+	{
+		// B: a Bloober 15 m ahead (dev spawn).
+		if ( e is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.B } )
+		{
+			var ahead = player.EyeAngles.WithPitch( 0f ).Forward;
+			Bloober.Spawn( this, player.GlobalPosition + ahead * 600f * U.In + Vector3.Up * 90f * U.In, 160f, -ahead );
+		}
+	}
+
 	public override void _Process( double delta )
 	{
 		if ( player is null ) return;
 		var speed = player.Velocity.Flat().Length() / U.In;
-		readout.Text = $"speed {speed:0} u/s   {(player.IsOnGround ? "ground" : "air")}   {movement.Ground}{(player.IsDucking ? "  ducked" : "")}\n"
+		var survivor = player.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
+		readout.Text = $"health {survivor?.Health?.Current ?? 0:0}  points {survivor?.Points ?? 0}   speed {speed:0} u/s   {(player.IsOnGround ? "ground" : "air")}   {movement.Ground}{(player.IsDucking ? "  ducked" : "")}\n"
 			+ $"stamina {movement.Stamina:0.0}/{movement.MaxStamina}   air jumps {movement.AirJumpsLeft}   {(player.ThirdPerson ? "third person" : "first person")} (C)\n"
 			+ "WASD move, Shift sprint, Space jump/air jump/wall kick/mantle, Ctrl slide/duck\n"
-			+ "LMB fire, RMB aim (rifle scope), R reload, 1/2 or wheel switch, Mouse5 axe, Esc frees the mouse";
+			+ "LMB fire, RMB aim (rifle scope), R reload, 1/2 or wheel switch, Mouse5 axe, B spawns a Bloober, Esc frees the mouse";
 	}
 
 	/// <summary> A solid box; position and rotation go on the returned body. </summary>

@@ -249,6 +249,13 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
+		// Gibs: shoved, and enough damage pulverises them.
+		if ( tr.Node is Gib gib )
+		{
+			gib.TakeHit( tr.HitPosition, direction, CurrentDamage, BulletImpulse / U.In );
+			return;
+		}
+
 		// Loose physics props just get shoved.
 		if ( tr.Node is RigidBody3D body && !body.Freeze )
 		{

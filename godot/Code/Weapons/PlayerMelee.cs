@@ -92,6 +92,12 @@ public partial class PlayerMelee : Node
 			if ( wasAlive && shootable.IsDead ) Weapon?.MarkKill();
 			return true;
 		}
+		if ( tr.Node is Gib gib )
+		{
+			if ( !hitThisSwing.Add( gib ) ) return false;
+			gib.TakeHit( tr.HitPosition, direction, Damage, Impulse * 0.5f / U.In );
+			return true;
+		}
 		if ( tr.Node is RigidBody3D body && !body.Freeze && hitThisSwing.Add( body ) )
 			body.ApplyImpulse( direction * Impulse * body.Mass * 0.3f, tr.HitPosition - body.GlobalPosition );
 		return false;

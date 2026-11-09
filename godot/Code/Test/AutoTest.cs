@@ -136,6 +136,44 @@ public partial class AutoTest : Node
 		await Shot( "axe_swing" );
 		await Wait( 0.8f );
 
+		// Bloobers: three in front, then shoot the nearest one apart.
+		var range = GetTree().CurrentScene;
+		inventory.Select( inventory.Weapons[0] );
+		player.EyeAngles = new Angles( -4f, 180f, 0f );
+		for ( var b = 0; b < 3; b++ )
+			Bloober.Spawn( range, player.GlobalPosition + new Vector3( (b - 1) * 120f, 70f, 500f + b * 80f ) * U.In, 160f, Vector3.Back * -1f );
+		await Wait( 0.6f );
+		await Shot( "bloobers" );
+		var first = Bloober.All.OrderBy( x => x.GlobalPosition.DistanceTo( player.GlobalPosition ) ).First();
+		// Close look with everything frozen: is the sculpted head facing the same way as the eyes?
+		DevFlags.FreezeEnemies = true;
+		var faceDir = -first.GlobalBasis.Z;
+		player.GlobalPosition = first.GlobalPosition + faceDir * 90f * U.In - Vector3.Up * 60f * U.In;
+		player.Velocity = Vector3.Zero;
+		LookAt( first.GlobalPosition );
+		await Wait( 0.3f );
+		LookAt( first.GlobalPosition );
+		await Shot( "bloober_face" );
+		player.GlobalPosition = first.GlobalPosition + first.GlobalBasis.X * 140f * U.In - Vector3.Up * 60f * U.In;
+		LookAt( first.GlobalPosition + first.GlobalBasis.Z * 40f * U.In );
+		await Wait( 0.3f );
+		LookAt( first.GlobalPosition + first.GlobalBasis.Z * 40f * U.In );
+		await Shot( "bloober_side" );
+		var weapon = inventory.Current;
+		// Shoot the body (segment 3 area) a few times to cut it, then the head.
+		for ( var k = 0; k < 4; k++ ) { LookAt( first.GlobalPosition + first.GlobalBasis.Z * 50f * U.In ); weapon.TestFire(); await Wait( 0.13f ); }
+		await Wait( 0.2f );
+		await Shot( "bloober_cut" );
+		for ( var k = 0; k < 10 && !first.IsDead; k++ ) { LookAt( first.GlobalPosition ); weapon.TestFire(); await Wait( 0.13f ); }
+		DevFlags.FreezeEnemies = false;
+		GD.Print( $"[autotest] bloober after 14 rifle hits: dead {first.IsDead}, health {first.Health?.Current:0}, bloobers alive {Bloober.All.Count( x => !x.IsDead )}, points {player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Points}" );
+		await Shot( "bloober_shot" );
+		await Wait( 1.2f );
+		await Shot( "bloober_after" );
+		await Wait( 3f );
+		GD.Print( $"[autotest] after 3 s: player health {player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Current:0}" );
+		await Shot( "bloober_bite" );
+
 		// Third person view.
 		player.ThirdPerson = true;
 		player.EyeAngles = new Angles( 15f, 200f, 0f );
@@ -144,6 +182,12 @@ public partial class AutoTest : Node
 
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
+	}
+
+	void LookAt( Vector3 at )
+	{
+		var dir = (at - player.Camera.GlobalPosition).Normalized();
+		player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( dir.Y ) ), MathX.Deg( MathF.Atan2( -dir.X, -dir.Z ) ), 0f );
 	}
 
 	void Report( string label )

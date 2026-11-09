@@ -73,7 +73,9 @@ public partial class DockHouse : Node3D
 		root.AddChild( go );
 		go.Transform = new Transform3D( (rotation ?? default).ToBasis(), U.Sbox( center ) );
 		var godotSize = new Vector3( size.Y, size.Z, size.X ) * U.In;
-		go.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = godotSize }, MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Roughness = 0.85f } } );
+		var mesh = new MeshInstance3D { Mesh = new BoxMesh { Size = godotSize }, MaterialOverride = new StandardMaterial3D { AlbedoColor = color, Roughness = 0.85f } };
+		go.AddChild( mesh );
+		boxMeshes.Add( mesh );
 		if ( solid )
 		{
 			var body = new StaticBody3D { CollisionLayer = Layers.World, CollisionMask = 0 };
@@ -82,6 +84,8 @@ public partial class DockHouse : Node3D
 		}
 		return go;
 	}
+
+	readonly List<MeshInstance3D> boxMeshes = new();
 
 	/// <summary> A Blender prop (Tools/blender/dock_props.py) under a parent, or null if the model is missing. </summary>
 	static Node3D Prop( Node3D parent, string file, Vector3 localPosition )
@@ -194,6 +198,14 @@ public partial class DockHouse : Node3D
 
 		Box( "Table", new Vector3( hx - 60f, o.Y + 50f, deck + 24f ), new Vector3( 50f, 34f, 4f ), WoodPale, solid: true );
 		Box( "Crate", new Vector3( hx - 70f, o.Y - 60f, deck + 16f ), new Vector3( 30f, 30f, 30f ), WoodDark, solid: true );
+		// The modelled pier and house (Tools/blender/dock_house.py, same layout): the boxes stay as invisible colliders.
+		if ( Prop( root, "dock_house", U.Sbox( o.X, o.Y, deck ) ) is { } house )
+		{
+			foreach ( var mesh in boxMeshes ) mesh.Visible = false;
+			foreach ( var mesh in house.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
+		}
+
 		var inside = new OmniLight3D { LightColor = new Color( 1f, 0.75f, 0.5f ), LightEnergy = 0.8f, OmniRange = 200f * U.In };
 		root.AddChild( inside );
 		inside.GlobalPosition = U.Sbox( hx - 20f, o.Y, deck + 90f );

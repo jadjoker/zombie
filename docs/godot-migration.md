@@ -73,7 +73,7 @@ networking. The s&box version stays playable until the Godot build reaches parit
 - [x] 7. Squilien, Junk Crab, MC61, skins, dev menu, buy stations, afflictions, full HUD (zombies dropped: citizen model; MC61 ghost look and spawn-in hologram come with 7c)
 - [x] 7b. Robot third-person model, world gun, PlayerRig poses (a procedural walk/crouch/aim driver replaces the citizen animation set)
 - [x] 7c. Shaders (water, ghost, dissolve, hologram, iridescent, glowbulb, stylize looks), sounds hooks (files go in assets/sounds; none ship, they were Facepunch cloud assets)
-- [ ] 8. Upgrades: real ragdolls, GPU particles, ocean shader
+- [x] 8. Upgrades: real ragdolls (robot death), GPU particles (bubbles, crater sand), ocean contact foam; stylize moved to a post-transparent compositor pass (AA is now FXAA)
 - [ ] 9. Parity pass against the checklist below, then co-op later
 
 ## Port order (Godot)

@@ -187,6 +187,13 @@ public partial class WaterBubble : MeshInstance3D
 
 	public static void Create( Vector3 position, float size, float delay = 0f, float lifetime = 0f )
 	{
+		// Step 8: bubbles are GPU particles now (same rise, wobble, drift, grow and pop; see bubbles.gdshader).
+		GpuFx.Bubble( position, size, delay, lifetime > 0f ? lifetime : Rng.Float( 1.4f, 2.6f ) );
+	}
+
+	/// <summary> The original per-node bubble (kept for reference and comparison). </summary>
+	public static void CreateNode( Vector3 position, float size, float delay = 0f, float lifetime = 0f )
+	{
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( root is null ) return;
 		// Pale, see-through and bright at the rim, like the s&box ghost shader they used.

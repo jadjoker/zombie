@@ -37,6 +37,7 @@ public partial class PlayerRig : Node
 	readonly Dictionary<string, Vector3> restPos = new();   // s&box character space, inches
 	readonly Dictionary<string, Basis> restRot = new();     // s&box character space
 	bool ready;
+	RobotRagdoll ragdoll;
 	string appliedSkin;
 
 	float slideBlend, slideHold, swimBlend, swimPhase, chargeBlend, surgeBlend, jetBlend, propSpin, flyingCam;
@@ -171,7 +172,20 @@ public partial class PlayerRig : Node
 		var dt = (float)delta;
 		if ( !ready ) { ready = Setup(); if ( !ready ) return; }
 		var alive = survivor?.IsAlive ?? true;
-		var show = ShowsBody && alive && !DevFlags.FreeCam || (ShowsBody && DevFlags.FreeCam);
+		// Step 8: on death the body goes limp as a real ragdoll (gone again on respawn).
+		if ( !alive && ragdoll is null )
+		{
+			ApplySkin();
+			PlaceFrame( dt );
+			Pose( dt );
+			ragdoll = RobotRagdoll.Create( model, controller.Velocity, meshes );
+		}
+		else if ( alive && ragdoll is not null )
+		{
+			if ( IsInstanceValid( ragdoll ) ) ragdoll.QueueFree();
+			ragdoll = null;
+		}
+		var show = alive && (ShowsBody || DevFlags.FreeCam && ShowsBody);
 		rigRoot.Visible = show;
 		UpdateCamera( dt );
 		if ( !show )

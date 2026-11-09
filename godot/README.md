@@ -49,10 +49,15 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   is replaced by a small procedural one (walk cycle, crouch, lean, aim pitch, hands on the gun). The world gun is our
   first-person gun model with its arm surfaces hidden, playing idle/reload. Test: `--creatures --robot`.
 - Step 7c: `fx_ghost`, `fx_dissolve`, `fx_hologram`, `fx_iridescent`, `fx_glowbulb` (+ `fx_common.gdshaderinc`) via
-  `FxMaterials`; `GlobalStylize` + `stylize.gdshader` (all 11 looks; the water level uses Flat like the s&box camera,
+  `FxMaterials`; `GlobalStylize` (all 11 looks; the water level uses Flat like the s&box camera,
   with its vignette and colour adjustments); MC61 ghost look and hologram spawn-in; robot glow bulbs; Iridescent and
   Hologram gun skins; dev menu Look tab (style, bands, ink, creature skin fx). `Sfx` sound hooks: drop files named
   as in `assets/sounds/README.md`.
+- Step 8: `RobotRagdoll` (rigid limbs and cone-twist joints drive the robot's bones when you die), `GpuFx` pools
+  (`bubbles.gdshader`, `sand_puffs.gdshader`; WaterBubble and SandCloud emit into them), contact foam in
+  `water.gdshader` from the depth buffer. `GlobalStylize` is now a compositor effect (`StylizeEffect`,
+  `stylize_compute.glsl`, `copy_compute.glsl`) after the transparent pass, so water and particles get the look too;
+  it tonemaps (ACES) itself like the s&box order. MSAA is off (compute can't write an MSAA colour buffer), FXAA on.
 - Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
   The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
 - Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),

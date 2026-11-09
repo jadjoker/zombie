@@ -5,6 +5,8 @@ shader_type spatial;
 render_mode unshaded, cull_disabled;
 
 uniform float wave_time = 0.0;
+// Step 8: the scene depth behind the water, for foam where it meets the stilts, the dock and anything floating.
+uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
 const float IN = 0.0254;
 
 vec2 sb2(vec3 w) { return vec2(-w.z, -w.x) / IN; }
@@ -85,6 +87,13 @@ void fragment() {
 		float foam_noise = vnoise2(p * 0.12 + t * 0.3) * 0.6 + vnoise2(p * 0.35 - t * 0.4) * 0.4;
 		float foam = smoothstep(1.25, 1.9, h0 + foam_noise * 0.9 - 0.2);
 		col = mix(col, vec3(0.92, 0.97, 1.0), foam * 0.85);
+		// Contact foam: a frothy band where something pokes through the surface (depth behind vs the water itself).
+		float scene_d = texture(depth_tex, SCREEN_UV).r;
+		vec4 sv = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, scene_d, 1.0);
+		float behind = (-sv.z / sv.w - -VERTEX.z) / IN;
+		float froth = vnoise2(p * 0.18 + vec2(t * 0.5, -t * 0.35)) * 0.6 + vnoise2(p * 0.5 - t * 0.6) * 0.4;
+		float contact = (1.0 - smoothstep(0.0, 14.0 + froth * 10.0, behind)) * step(0.0, behind);
+		col = mix(col, vec3(0.92, 0.97, 1.0), contact * (0.55 + 0.45 * froth));
 		col = mix(col, vec3(0.62, 0.78, 0.88), clamp((dist - 3500.0) / 14000.0, 0.0, 1.0) * 0.7);
 	} else {
 		float cosi = clamp(dot(vec3(-n.xy, -n.z), -view), 0.0, 1.0);
@@ -99,4 +108,5 @@ void fragment() {
 		col += vec3(0.25, 0.6, 0.7) * max(rim, 0.0) * 0.5;
 	}
 	ALBEDO = col;
+	ALPHA = 1.0;
 }

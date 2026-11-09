@@ -322,6 +322,21 @@ public partial class AutoTest : Node
 			DevFlags.FreeCam = false;
 			await Wait( 0.1f );
 			await Shot( "robot_third_person_cam" );
+			// Death: the robot drops as a ragdoll.
+			var surv = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+			surv.Health.Invulnerable = false;
+			surv.Health.OnDamage( new DamageInfo { Damage = 9999f, Position = player.GlobalPosition, Origin = player.GlobalPosition + Vector3.Forward } );
+			for ( var k = 0; k < 30; k++ )
+			{
+				await Wait( 0.05f );
+				var rp = GetTree().Root.FindChild( "Rag pelvis", true, false ) as Node3D;
+				GD.Print( $"[autotest] ragdoll pelvis {(rp?.GlobalPosition - player.GlobalPosition) / U.In}" );
+			}
+			await Look( "robot_ragdoll_0", 40f, 140f );
+			await Wait( 1.5f );
+			await Look( "robot_ragdoll_1", 40f, 140f );
+			var rag = GetTree().Root.FindChild( "Robot Ragdoll", true, false ) as Node3D;
+			GD.Print( $"[autotest] ragdoll: {(rag is null ? "none" : "spawned")}, pelvis height {(rag?.FindChild( "Rag pelvis", true, false ) as Node3D)?.GlobalPosition.Y / U.In:0} vs feet {player.GlobalPosition.Y / U.In:0}" );
 			GD.Print( "[autotest] done" );
 			GetTree().Quit();
 			return;
@@ -522,6 +537,9 @@ public partial class AutoTest : Node
 	async Task LevelTest()
 	{
 		if ( OS.GetCmdlineUserArgs().Contains( "--stations" ) ) { await StationTest(); return; }
+		var hp = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health;
+		// The dive Bloobers bite (as in s&box); this test is about the dive itself, so the player can't die here.
+		hp.Invulnerable = true;
 		if ( DockHouse.Current is { } dock )
 		{
 			await Wait( 0.5f );

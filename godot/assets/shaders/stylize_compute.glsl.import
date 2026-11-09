@@ -1,0 +1,14 @@
+[remap]
+
+importer="glsl"
+type="RDShaderFile"
+uid="uid://bu14dlcxoimxl"
+path="res://.godot/imported/stylize_compute.glsl-33d97b3e8ce72189e961a210f74ee574.res"
+
+[deps]
+
+source_file="res://assets/shaders/stylize_compute.glsl"
+dest_files=["res://.godot/imported/stylize_compute.glsl-33d97b3e8ce72189e961a210f74ee574.res"]
+
+[params]
+

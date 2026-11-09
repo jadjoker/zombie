@@ -265,13 +265,19 @@ public partial class SandCloud : Node3D
 {
 	public float Radius = 150f;
 	public float Power = 1f;
-	readonly List<(MeshInstance3D Mesh, Vector3 Vel, float Size, float Life)> puffs = new();
 	MeshInstance3D ring;
 	TimeSince age;
 
 	public override void _Ready()
 	{
 		age = 0f;
+		ring = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.8f, 0.72f, 0.55f ) }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		AddChild( ring );
+		CallDeferred( MethodName.EmitPuffs );   // once it has been placed
+	}
+
+	void EmitPuffs()
+	{
 		var sand = new Color( 0.62f, 0.54f, 0.4f );
 		var count = (int)(300 * Power) + 80;
 		for ( var i = 0; i < count; i++ )
@@ -279,34 +285,19 @@ public partial class SandCloud : Node3D
 			var a = Rng.Float( 0f, MathF.Tau );
 			var outward = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
 			var rising = i % 2 == 0;
-			var mesh = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = sand.Lerp( new Color( 0.42f, 0.36f, 0.28f ), Rng.Float() ) }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-			AddChild( mesh );
-			mesh.Position = (outward * Rng.Float( 0f, Radius * (rising ? 0.5f : 1f) ) + Vector3.Up * Rng.Float( 4f, 30f )) * U.In;
+			var at = GlobalPosition + (outward * Rng.Float( 0f, Radius * (rising ? 0.5f : 1f) ) + Vector3.Up * Rng.Float( 4f, 30f )) * U.In;
 			var vel = rising
 				? outward * Rng.Float( 20f, 140f ) + Vector3.Up * Rng.Float( 180f, 520f ) * Power
 				: outward * Rng.Float( 260f, 640f ) * Power + Vector3.Up * Rng.Float( 20f, 90f );
-			puffs.Add( (mesh, vel * U.In, Rng.Float( 4f, 12f ) * (0.7f + 0.5f * Power), Rng.Float( 1.4f, 3.2f )) );
+			// Step 8: GPU puffs (sand_puffs.gdshader does the drag, buoyancy, growth and fade).
+			GpuFx.SandPuff( at, vel * U.In, sand.Lerp( new Color( 0.42f, 0.36f, 0.28f ), Rng.Float() ), Rng.Float( 4f, 12f ) * (0.7f + 0.5f * Power), Rng.Float( 1.4f, 3.2f ) );
 		}
-		ring = new MeshInstance3D { Mesh = Shapes.Sphere, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.8f, 0.72f, 0.55f ) }, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-		AddChild( ring );
 	}
 
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
 		var t = (float)age;
-		for ( var i = 0; i < puffs.Count; i++ )
-		{
-			var (mesh, vel, size, life) = puffs[i];
-			vel *= MathF.Exp( -1.6f * dt );
-			vel += Vector3.Up * 22f * U.In * dt;
-			mesh.GlobalPosition += vel * dt;
-			puffs[i] = (mesh, vel, size, life);
-			var k = MathX.Clamp( t / life, 0f, 1f );
-			var grow = 1f + k * 0.5f;
-			var fade = k < 0.7f ? 1f : 1f - (k - 0.7f) / 0.3f;
-			mesh.Scale = Vector3.One * MathF.Max( 0.0001f, size * grow * MathX.Clamp( fade, 0f, 1f ) * 2f * U.In );
-		}
 		var spread = 1f - MathF.Exp( -4.5f * t );
 		var d = Radius * 0.6f + Radius * 5.5f * spread * Power;
 		var ringFade = MathX.Clamp( 1f - t / 0.9f, 0f, 1f );

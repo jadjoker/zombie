@@ -833,6 +833,11 @@ public partial class AutoTest : Node
 		var dummy = new Node3D();
 		GetTree().CurrentScene.AddChild( dummy );
 		dummy.GlobalPosition = player.GlobalPosition + player.GlobalBasis.Z * -10f * U.In;
+		dummy.GlobalPosition = player.GlobalPosition + -new Angles( 0f, player.EyeAngles.Yaw, 0f ).ToBasis().Z * 200f * U.In;
+		AmmoPickup.MaybeDrop( dummy );
+		await Wait( 0.4f );
+		await Shot( "ammo_box" );
+		dummy.GlobalPosition = player.GlobalPosition + player.GlobalBasis.Z * -10f * U.In;
 		AmmoPickup.MaybeDrop( dummy );
 		await Wait( 0.5f );
 		GD.Print( $"[autotest] ammo pickup: reserve {before} -> {rifle.Reserve} (expect +{rifle.MagazineSize})" );

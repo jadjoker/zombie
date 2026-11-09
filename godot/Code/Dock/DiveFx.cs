@@ -8,6 +8,9 @@ using Godot;
 public partial class DiveHands : Node, ICameraModifier
 {
 	readonly List<Node3D> blades = new();
+	static PackedScene armModel, bladeModel;
+	static PackedScene ArmModel => armModel ??= ResourceLoader.Exists( "res://assets/models/dive/dive_arm.glb" ) ? GD.Load<PackedScene>( "res://assets/models/dive/dive_arm.glb" ) : null;
+	static PackedScene BladeModel => bladeModel ??= ResourceLoader.Exists( "res://assets/models/dive/saw_blade.glb" ) ? GD.Load<PackedScene>( "res://assets/models/dive/saw_blade.glb" ) : null;
 	Node3D root;
 	float spin;
 	Vector2 sway;
@@ -42,8 +45,8 @@ public partial class DiveHands : Node, ICameraModifier
 		controller.Camera.AddChild( root );
 		foreach ( var side in new[] { -1f, 1f } )
 		{
-			var shoulder = new Vector3( 2f, side * 19f, -22f );
-			var hand = new Vector3( 36f, side * 25f, -18f );
+			var shoulder = new Vector3( 2f, side * 17f, -19f );
+			var hand = new Vector3( 34f, side * 20f, -11f );   // higher and closer in than s&box, so the Blender hands and blades read
 			var arm = new Node3D { Name = "Arm" };
 			root.AddChild( arm );
 			var dirS = (hand - shoulder).Normalized();
@@ -51,6 +54,26 @@ public partial class DiveHands : Node, ICameraModifier
 			var dir = U.Sbox( dirS ).Normalized();
 			// Boxes are along local -Z (s&box forward), so turn each to the arm's direction.
 			var armRot = Shapes.LookAt( dir );
+			var spinner = new Node3D { Name = "Spinner" };
+			if ( ArmModel is not null && BladeModel is not null )
+			{
+				// Blender models (Tools/blender/dive_arms.py): shoulder at the origin, grip 0.88 m along -Z; the left arm
+				// is the right one mirrored.
+				var model = ArmModel.Instantiate<Node3D>();
+				arm.AddChild( model );
+				model.Transform = new Transform3D( armRot * Basis.FromScale( new Vector3( side < 0 ? -1f : 1f, 1f, 1f ) * (len * U.In / 0.88f) ), U.Sbox( shoulder ) );
+				foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() ) mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				var mount = new Node3D { Name = "Blade" };
+				arm.AddChild( mount );
+				// Close in on the end of the model's mount (tuned by eye in first person).
+				mount.Transform = new Transform3D( armRot * new Angles( 0f, side * 40f, 0f ).ToBasis(), U.Sbox( hand + dirS * (0.17f / 0.88f * len) ) );
+				mount.AddChild( spinner );
+				var disc = BladeModel.Instantiate<Node3D>();
+				spinner.AddChild( disc );
+				foreach ( var mesh in disc.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() ) mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				blades.Add( spinner );
+				continue;
+			}
 			Part( arm, "Forearm", shoulder + dirS * len * 0.5f, new Vector3( len, 5f, 4.6f ), Metal, rot: armRot );
 			Part( arm, "Plate", shoulder + dirS * len * 0.45f + new Vector3( 0, 0, 3.2f ), new Vector3( len * 0.6f, 3.5f, 1.2f ), Dark, rot: armRot );
 			Part( arm, "Stripe", shoulder + dirS * len * 0.62f + new Vector3( 0, 0, 4.1f ), new Vector3( len * 0.2f, 3.7f, 0.5f ), Accent, rot: armRot );
@@ -61,7 +84,6 @@ public partial class DiveHands : Node, ICameraModifier
 			var blade = new Node3D { Name = "Blade" };
 			arm.AddChild( blade );
 			blade.Transform = new Transform3D( armRot * new Angles( 0f, side * 40f, 0f ).ToBasis(), U.Sbox( hand + dirS * 11f + new Vector3( 0, 0, 1f ) ) );
-			var spinner = new Node3D { Name = "Spinner" };
 			blade.AddChild( spinner );
 			// The disc lies in the arm's plane (s&box x/z); spins about its left axis.
 			Part( spinner, "Disc", Vector3.Zero, new Vector3( 11f, 0.5f, 11f ), Steel, sphere: true );

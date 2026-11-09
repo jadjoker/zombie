@@ -30,15 +30,32 @@ public partial class AmmoPickup : Node3D
 		root.AddChild( pickup );
 	}
 
+	static PackedScene model;
+
 	public override void _Ready()
 	{
 		age = 0f;
 		baseY = GlobalPosition.Y;
-		glow = new StandardMaterial3D { AlbedoColor = new Color( 0.95f, 0.75f, 0.2f ), EmissionEnabled = true, Emission = new Color( 1f, 0.7f, 0.15f ), EmissionEnergyMultiplier = 1.6f, Transparency = BaseMaterial3D.TransparencyEnum.Alpha };
-		box = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3( 14f, 9f, 9f ) * U.In }, MaterialOverride = glow, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		box = new MeshInstance3D();   // spins; holds the Blender model (Tools/blender/ammo_box.py)
 		AddChild( box );
-		var band = new MeshInstance3D { Mesh = new BoxMesh { Size = new Vector3( 14.4f, 2.2f, 9.4f ) * U.In }, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 0.12f, 0.12f, 0.14f ) } };
-		box.AddChild( band );
+		model ??= ResourceLoader.Exists( "res://assets/models/props/ammo_box.glb" ) ? GD.Load<PackedScene>( "res://assets/models/props/ammo_box.glb" ) : null;
+		glow = new StandardMaterial3D { AlbedoColor = new Color( 1f, 0.72f, 0.18f ), EmissionEnabled = true, Emission = new Color( 1f, 0.7f, 0.15f ), EmissionEnergyMultiplier = 2.2f };
+		if ( model?.Instantiate() is Node3D can )
+		{
+			box.AddChild( can );
+			can.Position = Vector3.Down * 0.11f;   // origin at its base: centre it on the bob point
+			foreach ( var mesh in can.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+			{
+				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+					if ( mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName == "AmmoGlow" ) mesh.SetSurfaceOverrideMaterial( i, glow );
+			}
+		}
+		else
+		{
+			box.Mesh = new BoxMesh { Size = new Vector3( 14f, 9f, 9f ) * U.In };
+			box.MaterialOverride = glow;
+		}
 		AddChild( new OmniLight3D { LightColor = new Color( 1f, 0.75f, 0.3f ), LightEnergy = 1.2f, OmniRange = 90f * U.In } );
 	}
 
@@ -48,8 +65,9 @@ public partial class AmmoPickup : Node3D
 		if ( t > Life ) { QueueFree(); return; }
 		GlobalPosition = GlobalPosition with { Y = baseY + MathF.Sin( t * 2.5f ) * 3f * U.In };
 		box.Rotation = new Vector3( 0f, t * 1.6f, 0f );
-		var fading = MathX.Clamp( (Life - t) / 3f, 0f, 1f );
-		glow.AlbedoColor = glow.AlbedoColor with { A = fading * (t > Life - 6f ? 0.6f + 0.4f * MathF.Sin( t * 12f ) : 1f) };
+		// Blinks for its last six seconds, then shrinks away.
+		glow.EmissionEnergyMultiplier = t > Life - 6f ? 1.2f + 1.6f * MathF.Max( 0f, MathF.Sin( t * 12f ) ) : 2.2f;
+		box.Scale = Vector3.One * 1.5f * MathX.Clamp( (Life - t) / 0.4f, 0.01f, 1f );   // 1.5x real size so it reads
 
 		foreach ( var survivor in PlayerSurvivor.All )
 		{

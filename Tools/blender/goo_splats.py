@@ -48,7 +48,7 @@ def material():
     return m
 
 
-def splat(seed, coll, mat):
+def splat(seed, coll, mat, drips=True, flat=0.45):
     rng = random.Random(seed)
     mb = bpy.data.metaballs.new(f"splat_{seed}")
     mb.resolution = 0.02
@@ -60,7 +60,7 @@ def splat(seed, coll, mat):
         e.co = (x, y, 0)
         e.radius = r
         e.type = "ELLIPSOID"
-        e.size_x, e.size_y, e.size_z = sx, sy, 0.45   # shape, relative to the radius
+        e.size_x, e.size_y, e.size_z = sx, sy, flat   # shape, relative to the radius
 
     # Body: one round core with fat lobes bulging out of its edge (a paint-splat silhouette).
     core = rng.uniform(0.36, 0.42)
@@ -86,7 +86,7 @@ def splat(seed, coll, mat):
         d = rng.uniform(0.55, 0.8)
         ball(math.cos(a) * d, math.sin(a) * d, rng.uniform(0.035, 0.08))
     # A drip or two running down, smooth, ending in a fat bead.
-    for _ in range(rng.randint(0, 2)):
+    for _ in range(rng.randint(0, 2) if drips else 0):
         x = rng.uniform(-0.15, 0.15)
         y = -core * 0.7
         length = rng.uniform(0.2, 0.42)
@@ -164,5 +164,58 @@ def build(render=True, show=None):
     return [s.name for s in splats]
 
 
+def normal_material():
+    """Emits the surface normal as colour (tangent space as seen from the camera, OpenGL style): a normal map."""
+    m = bpy.data.materials.get("GooNormal") or bpy.data.materials.new("GooNormal")
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    xform = nt.nodes.new("ShaderNodeVectorTransform")
+    xform.vector_type = "NORMAL"
+    xform.convert_from = "WORLD"
+    xform.convert_to = "CAMERA"
+    mapr = nt.nodes.new("ShaderNodeVectorMath")
+    mapr.operation = "MULTIPLY_ADD"
+    mapr.inputs[1].default_value = (0.5, 0.5, -0.5)   # camera space looks down -Z: flip Z so facing us is +
+    mapr.inputs[2].default_value = (0.5, 0.5, 0.5)
+    emit = nt.nodes.new("ShaderNodeEmission")
+    nt.links.new(geo.outputs["Normal"], xform.inputs["Vector"])
+    nt.links.new(xform.outputs["Vector"], mapr.inputs[0])
+    nt.links.new(mapr.outputs["Vector"], emit.inputs["Color"])
+    nt.links.new(emit.outputs["Emission"], out.inputs["Surface"])
+    return m
+
+
+def build_decals(count=6):
+    """Puddle splats for floors and walls (no drips, flatter): goo_decal_N.png and goo_decal_N_n.png (normal map)."""
+    coll = clear()
+    mat = material()
+    stage(coll)
+    nmat = normal_material()
+    scene = bpy.context.scene
+    view = scene.view_settings.view_transform
+    decals = [splat(200 + i, coll, mat, drips=False, flat=0.28) for i in range(count)]
+    for i, d in enumerate(decals):
+        for o in decals:
+            o.hide_render = o is not d
+        d.data.materials[0] = mat
+        scene.view_settings.view_transform = view
+        scene.render.filepath = os.path.join(OUT, f"goo_decal_{i}.png")
+        bpy.ops.render.render(write_still=True)
+        d.data.materials[0] = nmat
+        scene.view_settings.view_transform = "Raw"
+        scene.render.filepath = os.path.join(OUT, f"goo_decal_{i}_n.png")
+        bpy.ops.render.render(write_still=True)
+        d.data.materials[0] = mat
+    scene.view_settings.view_transform = view
+    for i, d in enumerate(decals):
+        d.hide_render = False
+        d.location = ((i % 3) * 2.2 - 2.2, -(i // 3) * 2.2 + 1.1, 0)
+    return [d.name for d in decals]
+
+
 if __name__ == "__main__":
     build()
+    build_decals()

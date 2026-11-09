@@ -54,13 +54,21 @@ public partial class GoreSystem : Node
 
 	// ---- Goo ----
 
+	static (Texture2D Albedo, Texture2D Normal)[] gooDecals;
+	static (Texture2D Albedo, Texture2D Normal)[] GooDecals => gooDecals ??= Enumerable.Range( 0, 6 )
+		.Select( i => (GD.Load<Texture2D>( $"res://assets/textures/goo/goo_decal_{i}.png" ), GD.Load<Texture2D>( $"res://assets/textures/goo/goo_decal_{i}_n.png" )) )
+		.Where( t => t.Item1 is not null ).ToArray();
+
 	public void GooSplat( Vector3 position, Vector3 normal, float scale, Color color )
 	{
-		splatTexture ??= MakeSplatTexture();
-		var size = scale * 24f * U.In;
+		// A puddle rendered in Blender (Tools/blender/goo_splats.py, build_decals), with its normal map for the
+		// wet bumps; falls back to the old code-made texture if the renders are missing.
+		var variant = Rng.Int( 0, GooDecals.Length - 1 );
+		var size = scale * 24f * U.In * (GooDecals.Length > 0 ? 1.9f : 1f);
 		var decal = new Decal
 		{
-			TextureAlbedo = splatTexture,
+			TextureAlbedo = GooDecals.Length > 0 ? GooDecals[variant].Albedo : (splatTexture ??= MakeSplatTexture()),
+			TextureNormal = GooDecals.Length > 0 ? GooDecals[variant].Normal : null,
 			Size = new Vector3( size, 10f * U.In, size ),
 			Modulate = color.Lerp( Colors.White, 0.25f ),
 			UpperFade = 0.3f,

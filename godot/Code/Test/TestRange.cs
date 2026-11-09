@@ -92,19 +92,23 @@ public partial class TestRange : Node3D
 
 		var hud = new CanvasLayer();
 		AddChild( hud );
-		readout = new Label { Position = new Vector2( 20, 20 ) };
+		readout = new Label { Position = new Vector2( 20, 120 ) };
 		readout.AddThemeFontSizeOverride( "font_size", 20 );
 		readout.AddThemeColorOverride( "font_outline_color", Colors.Black );
 		readout.AddThemeConstantOverride( "outline_size", 6 );
 		hud.AddChild( readout );
 		hud.AddChild( WeaponHud.Create( player ) );
+		hud.AddChild( GameHud.Create( player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ) ) );
+		// The wave director, paused until P toggles it (the s&box editor started paused too).
+		AddChild( new WaveDirector { SpawningPaused = !OS.GetCmdlineUserArgs().Contains( "--waves" ) } );
 
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );
 	}
 
 	public override void _UnhandledInput( InputEvent e )
 	{
-		// B: a Bloober 15 m ahead (dev spawn).
+		// O: toggle wave spawning. B: a Bloober 15 m ahead (dev spawn).
+		if ( e is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.O } && WaveDirector.Current is { } d ) d.SpawningPaused = !d.SpawningPaused;
 		if ( e is InputEventKey { Pressed: true, Echo: false, PhysicalKeycode: Key.B } )
 		{
 			var ahead = player.EyeAngles.WithPitch( 0f ).Forward;
@@ -120,7 +124,7 @@ public partial class TestRange : Node3D
 		readout.Text = $"health {survivor?.Health?.Current ?? 0:0}  points {survivor?.Points ?? 0}   speed {speed:0} u/s   {(player.IsOnGround ? "ground" : "air")}   {movement.Ground}{(player.IsDucking ? "  ducked" : "")}\n"
 			+ $"stamina {movement.Stamina:0.0}/{movement.MaxStamina}   air jumps {movement.AirJumpsLeft}   {(player.ThirdPerson ? "third person" : "first person")} (C)\n"
 			+ "WASD move, Shift sprint, Space jump/air jump/wall kick/mantle, Ctrl slide/duck\n"
-			+ "LMB fire, RMB aim (rifle scope), R reload, 1/2 or wheel switch, Mouse5 axe, B spawns a Bloober, Esc frees the mouse";
+			+ "LMB fire, RMB aim (rifle scope), R reload, 1/2 or wheel switch, Mouse5 axe, B spawns a Bloober, O toggles waves, Esc frees the mouse";
 	}
 
 	/// <summary> A solid box; position and rotation go on the returned body. </summary>

@@ -27,3 +27,8 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
   `WeaponHud` (centre dot, hitmarker, ammo, scope overlay), `TestTarget` dummies.
 - Not yet: sounds (the s&box ones were Facepunch cloud assets), the stock particle effects (stand-ins in `Fx`),
   the third-person world gun (comes with the robot model), bullet bubble trails (with the water port).
+- Creatures: `Bloober` (all behaviour, chunking, puffing, venom bites), `CreaturePart`, `Shapes` (creature skins, spindles),
+  `Health`, `GoreSystem` / `GooDroplet` / `Gib` / `CreatureGore` (wounds, stumps, overkill, jiggle, twitch).
+- Game: `WaveDirector` (waves, float rounds, boss waves, open world, dev tools; kinds plug in via `Spawners`), `GameHud`
+  (wave, status, banners, kills, points, health, venom, camera goo, game over), `PlayerSurvivor`, `PlayerAfflictions`.
+- Test range keys: B spawns a Bloober, O toggles wave spawning (`--waves` starts them on).

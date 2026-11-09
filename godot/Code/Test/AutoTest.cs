@@ -174,6 +174,15 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] after 3 s: player health {player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Current:0}" );
 		await Shot( "bloober_bite" );
 
+		// Waves: unpause the director and let wave 1 arrive.
+		var director = WaveDirector.Current;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		director.SpawningPaused = false;
+		await Wait( 9f );
+		GD.Print( $"[autotest] waves: state {director.State} wave {director.Wave} alive {director.AliveCount} remaining {director.ZombiesRemaining}" );
+		player.EyeAngles = new Angles( 0f, 180f, 0f );
+		await Shot( "wave1" );
+
 		// Third person view.
 		player.ThirdPerson = true;
 		player.EyeAngles = new Angles( 15f, 200f, 0f );

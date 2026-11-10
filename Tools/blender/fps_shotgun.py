@@ -1,4 +1,4 @@
-# First-person pump shotgun with the same gloved arms as the rifle, in the same cartoon style.
+# First-person pump shotgun held by the same robot arms as the rifle, in the same cartoon style.
 # Reuses fps_rifle.py's rig, solver, export and vmdl writer; only the gun, its parts and the animations differ.
 #   blender -b --factory-startup --python fps_shotgun.py
 #
@@ -8,33 +8,62 @@ import math
 
 src = open(r"C:/Users/smitt/Documents/zombie_survival/Tools/blender/fps_rifle.py", encoding="utf-8").read()
 src = src.replace("\nmain()\n", "\n")
-src = src.replace("relative_origin = [ 0.0, 36.0, 3.0 ]", "relative_origin = [ 0.0, 40.0, 5.2 ]")
+src = src.replace("relative_origin = [ 0.0, 36.2, 3.0 ]", "relative_origin = [ 0.0, 40.0, 5.2 ]")
 exec(src)
 
-OUT = r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/shotgun"
+OUT = os.environ.get("SHOTGUN_OUT", r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/shotgun")
 NAME = "shotgun"
 
 
 def build_meshes():
-    # Shotgun (gun space: grip at origin, +X forward)
-    bevel_box((4.5, 0, 3.0), (13, 3.8, 5.4), 0.8, "gun", "metal")                      # receiver
-    bevel_box((4.5, -1.95, 1.4), (6.0, 0.4, 2.0), 0.15, "gun", "metal2")               # ejection port plate
-    x_cyl((24.0, 0, 5.0), 1.05, 31.0, "gun", "metal")                                  # barrel
-    x_cyl((21.5, 0, 2.5), 1.25, 25.0, "gun", "metal2")                                 # magazine tube
-    x_cyl((34.6, 0, 2.5), 1.45, 1.4, "gun", "metal")                                   # tube cap
-    bevel_box((33.0, 0, 3.8), (1.4, 2.8, 3.6), 0.4, "gun", "metal")                    # barrel clamp
-    ball((38.7, 0, 6.4), (0.6, 0.6, 0.6), "gun", "accent", 12)                         # bead sight
-    x_cyl((39.4, 0, 5.0), 1.35, 1.2, "gun", "metal2")                                  # muzzle ring
-    bevel_box((-6.0, 0, 1.8), (8.5, 3.3, 5.6), 1.2, "gun", "accent", rot=(0, 5, 0))    # stock
-    bevel_box((-10.4, 0, 1.4), (1.4, 3.5, 6.6), 0.6, "gun", "metal", rot=(0, 5, 0))   # butt pad
-    bevel_box((-0.6, 0, -4.2), (3.4, 3.2, 8.4), 1.0, "gun", "accent", rot=(0, -16, 0)) # pistol grip
-    bevel_box((3.2, 0, -0.9), (2.4, 0.8, 2.6), 0.3, "gun", "metal2")                   # trigger guard
-    # the pump: chunky grooved fore-end
-    bevel_box((17.0, 0, 2.3), (10.5, 4.6, 4.4), 1.4, "bolt", "accent")
+    """A pump shotgun with a wooden stock and pump: simple shapes, layered so it reads up close. Gun space,
+    inches: grip at origin, +X forward, muzzle at x 40, z 5."""
+    MATS["wood"] = mat("wood", (0.55, 0.34, 0.18, 1))
+    MATS["axered"] = mat("axered", (0.82, 0.12, 0.1, 1))
+    # Receiver: body, a flat top, the ejection port, the loading port underneath, pins and a safety.
+    bevel_box((4.5, 0, 3.0), (13, 3.6, 5.2), 0.7, "gun", "metal")
+    bevel_box((4.5, 0, 5.75), (12.2, 2.4, 0.5), 0.15, "gun", "metal")                 # flat top
+    bevel_box((5.5, -1.82, 3.6), (5.6, 0.14, 1.7), 0.05, "gun", "dark")                # ejection port (right)
+    bevel_box((5.5, -1.86, 4.6), (6.0, 0.14, 0.25), 0.05, "gun", "metal2")
+    bevel_box((6.0, 0, 0.35), (6.5, 2.2, 0.25), 0.08, "gun", "dark")                   # loading port (underneath)
+    for x in (0.2, 9.4):
+        y_cyl((x, 0, 2.6), 0.3, 3.75, "gun", "metal2", 10)                             # receiver pins
+    y_cyl((-0.6, 1.8, 4.2), 0.5, 0.35, "gun", "axered", 12)                            # safety button
+    # Shell holder on the near side: four red shells with brass heads.
+    bevel_box((5.0, 1.95, 3.0), (8.6, 0.5, 2.6), 0.15, "gun", "dark")
+    for i in range(4):
+        z_cyl((2.0 + i * 2.0, 2.45, 3.2), 0.78, 3.0, "gun", "axered", 12)
+        z_cyl((2.0 + i * 2.0, 2.45, 1.55), 0.84, 0.5, "gun", "metal2", 12)
+    # Barrel with a vent rib and bead, the magazine tube under it, the clamp between them.
+    x_cyl((24.0, 0, 5.0), 1.05, 31.0, "gun", "metal", 20)
+    bevel_box((23.0, 0, 6.35), (30.0, 0.7, 0.3), 0.08, "gun", "metal")                 # rib
+    for i in range(7):
+        bevel_box((10.5 + i * 4.2, 0, 6.12), (0.5, 0.5, 0.3), 0.05, "gun", "dark")     # rib posts
+    ball((37.6, 0, 6.75), (0.5, 0.5, 0.5), "gun", "axered", 12)                        # bead sight
+    x_cyl((39.2, 0, 5.0), 1.3, 1.4, "gun", "metal2", 20)                               # muzzle ring
+    x_cyl((39.95, 0, 5.0), 0.8, 0.12, "gun", "dark", 16)                               # bore
+    x_cyl((22.5, 0, 2.5), 1.25, 23.0, "gun", "metal", 20)                              # magazine tube
+    x_cyl((34.4, 0, 2.5), 1.45, 1.6, "gun", "metal2", 20)                              # tube cap
+    bevel_box((32.0, 0, 3.8), (1.4, 2.9, 3.9), 0.4, "gun", "metal")                    # barrel clamp
+    y_cyl((32.0, 0, 3.75), 0.3, 3.1, "gun", "metal2", 10)
+    # Wooden stock with a comb and a rubber pad, pistol grip, trigger and guard.
+    bevel_box((-5.8, 0, 2.2), (8.6, 3.0, 5.0), 1.1, "gun", "wood", rot=(0, 5, 0))
+    bevel_box((-6.4, 0, 4.7), (6.4, 2.4, 1.2), 0.5, "gun", "wood", rot=(0, 5, 0))      # comb
+    bevel_box((-10.5, 0, 1.6), (1.2, 3.2, 6.6), 0.5, "gun", "dark", rot=(0, 5, 0))     # recoil pad
+    bevel_box((-9.6, 0, 1.7), (0.4, 3.1, 6.4), 0.1, "gun", "metal2", rot=(0, 5, 0))    # spacer
+    bevel_box((-0.6, 0, -4.0), (3.2, 2.9, 8.0), 1.0, "gun", "wood", rot=(0, -18, 0))   # pistol grip
+    bevel_box((-1.1, 0, -7.9), (3.6, 3.1, 0.6), 0.25, "gun", "dark", rot=(0, -18, 0))  # grip cap
+    bevel_box((3.0, 0, -0.6), (0.4, 0.5, 2.0), 0.12, "gun", "dark", rot=(0, 18, 0))    # trigger
+    bevel_box((3.3, 0, -1.95), (5.4, 1.0, 0.35), 0.1, "gun", "metal")                  # guard bottom
+    bevel_box((5.85, 0, -0.9), (0.35, 1.0, 2.3), 0.1, "gun", "metal")                  # guard front
+    # The pump: a wooden fore-end with dark grooves, on its action bars.
+    bevel_box((17.0, 0, 2.3), (10.5, 4.6, 4.4), 1.3, "bolt", "wood")
     for x in (13.4, 15.2, 17.0, 18.8, 20.6):
-        bevel_box((x, 0, 2.3), (0.6, 4.9, 4.7), 0.25, "bolt", "metal")
-    # the loose shell (sits in the left fist; hidden unless it's being loaded)
-    x_cyl((15.0, 0, -6.4), 1.0, 3.8, "mag", "accent", 16)
+        bevel_box((x, 0, 2.3), (0.45, 4.75, 4.55), 0.15, "bolt", "dark")
+    for side in (-1, 1):
+        bevel_box((11.5, side * 1.5, 2.6), (5.0, 0.3, 0.7), 0.08, "bolt", "metal2")    # action bars
+    # The loose shell (sits in the left hand; hidden unless it is being loaded).
+    x_cyl((15.0, 0, -6.4), 1.0, 3.8, "mag", "axered", 16)
     x_cyl((17.1, 0, -6.4), 1.05, 0.7, "mag", "metal2", 16)
 
     for obj, _, _ in PARTS:
@@ -43,26 +72,13 @@ def build_meshes():
         obj.select_set(True)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=False)
 
-    # Arms and hands: the same as the rifle's (right on the grip, left under the pump)
+    # The robot's arms and hands: right on the grip, left under the pump.
     for s in ("R", "L"):
         sh = SHOULDER[s]
-        wr = G_REST @ HAND_LOCAL[s]
-        el, wr = solve_elbow(sh, wr, POLE[s])
-        ball(sh, (4.2, 4.2, 4.2), f"upper_{s}", "sleeve")
-        tube(sh, el, 4.0, 3.5, f"upper_{s}", "sleeve")
-        ball(el, (3.7, 3.7, 3.7), f"lower_{s}", "sleeve")
-        tube(el, wr, 3.5, 2.8, f"lower_{s}", "sleeve")
-        ball(wr, (3.4, 3.4, 3.4), f"hand_{s}", "glove")
-        if s == "R":
-            c = gl((0.6, 0.0, -2.5))
-            ball(c, (3.5, 3.1, 4.1), f"hand_{s}", "glove")
-            ball(c + G_REST.to_3x3() @ Vector((2.4, 0.0, 0.6)), (2.3, 3.0, 2.4), f"hand_{s}", "glove")
-            ball(c + G_REST.to_3x3() @ Vector((1.0, 2.7, 1.6)), (2.4, 1.3, 1.5), f"hand_{s}", "glove")
-        else:
-            c = gl((15.5, 0.0, -2.2))
-            ball(c, (4.6, 3.4, 3.4), f"hand_{s}", "glove")
-            ball(c + G_REST.to_3x3() @ Vector((0.0, -2.6, 2.6)), (3.6, 1.6, 1.8), f"hand_{s}", "glove")
-            ball(c + G_REST.to_3x3() @ Vector((1.0, 2.6, 1.4)), (2.6, 1.3, 1.5), f"hand_{s}", "glove")
+        el, wr = solve_elbow(sh, G_REST @ HAND_LOCAL[s], POLE[s])
+        robot_arm(s, sh, el, wr)
+    grip_hand_right()
+    cradle_hand_left(half_width=2.9, top=4.3)
 
 
 HIDE = trs((0, 0, 0), (0, 0, 0), 0.001)

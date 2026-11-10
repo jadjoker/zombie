@@ -27,6 +27,10 @@ public static class WeaponSkins
 			["axered"] = (new Color( 0.82f, 0.12f, 0.1f ), 0.0f),
 			["dark"] = (new Color( 0.05f, 0.055f, 0.06f ), 0.6f),
 			["glow"] = (new Color( 1f, 0.22f, 0.12f ), 0.0f),
+			// The player robot (arms and hands): the same on every skin.
+			["plate"] = (new Color( 0.72f, 0.75f, 0.78f ), 0.45f),
+			["joint"] = (new Color( 0.07f, 0.075f, 0.08f ), 0.1f),
+			["trim"] = (new Color( 0.95f, 0.5f, 0.12f ), 0.1f),
 		},
 		["Arctic"] = new()
 		{

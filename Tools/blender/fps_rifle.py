@@ -1,10 +1,11 @@
-# Builds the first-person Rifle viewmodel: a cartoon rifle and a pair of gloved arms, rigged and animated.
+# Builds the first-person Rifle viewmodel: a cartoon rifle held by the player robot's arms, rigged and animated.
 # Run headless:  blender -b --factory-startup --python fps_rifle.py
 # Output: Assets/models/weapons/rifle/{rifle.fbx, rifle@<anim>.fbx, rifle.vmdl}
 #
 # Camera space: the player's eye is the origin, +X is forward, +Y is left, +Z is up.
-# Every piece of mesh is rigid on one bone, so there is no weight painting: the arms are rubber-hose sleeves
-# with round joints, the hands are mittens, and everything is animated by solving the arms to the hands in Python.
+# Every piece of mesh is rigid on one bone, so there is no weight painting: the arms are the robot's (plated
+# segments, dark ball joints, an orange shoulder and cuff, fingers of two rigid links posed round the grip), and
+# everything is animated by solving the arms to the hands in Python.
 import bpy, math, os, sys
 from mathutils import Vector, Matrix, Quaternion, Euler
 
@@ -40,6 +41,10 @@ def build_materials():
     MATS["lens"] = mat("lens", (0.08, 0.2, 0.3, 1), 0.1)
     MATS["dark"] = mat("dark", (0.06, 0.065, 0.07, 1), 0.6)
     MATS["glow"] = mat("glow", (1.0, 0.2, 0.1, 1), 0.3)
+    # The player robot: pale plates, dark joints, orange trim (as on the third person model).
+    MATS["plate"] = mat("plate", (0.72, 0.75, 0.78, 1), 0.4)
+    MATS["joint"] = mat("joint", (0.07, 0.075, 0.08, 1), 0.6)
+    MATS["trim"] = mat("trim", (0.95, 0.5, 0.12, 1), 0.45)
 
 PARTS = []   # (object, bone, material)
 
@@ -121,6 +126,55 @@ def basis(y, up_hint):
     for i in range(3):
         m[i][0], m[i][1], m[i][2] = x[i], y[i], z[i]
     return m
+
+
+# ---------------------------------------------------------------- the robot's arms and hands
+def robot_arm(s, sh, el, wr):
+    """Shoulder to wrist: an orange shoulder ball, a plated upper arm, a dark elbow joint, a forearm that flares
+    into a gauntlet with an orange cuff, and a dark wrist joint. Points are in camera space."""
+    ball(sh, (4.4, 4.4, 4.4), f"upper_{s}", "trim")
+    tube(sh, el, 3.2, 2.8, f"upper_{s}", "plate")
+    ball(el, (3.2, 3.2, 3.2), f"lower_{s}", "joint")
+    mid = el.lerp(wr, 0.22)
+    tube(mid, wr.lerp(el, 0.12), 2.5, 3.2, f"lower_{s}", "plate")
+    tube(el, mid, 2.2, 2.2, f"lower_{s}", "joint")                        # the bare strut below the elbow
+    tube(wr.lerp(el, 0.2), wr.lerp(el, 0.11), 3.45, 3.45, f"lower_{s}", "trim")   # cuff
+    ball(wr, (2.5, 2.5, 2.5), f"hand_{s}", "joint")
+
+
+def robot_finger(s, pts, r=0.62):
+    """One finger: rigid links between the given gun-space points, a dark knuckle at each joint, a rounded tip."""
+    p = [gl(v) for v in pts]
+    for a, b in zip(p, p[1:]):
+        tube(a, b, r, r * 0.92, f"hand_{s}", "plate", 10)
+    for q in p[:-1]:
+        ball(q, (r * 1.18,) * 3, f"hand_{s}", "joint", 10)
+    ball(p[-1], (r * 0.95,) * 3, f"hand_{s}", "plate", 10)
+
+
+def robot_hand(s, palm, palm_r, fingers, thumb):
+    """A hand closed round something: a rounded palm block, fingers and a thumb (each a list of gun-space points
+    from knuckle to tip)."""
+    ball(gl(palm), palm_r, f"hand_{s}", "plate", 16)
+    for f in fingers:
+        robot_finger(s, f)
+    robot_finger(s, thumb, 0.72)
+
+
+def grip_hand_right():
+    """The right hand on a pistol grip at the gun's origin: three fingers wrapped round the front, the index
+    finger along the trigger, the thumb over the near side."""
+    fingers = [[(1.0, -1.7, -0.6), (2.8, -0.9, -0.5), (3.1, 0.3, -0.7)]]          # index, on the trigger
+    for z in (-2.3, -3.9, -5.5):
+        dx = 0.3 * (z + 4.0)                                                       # the grip leans back toward its foot
+        fingers.append([(0.8 + dx, -1.75, z), (1.9 + dx, 0.5, z - 0.1), (0.5 + dx, 1.85, z - 0.2)])
+    robot_hand("R", (-1.7, -1.0, -3.3), (2.3, 2.2, 2.9), fingers, [(-1.5, 0.5, -1.6), (0.1, 1.85, -1.1), (1.5, 1.9, -0.9)])
+
+
+def cradle_hand_left(x=15.5, half_width=2.9, top=4.0):
+    """The left hand cupped under a fore-end: four fingers up the far side, the thumb up the near side."""
+    fingers = [[(fx, -1.6, -0.7), (fx, -half_width, 1.7), (fx, -half_width + 0.6, top)] for fx in (x - 2.1, x - 0.7, x + 0.7, x + 2.1)]
+    robot_hand("L", (x, 0.1, -1.5), (3.0, 2.4, 1.6), fingers, [(x - 0.5, 1.6, -0.7), (x + 0.1, half_width, 1.5), (x + 0.9, half_width - 0.5, top - 0.6)])
 
 # ---------------------------------------------------------------- the rifle
 def y_cyl(center, r, length, bone, material, verts=16):
@@ -230,30 +284,13 @@ def build_meshes():
         obj.select_set(True)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=False)
 
-    # Arms and hands, built where the rest pose puts them
-    for s, sg in (("R", -1), ("L", 1)):
+    # The robot's arms and hands, built where the rest pose puts them.
+    for s in ("R", "L"):
         sh = SHOULDER[s]
-        wr = G_REST @ HAND_LOCAL[s]
-        el, wr = solve_elbow(sh, wr, POLE[s])
-        # sleeve segments with round joints
-        ball(sh, (4.2, 4.2, 4.2), f"upper_{s}", "sleeve")
-        tube(sh, el, 4.0, 3.5, f"upper_{s}", "sleeve")
-        ball(el, (3.7, 3.7, 3.7), f"lower_{s}", "sleeve")
-        tube(el, wr, 3.5, 2.8, f"lower_{s}", "sleeve")
-        # cuff and mitten glove
-        fwd = (Vector((1, 0, 0)) @ G_REST.to_3x3().transposed()) if False else (G_REST.to_3x3() @ Vector((1, 0, 0)))
-        cuff = wr
-        ball(cuff, (3.4, 3.4, 3.4), f"hand_{s}", "glove")
-        if s == "R":
-            c = gl((0.6, 0.0, -2.5))
-            ball(c, (3.5, 3.1, 4.1), f"hand_{s}", "glove")                       # fist round the grip
-            ball(c + G_REST.to_3x3() @ Vector((2.4, 0.0, 0.6)), (2.3, 3.0, 2.4), f"hand_{s}", "glove")   # fingers
-            ball(c + G_REST.to_3x3() @ Vector((1.0, 2.7, 1.6)), (2.4, 1.3, 1.5), f"hand_{s}", "glove")   # thumb
-        else:
-            c = gl((15.5, 0.0, -2.2))
-            ball(c, (4.6, 3.4, 3.4), f"hand_{s}", "glove")                       # fist under the handguard
-            ball(c + G_REST.to_3x3() @ Vector((0.0, -2.6, 2.6)), (3.6, 1.6, 1.8), f"hand_{s}", "glove")   # fingers over
-            ball(c + G_REST.to_3x3() @ Vector((1.0, 2.6, 1.4)), (2.6, 1.3, 1.5), f"hand_{s}", "glove")    # thumb
+        el, wr = solve_elbow(sh, G_REST @ HAND_LOCAL[s], POLE[s])
+        robot_arm(s, sh, el, wr)
+    grip_hand_right()
+    cradle_hand_left()
 
 # ---------------------------------------------------------------- armature
 BONES = ["root", "gun", "mag", "bolt",

@@ -1,4 +1,4 @@
-# First-person fire axe held in both gloved hands, same cartoon style and rig as the guns.
+# First-person fire axe held in both of the robot's hands, same cartoon style and rig as the guns.
 # Reuses fps_rifle.py's rig, IK, export and vmdl writer. The "gun" bone is the axe.
 #   blender -b --factory-startup --python fps_axe.py
 #
@@ -10,7 +10,7 @@ src = open(r"C:/Users/smitt/Documents/zombie_survival/Tools/blender/fps_rifle.py
 src = src.replace("\nmain()\n", "\n")
 exec(src)
 
-OUT = r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/axe"
+OUT = os.environ.get("AXE_OUT", r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/axe")
 NAME = "axe"
 
 
@@ -51,15 +51,25 @@ def build_materials_axe():
 
 
 def build_meshes():
-    # Axe, in axe space (grip at origin, haft along +X, edge toward -Z)
-    x_cyl((15.0, 0, 0), 1.15, 32.0, "gun", "wood", 16)                     # haft
-    x_cyl((3.0, 0, 0), 1.4, 7.0, "gun", "accent", 16)                      # grip wrap
-    x_cyl((-0.8, 0, 0), 1.7, 1.2, "gun", "metal", 16)                      # end cap
-    bevel_box((30.0, 0, 0.0), (5.0, 2.8, 4.6), 0.6, "gun", "axered")       # head block
-    bevel_box((30.4, 0, -5.4), (6.4, 1.6, 6.4), 0.5, "gun", "axered")      # blade body
-    bevel_box((30.6, 0, -8.6), (7.6, 0.8, 1.6), 0.3, "gun", "metal2")      # bright edge
-    bevel_box((30.0, 0, 4.4), (3.2, 1.8, 5.0), 0.5, "gun", "metal", rot=(0, 18, 0))   # back spike
-    ball((32.6, 0, 0.0), (1.0, 1.6, 1.0), "gun", "metal", 12)              # head cap
+    """A fire axe: a shaped haft with tape bands and a swelled foot, a red head with a flared blade and a bright
+    ground edge, a pick at the back. Axe space: grip at origin, haft along +X, edge toward -Z."""
+    tube((-0.6, 0, 0), (27.5, 0, 0), 1.25, 1.0, "gun", "wood", 16)                     # haft, tapering to the head
+    tube((-1.8, 0, 0), (-0.4, 0, 0), 1.75, 1.45, "gun", "wood", 16)                    # swelled foot
+    x_cyl((-2.0, 0, 0), 1.5, 0.5, "gun", "metal", 16)                                  # end cap
+    for x in (1.0, 2.6, 4.2, 9.0, 10.6):
+        x_cyl((x, 0, 0), 1.36, 1.1, "gun", "dark", 16)                                 # tape bands under each hand
+    x_cyl((26.4, 0, 0), 1.3, 1.4, "gun", "metal", 16)                                  # collar under the head
+    # Head.
+    bevel_box((30.0, 0, 0.0), (5.0, 2.7, 4.4), 0.5, "gun", "axered")                   # eye block
+    bevel_box((30.0, 0, -4.4), (5.6, 1.7, 5.0), 0.4, "gun", "axered")                  # cheeks
+    bevel_box((28.6, 0, -7.4), (4.6, 1.1, 3.4), 0.3, "gun", "axered", rot=(0, 16, 0))  # the blade flares toward the heel
+    bevel_box((31.8, 0, -7.4), (4.6, 1.1, 3.4), 0.3, "gun", "axered", rot=(0, -16, 0)) # and toward the toe
+    bevel_box((28.4, 0, -9.3), (4.4, 0.55, 1.3), 0.15, "gun", "metal2", rot=(0, 16, 0))   # ground edge
+    bevel_box((32.0, 0, -9.3), (4.4, 0.55, 1.3), 0.15, "gun", "metal2", rot=(0, -16, 0))
+    tube((30.0, 0, 2.0), (30.6, 0, 7.4), 1.5, 0.3, "gun", "metal", 12)                 # pick
+    x_cyl((32.9, 0, 0.0), 1.15, 0.8, "gun", "metal2", 12)                              # wedge cap
+    for sy in (-1, 1):
+        y_cyl((30.0, sy * 1.36, -0.4), 0.42, 0.25, "gun", "metal2", 10)                # head rivets
 
     for obj, _, _ in PARTS:
         obj.matrix_world = G_REST @ obj.matrix_world
@@ -67,19 +77,15 @@ def build_meshes():
         obj.select_set(True)
     bpy.ops.object.transform_apply(location=True, rotation=True, scale=False)
 
+    # The robot's arms, and a hand closed round the haft at each grip.
     for s in ("R", "L"):
         sh = SHOULDER[s]
-        wr = G_REST @ HAND_LOCAL[s]
-        el, wr = solve_elbow(sh, wr, POLE[s])
-        ball(sh, (4.2, 4.2, 4.2), f"upper_{s}", "sleeve")
-        tube(sh, el, 4.0, 3.5, f"upper_{s}", "sleeve")
-        ball(el, (3.7, 3.7, 3.7), f"lower_{s}", "sleeve")
-        tube(el, wr, 3.5, 2.8, f"lower_{s}", "sleeve")
-        ball(wr, (3.4, 3.4, 3.4), f"hand_{s}", "glove")
-        # a fist wrapped round the haft
-        c = gl(HAND_LOCAL[s] + Vector((0.4, 0, 1.2)))
-        ball(c, (3.0, 3.6, 3.4), f"hand_{s}", "glove")
-        ball(c + G_REST.to_3x3() @ Vector((0.0, 2.0 if s == "R" else -2.0, 1.8)), (2.4, 1.4, 1.6), f"hand_{s}", "glove")   # thumb over
+        el, wr = solve_elbow(sh, G_REST @ HAND_LOCAL[s], POLE[s])
+        robot_arm(s, sh, el, wr)
+        x0 = HAND_LOCAL[s].x + 0.4
+        side = -1.0 if s == "R" else 1.0                                              # fingers go round the outer side
+        fingers = [[(fx, side * 1.5, -1.2), (fx, side * 2.0, 1.1), (fx, side * -0.2, 2.2)] for fx in (x0 - 1.8, x0 - 0.6, x0 + 0.6, x0 + 1.8)]
+        robot_hand(s, (x0, 0, -1.9), (2.6, 2.0, 1.7), fingers, [(x0 - 0.6, -side * 1.5, -1.0), (x0, -side * 2.0, 0.9), (x0 + 0.7, -side * 0.6, 2.0)])
 
 
 def ease(t):

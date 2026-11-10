@@ -1067,6 +1067,18 @@ public partial class AutoTest : Node
 			}
 			await Wait( 1f );
 		}
+		// The axe, mid swing.
+		var melee = player.GetChildren().OfType<PlayerMelee>().FirstOrDefault();
+		if ( melee is not null )
+		{
+			player.EyeAngles = new Angles( 4f, 0f, 0f );
+			melee.TestSwing();
+			await Wait( 0.12f );
+			await Shot( "axe_raised" );
+			await Wait( 0.14f );
+			await Shot( "axe_strike" );
+			await Wait( 1f );
+		}
 		player.ThirdPerson = true;
 		inventory.Select( inventory.Weapons[0], force: true );
 		player.EyeAngles = new Angles( 4f, 120f, 0f );

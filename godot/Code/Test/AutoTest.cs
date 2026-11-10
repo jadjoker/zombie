@@ -34,6 +34,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--dive-edge" ) ) { await DiveEdgeTest(); return; }
 		if ( args.Contains( "--hitframes" ) ) { await HitFramesTest(); return; }
 		if ( args.Contains( "--swimframes" ) ) { await SwimFramesTest(); return; }
+		if ( args.Contains( "--devclick" ) ) { await DevClickTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -985,6 +986,31 @@ public partial class AutoTest : Node
 		await Wait( 2.5f );
 		LookAt( b.GlobalPosition );
 		for ( var f = 0; f < 6; f++ ) { await Wait( 0.08f ); LookAt( b.GlobalPosition ); await Shot( $"bite_{f}" ); }
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Real mouse events on a dev menu chip: hovering must not rebuild it, a click must toggle it. </summary>
+	async Task DevClickTest()
+	{
+		var menu = GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu;
+		menu.TestShow( "Enemies", "freeze" );
+		await Wait( 0.5f );
+		var chip = menu.FindChip( "Freeze enemies" );
+		if ( chip is null ) { GD.Print( "[autotest] devclick: chip not found" ); GetTree().Quit(); return; }
+		var at = chip.GetGlobalRect().GetCenter();
+		GetViewport().PushInput( new InputEventMouseMotion { Position = at, GlobalPosition = at }, true );
+		var before = menu.Rebuilds;
+		await Wait( 2f );
+		GD.Print( $"[autotest] devclick: rebuilds while hovering 2 s: {menu.Rebuilds - before} (expect 0)" );
+		chip = menu.FindChip( "Freeze enemies" );
+		at = chip.GetGlobalRect().GetCenter();
+		var was = DevFlags.FreezeEnemies;
+		GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = true }, true );
+		await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+		GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true );
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] devclick: freeze enemies {was} -> {DevFlags.FreezeEnemies} (expect a change), menu open {DevMenu.IsOpen}, mouse {Input.MouseMode}" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

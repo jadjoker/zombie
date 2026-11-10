@@ -22,6 +22,19 @@ public partial class DevMenu : CanvasLayer
 	Label stats, hintText;
 	int lastHash;
 	TimeSince rebuilt;
+	string shownState = "";
+
+	/// <summary> Everything the chips show that can change by itself (flags, time scale, skin, waves, look). </summary>
+	static string StateKey()
+	{
+		var sb = new System.Text.StringBuilder();
+		foreach ( var f in typeof( DevFlags ).GetFields( System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static ) )
+			if ( f.FieldType == typeof( bool ) || f.FieldType == typeof( float ) || f.FieldType == typeof( int ) ) sb.Append( f.GetValue( null ) ).Append( '|' );
+		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' );
+		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( '|' );
+		sb.Append( GlobalStylize.Current?.Style ).Append( '|' ).Append( Level.Current?.LevelName );
+		return sb.ToString();
+	}
 	Vector2 freeLook;
 	(Vector3 Position, Angles Angles)? savedSpot;
 	WaveDirector.EnemyKind placeKind;
@@ -148,8 +161,14 @@ public partial class DevMenu : CanvasLayer
 		hintText.Text = !open && DevFlags.Placing ? $"Placing {placeKind}: left click to place, right click to stop"
 			: !open && DevFlags.FreeCam && !DevFlags.HideHud ? "Free camera: WASD, Space up, Ctrl down, Shift fast (turn it off in the menu)" : "";
 
-		// While open, redraw ten times a second so every chip shows the current state.
-		if ( open && rebuilt > 0.1f ) Rebuild();
+		// While open, redraw only when something it shows changed (checked four times a second). Rebuilding
+		// every 0.1 s recreated the buttons under the mouse: hover flickered and clicks were lost.
+		if ( open && rebuilt > 0.25f && !Input.IsMouseButtonPressed( MouseButton.Left ) )
+		{
+			rebuilt = 0f;
+			var now = StateKey();
+			if ( now != shownState ) Rebuild();
+		}
 	}
 
 	/// <summary> Testing aid: open on a tab, or with a search typed in. </summary>
@@ -208,7 +227,7 @@ public partial class DevMenu : CanvasLayer
 
 	static Button Button( string text, bool? on, Action click )
 	{
-		var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None };
+		var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None, ActionMode = BaseButton.ActionModeEnum.Press };
 		b.Pressed += () => Sfx.Play2D( "ui_click", 0.5f );
 		b.AddThemeFontSizeOverride( "font_size", 16 );
 		var bg = on switch { true => new Color( "1f8f7a" ), false => new Color( "2a2f3a" ), null => new Color( "343b4a" ) };
@@ -258,8 +277,16 @@ public partial class DevMenu : CanvasLayer
 		section.AddChild( l );
 	}
 
+	/// <summary> How many times the chips were rebuilt (tests check it stays still while hovering). </summary>
+	public int Rebuilds { get; private set; }
+
+	/// <summary> Testing aid: the first chip whose text starts with this. </summary>
+	public Button FindChip( string text ) => body.FindChildren( "*", "Button", true, false ).OfType<Button>().FirstOrDefault( b => b.Text.StartsWith( text ) );
+
 	void Rebuild()
 	{
+		Rebuilds++;
+		shownState = StateKey();
 		rebuilt = 0f;
 		foreach ( var c in tabRow.GetChildren() ) c.QueueFree();
 		foreach ( var t in Tabs )

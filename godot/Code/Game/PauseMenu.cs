@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// The pause menu (Esc): stops the game and shows Resume, the settings (mouse sensitivity, volume, field of view,
-/// fullscreen), Restart and Quit. Settings take effect as they are changed and are saved when the menu closes.
+/// fullscreen), Restart, the dev menu (where builds allow it) and Quit. Settings take effect as they are changed and are saved when the menu closes.
 /// </summary>
 public partial class PauseMenu : CanvasLayer
 {
@@ -61,6 +61,7 @@ public partial class PauseMenu : CanvasLayer
 
 		column.AddChild( new HSeparator() );
 		column.AddChild( MenuButton( "Restart", Restart ) );
+		if ( DevMenu.Allowed ) column.AddChild( MenuButton( "Dev menu", OpenDevMenu ) );
 		column.AddChild( MenuButton( "Quit to desktop", () => { GameSettings.Save(); GetTree().Quit(); } ) );
 
 		var hint = new Label { Text = "Esc to resume", HorizontalAlignment = HorizontalAlignment.Center };
@@ -122,6 +123,13 @@ public partial class PauseMenu : CanvasLayer
 		Input.MouseMode = open ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
 		if ( open ) resume.GrabFocus();
 		else GameSettings.Save();
+	}
+
+	/// <summary> Hands over to the dev menu: the game runs on behind it, as it always did, and Esc closes it. </summary>
+	void OpenDevMenu()
+	{
+		SetOpen( false );
+		(GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu)?.SetOpen( true );
 	}
 
 	void Restart()

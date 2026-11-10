@@ -42,7 +42,7 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
 - `Assets/` models, materials, scenes. Scenes: `scenes/water_level.scene` (underwater), `scenes/forest.scene` (outdoor clearing), `scenes/indoor.scene` (interior, the startup scene).
 - `Tools/blender/` Blender scripts: `creature_helpers.py`, one script per creature, `arena.py`, `forest.py`, `indoor.py`, `mkvmdl.sh` / `mkvmdl_any.sh` write .vmdl files.
 - Editor dressing scripts (not compiled into the game): `Tools/arena_dressing.cs`, `Tools/forest_dressing.cs`, `Tools/indoor_dressing.cs`.
-- In-game dev menu: press `P` (`Code/DevMenu.razor`).
+- In-game dev menu (s&box): press `P` (`Code/DevMenu.razor`). In the Godot port it is opened from the pause menu (Esc).
 
 ## Editor tooling
 - sbox-cli: `C:/Program Files (x86)/Steam/steamapps/common/sbox/bin/managed/sbox-cli.exe`

@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary>
-/// Port of the s&box DevMenu (P): tabs (Enemies, Player, Look, World) and a search box that pulls matching controls
+/// Port of the s&box DevMenu (opened from the pause menu): tabs (Enemies, Player, Look, World) and a search box that pulls matching controls
 /// from every tab. Chips toggle dev flags and run actions: wave spawning, spawning or placing enemies, allies,
 /// enemy debug, the MC61 moves, cheats, skins, water feel, noclip, sun, camera tools, waves, time scale, travel and
 /// a stats overlay. Debug builds only. The stylize looks and creature skin shaders come with step 7c.
@@ -105,7 +105,7 @@ public partial class DevMenu : CanvasLayer
 		searchEntry.AddThemeFontSizeOverride( "font_size", 18 );
 		searchEntry.TextChanged += t => { search = t; Rebuild(); };
 		header.AddChild( searchEntry );
-		var hintLabel = new Label { Text = "P to close" };
+		var hintLabel = new Label { Text = "Esc to close" };
 		hintLabel.AddThemeColorOverride( "font_color", new Color( 1, 1, 1, 0.5f ) );
 		header.AddChild( hintLabel );
 		header.AddChild( Button( "X", false, () => SetOpen( false ) ) );
@@ -120,6 +120,12 @@ public partial class DevMenu : CanvasLayer
 		body.AddThemeConstantOverride( "separation", 14 );
 		scroll.AddChild( body );
 	}
+
+	/// <summary>
+	/// Debug builds always have it; release builds too while playtesting (project setting game/dev_menu_in_builds,
+	/// turn off to ship). It is opened from the pause menu (Esc), which only shows its button when this is true.
+	/// </summary>
+	public static bool Allowed => OS.IsDebugBuild() || (bool)ProjectSettings.GetSetting( "game/dev_menu_in_builds", false );
 
 	public override void _ExitTree()
 	{
@@ -141,9 +147,7 @@ public partial class DevMenu : CanvasLayer
 
 	public override void _Process( double delta )
 	{
-		// Release builds have it too while playtesting (project setting game/dev_menu_in_builds; turn off to ship).
-		if ( !OS.IsDebugBuild() && !(bool)ProjectSettings.GetSetting( "game/dev_menu_in_builds", false ) ) return;
-		if ( Input.IsActionJustPressed( "dev_menu" ) && !searchEntry.HasFocus() ) SetOpen( !open );
+		if ( !Allowed ) return;
 		var dt = (float)(delta / MathF.Max( 0.0001f, (float)Engine.TimeScale ));
 		UpdateNoclip( dt );
 		UpdateFreeCam( dt );

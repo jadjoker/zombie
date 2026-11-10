@@ -21,7 +21,7 @@ CONTROLS
   Use / buy           E
   Third person        C
   Command ally        Z
-  Dev menu            P (maps, skins, cheats)
+  Dev menu            Esc, then Dev menu (maps, skins, cheats)
   Pause and settings  Esc (sensitivity, volume, field of view, fullscreen, restart, quit)
 
 Sounds are placeholders for now. Please note anything that feels off:

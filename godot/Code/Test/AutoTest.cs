@@ -1159,6 +1159,26 @@ public partial class AutoTest : Node
 		await Wait( 0.3f );
 		Check( !PauseMenu.IsOpen && !GetTree().Paused, "Esc twice did not end up unpaused" );
 
+		// The dev menu is reached from here now (no key of its own): its button opens it with the game running.
+		menu.SetOpen( true );
+		await Wait( 0.3f );
+		var devButton = menu.FindChild( "Dev menu", true, false ) as Button;
+		Check( devButton is not null, "the pause menu has no Dev menu button" );
+		if ( devButton is not null ) Click( devButton.GetGlobalRect().GetCenter() );
+		await Wait( 0.4f );
+		GD.Print( $"[autotest] pause: dev menu open {DevMenu.IsOpen}, pause open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}, mouse {Input.MouseMode}" );
+		Check( DevMenu.IsOpen && !PauseMenu.IsOpen && !GetTree().Paused, "the Dev menu button did not open the dev menu" );
+		await Shot( "dev_menu_from_pause" );
+		Key( Godot.Key.P, true ); Key( Godot.Key.P, false );
+		await Wait( 0.3f );
+		Check( DevMenu.IsOpen, "P still toggles the dev menu" );
+		Key( Godot.Key.Escape, true ); Key( Godot.Key.Escape, false );
+		await Wait( 0.3f );
+		Check( !DevMenu.IsOpen && !PauseMenu.IsOpen && !GetTree().Paused, "Esc did not close the dev menu back to the game" );
+		Key( Godot.Key.P, true ); Key( Godot.Key.P, false );
+		await Wait( 0.3f );
+		Check( !DevMenu.IsOpen, "P opened the dev menu" );
+
 		// Restart reloads the level: this test node goes with it and a new one picks up above.
 		restartedOnce = true;
 		menu.SetOpen( true );

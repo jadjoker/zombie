@@ -127,6 +127,12 @@ public partial class Bloober : Node3D, ICreature
 		public Color Shade;
 		public readonly List<Spot> Spots = new();
 		public MeshInstance3D Mouth;
+		// Sea serpent model (Tools/blender/bloober_serpent.py): the hinged jaw, side fins, last heading, bank.
+		public Node3D Jaw;
+		public readonly List<(Node3D Node, float Side)> SideFins = new();
+		public Vector3 LastForward;
+		public float Bank;
+		public Basis SkinTurn = Basis.Identity;
 	}
 
 	enum Mode { Chase, Lunge, Retreat }
@@ -201,6 +207,17 @@ public partial class Bloober : Node3D, ICreature
 
 	static readonly Dictionary<string, PackedScene> models = new();
 
+	/// <summary> True when the Blender sea serpent parts are present (they replace the old sculpts). </summary>
+	static bool Serpent => ResourceLoader.Exists( "res://assets/models/creatures/bloober/serpent_head.glb" );
+
+	static Node3D LoadSerpent( string name )
+	{
+		var key = "serpent_" + name;
+		if ( !models.TryGetValue( key, out var scene ) )
+			models[key] = scene = ResourceLoader.Exists( $"res://assets/models/creatures/bloober/{key}.glb" ) ? GD.Load<PackedScene>( $"res://assets/models/creatures/bloober/{key}.glb" ) : null;
+		return scene?.Instantiate<Node3D>();
+	}
+
 	static Node3D LoadModel( string name )
 	{
 		if ( !models.TryGetValue( name, out var scene ) )
@@ -233,8 +250,25 @@ public partial class Bloober : Node3D, ICreature
 			go.AddChild( skin );
 			var shade = Shapes.Hsv( hue + t * 0.07f, 0.85f - t * 0.1f, 0.36f - t * 0.06f );
 			MeshInstance3D renderer;
-			var model = LoadModel( i == 0 ? "head" : $"segment{i % 2}" );
-			if ( model is not null )
+			Node3D jaw = null;
+			var serpentModel = Serpent ? LoadSerpent( i == 0 ? "head" : i == count - 1 ? "tail" : $"segment{i % 2}" ) : null;
+			var model = serpentModel is null ? LoadModel( i == 0 ? "head" : $"segment{i % 2}" ) : null;
+			if ( serpentModel is not null )
+			{
+				// Unit sized (radius 0.5, facing -Z) like the sphere it replaces; the skin scale does the rest.
+				skin.AddChild( serpentModel );
+				var meshes = serpentModel.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().ToList();
+				renderer = meshes.First( m => m.Name.ToString() is "Head" or "Tail" || m.Name.ToString().StartsWith( "Segment" ) );
+				renderer.MaterialOverride = Shapes.Material( shade, "eelskin" );
+				var finMaterial = FinMaterial( shade.Lightened( 0.35f ).Lerp( SpotColor, 0.3f ) );
+				foreach ( var m in meshes )
+				{
+					var n = m.Name.ToString();
+					if ( n == "Jaw" ) { m.MaterialOverride = renderer.MaterialOverride; jaw = m; }
+					else if ( n.StartsWith( "Dorsal" ) || n.StartsWith( "Crest" ) || n.StartsWith( "Frill" ) || n.StartsWith( "TailFan" ) ) m.MaterialOverride = finMaterial;
+				}
+			}
+			else if ( model is not null )
 			{
 				model.Basis = ModelFix * Basis.FromScale( Vector3.One * (1f / 0.64f) );
 				skin.AddChild( model );
@@ -246,14 +280,21 @@ public partial class Bloober : Node3D, ICreature
 				renderer = Shapes.Part( skin, "Sphere", Vector3.Zero, Vector3.One, shade, skin: "eelskin" );
 			}
 
-			var segment = new Segment { Index = i, Go = go, Skin = skin, Renderer = renderer, Radius = radius, Health = SegmentHealth, Position = position, Shade = shade };
+			var segment = new Segment { Index = i, Go = go, Skin = skin, Renderer = renderer, Radius = radius, Health = SegmentHealth, Position = position, Shade = shade, Jaw = jaw, LastForward = -GlobalBasis.Z };
+			if ( serpentModel is not null && i == 1 ) AddSideFins( segment, shade.Lightened( 0.35f ).Lerp( SpotColor, 0.3f ) );
 
-			var spots = i == 0 ? 3 : random.Next( 3, 6 );
+			var serpentBody = serpentModel is not null;
+			var spots = serpentBody ? (i == 0 ? 0 : random.Next( 2, 5 )) : i == 0 ? 3 : random.Next( 3, 6 );
 			for ( var s = 0; s < spots; s++ )
 			{
 				Vector3 dir;
-				do dir = new Vector3( Range( -1f, 1f ), Range( -1f, 1f ), Range( -1f, 1f ) );
-				while ( dir.LengthSquared() < 0.05f || (i == 0 && dir.Normalized().X > 0.2f) );
+				// The serpent wears its spots in a band along each flank (the old round body had them anywhere).
+				if ( serpentBody ) dir = new Vector3( Range( -0.7f, 0.7f ), (s % 2 == 0 ? 1f : -1f) * Range( 0.75f, 1f ), Range( -0.15f, 0.45f ) );
+				else
+				{
+					do dir = new Vector3( Range( -1f, 1f ), Range( -1f, 1f ), Range( -1f, 1f ) );
+					while ( dir.LengthSquared() < 0.05f || (i == 0 && dir.Normalized().X > 0.2f) );
+				}
 				var spot = Shapes.Part( go, "Spot", Vector3.Zero, Vector3.One, SpotColor, glow: true, shadow: false );
 				segment.Spots.Add( new Spot { Mesh = spot, Dir = dir.Normalized(), Phase = Range( 0f, 6.28f ) } );
 			}
@@ -264,8 +305,34 @@ public partial class Bloober : Node3D, ICreature
 		}
 	}
 
+	static StandardMaterial3D FinMaterial( Color color ) => new()
+	{
+		AlbedoColor = color with { A = 0.88f }, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.35f,
+		CullMode = BaseMaterial3D.CullModeEnum.Disabled, RimEnabled = true, Rim = 0.6f,
+	};
+
+	/// <summary> A pair of side fins behind the head (they paddle as it swims). </summary>
+	void AddSideFins( Segment segment, Color color )
+	{
+		var r = segment.Radius;
+		var material = FinMaterial( color );
+		foreach ( var side in new[] { 1f, -1f } )
+		{
+			if ( LoadSerpent( "fin" ) is not { } fin ) return;
+			var pivot = new Node3D { Name = "Side Fin" };
+			segment.Go.AddChild( pivot );
+			pivot.Position = U.Sbox( r * 0.15f, side * r * 0.62f, -r * 0.2f );
+			pivot.AddChild( fin );
+			// The model spreads to its left (+Y in s&box); the right fin is the mirror image.
+			fin.Scale = new Vector3( side, 1f, 1f ) * (r * 1.7f * U.In);
+			foreach ( var m in fin.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() ) m.MaterialOverride = material;
+			segment.SideFins.Add( (pivot, side) );
+		}
+	}
+
 	void BuildTail( Segment tail )
 	{
+		if ( Serpent ) return;   // the serpent tail model has its own fan
 		var r = tail.Radius;
 		foreach ( var side in new[] { -1f, 1f } )
 		{
@@ -277,6 +344,20 @@ public partial class Bloober : Node3D, ICreature
 	void BuildFace( Segment head )
 	{
 		var r = head.Radius;
+		if ( head.Jaw is not null )
+		{
+			// Serpent head: the model has the jaw and teeth; just the glowing eyes in its sockets.
+			foreach ( var side in new[] { -1f, 1f } )
+			{
+				var eyeAt = new Vector3( r * 0.98f, side * r * 0.37f, r * 0.3f );   // in the model's sockets
+				Shapes.Part( head.Go, "Eye", eyeAt, Shapes.Ellipsoid( r * 0.17f ), new Color( 0.04f, 0.02f, 0.03f ) );
+				var k = r * 0.12f;
+				Shapes.Part( head.Go, "Pupil", eyeAt + new Vector3( r * 0.12f, side * r * 0.05f, 0f ), Shapes.Ellipsoid( 0.3f * k, 1f * k, 0.75f * k ), SpotColor, glow: true );
+				var k2 = r * 0.11f;
+				Shapes.Part( head.Go, "Slit", eyeAt + new Vector3( r * 0.15f, side * r * 0.055f, 0f ), Shapes.Ellipsoid( 0.2f * k2, 0.18f * k2, 0.85f * k2 ), Colors.Black );
+			}
+			return;
+		}
 		foreach ( var side in new[] { -1f, 1f } )
 		{
 			var eyeAt = new Vector3( r * 0.75f * Stretch, side * r * 0.45f, r * 0.5f );
@@ -362,7 +443,9 @@ public partial class Bloober : Node3D, ICreature
 	void PoseSegment( Segment segment, float puffScale )
 	{
 		var r = segment.Radius * puffScale * (1f - 0.2f * segment.Hurt);
-		segment.Skin.Scale = Shapes.Ellipsoid( Stretch * r, r, r );
+		var scale = Shapes.Ellipsoid( Stretch * r, r, r );
+		if ( Serpent ) Swim( segment, scale );
+		else segment.Skin.Scale = scale;
 
 		var baseColor = segment.Shade.Lerp( segment.Shade * 0.45f, segment.Hurt );
 		var flash = MathX.Clamp( 1f - segment.Flash / 0.1f, 0f, 1f );
@@ -374,10 +457,14 @@ public partial class Bloober : Node3D, ICreature
 		{
 			if ( !IsInstanceValid( spot.Mesh ) ) continue;
 			var breathe = 0.85f + 0.15f * MathF.Sin( time * 3f + spot.Phase );
-			var surface = new Vector3( spot.Dir.X * Stretch, spot.Dir.Y, spot.Dir.Z ) * r * MathX.Lerp( 0.97f, 1.12f, p );
+			// Serpent sections are slimmer (0.8 x 0.76 of the radius across) and longer than the old spheres.
+			var shape = Serpent ? new Vector3( Stretch * 1.15f, 0.8f, 0.76f ) : new Vector3( Stretch, 1f, 1f );
+			var surface = new Vector3( spot.Dir.X * shape.X, spot.Dir.Y * shape.Y, spot.Dir.Z * shape.Z ) * r * MathX.Lerp( 0.97f, 1.12f, p );
 			var thickness = MathX.Lerp( 0.1f, 0.85f, p ) * segment.Radius;
-			var width = MathX.Lerp( 0.32f * breathe, 0.13f, p ) * segment.Radius;
-			spot.Mesh.Transform = new Transform3D( Shapes.LookAt( U.Sbox( spot.Dir ) ) * Basis.FromScale( new Vector3( width, width, thickness ) * 2f * U.In ), U.Sbox( surface ) );
+			var width = MathX.Lerp( (Serpent ? 0.22f : 0.32f) * breathe, 0.13f, p ) * segment.Radius;
+			var local = new Transform3D( Shapes.LookAt( U.Sbox( spot.Dir ) ) * Basis.FromScale( new Vector3( width, width, thickness ) * 2f * U.In ), U.Sbox( surface ) );
+			// Ride the swim wave and bank with the skin.
+			spot.Mesh.Transform = Serpent ? new Transform3D( segment.SkinTurn, segment.Skin.Position ) * local : local;
 		}
 
 		if ( segment.Mouth is not null )
@@ -391,6 +478,47 @@ public partial class Bloober : Node3D, ICreature
 		{
 			segment.ColliderPuff = puffScale;
 			sphere.Radius = segment.Radius * puffScale * 1.1f * U.In;
+		}
+	}
+
+	/// <summary>
+	/// Serpent motion on top of the follow-the-leader chain: a wave rolling down the body (bigger toward the tail,
+	/// faster when swimming fast), banking into turns, the side fins paddling and the jaw breathing or biting.
+	/// It only moves the skins, so hit spheres and gore stay put.
+	/// </summary>
+	void Swim( Segment segment, Vector3 scale )
+	{
+		var dt = MathF.Max( (float)GetProcessDeltaTime(), 0.0001f );
+		var time = (float)Clock.Now;
+		var last = Math.Max( 1, segments.Count - 1 );
+		var t = segment.Index / (float)last;
+		var speed = segment.Velocity.Length() / U.In;
+		var rate = WiggleRate * (1.4f + MathX.Clamp( speed / 300f, 0f, 1.6f ));
+		var phase = time * rate - segment.Index * 0.85f;
+		var amplitude = segment.Radius * (0.05f + 0.22f * t * t) * (mode == Mode.Lunge ? 0.4f : 1f);
+		var sway = MathF.Sin( phase ) * amplitude;
+		var yaw = MathF.Cos( phase ) * (0.08f + 0.3f * t) * (segment.Index == last ? 1.6f : 1f);
+
+		// Bank into turns: how fast this section's heading swings sideways.
+		var forward = -segment.Go.GlobalBasis.Z;
+		var turn = segment.LastForward.Cross( forward ).Dot( segment.Go.GlobalBasis.Y ) / dt;
+		segment.LastForward = forward;
+		segment.Bank = MathX.Lerp( segment.Bank, MathX.Clamp( -turn * 0.35f, -0.6f, 0.6f ), 1f - MathF.Exp( -4f * dt ) );
+
+		var basis = new Basis( Vector3.Back, segment.Bank ) * new Basis( Vector3.Up, yaw );
+		segment.SkinTurn = basis;
+		segment.Skin.Transform = new Transform3D( basis * Basis.FromScale( scale ), U.Sbox( 0f, sway, 0f ) );
+
+		if ( segment.Jaw is not null )
+		{
+			var breathe = 0.05f + 0.04f * MathF.Sin( time * 1.7f );
+			var open = breathe + Ease( mouthOpen ) * 0.75f + (mode == Mode.Lunge ? 0.25f : 0f);
+			segment.Jaw.Rotation = new Vector3( -MathX.Clamp( open, 0f, 0.85f ), 0f, 0f );
+		}
+		foreach ( var (fin, side) in segment.SideFins )
+		{
+			var paddle = MathF.Sin( time * rate * 1.6f ) * 0.45f + (Puffed ? 0.6f : 0f);
+			fin.Rotation = new Vector3( 0f, side * (0.35f + 0.25f * MathF.Sin( time * rate * 1.6f + 1f )), side * paddle );
 		}
 	}
 

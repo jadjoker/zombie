@@ -33,6 +33,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--seabed" ) ) { SeabedMap(); return; }
 		if ( args.Contains( "--dive-edge" ) ) { await DiveEdgeTest(); return; }
 		if ( args.Contains( "--hitframes" ) ) { await HitFramesTest(); return; }
+		if ( args.Contains( "--swimframes" ) ) { await SwimFramesTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -931,6 +932,23 @@ public partial class AutoTest : Node
 			target.QueueFree();
 			await Wait( 0.3f );
 		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> A Bloober swimming across in front of the camera, then biting: frames every 0.12 s. </summary>
+	async Task SwimFramesTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		var range = GetTree().CurrentScene;
+		var forward = -new Angles( 0f, player.EyeAngles.Yaw, 0f ).ToBasis().Z;
+		var right = new Angles( 0f, player.EyeAngles.Yaw, 0f ).ToBasis().X;
+		var b = Bloober.Spawn( range, player.GlobalPosition + forward * 260f * U.In + right * -200f * U.In + Vector3.Up * 50f * U.In, 5000f, right );
+		await Wait( 0.3f );
+		for ( var f = 0; f < 8; f++ ) { await Wait( 0.12f ); await Shot( $"swim_{f}" ); }
+		await Wait( 2.5f );
+		LookAt( b.GlobalPosition );
+		for ( var f = 0; f < 6; f++ ) { await Wait( 0.08f ); LookAt( b.GlobalPosition ); await Shot( $"bite_{f}" ); }
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

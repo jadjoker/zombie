@@ -45,6 +45,7 @@ public partial class Level : Node3D
 		// The forest builds its procedural world in place of the hand-made arena (before the navmesh).
 		proceduralMap?.Build( this, path => byPath.TryGetValue( path, out var n ) && IsInstanceValid( n ) ? n : null );
 		Nav.Bake( this );
+		if ( LevelName.Contains( "water", StringComparison.OrdinalIgnoreCase ) ) Caustics.AddTo( this );
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );
@@ -53,7 +54,7 @@ public partial class Level : Node3D
 			var ink = sty.GetProperty( "ink" );
 			Player.Camera.AddChild( new GlobalStylize
 			{
-				Style = Enum.Parse<GlobalStylize.Look>( sty.GetProperty( "style" ).GetString() ),
+				Style = Enum.Parse<GlobalStylize.Look>( (string)ProjectSettings.GetSetting( "game/look", "" ) is { Length: > 0 } look ? look : sty.GetProperty( "style" ).GetString() ),
 				Strength = sty.GetProperty( "strength" ).GetSingle(),
 				Outline = sty.GetProperty( "outline" ).GetSingle(),
 				OutlineWidth = sty.GetProperty( "outline_width" ).GetSingle(),
@@ -81,15 +82,26 @@ public partial class Level : Node3D
 			AmbientLightSource = Godot.Environment.AmbientSource.Color,
 			AmbientLightColor = s.TryGetProperty( "ambient", out var amb ) ? Col( amb ) : new Color( 0.2f, 0.2f, 0.2f ),
 			AmbientLightEnergy = 3f,
-			TonemapMode = Godot.Environment.ToneMapper.Aces,
-			// s&box ColorAdjustments on the main camera.
+			TonemapMode = Godot.Environment.ToneMapper.Agx,
+			// A gentle grade: a touch of contrast, colour pulled back a little so it reads less garish.
 			AdjustmentEnabled = true,
-			AdjustmentContrast = 1.08f,
-			AdjustmentSaturation = 1.05f,
+			AdjustmentContrast = 1.06f,
+			AdjustmentSaturation = 0.94f,
+			// Bloom only on real highlights (glowing eyes, lamps, the sun on the water).
 			GlowEnabled = true,
-			GlowIntensity = 0.6f,
-			GlowBloom = 0.08f,
+			GlowIntensity = 0.45f,
+			GlowBloom = 0.04f,
+			GlowHdrThreshold = 1.0f,
+			GlowBlendMode = Godot.Environment.GlowBlendModeEnum.Softlight,
+			// Contact shadows in creases and under things, and a little light bounced between surfaces.
 			SsaoEnabled = true,
+			SsaoRadius = 1.4f,
+			SsaoIntensity = 1.8f,
+			SsaoPower = 1.4f,
+			SsaoDetail = 0.6f,
+			SsilEnabled = true,
+			SsilRadius = 4f,
+			SsilIntensity = 0.7f,
 		};
 		if ( s.TryGetProperty( "fog", out var fog ) )
 		{
@@ -102,6 +114,26 @@ public partial class Level : Node3D
 			env.FogDensity = 1f;
 			env.FogSkyAffect = 1f;
 		}
+		var underwater = LevelName.Contains( "water", StringComparison.OrdinalIgnoreCase );
+		if ( underwater && s.TryGetProperty( "fog", out var murk ) )
+		{
+			// Underwater: murk you can see light move through. Volumetric fog lit by the sun (shafts where it
+			// is shadowed by rocks and kelp), and a sky that is brighter overhead and fades to dark below.
+			var water = Col( murk.GetProperty( "color" ) );
+			env.VolumetricFogEnabled = true;
+			env.VolumetricFogDensity = 0.02f;
+			env.VolumetricFogAlbedo = water.Lightened( 0.25f );
+			env.VolumetricFogEmission = water * 0.12f;
+			env.VolumetricFogAnisotropy = 0.65f;
+			env.VolumetricFogLength = 90f;
+			env.VolumetricFogDetailSpread = 1.5f;
+			env.VolumetricFogSkyAffect = 0.3f;
+			env.Sky = new Sky { SkyMaterial = new ProceduralSkyMaterial
+			{
+				SkyTopColor = water.Lightened( 0.35f ) * 1.4f, SkyHorizonColor = water, GroundHorizonColor = water * 0.8f, GroundBottomColor = water * 0.25f,
+				SunAngleMax = 20f, SkyCurve = 0.25f,
+			} };
+		}
 		AddChild( new WorldEnvironment { Environment = env } );
 		if ( s.TryGetProperty( "sun", out var sun ) )
 		{
@@ -111,6 +143,10 @@ public partial class Level : Node3D
 				LightColor = Col( sun.GetProperty( "color" ) ),
 				ShadowEnabled = sun.GetProperty( "shadows" ).GetBoolean(),
 				DirectionalShadowMaxDistance = 60f,
+				// Softer shadow edges, and the sun lights the volumetric fog (the shafts underwater).
+				ShadowBlur = 1.5f,
+				LightAngularDistance = 1.2f,
+				LightVolumetricFogEnergy = 2.5f,
 			} );
 		}
 	}

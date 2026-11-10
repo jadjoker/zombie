@@ -228,6 +228,17 @@ void main()
 		c = mix( o, ink, depth_edge( uv, t ) * outline );
 	}
 
+	else if ( style == 12 )
+	{
+		// Clean: the image as rendered (still HDR here; Godot tonemaps after), with thin soft ink lines on depth
+		// edges that fade with distance and keep a little of the colour underneath.
+		float e = depth_edge( uv, t ) * outline * 0.65;
+		c = mix( src, src * 0.3 + ink * 0.4, e );
+		vec3 result_clean = mix( src, c, p.strength );
+		imageStore( color_out, gid, vec4( result_clean, 1.0 ) );
+		return;
+	}
+
 	vec3 result = style == 0 ? src : mix( src, clamp( c, 0.0, 1.0 ), p.strength );
 	imageStore( color_out, gid, vec4( result, 1.0 ) );
 }

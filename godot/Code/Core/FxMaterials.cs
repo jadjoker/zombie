@@ -64,7 +64,7 @@ public static class FxMaterials
 /// </summary>
 public partial class GlobalStylize : Node
 {
-	public enum Look { Off, InkOutlines, Toon, Painterly, Retro, Storybook, Comic, Anime, Sketch, Watercolor, Riso, Flat }
+	public enum Look { Off, InkOutlines, Toon, Painterly, Retro, Storybook, Comic, Anime, Sketch, Watercolor, Riso, Flat, Clean }
 
 	public Look Style = Look.Flat;
 	public float Strength = 1f;
@@ -79,6 +79,7 @@ public partial class GlobalStylize : Node
 	StylizeEffect effect;
 	Godot.Environment env;
 	Godot.Environment.ToneMapper original;
+	bool originalKnown;
 
 	public override void _Ready()
 	{
@@ -103,10 +104,12 @@ public partial class GlobalStylize : Node
 		env ??= GetViewport().World3D?.Environment ?? GetTree().Root.FindChildren( "*", "WorldEnvironment", true, false ).OfType<WorldEnvironment>().FirstOrDefault()?.Environment;
 		if ( env is not null )
 		{
-			if ( env.TonemapMode != Godot.Environment.ToneMapper.Linear ) original = env.TonemapMode;
-			env.TonemapMode = Style == Look.Off ? original : Godot.Environment.ToneMapper.Linear;
+			if ( !originalKnown ) { original = env.TonemapMode; originalKnown = true; }
+			// Clean leaves tonemapping to Godot's filmic AgX (after the pass); the s&box looks tonemap inside it.
+			env.TonemapMode = Style switch { Look.Off => original, Look.Clean => Godot.Environment.ToneMapper.Agx, _ => Godot.Environment.ToneMapper.Linear };
 		}
 		effect.Enabled = Style != Look.Off;
+		effect.Tonemap = Style != Look.Clean;
 		var cam = GetParent() as Camera3D;
 		effect.Params = new[] { (float)(int)Style, Strength, Outline, OutlineWidth, Bands, PixelSize, InkColor.R, InkColor.G, InkColor.B, Vignette, cam?.Near ?? 0.05f, cam?.Far ?? 4000f };
 	}
@@ -117,6 +120,8 @@ public partial class GlobalStylize : Node
 public partial class StylizeEffect : CompositorEffect
 {
 	public float[] Params = { 11f, 1f, 0.9f, 1.6f, 4f, 3f, 0.05f, 0.05f, 0.08f, 0.28f, 0.05f, 4000f };
+	/// <summary> ACES inside the pass (the s&box looks); off for Clean, which Godot tonemaps afterwards. </summary>
+	public bool Tonemap = true;
 	RenderingDevice rd;
 	Rid shader, pipeline, copyShader, copyPipeline, sampler, copyTex;
 	Vector2I copySize;
@@ -171,7 +176,7 @@ public partial class StylizeEffect : CompositorEffect
 		var pc = new float[16];
 		pc[0] = size.X; pc[1] = size.Y;
 		Array.Copy( Params, 0, pc, 2, Params.Length );
-		pc[14] = 1f; pc[15] = 0f;   // tonemap on (near and far came in with the params)
+		pc[14] = Tonemap ? 1f : 0f; pc[15] = 0f;   // tonemap in the pass (near and far came in with the params)
 		var bytes = new byte[pc.Length * 4];
 		Buffer.BlockCopy( pc, 0, bytes, 0, bytes.Length );
 

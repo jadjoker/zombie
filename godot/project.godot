@@ -29,6 +29,7 @@ project/assembly_name="RiskOfCopyright"
 [game]
 
 dev_menu_in_builds=true
+look="Clean"
 
 [input]
 

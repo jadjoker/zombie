@@ -1028,6 +1028,44 @@ public partial class AutoTest : Node
 		await Wait( 0.3f );
 		GD.Print( $"[autotest] devclick: freeze enemies {was} -> {DevFlags.FreezeEnemies} (expect a change), menu open {DevMenu.IsOpen}, mouse {Input.MouseMode}" );
 		Check( was != DevFlags.FreezeEnemies, "clicking a dev menu chip did nothing" );
+		if ( !was ) DevFlags.FreezeEnemies = false;
+
+		// Spawning the Kraken the way a player does: on the sea bed, dev menu (game paused), click Spawn, close.
+		menu.SetOpen( false );
+		DockHouse.Current?.SkipDive();
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		player.GlobalPosition = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.6f );
+		menu.TestShow( "Enemies", "kraken" );
+		await Wait( 0.4f );
+		var spawn = menu.FindChip( "Spawn" );
+		Check( spawn is not null, "the dev menu has no Spawn button for the Kraken" );
+		if ( spawn is not null )
+		{
+			at = spawn.GetGlobalRect().GetCenter();
+			GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = true }, true );
+			await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+			GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true );
+			await Wait( 0.5f );
+			var kraken = Kraken.All.FirstOrDefault();
+			GD.Print( $"[autotest] devclick: Kraken spawned {kraken is not null}, tree paused {GetTree().Paused}, state {kraken?.State}" );
+			Check( kraken is not null, "clicking Spawn did not make a Kraken" );
+			Check( GetTree().Paused, "the game was running behind the dev menu" );
+			menu.SetOpen( false );
+			await Wait( 6f );
+			if ( kraken is not null )
+			{
+				var away = kraken.GlobalPosition.DistanceTo( player.GlobalPosition );
+				var onFloor = MathF.Abs( kraken.GlobalPosition.Y - player.GlobalPosition.Y ) < 3f;
+				GD.Print( $"[autotest] devclick: after closing the menu the Kraken is {kraken.State}, {away:0.0} m away, on the sea bed {onFloor}, brain {kraken.BrainPosition.Y - kraken.GlobalPosition.Y:0.0} m up" );
+				Check( kraken.State == Kraken.Mode.Idle, "the Kraken did not finish coming up after the menu closed" );
+				Check( onFloor, "the Kraken did not come up on the sea bed" );
+				LookAt( kraken.GlobalPosition + Vector3.Up * 2f );
+				await Wait( 0.3f );
+				await Shot( "kraken_dev_spawn" );
+			}
+		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
@@ -1362,7 +1400,7 @@ public partial class AutoTest : Node
 		await Wait( 0.3f );
 		Check( !PauseMenu.IsOpen && !GetTree().Paused, "Esc twice did not end up unpaused" );
 
-		// The dev menu is reached from here now (no key of its own): its button opens it with the game running.
+		// The dev menu is reached from here now (no key of its own): its button opens it with the game still paused.
 		menu.SetOpen( true );
 		await Wait( 0.3f );
 		var devButton = menu.FindChild( "Dev menu", true, false ) as Button;
@@ -1370,7 +1408,11 @@ public partial class AutoTest : Node
 		if ( devButton is not null ) Click( devButton.GetGlobalRect().GetCenter() );
 		await Wait( 0.4f );
 		GD.Print( $"[autotest] pause: dev menu open {DevMenu.IsOpen}, pause open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}, mouse {Input.MouseMode}" );
-		Check( DevMenu.IsOpen && !PauseMenu.IsOpen && !GetTree().Paused, "the Dev menu button did not open the dev menu" );
+		Check( DevMenu.IsOpen && !PauseMenu.IsOpen, "the Dev menu button did not open the dev menu" );
+		var clockAtDev = Clock.Now;
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] pause: with the dev menu up the game clock moved {Clock.Now - clockAtDev:0.000} s in 0.6 s (expect 0)" );
+		Check( GetTree().Paused && Clock.Now - clockAtDev < 0.01f, "the game ran on behind the dev menu" );
 		await Shot( "dev_menu_from_pause" );
 		Key( Godot.Key.P, true ); Key( Godot.Key.P, false );
 		await Wait( 0.3f );

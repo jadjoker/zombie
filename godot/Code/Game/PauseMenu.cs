@@ -125,7 +125,7 @@ public partial class PauseMenu : CanvasLayer
 		else GameSettings.Save();
 	}
 
-	/// <summary> Hands over to the dev menu: the game runs on behind it, as it always did, and Esc closes it. </summary>
+	/// <summary> Hands over to the dev menu: the game stays paused behind it, and Esc closes it back to the game. </summary>
 	void OpenDevMenu()
 	{
 		SetOpen( false );

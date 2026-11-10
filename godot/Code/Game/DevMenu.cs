@@ -129,6 +129,7 @@ public partial class DevMenu : CanvasLayer
 
 	public override void _ExitTree()
 	{
+		if ( IsOpen ) GetTree().Paused = false;
 		IsOpen = false;
 		DevFlags.Reset();
 		Engine.TimeScale = 1f;
@@ -202,6 +203,8 @@ public partial class DevMenu : CanvasLayer
 		open = value;
 		IsOpen = value;
 		window.Visible = open;
+		// The game stays stopped while the menu is up (it is reached from the pause menu) and runs again when it closes.
+		GetTree().Paused = open;
 		Input.MouseMode = open ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
 		var controller = Controller;
 		if ( controller is not null )

@@ -502,7 +502,7 @@ public partial class PlayerRig : Node
 		gun.Root.Name = $"World {weapon.DisplayName}";
 		gun.Root.TopLevel = true;
 		rigRoot.AddChild( gun.Root );
-		// Only the gun: the first-person arms (sleeve and glove) are hidden, the robot's own hands hold it.
+		// Only the gun: the first-person arms (the robot's plates, joints and trim) are hidden, the rig's own hands hold it.
 		var hide = new StandardMaterial3D { Transparency = BaseMaterial3D.TransparencyEnum.Alpha, AlbedoColor = new Color( 0, 0, 0, 0 ), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded };
 		foreach ( var mesh in gun.Root.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
@@ -510,7 +510,7 @@ public partial class PlayerRig : Node
 			for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
 			{
 				var n = mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
-				if ( n is "sleeve" or "glove" ) mesh.SetSurfaceOverrideMaterial( i, hide );
+				if ( n is "sleeve" or "glove" or "plate" or "joint" or "trim" ) mesh.SetSurfaceOverrideMaterial( i, hide );
 			}
 		}
 		if ( gun.Player.HasAnimation( "idle" ) ) gun.Player.Play( "idle" );

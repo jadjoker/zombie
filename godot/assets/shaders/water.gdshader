@@ -20,7 +20,7 @@ float swell(vec2 p, float t) {
 	h += sin(dot(p, vec2(0.80, 0.60)) * 0.0060 + t * 0.55) * 1.00;
 	h += sin(dot(p, vec2(-0.50, 0.87)) * 0.0110 + t * 0.80) * 0.65;
 	h += sin(dot(p, vec2(0.30, -0.95)) * 0.0240 + t * 1.20) * 0.38;
-	return h * 11.0;
+	return h * 7.0;
 }
 
 float hash21(vec2 p) {

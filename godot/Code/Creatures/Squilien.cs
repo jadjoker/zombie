@@ -99,7 +99,9 @@ public partial class Squilien : Creature
 		BeginSetup( 130f );
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
-		BodyColor = Shapes.Hsv( hue, 0.85f, 0.38f );
+		// A bright pastel body, so the black alien eyes and glowing spots read against it (it was near black, and the
+		// whole creature was a dark blob in the murk).
+		BodyColor = Shapes.Hsv( hue, 0.5f, 0.92f );
 		SpotColor = Shapes.Glow( hue + 0.5f, 2.2f );
 		GooColor = Shapes.Hsv( hue + 0.35f, 0.95f, 1f );
 		InkColor = Shapes.Hsv( 0.76f, 0.75f, 0.28f );

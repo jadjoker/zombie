@@ -164,7 +164,8 @@ public partial class Bloober : Creature
 		BeginSetup( 160f );
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
-		BodyColor = Shapes.Hsv( hue, 0.85f, 0.36f );
+		// Bright enough to pick out at a distance (it was near black: a dark smudge in the murk, hard to find).
+		BodyColor = Shapes.Hsv( hue, 0.62f, 0.8f );
 		SpotColor = Shapes.Glow( hue + 0.45f, 2.2f );
 		GooColor = Shapes.Hsv( hue + 0.18f, 0.95f, 1f );
 

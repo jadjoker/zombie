@@ -17,7 +17,7 @@ public partial class WaterWaves : MeshInstance3D
 		var h = MathF.Sin( (x * 0.80f + y * 0.60f) * 0.0060f + t * 0.55f ) * 1.00f
 			+ MathF.Sin( (x * -0.50f + y * 0.87f) * 0.0110f + t * 0.80f ) * 0.65f
 			+ MathF.Sin( (x * 0.30f + y * -0.95f) * 0.0240f + t * 1.20f ) * 0.38f;
-		return h * 11f * U.In;
+		return h * 7f * U.In;   // crests stay under the pier's deck (18 inches up)
 	}
 
 	public static WaterWaves Create( float sizeInches, int cells )

@@ -162,7 +162,7 @@ public partial class SeaSpider : PartCreature
 		part.Go.AddChild( node );
 		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
-			mesh.MaterialOverride = Shapes.Material( color, "smooth" );
+			mesh.MaterialOverride = Shapes.Material( color, "chitin" );   // a textured shell like the crab (it was smooth plastic)
 			part.Renderers.Add( (mesh, color) );
 		}
 	}

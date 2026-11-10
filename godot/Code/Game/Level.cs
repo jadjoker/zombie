@@ -18,6 +18,8 @@ public partial class Level : Node3D
 	static readonly Dictionary<string, PackedScene> models = new();
 	static readonly Dictionary<string, ShaderMaterial> nature = new();
 	ProceduralMap proceduralMap;
+	/// <summary> Where the level's own props, stations and spawn points are (and how wide), for anything placed after. </summary>
+	readonly List<(Vector3 Position, float Radius)> taken = new();
 
 	/// <summary> A nature material (nature.gdshader) seen in this level, by its s&box name (bark, leaves...). </summary>
 	public static ShaderMaterial NatureMaterial( string name ) => nature.TryGetValue( name, out var m ) ? m : null;
@@ -49,8 +51,11 @@ public partial class Level : Node3D
 		foreach ( var o in root.GetProperty( "objects" ).EnumerateArray() ) Build( o );
 		// The forest builds its procedural world in place of the hand-made arena (before the navmesh).
 		proceduralMap?.Build( this, path => byPath.TryGetValue( path, out var n ) && IsInstanceValid( n ) ? n : null );
+		var water = LevelName.Contains( "water", StringComparison.OrdinalIgnoreCase );
+		// Sea life and landmarks go in before the navmesh (the anchor and the wreck are solid).
+		if ( water ) SeaDressing.Add( this, taken );
 		Nav.Bake( this );
-		if ( LevelName.Contains( "water", StringComparison.OrdinalIgnoreCase ) ) Caustics.AddTo( this );
+		if ( water ) Caustics.AddTo( this );
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );
@@ -164,6 +169,12 @@ public partial class Level : Node3D
 		( byPath.TryGetValue( parentPath, out var parent ) ? parent : this ).AddChild( node );
 		byPath[o.GetProperty( "path" ).GetString()] = node;
 		node.Transform = new Transform3D( new Basis( Quat( o.GetProperty( "rot" ) ) ) * Basis.FromScale( V3( o.GetProperty( "scale" ) ) ), V3( o.GetProperty( "pos" ) ) );
+
+		// Anything standing on the floor claims its spot (not the floor and walls themselves).
+		var scale = V3( o.GetProperty( "scale" ) );
+		var footprint = MathF.Max( MathF.Abs( scale.X ), MathF.Abs( scale.Z ) );
+		if ( footprint < 15f && (o.TryGetProperty( "model", out _ ) || o.TryGetProperty( "collider", out _ ) || o.TryGetProperty( "buy_station", out _ ) || o.TryGetProperty( "spawn_point", out _ )) )
+			taken.Add( (node.GlobalPosition, MathX.Clamp( footprint * (o.TryGetProperty( "model", out _ ) ? 1.6f : 0.9f), 1f, 6f )) );
 
 		var tint = o.TryGetProperty( "tint", out var t ) ? Col( t ) : Colors.White;
 		var shadows = !o.TryGetProperty( "shadows", out var sh ) || sh.GetBoolean();

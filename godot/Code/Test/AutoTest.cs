@@ -47,6 +47,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--flash" ) ) { await FlashTest(); return; }
 		if ( args.Contains( "--waveflow" ) ) { await WaveFlowTest(); return; }
 		if ( args.Contains( "--pause" ) ) { await PauseTest(); return; }
+		if ( args.Contains( "--sea" ) ) { await SeaTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1109,6 +1110,56 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary> The pause menu with real input: Esc stops the game, a slider changes a setting, Resume carries on. </summary>
+	/// <summary> The sea floor's dressing: the landmarks are there and reachable, and pictures of each. </summary>
+	async Task SeaTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var dressing = GetTree().Root.FindChild( "Sea Dressing", true, false ) as Node3D;
+		Check( dressing is not null, "the water level has no sea dressing" );
+		if ( dressing is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		GD.Print( $"[autotest] sea: {dressing.GetChildCount()} things placed, schools {dressing.GetChildren().OfType<FishSchool>().Count()}" );
+		foreach ( var name in new[] { "Anchor", "Rowboat" } )
+		{
+			var prop = dressing.GetNodeOrNull<Node3D>( name );
+			Check( prop is not null, $"no {name} on the sea floor" );
+			if ( prop is null ) continue;
+			var target = prop.GlobalPosition + Vector3.Up * 0.6f;
+			var stand = Nav.Closest( player, prop.GlobalPosition + new Vector3( 5.5f, 0f, 3.5f ) );
+			player.GlobalPosition = stand + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.6f );
+			LookAt( target );
+			await Wait( 0.3f );
+			GD.Print( $"[autotest] sea: {name} at {prop.GlobalPosition}, standing {player.GlobalPosition.DistanceTo( prop.GlobalPosition ):0.0} m away on the navmesh" );
+			Check( player.GlobalPosition.DistanceTo( prop.GlobalPosition ) < 9f, $"could not stand near the {name}" );
+			await Shot( "sea_" + name.ToLower() );
+		}
+		// A wide look across the floor, and up at the fish.
+		player.GlobalPosition = Nav.Closest( player, new Vector3( -6f, 0f, 10f ) ) + Vector3.Up * 0.1f;
+		player.ThirdPerson = true;
+		player.EyeAngles = new Angles( 14f, 135f, 0f );
+		await Wait( 0.8f );
+		await Shot( "sea_wide_a" );
+		player.EyeAngles = new Angles( 10f, -40f, 0f );
+		await Wait( 0.5f );
+		await Shot( "sea_wide_b" );
+		player.ThirdPerson = false;
+		var school = dressing.GetChildren().OfType<FishSchool>().FirstOrDefault();
+		if ( school is not null )
+		{
+			var fish = school.GlobalTransform * school.Multimesh.GetInstanceTransform( 0 ).Origin;
+			player.GlobalPosition = Nav.Closest( player, fish.WithY( 0f ) + new Vector3( 3f, 0f, 3f ) ) + Vector3.Up * 0.1f;
+			await Wait( 0.4f );
+			fish = school.GlobalTransform * school.Multimesh.GetInstanceTransform( 0 ).Origin;
+			LookAt( fish );
+			await Wait( 0.2f );
+			await Shot( "sea_fish" );
+		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	static bool restartedOnce;
 
 	async Task PauseTest()

@@ -10,7 +10,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Build with `dotnet build` in `godot/`.
 - Tests: `<godot> --headless --path godot res://scenes/water_level.tscn -- --autotest <flag>`. Flags: `--creatures`,
   `--boss`, `--robot`, `--float`, `--devmenu`, `--stations`, `--playtest1`, `--dive-edge`, `--devclick` and `--pause` (both need a window), and
-  `--waves --waveflow` (the real start of a run: dive in, enemies must come). `--hitframes` (on `test_range.tscn`)
+  `--waves --waveflow` (the real start of a run: dive in, enemies must come), `--sea` (the sea floor dressing). `--hitframes` (on `test_range.tscn`)
   and `--flash` need a window, so no `--headless`. `--shots <dir>` saves screenshots.
 - Under `--autotest` the wave director's spawning is paused unless `--waves` is passed, so tests spawn what they
   need. A test that sets up state the real game doesn't can hide bugs: keep `--waveflow` unassisted.
@@ -20,6 +20,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `Creature.Everyone` list, spawn and setup). Ones built from shootable limbs (crab, spider, boss) derive from
   `PartCreature`, which owns the part tree, hit capsules, tint flash, cutting limbs off and loose pieces. A new
   creature should not copy that code: derive and override.
+- Art direction: simple, lightly cartoonish cel-shaded shapes in flat colours, not overly cartoonish, nothing
+  photoreal. The player is a robot: first person arms and hands are robot parts (`robot_arm` and `robot_hand` in
+  `Tools/blender/fps_rifle.py`, shared by the shotgun and axe scripts), never gloves.
+- Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
+  (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).

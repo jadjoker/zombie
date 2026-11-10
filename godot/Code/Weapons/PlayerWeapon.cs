@@ -164,6 +164,9 @@ public partial class PlayerWeapon : Node
 		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
 		if ( DevFlags.Placing || melee ) return;   // left click is placing an enemy; the axe is out
 		if ( DockHouse.WeaponsHeld || DevMenu.IsOpen ) return;   // not during the dive, nor while clicking the dev menu
+		if ( MouseFree ) return;   // Esc released the mouse: the click that takes it back doesn't fire
+
+
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )
@@ -194,6 +197,9 @@ public partial class PlayerWeapon : Node
 		controller.WalkSpeed = baseWalk * scale;
 		controller.RunSpeed = MathX.Lerp( baseRun, baseWalk * AimMoveSpeedScale, AimAmount );
 	}
+
+	/// <summary> The mouse is out of the game (Esc). Scripted tests run with it free, so they don't count. </summary>
+	public static bool MouseFree => Input.MouseMode != Input.MouseModeEnum.Captured && !AutoTest.Requested;
 
 	/// <summary> Testing aid: fires one shot as if the trigger was pulled. </summary>
 	public void TestFire() => Shoot();
@@ -246,7 +252,7 @@ public partial class PlayerWeapon : Node
 			var wasAlive = !shootable.IsDead;
 			if ( wasAlive ) TimeSinceHit = 0f;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
-			Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
+			if ( firstPellet ) Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
 			shootable.ReceiveShot( CurrentDamage, tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
 			if ( wasAlive && shootable.IsDead ) TimeSinceKill = 0f;
 			return;
@@ -267,7 +273,7 @@ public partial class PlayerWeapon : Node
 		}
 
 		Fx.ImpactWorld( tr.HitPosition, tr.Normal );
-		Sfx.Play( "hit_world", tr.HitPosition, 0.6f );
+		if ( hitThisShot.Add( this ) ) Sfx.Play( "hit_world", tr.HitPosition, 0.6f );   // once per blast
 	}
 
 	public void MarkKill() => TimeSinceKill = 0f;

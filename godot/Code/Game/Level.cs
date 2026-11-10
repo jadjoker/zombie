@@ -26,6 +26,11 @@ public partial class Level : Node3D
 	public override void _ExitTree()
 	{
 		if ( Current == this ) Current = null;
+		// The material caches belong to this level: the water level adds a caustics pass to its materials, which
+		// would otherwise ride along into the next level under the same names.
+		foreach ( var m in materials.Values ) if ( m is BaseMaterial3D b ) b.NextPass = null;
+		materials.Clear();
+		nature.Clear();
 	}
 
 	public override void _Ready()
@@ -64,7 +69,8 @@ public partial class Level : Node3D
 			} );
 		}
 		if ( WaveDirector.Current is null ) AddChild( new WaveDirector() );
-		if ( !OS.GetCmdlineUserArgs().Contains( "--waves" ) && WaveDirector.Current is { } d ) d.SpawningPaused = true;
+		// Scripted tests spawn what they need themselves (pass --waves to let the director run as in a real game).
+		if ( AutoTest.Requested && !OS.GetCmdlineUserArgs().Contains( "--waves" ) && WaveDirector.Current is { } d ) d.SpawningPaused = true;
 		if ( AutoTest.Requested ) AddChild( new AutoTest() );
 	}
 

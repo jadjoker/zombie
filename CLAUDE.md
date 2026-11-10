@@ -1,4 +1,27 @@
-# Risk of Copyright (s&box)
+# Risk of Copyright
+
+**The game is now the Godot 4.7.2 C# port in `godot/`.** That is where all current work happens and what ships to
+itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the original and is left alone.
+
+## Godot port (current)
+- Code in `godot/Code` (Core, Game, Player, Weapons, Creatures, Gore, Dock, Test). Levels are `godot/levels/*.json`,
+  converted from the s&box scenes; `Level.cs` builds them at load. Main scene: `scenes/water_level.tscn`.
+- Engine: `C:/Users/smitt/Projects/godot/Godot_v4.7.2-stable_mono_win64/Godot_v4.7.2-stable_mono_win64_console.exe`.
+  Build with `dotnet build` in `godot/`.
+- Tests: `<godot> --headless --path godot res://scenes/water_level.tscn -- --autotest <flag>`. Flags: `--creatures`,
+  `--boss`, `--robot`, `--float`, `--devmenu`, `--stations`, `--playtest1`, `--dive-edge`, `--devclick`, and
+  `--waves --waveflow` (the real start of a run: dive in, enemies must come). `--hitframes` (on `test_range.tscn`)
+  and `--flash` need a window, so no `--headless`. `--shots <dir>` saves screenshots.
+- Under `--autotest` the wave director's spawning is paused unless `--waves` is passed, so tests spawn what they
+  need. A test that sets up state the real game doesn't can hide bugs: keep `--waveflow` unassisted.
+- Checks that must hold use `Check( ok, what )` in `AutoTest.cs`, which prints `[autotest] FAIL`. The release
+  script fails on it.
+- Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
+- Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
+  `RIFLE_OUT` set, and so on).
+- Commits reference the migration (#26) or playtest (#27) issue. Chat-only tasks need no issue.
+
+# The original s&box project
 
 Wave-survival FPS in s&box, published as `jadjoker.risk_of_copyright`. Repo: github.com/jadjoker/zombie, branch `main`.
 Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part chunking and gore.

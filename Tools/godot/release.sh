@@ -47,8 +47,14 @@ printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.exe"\n' > "$OUT/.itc
 echo "== smoke test (the exported game plays the opening dive and a wave, then quits)"
 LOG="$ROOT/build/smoke.log"; rm -f "$LOG"
 timeout 300 "$OUT/RiskOfCopyright.exe" --log-file "$(cygpath -w "$LOG")" -- --autotest > /dev/null 2>&1 || true
-if ! grep -q "\[autotest\] done" "$LOG" || grep -q "ERROR" "$LOG"; then
-	grep "ERROR" "$LOG" | head; echo "smoke test failed (see build/smoke.log)"; exit 1
+if ! grep -q "\[autotest\] done" "$LOG" || grep -qE "ERROR|\[autotest\] FAIL" "$LOG"; then
+	grep -E "ERROR|FAIL" "$LOG" | head; echo "smoke test failed (see build/smoke.log)"; exit 1
+fi
+# The real start of a run, nothing helped along: dive in off the board and enemies must come.
+LOG2="$ROOT/build/smoke_waveflow.log"; rm -f "$LOG2"
+timeout 120 "$OUT/RiskOfCopyright.exe" --headless --log-file "$(cygpath -w "$LOG2")" -- --autotest --waves --waveflow > /dev/null 2>&1 || true
+if ! grep -q "\[autotest\] done" "$LOG2" || grep -qE "ERROR|\[autotest\] FAIL" "$LOG2"; then
+	grep -E "ERROR|FAIL|waveflow" "$LOG2" | head; echo "wave flow test failed (see build/smoke_waveflow.log)"; exit 1
 fi
 echo "   passed"
 

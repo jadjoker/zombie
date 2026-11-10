@@ -1,8 +1,8 @@
 using Godot;
 
 /// <summary>
-/// Short-lived effects. The s&box game used Facepunch's stock particle prefabs (muzzle flash, impacts), which can't
-/// come along; these are simple stand-ins until the particle pass.
+/// Short-lived effects: the muzzle flash, bullet impacts and sparks. (The s&box game used Facepunch's stock particle
+/// prefabs, which couldn't come along.)
 /// </summary>
 public static class Fx
 {

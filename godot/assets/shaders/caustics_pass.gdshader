@@ -10,6 +10,7 @@ uniform float strength = 0.42;
 uniform vec3 tint : source_color = vec3( 0.6, 0.95, 1.0 );
 uniform float fade_start = 18.0;
 uniform float fade_end = 55.0;
+uniform float surface_y = 100000.0;   // nothing above the sea's surface (the dock) gets caustics
 
 varying vec3 world_pos;
 varying vec3 world_normal;
@@ -47,5 +48,6 @@ void fragment()
 	float up = smoothstep( 0.15, 0.85, world_normal.y );
 	float dist = length( world_pos - CAMERA_POSITION_WORLD );
 	float fade = 1.0 - smoothstep( fade_start, fade_end, dist );
-	ALBEDO = tint * c * strength * up * fade;
+	float under = 1.0 - smoothstep( surface_y - 6.0, surface_y - 1.0, world_pos.y );
+	ALBEDO = tint * c * strength * up * fade * under;
 }

@@ -82,6 +82,9 @@ public partial class Jetpack : Node
 	Vector3 surgeDirection;
 	double hitStopUntil;
 
+	// A hit stop cut short (level change, respawn) must not leave the game in slow motion.
+	public override void _ExitTree() { if ( hitStopUntil > 0 ) Engine.TimeScale = 1f; }
+
 	Vector3 Feet => controller.GlobalPosition;
 
 	public override void _Ready()

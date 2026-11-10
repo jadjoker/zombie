@@ -109,13 +109,12 @@ public partial class DockHouse : Node3D
 		Current = this;
 		Sea.SurfaceY = SurfaceHeight * U.In;
 		Build();
-		CallDeferred( MethodName.PauseWaves );
 	}
-
-	void PauseWaves() { if ( WaveDirector.Current is { } d ) d.SpawningPaused = true; }
 
 	public override void _ExitTree()
 	{
+		if ( env is not null ) { env.AmbientLightColor = seaAmbient; env.AmbientLightEnergy = seaAmbientEnergy; }
+		if ( hitStopUntil > 0 ) Engine.TimeScale = 1f;
 		Sea.SurfaceY = null;
 		Diving = false;
 		Jetpack.Diving = false;
@@ -598,7 +597,6 @@ public partial class DockHouse : Node3D
 		for ( var i = 0; i < 24; i++ )
 			WaterBubble.Create( controller.GlobalPosition + Vector3.Up * 6f * U.In + Rng.InSphere( 40f * U.In ).Flat(), Rng.Float( 0.8f, 2.2f ), i * 0.01f );
 		controller.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.35f );
-		if ( WaveDirector.Current is { } d ) d.SpawningPaused = false;
 	}
 
 	/// <summary> The landing: a crater, a fountain of debris, a sand cloud, bubbles, and a shockwave. Speed in s&box units/s. </summary>

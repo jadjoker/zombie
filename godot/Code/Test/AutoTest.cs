@@ -13,6 +13,15 @@ public partial class AutoTest : Node
 
 	public static bool Requested => OS.GetCmdlineUserArgs().Contains( "--autotest" );
 
+	/// <summary> A check that must hold: prints FAIL (which the release script looks for) and counts it. </summary>
+	void Check( bool ok, string what )
+	{
+		if ( ok ) return;
+		failures++;
+		GD.Print( $"[autotest] FAIL: {what}" );
+	}
+	int failures;
+
 	public override async void _Ready()
 	{
 		var args = OS.GetCmdlineUserArgs();
@@ -36,6 +45,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--swimframes" ) ) { await SwimFramesTest(); return; }
 		if ( args.Contains( "--devclick" ) ) { await DevClickTest(); return; }
 		if ( args.Contains( "--flash" ) ) { await FlashTest(); return; }
+		if ( args.Contains( "--waveflow" ) ) { await WaveFlowTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1004,6 +1014,7 @@ public partial class AutoTest : Node
 		var before = menu.Rebuilds;
 		await Wait( 2f );
 		GD.Print( $"[autotest] devclick: rebuilds while hovering 2 s: {menu.Rebuilds - before} (expect 0)" );
+		Check( menu.Rebuilds == before, "the dev menu rebuilt while the mouse hovered over it" );
 		chip = menu.FindChip( "Freeze enemies" );
 		at = chip.GetGlobalRect().GetCenter();
 		var was = DevFlags.FreezeEnemies;
@@ -1012,6 +1023,7 @@ public partial class AutoTest : Node
 		GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true );
 		await Wait( 0.3f );
 		GD.Print( $"[autotest] devclick: freeze enemies {was} -> {DevFlags.FreezeEnemies} (expect a change), menu open {DevMenu.IsOpen}, mouse {Input.MouseMode}" );
+		Check( was != DevFlags.FreezeEnemies, "clicking a dev menu chip did nothing" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
@@ -1061,6 +1073,24 @@ public partial class AutoTest : Node
 		inventory.Weapons[0].TestFire();
 		await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
 		await Shot( "flash_3p" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The real start of a run, with nothing helped along: dive in off the board, then enemies must come. </summary>
+	async Task WaveFlowTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		await Wait( 1f );
+		var dock = DockHouse.Current;
+		player.GlobalPosition = U.Sbox( dock.Origin.X + dock.PierLength + 30f, dock.Origin.Y, dock.SurfaceHeight + 24f );
+		await Wait( 0.4f );
+		player.GetNode<PlayerUse>( "PlayerUse" ).PressUse();
+		await Wait( 16f );
+		var d = WaveDirector.Current;
+		GD.Print( $"[autotest] waveflow: wave {d.Wave}, state {d.State}, spawning paused {d.SpawningPaused}, alive {d.AliveCount} (expect some), remaining {d.ZombiesRemaining}" );
+		Check( d.Wave >= 1 && d.State == WaveState.Fighting, "the first wave did not start after diving in" );
+		Check( d.AliveCount > 0, "no enemies spawned after diving in" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

@@ -13,6 +13,7 @@ public static class Caustics
 	public static void AddTo( Node level )
 	{
 		pass ??= new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/caustics_pass.gdshader" ) };
+		pass.SetShaderParameter( "surface_y", Sea.SurfaceY ?? 100000f );
 		var done = new System.Collections.Generic.HashSet<Material>();
 		foreach ( var mesh in level.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{

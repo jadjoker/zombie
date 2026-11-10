@@ -42,6 +42,7 @@ public partial class GooDroplet : MeshInstance3D
 	static readonly Dictionary<Color, StandardMaterial3D> materials = new();
 	static StandardMaterial3D Materials( Color c )
 	{
+		c = new Color( MathF.Round( c.R * 16f ) / 16f, MathF.Round( c.G * 16f ) / 16f, MathF.Round( c.B * 16f ) / 16f );
 		if ( !materials.TryGetValue( c, out var m ) )
 			materials[c] = m = new StandardMaterial3D { AlbedoColor = c, Roughness = 0.2f, Metallic = 0.1f };
 		return m;

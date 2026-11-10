@@ -6,8 +6,8 @@ public enum WaveState { Intermission, Fighting, GameOver }
 /// Port of the s&box WaveDirector: the survival loop. A short break, then a wave of enemies, each wave bigger and
 /// tougher; boss waves every few; "anchor snapped" float rounds; an open-world mode where danger climbs with time or
 /// exploration; dev tools (spawn a kind, jump waves, clear). Enemy kinds are spawned through <see cref="Spawners"/>,
-/// filled in as each creature is ported (a kind with no spawner just doesn't come yet). Numbers are the s&box ones.
-/// (No navmesh yet: spawn spots are found by ground traces in a ring around the player.)
+/// (a kind with no spawner, the zombie, just doesn't come). Numbers are the s&box ones. Enemies appear at the level's
+/// spawn points, or failing that on the ground in a ring around the player.
 /// </summary>
 public partial class WaveDirector : Node3D
 {

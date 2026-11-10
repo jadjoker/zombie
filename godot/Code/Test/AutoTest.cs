@@ -46,6 +46,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--devclick" ) ) { await DevClickTest(); return; }
 		if ( args.Contains( "--flash" ) ) { await FlashTest(); return; }
 		if ( args.Contains( "--waveflow" ) ) { await WaveFlowTest(); return; }
+		if ( args.Contains( "--pause" ) ) { await PauseTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1093,6 +1094,76 @@ public partial class AutoTest : Node
 		Check( d.AliveCount > 0, "no enemies spawned after diving in" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
+	}
+
+	/// <summary> The pause menu with real input: Esc stops the game, a slider changes a setting, Resume carries on. </summary>
+	static bool restartedOnce;
+
+	async Task PauseTest()
+	{
+		if ( restartedOnce )
+		{
+			// Second pass, after Restart reloaded the level: everything must be back and running.
+			await Wait( 1.5f );
+			var d = WaveDirector.Current;
+			GD.Print( $"[autotest] pause: after Restart player {player is not null}, paused {GetTree().Paused}, menu open {PauseMenu.IsOpen}, wave {d?.Wave}, on dock {DockHouse.HoldWaves}, players {PlayerSurvivor.All.Count}, creatures {Creature.Everyone.Count( c => c.IsEnemy )}" );
+			Check( !GetTree().Paused && !PauseMenu.IsOpen, "the game was still paused after Restart" );
+			Check( PlayerSurvivor.All.Count == 1, "Restart left the wrong number of players" );
+			Check( d is not null && d.Wave == 0 && DockHouse.HoldWaves, "Restart did not put the run back at the start" );
+			GD.Print( "[autotest] done" );
+			GetTree().Quit();
+			return;
+		}
+		void Key( Godot.Key key, bool down ) => Input.ParseInputEvent( new InputEventKey { Keycode = key, PhysicalKeycode = key, Pressed = down } );
+		void Click( Vector2 at )
+		{
+			GetViewport().PushInput( new InputEventMouseMotion { Position = at, GlobalPosition = at }, true );
+			GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = true }, true );
+			GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true );
+		}
+		await Wait( 1f );
+		var menu = GetTree().Root.FindChild( "PauseMenu", true, false ) as PauseMenu;
+		Check( menu is not null, "there is no pause menu" );
+		if ( menu is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		var before = Clock.Now;
+		Key( Godot.Key.Escape, true ); Key( Godot.Key.Escape, false );
+		await Wait( 0.5f );
+		var stopped = Clock.Now;
+		await Wait( 1f );
+		GD.Print( $"[autotest] pause: open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}, mouse {Input.MouseMode}, game clock moved {Clock.Now - stopped:0.000} s in 1 s (expect 0)" );
+		Check( PauseMenu.IsOpen && GetTree().Paused, "Esc did not pause the game" );
+		Check( Clock.Now - stopped < 0.01, "game time kept running while paused" );
+		await Shot( "pause_menu" );
+
+		// Drag-free check of a setting: click near the right end of the field of view slider.
+		var slider = menu.FindChild( "Field of view", true, false )?.FindChild( "Slider", true, false ) as HSlider;
+		var fovBefore = GameSettings.Fov;
+		if ( slider is not null ) Click( slider.GetGlobalRect().Position + new Vector2( slider.GetGlobalRect().Size.X * 0.9f, slider.GetGlobalRect().Size.Y * 0.5f ) );
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] pause: field of view {fovBefore:0} -> {GameSettings.Fov:0}, player {player.FieldOfView:0}" );
+		Check( GameSettings.Fov > fovBefore + 5f && MathF.Abs( player.FieldOfView - GameSettings.Fov ) < 0.5f, "the field of view slider did not change the setting" );
+		GameSettings.Fov = fovBefore;
+		GameSettings.Apply();
+
+		var resume = menu.FindChild( "Resume", true, false ) as Button;
+		Click( resume.GetGlobalRect().GetCenter() );
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] pause: after Resume open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}, clock running {Clock.Now > stopped + 0.3}" );
+		Check( !PauseMenu.IsOpen && !GetTree().Paused, "Resume did not unpause" );
+		Check( Clock.Now > stopped + 0.3, "game time did not carry on after Resume" );
+
+		// Esc closes it too.
+		Key( Godot.Key.Escape, true ); Key( Godot.Key.Escape, false );
+		await Wait( 0.3f );
+		Key( Godot.Key.Escape, true ); Key( Godot.Key.Escape, false );
+		await Wait( 0.3f );
+		Check( !PauseMenu.IsOpen && !GetTree().Paused, "Esc twice did not end up unpaused" );
+
+		// Restart reloads the level: this test node goes with it and a new one picks up above.
+		restartedOnce = true;
+		menu.SetOpen( true );
+		await Wait( 0.3f );
+		Click( (menu.FindChild( "Restart", true, false ) as Button).GetGlobalRect().GetCenter() );
 	}
 
 	async Task Shot( string name )

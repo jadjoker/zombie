@@ -82,7 +82,6 @@ public partial class PlayerWeapon : Node
 	PlayerMovement movement;
 	CameraJuice juice;
 	float aimLinear;
-	float baseSensitivity = -1f;
 	TimeUntil reloadFinished;
 	TimeUntil nextShell;
 	bool firstShell;
@@ -135,7 +134,7 @@ public partial class PlayerWeapon : Node
 		AimAmount = 0f;
 		aimLinear = 0f;
 		ScopeAmount = 0f;
-		if ( baseSensitivity > 0f ) controller.LookSensitivity = baseSensitivity;
+		controller.LookSensitivity = GameSettings.LookSensitivity;
 	}
 
 	void EnsureViewModel()
@@ -186,9 +185,8 @@ public partial class PlayerWeapon : Node
 		ScopeAmount = scope * scope * (3f - 2f * scope);
 
 		// Look slower when zoomed, in step with the zoom.
-		if ( baseSensitivity < 0f ) baseSensitivity = controller.LookSensitivity;
 		var zoom = MathX.Lerp( 1f, AimFovScale, AimAmount ) * MathX.Lerp( 1f, ScopeFovScale / MathF.Max( 0.05f, AimFovScale ), ScopeAmount );
-		controller.LookSensitivity = baseSensitivity * MathX.Lerp( 1f, zoom, 0.85f );
+		controller.LookSensitivity = GameSettings.LookSensitivity * MathX.Lerp( 1f, zoom, 0.85f );
 
 		// Slow the player while aiming (the movement kit owns the base speeds).
 		var baseWalk = movement?.MoveSpeed ?? controller.WalkSpeed;

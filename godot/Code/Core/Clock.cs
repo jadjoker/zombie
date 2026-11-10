@@ -18,6 +18,9 @@ public partial class Clock : Node
 		// game (creatures, effects, the camera, the player rig) moves every frame, where interpolation makes it
 		// lag and stutter, so it is off by default and those bodies opt in.
 		GetTree().Root.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off;
+		// The saved settings (volume, fullscreen, look speed, field of view).
+		GameSettings.Load();
+		GameSettings.Apply();
 		// Tests on an exported build (which cannot take a scene path): -- --scene res://scenes/forest.tscn
 		var args = OS.GetCmdlineUserArgs();
 		var i = System.Array.IndexOf( args, "--scene" );

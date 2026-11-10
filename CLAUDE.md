@@ -9,7 +9,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Engine: `C:/Users/smitt/Projects/godot/Godot_v4.7.2-stable_mono_win64/Godot_v4.7.2-stable_mono_win64_console.exe`.
   Build with `dotnet build` in `godot/`.
 - Tests: `<godot> --headless --path godot res://scenes/water_level.tscn -- --autotest <flag>`. Flags: `--creatures`,
-  `--boss`, `--robot`, `--float`, `--devmenu`, `--stations`, `--playtest1`, `--dive-edge`, `--devclick`, and
+  `--boss`, `--robot`, `--float`, `--devmenu`, `--stations`, `--playtest1`, `--dive-edge`, `--devclick` and `--pause` (both need a window), and
   `--waves --waveflow` (the real start of a run: dive in, enemies must come). `--hitframes` (on `test_range.tscn`)
   and `--flash` need a window, so no `--headless`. `--shots <dir>` saves screenshots.
 - Under `--autotest` the wave director's spawning is paused unless `--waves` is passed, so tests spawn what they

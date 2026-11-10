@@ -1,0 +1,67 @@
+using Godot;
+
+/// <summary>
+/// The settings the pause menu changes: mouse sensitivity, volume, field of view, fullscreen. Saved to
+/// user://settings.cfg and loaded at start. Scripted tests neither load nor save, so they always run on the
+/// defaults and never touch the saved file.
+/// </summary>
+public static class GameSettings
+{
+	const string Path = "user://settings.cfg";
+	/// <summary> Degrees per mouse pixel at sensitivity 1 (the s&box feel). </summary>
+	const float BaseLook = 0.12f;
+
+	/// <summary> Mouse sensitivity multiplier (1 = default). </summary>
+	public static float Sensitivity = 1f;
+	/// <summary> Master volume, 0 to 1. </summary>
+	public static float Volume = 1f;
+	/// <summary> Horizontal field of view in degrees. </summary>
+	public static float Fov = 90f;
+	public static bool Fullscreen;
+
+	public const float MinSensitivity = 0.2f, MaxSensitivity = 3f, MinFov = 70f, MaxFov = 110f;
+
+	/// <summary> Degrees per mouse pixel right now (before any zoom slows it). </summary>
+	public static float LookSensitivity => BaseLook * Sensitivity;
+
+	public static void Load()
+	{
+		if ( AutoTest.Requested ) return;
+		var file = new ConfigFile();
+		if ( file.Load( Path ) != Error.Ok ) return;
+		Sensitivity = MathX.Clamp( (float)file.GetValue( "controls", "sensitivity", 1f ), MinSensitivity, MaxSensitivity );
+		Volume = MathX.Clamp( (float)file.GetValue( "audio", "volume", 1f ), 0f, 1f );
+		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
+		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
+	}
+
+	public static void Save()
+	{
+		if ( AutoTest.Requested ) return;
+		var file = new ConfigFile();
+		file.SetValue( "controls", "sensitivity", Sensitivity );
+		file.SetValue( "audio", "volume", Volume );
+		file.SetValue( "video", "fov", Fov );
+		file.SetValue( "video", "fullscreen", Fullscreen );
+		file.Save( Path );
+	}
+
+	/// <summary> Puts the settings into effect (sound, window, every camera and look speed). </summary>
+	public static void Apply()
+	{
+		var master = AudioServer.GetBusIndex( "Master" );
+		AudioServer.SetBusVolumeDb( master, Mathf.LinearToDb( MathF.Max( Volume, 0.0001f ) ) );
+		AudioServer.SetBusMute( master, Volume <= 0.001f );
+		if ( !AutoTest.Requested )
+		{
+			var now = DisplayServer.WindowGetMode();
+			var isFull = now is DisplayServer.WindowMode.Fullscreen or DisplayServer.WindowMode.ExclusiveFullscreen;
+			if ( isFull != Fullscreen ) DisplayServer.WindowSetMode( Fullscreen ? DisplayServer.WindowMode.Fullscreen : DisplayServer.WindowMode.Windowed );
+		}
+		foreach ( var player in PlayerSurvivor.All )
+		{
+			player.Controller.FieldOfView = Fov;
+			player.Controller.LookSensitivity = LookSensitivity;
+		}
+	}
+}

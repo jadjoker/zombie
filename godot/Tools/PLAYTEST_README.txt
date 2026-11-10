@@ -4,7 +4,7 @@ Start: unzip the whole folder, then double-click RiskOfCopyright.exe.
 If Windows says "Windows protected your PC", click "More info" then "Run anyway"
 (the game isn't code-signed yet).
 
-You start on a dock. Jump off and dive to the sea floor, then survive the waves.
+You start on a dock. Walk to the end of the diving board and press E to dive to the sea floor, then survive the waves.
 
 CONTROLS
   Move                W A S D
@@ -22,7 +22,7 @@ CONTROLS
   Third person        C
   Command ally        Z
   Dev menu            P (maps, skins, cheats)
-  Free the mouse      Esc
+  Pause and settings  Esc (sensitivity, volume, field of view, fullscreen, restart, quit)
 
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

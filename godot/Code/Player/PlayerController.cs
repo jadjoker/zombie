@@ -129,6 +129,8 @@ public partial class PlayerController : CharacterBody3D
 		AddChild( Camera );
 		Camera.MakeCurrent();
 
+		FieldOfView = GameSettings.Fov;
+		LookSensitivity = GameSettings.LookSensitivity;
 		EyeAngles = new Angles( 0f, MathX.Deg( GlobalRotation.Y ), 0f );
 		GlobalRotation = Vector3.Zero;
 		Input.MouseMode = Input.MouseModeEnum.Captured;
@@ -138,9 +140,8 @@ public partial class PlayerController : CharacterBody3D
 	{
 		if ( e is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured )
 			lookDelta += motion.Relative;
-		if ( e is InputEventKey { Pressed: true, Keycode: Key.Escape } )
-			Input.MouseMode = Input.MouseMode == Input.MouseModeEnum.Captured ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
-		if ( e is InputEventMouseButton { Pressed: true } && Input.MouseMode != Input.MouseModeEnum.Captured && !DevMenu.IsOpen )
+		// (Esc belongs to the pause menu.) A click takes the mouse back if something else let go of it (alt-tab).
+		if ( e is InputEventMouseButton { Pressed: true } && Input.MouseMode != Input.MouseModeEnum.Captured && !DevMenu.IsOpen && !PauseMenu.IsOpen )
 			Input.MouseMode = Input.MouseModeEnum.Captured;
 	}
 

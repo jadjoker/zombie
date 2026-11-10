@@ -267,6 +267,7 @@ public partial class SeaSpider : Node3D, ICreature
 		rig.AddChild( lureBulb );
 		lureLight = new OmniLight3D { LightColor = glowColor, LightEnergy = 2.5f, OmniRange = 380f * U.In, OmniAttenuation = 1.1f, ShadowEnabled = false };
 		lureBulb.AddChild( lureLight );
+		if ( IsAlly ) { lureLight.OmniRange = 220f * U.In; lureLight.LightColor = glowColor.Lerp( Colors.White, 0.35f ); }
 		// Top-level pieces start at the spider (not the map origin) until the first lure update.
 		foreach ( var m in lureSeg.Concat( lureJoint ).Append( lureBulb ) )
 			if ( m is not null ) m.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), rig.GlobalPosition );
@@ -350,7 +351,8 @@ public partial class SeaSpider : Node3D, ICreature
 		if ( IsAlly && timeSinceCharging < 0.3f ) glow *= 2f;
 		lureBulb.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * 4.4f * 2f * S ), tip );
 		lureBulbMaterial.EmissionEnergyMultiplier = 1.7f * glow * 1.6f;
-		lureLight.LightEnergy = 2.6f * glow;
+		// The ally's lure is a soft companion glow: at full strength it flooded small rooms (the dock hut) green.
+		lureLight.LightEnergy = (IsAlly ? 0.8f : 2.6f) * glow;
 	}
 
 	// ---- The eye ----

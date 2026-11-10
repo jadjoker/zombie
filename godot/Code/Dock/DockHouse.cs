@@ -275,16 +275,8 @@ public partial class DockHouse : Node3D
 		var inside = new OmniLight3D { LightColor = new Color( 1f, 0.72f, 0.45f ), LightEnergy = 1.1f, OmniRange = 220f * U.In, ShadowEnabled = true, ShadowBlur = 1.5f };
 		root.AddChild( inside );
 		inside.GlobalPosition = U.Sbox( hx - 20f, o.Y, deck + 90f );
-		// The level's flat teal ambient lit the inside as brightly as the open sea. Inside the hut it's swapped for a
-		// dim warm fill, so the lamp does the lighting and the doorway reads bright against it.
-		var probe = new ReflectionProbe
-		{
-			Name = "Hut Interior", Size = new Vector3( 200f, 110f, 220f ) * U.In, BoxProjection = true, Interior = true,
-			AmbientMode = ReflectionProbe.AmbientModeEnum.Color, AmbientColor = new Color( 0.16f, 0.12f, 0.09f ), AmbientColorEnergy = 1f,
-			UpdateMode = ReflectionProbe.UpdateModeEnum.Once,
-		};
-		root.AddChild( probe );
-		probe.GlobalPosition = U.Sbox( hx, o.Y, deck + 55f );
+		hutMin = U.Sbox( hx - 110f, o.Y - 100f, deck ) ;
+		hutMax = U.Sbox( hx + 110f, o.Y + 100f, deck + wallH );
 	}
 
 	// ---- The player on the dock, and the dive ----
@@ -307,9 +299,46 @@ public partial class DockHouse : Node3D
 
 	PlayerSurvivor LocalPlayer => PlayerSurvivor.All.FirstOrDefault();
 
+	Vector3 hutMin, hutMax;
+	Godot.Environment env;
+	Color seaAmbient;
+	float seaAmbientEnergy, inHut, inAir;
+
+	/// <summary>
+	/// The level's ambient is tuned for underwater (a strong teal fill). Above the surface it gives way to a dim cool
+	/// moonlight fill, and inside the hut to a low warm one, so the lamp does the lighting. Eases between them.
+	/// </summary>
+	void UpdateAmbient( float dt )
+	{
+		if ( env is null )
+		{
+			env = GetTree().CurrentScene?.FindChildren( "*", "WorldEnvironment", true, false ).OfType<WorldEnvironment>().FirstOrDefault()?.Environment
+				?? GetViewport().World3D?.Environment;
+			if ( env is null ) return;
+			seaAmbient = env.AmbientLightColor;
+			seaAmbientEnergy = env.AmbientLightEnergy;
+			dt = 10f;   // first frame: snap straight to where the camera is
+		}
+		var cam = GetViewport().GetCamera3D();
+		if ( cam is null ) return;
+		var p = cam.GlobalPosition;
+		var lo = hutMin.Min( hutMax );
+		var hi = hutMin.Max( hutMax );
+		var hut = p.X > lo.X && p.X < hi.X && p.Z > lo.Z && p.Z < hi.Z && p.Y > lo.Y && p.Y < hi.Y ? 1f : 0f;
+		var air = p.Y > SurfaceHeight * U.In ? 1f : 0f;
+		var k = 1f - MathF.Exp( -4f * dt );
+		inHut = MathX.Lerp( inHut, hut, k );
+		inAir = MathX.Lerp( inAir, air, k );
+		var night = new Color( 0.09f, 0.12f, 0.17f );
+		var warm = new Color( 0.2f, 0.15f, 0.11f );
+		env.AmbientLightColor = seaAmbient.Lerp( night.Lerp( warm, inHut ), inAir );
+		env.AmbientLightEnergy = MathX.Lerp( seaAmbientEnergy, MathX.Lerp( 1.6f, 1.0f, inHut ), inAir );
+	}
+
 	public override void _Process( double delta )
 	{
 		if ( hitStopUntil > 0 && Clock.Real >= hitStopUntil ) { Engine.TimeScale = 1f; hitStopUntil = 0; }
+		UpdateAmbient( (float)delta );
 		var player = LocalPlayer;
 		if ( player is null ) return;
 		var controller = player.Controller;

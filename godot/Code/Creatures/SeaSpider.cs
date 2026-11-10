@@ -9,7 +9,7 @@ using Godot;
 /// what you point it at (Z), holds a spot, climbs walls toward you when you swim above, spits harpoon strands at
 /// things above it, charges your jetpack and flicks you back up. Numbers are the s&box ones (inches).
 /// </summary>
-public partial class SeaSpider : Node3D, ICreature
+public partial class SeaSpider : PartCreature
 {
 	public float MoveSpeed = 230f;
 	public float AttackRange = 95f;
@@ -28,7 +28,6 @@ public partial class SeaSpider : Node3D, ICreature
 	public float Size = 1f;
 	public Vector3 NetVelocity;   // m/s
 	public bool Stabbing;
-	public int GoneMask;
 
 	public const int ModeFollow = 0, ModeHold = 1, ModeAttack = 2;
 	public bool IsAlly;
@@ -38,35 +37,14 @@ public partial class SeaSpider : Node3D, ICreature
 	public Node3D AttackTarget;
 
 	public static readonly List<SeaSpider> All = new();
-	public bool IsDead => health?.IsDead ?? false;
-	public Health Health => health;
 	public Vector3 LureTip => lureBulb is not null && IsInstanceValid( lureBulb ) ? lureBulb.GlobalPosition : GlobalPosition + Vector3.Up * 60f * Size * U.In;
-	public event Action<SeaSpider> Killed;
 
 	const int Body = 0, EyePart = 1, FirstThigh = 2, LegCount = 6, FirstShin = FirstThigh + LegCount;
 	const float BodyHeight = 43f;
 	const float ThighLength = 22f, ShinLength = 58f;
 	static readonly float[] LegYaws = { 48f, 92f, 132f, -48f, -92f, -132f };
 
-	sealed class Part
-	{
-		public int Index;
-		public int Parent = -1;
-		public CreaturePart Go;
-		public float Health;
-		public float MaxHealth;
-		public bool Gone;
-		public float Hurt;
-		public TimeSince Flash = 99f;
-		public readonly List<(MeshInstance3D Renderer, Color Tint)> Renderers = new();
-		public Vector3 LastPosition;
-		public Vector3 Velocity;
-	}
-
-	readonly Part[] parts = new Part[FirstShin + LegCount];
-	Node3D rig;
-	Health health;
-	GoreSystem gore;
+	public SeaSpider() => parts = new Part[FirstShin + LegCount];
 	NavAgent agent;
 	Color shellColor, darkColor, gooColor, glowColor;
 	TimeSince timeSinceAttack = 999f;
@@ -74,11 +52,7 @@ public partial class SeaSpider : Node3D, ICreature
 	TimeSince timeSinceRepath = 999f;
 	TimeSince timeSinceStab = 999f;
 	Vector3 wanderGoal;
-	bool diedLocally;
-	TimeSince timeSinceDeath;
-	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
-	bool lastShotPointBlank;
 	float gait;
 
 	const float EyeRadius = 8.5f;
@@ -97,12 +71,7 @@ public partial class SeaSpider : Node3D, ICreature
 	{
 		var spider = new SeaSpider { Name = ally ? "Ally Spider" : "Sea Spider", IsAlly = ally, OwnerPlayer = owner };
 		if ( ally ) { spider.Hue = 0.5f; spider.Size = 1.15f; spider.MoveSpeed = 175f; }
-		parent.AddChild( spider );
-		spider.GlobalPosition = position;
-		var h = new Health();
-		h.ResetTo( maxHealth );
-		spider.AddChild( h );
-		return spider;
+		return Place( spider, parent, position, maxHealth );
 	}
 
 	public static SeaSpider SpawnAlly( PlayerController owner )
@@ -114,23 +83,15 @@ public partial class SeaSpider : Node3D, ICreature
 		return spider;
 	}
 
-	public override void _Ready()
-	{
-		All.Add( this );
-		CallDeferred( MethodName.Setup );
-	}
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+	protected override string Kind => "Spider";
+	protected override uint PartLayer => IsAlly ? 0u : Layers.Creature;
+	public override bool IsEnemy => !IsAlly;
+	protected override Color GibGoo => gooColor;
 
-	public override void _ExitTree()
+	protected override void Setup()
 	{
-		All.Remove( this );
-		if ( rig is not null && IsInstanceValid( rig ) ) rig.QueueFree();
-	}
-
-	void Setup()
-	{
-		health = GetNodeOrNull<Health>( "Health" );
-		if ( health is null ) { health = new Health(); health.ResetTo( 110f ); AddChild( health ); }
-		gore = GoreSystem.Get();
+		BeginSetup( 110f );
 		agent = new NavAgent( this ) { Acceleration = (IsAlly ? 900f : 600f) * U.In };
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
@@ -145,7 +106,6 @@ public partial class SeaSpider : Node3D, ICreature
 			darkColor = shellColor.Lerp( new Color( 0.05f, 0.35f, 0.4f ), 0.6f );
 			gooColor = Shapes.Hsv( 0.5f, 0.8f, 1f );
 		}
-		health.Died += OnDied;
 		// Stand on the ground (spawns can come in from a point in the air).
 		var down = Trace.Ray( this, GlobalPosition + Vector3.Up * 40f * U.In, GlobalPosition + Vector3.Down * 4000f * U.In, Layers.World );
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
@@ -190,16 +150,6 @@ public partial class SeaSpider : Node3D, ICreature
 		BuildLure();
 	}
 
-	Part AddPart( int index, int parent, Node3D parentGo, string name, Vector3 sboxPosition, Basis rotation, float hp )
-	{
-		var go = new CreaturePart { Name = $"Spider {name}", Creature = this, Index = index, CollisionLayer = IsAlly ? 0u : Layers.Creature, CollisionMask = 0 };
-		parentGo.AddChild( go );
-		go.Transform = new Transform3D( rotation, U.Sbox( sboxPosition ) );
-		var part = new Part { Index = index, Parent = parent, Go = go, Health = hp, MaxHealth = hp };
-		parts[index] = part;
-		return part;
-	}
-
 	static readonly Dictionary<string, PackedScene> sculpts = new();
 
 	void Sculpt( Part part, string model, Color color )
@@ -222,18 +172,6 @@ public partial class SeaSpider : Node3D, ICreature
 		var mesh = Shapes.Part( parent, "Shape", at, Shapes.Ellipsoid( radii.X, radii.Y, radii.Z ), color, skin: skin ? "smooth" : null );
 		part.Renderers.Add( (mesh, color) );
 		return mesh;
-	}
-
-	/// <summary> A hit capsule from one s&box local point to another (inches). </summary>
-	void Trigger( Part part, Vector3 from, Vector3 to, float radius )
-	{
-		var a = U.Sbox( from );
-		var b = U.Sbox( to );
-		var axis = b - a;
-		var length = axis.Length();
-		var shape = new CapsuleShape3D { Radius = radius * U.In, Height = length + radius * 2f * U.In };
-		var basis = length > 1e-5f ? new Basis( new Quaternion( Vector3.Up, axis / length ) ) : Basis.Identity;
-		part.Go.AddChild( new CollisionShape3D { Shape = shape, Transform = new Transform3D( basis, (a + b) * 0.5f ) } );
 	}
 
 	// ---- The lure ----
@@ -386,8 +324,6 @@ public partial class SeaSpider : Node3D, ICreature
 		return go;
 	}
 
-	static float LidEdge( float coverage ) => MathX.Deg( MathF.Asin( 1f - 2f * MathX.Clamp( coverage, 0f, 1f ) ) );
-
 	void UpdateEye( float dt )
 	{
 		if ( !Has( EyePart ) || eyeBall is null || !IsInstanceValid( eyeBall ) ) return;
@@ -438,7 +374,6 @@ public partial class SeaSpider : Node3D, ICreature
 
 	// ---- Every frame ----
 
-	bool Has( int index ) => parts[index] is { Gone: false };
 	float LegsLost => Enumerable.Range( 0, LegCount ).Sum( i => !Has( FirstThigh + i ) ? 1f : !Has( FirstShin + i ) ? 0.5f : 0f );
 	bool Crawling => LegsLost >= 3.5f;
 	bool Blind => !Has( EyePart );
@@ -715,20 +650,7 @@ public partial class SeaSpider : Node3D, ICreature
 		if ( IsAlly )
 			foreach ( var player in PlayerSurvivor.All )
 				if ( player.Controller.GetNodeOrNull<Jetpack>( "Jetpack" ) is { } jet && jet.DockedTo == this && jet.Power < jet.MaxPower - 0.5f ) timeSinceCharging = 0f;
-		foreach ( var part in parts )
-		{
-			if ( part is null || part.Gone ) continue;
-			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
-			foreach ( var (renderer, tint) in part.Renderers )
-			{
-				if ( !IsInstanceValid( renderer ) ) continue;
-				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
-				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
-			}
-			var position = part.Go.GlobalPosition;
-			part.Velocity = (position - part.LastPosition) / MathF.Max( dt, 0.0001f );
-			part.LastPosition = position;
-		}
+		TintParts( dt );
 	}
 
 	// ---- Enemy brain ----
@@ -1077,14 +999,6 @@ public partial class SeaSpider : Node3D, ICreature
 		return dashing ? 1.25f : 0.3f;
 	}
 
-	void Face( Vector3 direction, float rate, float dt )
-	{
-		var flat = direction.Flat();
-		if ( flat.IsNearlyZero() ) return;
-		var wanted = Shapes.LookAt( flat ).GetRotationQuaternion();
-		GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( wanted, MathX.Clamp( dt * rate, 0f, 1f ) ) );
-	}
-
 	void Stab( PlayerSurvivor target )
 	{
 		Sfx.Play( "creature_attack", GlobalPosition, 0.8f, Rng.Float( 0.8f, 0.95f ) );
@@ -1095,12 +1009,11 @@ public partial class SeaSpider : Node3D, ICreature
 
 	// ---- Getting shot ----
 
-	public void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead || IsAlly ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
-		lastShotDirection = direction;
-		lastShotPointBlank = (position - origin).Length() < CreatureGore.OverkillRange * U.In;
+		NoteShot( direction, position, origin );
 		var part = parts[index];
 		var crit = index == EyePart;
 		var multiplier = index switch { Body => 1f, EyePart => EyeMultiplier, _ => LimbMultiplier };
@@ -1124,18 +1037,6 @@ public partial class SeaSpider : Node3D, ICreature
 		var killed = wasAlive && IsDead;
 		if ( !killed ) agent.SetAgentPosition( GlobalPosition + direction.Flat().SafeNormal() * 6f * U.In );
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, crit, scoreHit );
-	}
-
-	int SubtreeMask( int index )
-	{
-		var mask = 1 << index;
-		for ( var i = 0; i < parts.Length; i++ )
-		{
-			if ( i == index || parts[i] is null ) continue;
-			for ( var p = parts[i].Parent; p >= 0; p = parts[p].Parent )
-				if ( p == index ) { mask |= 1 << i; break; }
-		}
-		return mask;
 	}
 
 	void Hit( int index, Vector3 position, Vector3 direction, bool chip, float hurt )
@@ -1185,53 +1086,15 @@ public partial class SeaSpider : Node3D, ICreature
 		CreatureGore.Twitch( piece, Rng.Float( 2.5f, 4.5f ), 0.8f );
 	}
 
-	void MarkGone( int index )
-	{
-		var mask = SubtreeMask( index );
-		for ( var i = 0; i < parts.Length; i++ )
-			if ( (mask & (1 << i)) != 0 && parts[i] is not null ) parts[i].Gone = true;
-	}
-
-	/// <summary> A part (and what hangs off it) comes loose as a physics piece, its hit capsules made solid. Push in s&box units/s. </summary>
-	Node3D Detach( Part part, Vector3 push, float spin = 12f )
-	{
-		var source = part.Go;
-		var piece = new Node3D { Name = "Spider Piece" };
-		GetTree().CurrentScene.AddChild( piece );
-		piece.GlobalTransform = source.GlobalTransform;
-		var shapes = new List<(Shape3D Shape, Transform3D Global)>();
-		foreach ( var shape in source.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>() )
-			shapes.Add( (shape.Shape, shape.GlobalTransform) );
-		foreach ( var child in source.GetChildren().OfType<Node3D>().ToList() )
-			if ( child is not CollisionShape3D ) child.Reparent( piece, true );
-		// Sub-parts (a shin under a thigh) are bodies themselves: strip their bodies, keep their meshes.
-		foreach ( var sub in piece.FindChildren( "*", "StaticBody3D", true, false ).OfType<CreaturePart>().ToList() )
-		{
-			var holder = new Node3D { Name = sub.Name };
-			sub.GetParent().AddChild( holder );
-			holder.GlobalTransform = sub.GlobalTransform;
-			foreach ( var c in sub.GetChildren().OfType<Node3D>().ToList() ) if ( c is not CollisionShape3D ) c.Reparent( holder, true );
-			sub.QueueFree();
-		}
-		source.QueueFree();
-		var gib = Gib.Attach( piece, gore, 4f, 15f, 2f, part.Velocity * 0.4f + push * U.In, gooColor, addCollider: shapes.Count == 0 );
-		foreach ( var (shape, global) in shapes )
-		{
-			var cs = new CollisionShape3D { Shape = shape };
-			gib.AddChild( cs );
-			cs.GlobalTransform = global.Orthonormalized();
-		}
-		gib.AngularVelocity = Rng.InSphere( spin );
-		return piece;
-	}
+	Node3D Detach( Part part, Vector3 push, float spin = 12f ) => Detach( part, push, spin, 4f, 15f, 2f, squareUp: false );
 
 	// ---- Death ----
 
-	void OnDied()
+	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
 		agent.Stop();
-		Killed?.Invoke( this );
+		RaiseKilled();
 		DieLocal( lastShotDirection, quiet: false, lastShotPointBlank );
 	}
 

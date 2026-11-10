@@ -7,7 +7,7 @@ using Godot;
 /// can be popped; the head is lethal. The eye is a live painted picture; the hands are skinned and curled by code.
 /// Numbers are the s&box ones (inches). Surface shaders and the hologram spawn-in come with step 7c.
 /// </summary>
-public partial class MC61 : Node3D, ICreature, MC61Marker
+public partial class MC61 : PartCreature, MC61Marker
 {
 	public float Size = 1.35f;
 	public float PreferredDistance = 600f;
@@ -48,15 +48,11 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	public enum Mode { Float, Charge, Beam, Cards, Dance }
 	public Mode State { get; private set; }
 	public Vector3 BeamEnd { get; private set; }
-	public int GoneMask;
 
 	public static readonly List<MC61> All = new();
-	public bool IsDead => health?.IsDead ?? false;
-	public Health Health => health;
 	public float HealthFraction => health?.Fraction ?? 0f;
 	public string Line { get; private set; } = "";
 	public TimeSince TimeSinceLine { get; private set; } = 999f;
-	public event Action<MC61> Killed;
 
 	const int Torso = 0, Head = 1, Eye = 2, Hat = 3, HandL = 4, HandR = 5, Tail0 = 6, TailCount = 4;
 	const int PartCount = 10;
@@ -68,26 +64,8 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	static readonly Color Iris = new( 1f, 0.12f, 0.08f );
 	static readonly Color BeamColor = new( 1f, 0.22f, 0.12f );
 
-	sealed class Part
-	{
-		public int Index;
-		public int Parent = -1;
-		public CreaturePart Go;
-		public float Health;
-		public float MaxHealth;
-		public bool Gone;
-		public float Hurt;
-		public TimeSince Flash = 99f;
-		public readonly List<(MeshInstance3D Renderer, Color Tint)> Renderers = new();
-		public Vector3 LastPosition;
-		public Vector3 Velocity;
-	}
-
-	readonly Part[] parts = new Part[PartCount];
-	Node3D rig;
+	public MC61() => parts = new Part[PartCount];
 	MeshInstance3D beam, beamCore, aimLine;
-	Health health;
-	GoreSystem gore;
 
 	TimeSince stateTime;
 	TimeUntil nextAttack;
@@ -100,11 +78,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	TimeSince localStateTime;
 	Mode seenState;
 	TimeSince scorchTime;
-	bool diedLocally;
-	TimeSince timeSinceDeath;
-	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
-	bool lastShotPointBlank;
 
 	// Layout numbers from Tools/blender/mc61_ghost.py (s&box local, inches).
 	static readonly Vector3 HeadPivot = new( 0, 0, 38f );
@@ -152,37 +126,26 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 	public static MC61 Spawn( Node parent, Vector3 position, float maxHealth )
 	{
 		var boss = new MC61 { Name = "MC61" };
-		parent.AddChild( boss );
-		boss.GlobalPosition = position;
 		Sfx.Play( "boss_spawn", position, 1f );
-		var h = new Health();
-		h.ResetTo( maxHealth );
-		boss.AddChild( h );
-		return boss;
+		return Place( boss, parent, position, maxHealth );
 	}
 
-	public override void _Ready()
+	protected override void Cleanup()
 	{
-		All.Add( this );
-		CallDeferred( MethodName.Setup );
-	}
-
-	public override void _ExitTree()
-	{
-		All.Remove( this );
-		if ( rig is not null && IsInstanceValid( rig ) ) rig.QueueFree();
+		base.Cleanup();
 		foreach ( var b in new[] { beam, beamCore, aimLine } ) if ( b is not null && IsInstanceValid( b ) ) b.QueueFree();
 	}
 
-	void Setup()
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+	protected override string Kind => "MC61";
+	protected override Color GibGoo => Goo;
+
+	protected override void Setup()
 	{
-		health = GetNodeOrNull<Health>( "Health" );
-		if ( health is null ) { health = new Health(); health.ResetTo( 2000f ); AddChild( health ); }
-		gore = GoreSystem.Get();
+		BeginSetup( 2000f );
 		nextAttack = 2.5f;
 		orbitSign = Rng.Float() < 0.5f ? -1f : 1f;
 		seenState = State;
-		health.Died += OnDied;
 		lastRigPosition = lastHandRigPosition = GlobalPosition;
 		sinceSpawned = 0f;
 		Build();
@@ -336,27 +299,6 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		}
 	}
 
-	Part AddPart( int index, int parent, Node3D parentGo, string name, Vector3 sboxPosition, Basis rotation, float hp )
-	{
-		var go = new CreaturePart { Name = $"MC61 {name}", Creature = this, Index = index, CollisionLayer = Layers.Creature, CollisionMask = 0 };
-		parentGo.AddChild( go );
-		go.Transform = new Transform3D( rotation, U.Sbox( sboxPosition ) );
-		var part = new Part { Index = index, Parent = parent, Go = go, Health = hp, MaxHealth = hp };
-		parts[index] = part;
-		return part;
-	}
-
-	void Trigger( Part part, Vector3 from, Vector3 to, float radius )
-	{
-		var a = U.Sbox( from );
-		var b = U.Sbox( to );
-		var axis = b - a;
-		var length = axis.Length();
-		var shape = new CapsuleShape3D { Radius = radius * U.In, Height = length + radius * 2f * U.In };
-		var basis = length > 1e-5f ? new Basis( new Quaternion( Vector3.Up, axis / length ) ) : Basis.Identity;
-		part.Go.AddChild( new CollisionShape3D { Shape = shape, Transform = new Transform3D( basis, (a + b) * 0.5f ) } );
-	}
-
 	MeshInstance3D BeamPiece( string name, Color color )
 	{
 		var mesh = new MeshInstance3D
@@ -423,8 +365,6 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 
 	// ---- Every frame ----
 
-	bool Has( int index ) => parts[index] is { Gone: false };
-
 	public override void _Process( double delta )
 	{
 		if ( health is null || rig is null ) return;
@@ -442,7 +382,7 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		UpdateSpawnIn();
 		Animate( dt );
 		DrawBeam();
-		Tint( dt );
+		TintParts( dt );
 	}
 
 	// Hand poses: curl in degrees for [index, middle, ring, pinky] x [base, mid, tip], then thumb [base, tip].
@@ -703,27 +643,16 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		part.Go.Basis = new Basis( q );
 	}
 
-	void Tint( float dt )
+	// Nothing is tinted until he has finished appearing.
+	protected override bool TintReady => spawnDone;
+
+	protected override void Tinted( Part part, MeshInstance3D renderer, Color tint )
 	{
-		foreach ( var part in parts )
+		// The eye glows as it charges (after the tint, which would set its glow to its colour).
+		if ( part.Index == Eye && tint == Colors.White && renderer.MaterialOverride is StandardMaterial3D em )
 		{
-			if ( part is null || part.Gone ) continue;
-			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
-			foreach ( var (renderer, tint) in part.Renderers )
-			{
-				if ( !IsInstanceValid( renderer ) || !spawnDone ) continue;
-				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
-				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
-				// The eye glows as it charges (after the tint, which would set its glow to its colour).
-				if ( part.Index == Eye && tint == Colors.White && renderer.MaterialOverride is StandardMaterial3D em )
-				{
-					em.AlbedoColor = Colors.White;
-					em.Emission = new Color( 1f, 0.2f, 0.1f ) * eyeGlowNow * 1.2f;
-				}
-			}
-			var position = part.Go.GlobalPosition;
-			part.Velocity = (position - part.LastPosition) / MathF.Max( dt, 0.0001f );
-			part.LastPosition = position;
+			em.AlbedoColor = Colors.White;
+			em.Emission = new Color( 1f, 0.2f, 0.1f ) * eyeGlowNow * 1.2f;
 		}
 	}
 
@@ -1018,12 +947,11 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 
 	// ---- Getting shot ----
 
-	public void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Torso;
-		lastShotDirection = direction;
-		lastShotPointBlank = (position - origin).Length() < CreatureGore.OverkillRange * U.In;
+		NoteShot( direction, position, origin );
 		if ( State == Mode.Dance ) damage *= DanceDamageScale;
 		var part = parts[index];
 		var crit = index is Head or Eye;
@@ -1055,18 +983,6 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );
 		var killed = wasAlive && IsDead;
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, crit, scoreHit );
-	}
-
-	int SubtreeMask( int index )
-	{
-		var mask = 1 << index;
-		for ( var i = 0; i < parts.Length; i++ )
-		{
-			if ( i == index || parts[i] is null ) continue;
-			for ( var p = parts[i].Parent; p >= 0; p = parts[p].Parent )
-				if ( p == index ) { mask |= 1 << i; break; }
-		}
-		return mask;
 	}
 
 	/// <summary> Rainbow goo: he's magical. </summary>
@@ -1128,51 +1044,14 @@ public partial class MC61 : Node3D, ICreature, MC61Marker
 		if ( part.Index != Eye ) CreatureGore.AddStump( part.Go, joint, -outward, radius, skin, Goo, 2f );
 	}
 
-	void MarkGone( int index )
-	{
-		var mask = SubtreeMask( index );
-		for ( var i = 0; i < parts.Length; i++ )
-			if ( (mask & (1 << i)) != 0 && parts[i] is not null ) parts[i].Gone = true;
-	}
-
-	/// <summary> Lets a piece (and anything hanging off it) go as one loose physics chunk. Push in s&box units/s. </summary>
-	Node3D Detach( Part part, Vector3 push, float spin = 10f )
-	{
-		var source = part.Go;
-		var piece = new Node3D { Name = "MC61 Piece" };
-		GetTree().CurrentScene.AddChild( piece );
-		piece.GlobalTransform = source.GlobalTransform.Orthonormalized();
-		var shapes = new List<(Shape3D Shape, Transform3D Global)>();
-		foreach ( var shape in source.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>() )
-			shapes.Add( (shape.Shape, shape.GlobalTransform) );
-		foreach ( var child in source.GetChildren().OfType<Node3D>().ToList() )
-			if ( child is not CollisionShape3D ) child.Reparent( piece, true );
-		foreach ( var sub in piece.FindChildren( "*", "StaticBody3D", true, false ).OfType<CreaturePart>().ToList() )
-		{
-			var holder = new Node3D { Name = sub.Name };
-			sub.GetParent().AddChild( holder );
-			holder.GlobalTransform = sub.GlobalTransform;
-			foreach ( var c in sub.GetChildren().OfType<Node3D>().ToList() ) if ( c is not CollisionShape3D ) c.Reparent( holder, true );
-			sub.QueueFree();
-		}
-		source.QueueFree();
-		var gib = Gib.Attach( piece, gore, 8f, 40f, 6f, part.Velocity * 0.4f + push * U.In, Goo, addCollider: shapes.Count == 0 );
-		foreach ( var (shape, global) in shapes )
-		{
-			var cs = new CollisionShape3D { Shape = shape };
-			gib.AddChild( cs );
-			cs.GlobalTransform = global.Orthonormalized();
-		}
-		gib.AngularVelocity = Rng.InSphere( spin );
-		return piece;
-	}
+	Node3D Detach( Part part, Vector3 push, float spin = 10f ) => Detach( part, push, spin, 8f, 40f, 6f );
 
 	// ---- Death ----
 
-	void OnDied()
+	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
-		Killed?.Invoke( this );
+		RaiseKilled();
 		DieLocal( lastShotDirection, lastShotPointBlank );
 	}
 

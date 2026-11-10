@@ -6,7 +6,7 @@ using Godot;
 /// comes off at the shoulder or the pincer; the eye stalks are crit spots, and with both popped it is blind and
 /// stumbles about. The body is lethal. Optional waste barrel armour (off, as in s&box). Numbers in inches.
 /// </summary>
-public partial class JunkCrab : Node3D, ICreature
+public partial class JunkCrab : PartCreature
 {
 	public float MoveSpeed = 210f;
 	public float AttackRange = 70f;
@@ -23,36 +23,13 @@ public partial class JunkCrab : Node3D, ICreature
 	public float Hue = -1f;
 	public float Size = 1f;
 	public bool Snapping;
-	public int GoneMask;
 
 	public static readonly List<JunkCrab> All = new();
-	public bool IsDead => health?.IsDead ?? false;
-	public Health Health => health;
-	public event Action<JunkCrab> Killed;
 
 	const int Body = 0, Barrel = 1, EyeL = 2, EyeR = 3, ArmL = 4, PincerL = 5, ArmR = 6, PincerR = 7, FirstLeg = 8, LegCount = 6;
 
-	sealed class Part
-	{
-		public int Index;
-		public int Parent = -1;
-		public CreaturePart Go;
-		public float Health;
-		public float MaxHealth;
-		public bool Gone;
-		public float Hurt;
-		public TimeSince Flash = 99f;
-		public readonly List<(MeshInstance3D Renderer, Color Tint)> Renderers = new();
-		public Vector3 LastPosition;
-		public Vector3 Velocity;
-		public Basis Rest = Basis.Identity;
-	}
-
-	readonly Part[] parts = new Part[FirstLeg + LegCount];
-	Node3D rig;
+	public JunkCrab() => parts = new Part[FirstLeg + LegCount];
 	Node3D jawL, jawR;
-	Health health;
-	GoreSystem gore;
 	NavAgent agent;
 
 	Color shellColor, bellyColor, gooColor;
@@ -60,11 +37,7 @@ public partial class JunkCrab : Node3D, ICreature
 	TimeSince timeSinceRepath = 999f;
 	TimeSince timeSinceSnap = 999f;
 	Vector3 wanderGoal;
-	bool diedLocally;
-	TimeSince timeSinceDeath;
-	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
-	bool lastShotPointBlank;
 	float gait;
 
 	sealed class CrabEye
@@ -87,40 +60,21 @@ public partial class JunkCrab : Node3D, ICreature
 	static readonly SphereMesh Dome = new() { Radius = 1f, Height = 1f, IsHemisphere = true, RadialSegments = 28, Rings = 14 };
 
 	public static JunkCrab Spawn( Node parent, Vector3 position, float maxHealth )
-	{
-		var crab = new JunkCrab { Name = "Junk Crab" };
-		parent.AddChild( crab );
-		crab.GlobalPosition = position;
-		var h = new Health();
-		h.ResetTo( maxHealth );
-		crab.AddChild( h );
-		return crab;
-	}
+		=> Place( new JunkCrab { Name = "Junk Crab" }, parent, position, maxHealth );
 
-	public override void _Ready()
-	{
-		All.Add( this );
-		CallDeferred( MethodName.Setup );
-	}
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+	protected override string Kind => "Crab";
+	protected override Color GibGoo => gooColor;
 
-	public override void _ExitTree()
+	protected override void Setup()
 	{
-		All.Remove( this );
-		if ( rig is not null && IsInstanceValid( rig ) ) rig.QueueFree();
-	}
-
-	void Setup()
-	{
-		health = GetNodeOrNull<Health>( "Health" );
-		if ( health is null ) { health = new Health(); health.ResetTo( 90f ); AddChild( health ); }
-		gore = GoreSystem.Get();
+		BeginSetup( 90f );
 		agent = new NavAgent( this ) { Acceleration = 600f * U.In };
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
 		shellColor = Shapes.Hsv( MathX.LerpUnclamped( -0.08f, 0.1f, hue ), 0.9f, 0.42f );
 		bellyColor = Shapes.Hsv( MathX.LerpUnclamped( -0.05f, 0.12f, hue ), 0.45f, 0.6f );
 		gooColor = Shapes.Hsv( 0.3f + hue * 0.1f, 1f, 1f );
-		health.Died += OnDied;
 		var down = Trace.Ray( this, GlobalPosition + Vector3.Up * 40f * U.In, GlobalPosition + Vector3.Down * 4000f * U.In, Layers.World );
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
 		agent?.Snap();
@@ -219,16 +173,6 @@ public partial class JunkCrab : Node3D, ICreature
 		}
 	}
 
-	Part AddPart( int index, int parent, Node3D parentGo, string name, Vector3 sboxPosition, Basis rotation, float hp )
-	{
-		var go = new CreaturePart { Name = $"Crab {name}", Creature = this, Index = index, CollisionLayer = Layers.Creature, CollisionMask = 0 };
-		parentGo.AddChild( go );
-		go.Transform = new Transform3D( rotation, U.Sbox( sboxPosition ) );
-		var part = new Part { Index = index, Parent = parent, Go = go, Health = hp, MaxHealth = hp };
-		parts[index] = part;
-		return part;
-	}
-
 	void BuildEye( Part part, float side )
 	{
 		var ball = new Node3D { Name = "Eyeball" };
@@ -260,8 +204,6 @@ public partial class JunkCrab : Node3D, ICreature
 		part.Renderers.Add( (mesh, color) );
 		return go;
 	}
-
-	static float LidEdge( float coverage ) => MathX.Deg( MathF.Asin( 1f - 2f * MathX.Clamp( coverage, 0f, 1f ) ) );
 
 	void UpdateEyes( float dt )
 	{
@@ -330,20 +272,8 @@ public partial class JunkCrab : Node3D, ICreature
 		part.Renderers.Add( (mesh, color) );
 	}
 
-	void Trigger( Part part, Vector3 from, Vector3 to, float radius )
-	{
-		var a = U.Sbox( from );
-		var b = U.Sbox( to );
-		var axis = b - a;
-		var length = axis.Length();
-		var shape = new CapsuleShape3D { Radius = radius * U.In, Height = length + radius * 2f * U.In };
-		var basis = length > 1e-5f ? new Basis( new Quaternion( Vector3.Up, axis / length ) ) : Basis.Identity;
-		part.Go.AddChild( new CollisionShape3D { Shape = shape, Transform = new Transform3D( basis, (a + b) * 0.5f ) } );
-	}
-
 	// ---- Every frame ----
 
-	bool Has( int index ) => parts[index] is { Gone: false };
 	int LegsLeft( float side ) => Enumerable.Range( 0, LegCount ).Count( i => (i < 3 ? 1f : -1f) == side && Has( FirstLeg + i ) );
 	int LegsLost => LegCount - LegsLeft( 1f ) - LegsLeft( -1f );
 	bool Dragging => LegsLeft( 1f ) <= 1 || LegsLeft( -1f ) <= 1;
@@ -364,7 +294,7 @@ public partial class JunkCrab : Node3D, ICreature
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
 		Animate( dt );
-		Tint( dt );
+		TintParts( dt );
 		rig.Visible = true;
 	}
 
@@ -412,24 +342,6 @@ public partial class JunkCrab : Node3D, ICreature
 		UpdateEyes( dt );
 	}
 
-	void Tint( float dt )
-	{
-		foreach ( var part in parts )
-		{
-			if ( part is null || part.Gone ) continue;
-			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
-			foreach ( var (renderer, tint) in part.Renderers )
-			{
-				if ( !IsInstanceValid( renderer ) ) continue;
-				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
-				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
-			}
-			var position = part.Go.GlobalPosition;
-			part.Velocity = (position - part.LastPosition) / MathF.Max( dt, 0.0001f );
-			part.LastPosition = position;
-		}
-	}
-
 	// ---- Brain ----
 
 	void Think( float dt )
@@ -475,14 +387,6 @@ public partial class JunkCrab : Node3D, ICreature
 		agent.Update( dt );
 	}
 
-	void Face( Vector3 direction, float rate, float dt )
-	{
-		var flat = direction.Flat();
-		if ( flat.IsNearlyZero() ) return;
-		var wanted = Shapes.LookAt( flat ).GetRotationQuaternion();
-		GlobalBasis = new Basis( GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( wanted, MathX.Clamp( dt * rate, 0f, 1f ) ) );
-	}
-
 	void Pinch( PlayerSurvivor target )
 	{
 		Sfx.Play( "crab_snap", GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
@@ -492,12 +396,11 @@ public partial class JunkCrab : Node3D, ICreature
 
 	// ---- Getting shot ----
 
-	public void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
-		lastShotDirection = direction;
-		lastShotPointBlank = (position - origin).Length() < CreatureGore.OverkillRange * U.In;
+		NoteShot( direction, position, origin );
 		var part = parts[index];
 		var crit = index is EyeL or EyeR;
 		var multiplier = index switch
@@ -534,18 +437,6 @@ public partial class JunkCrab : Node3D, ICreature
 			agent.SetAgentPosition( GlobalPosition + push );
 		}
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, crit, scoreHit );
-	}
-
-	int SubtreeMask( int index )
-	{
-		var mask = 1 << index;
-		for ( var i = 0; i < parts.Length; i++ )
-		{
-			if ( i == index || parts[i] is null ) continue;
-			for ( var p = parts[i].Parent; p >= 0; p = parts[p].Parent )
-				if ( p == index ) { mask |= 1 << i; break; }
-		}
-		return mask;
 	}
 
 	void Hit( int index, Vector3 position, Vector3 direction, bool chip, float hurt )
@@ -606,52 +497,15 @@ public partial class JunkCrab : Node3D, ICreature
 		CreatureGore.Twitch( piece, Rng.Float( 2.5f, 4.5f ), 0.8f );
 	}
 
-	void MarkGone( int index )
-	{
-		var mask = SubtreeMask( index );
-		for ( var i = 0; i < parts.Length; i++ )
-			if ( (mask & (1 << i)) != 0 && parts[i] is not null ) parts[i].Gone = true;
-	}
-
-	/// <summary> A part (and what hangs off it) comes loose as a physics piece, its hit capsules made solid. Push in s&box units/s. </summary>
-	Node3D Detach( Part part, Vector3 push, float spin = 12f )
-	{
-		var source = part.Go;
-		var piece = new Node3D { Name = "Crab Piece" };
-		GetTree().CurrentScene.AddChild( piece );
-		piece.GlobalTransform = source.GlobalTransform.Orthonormalized();
-		var shapes = new List<(Shape3D Shape, Transform3D Global)>();
-		foreach ( var shape in source.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>() )
-			shapes.Add( (shape.Shape, shape.GlobalTransform) );
-		foreach ( var child in source.GetChildren().OfType<Node3D>().ToList() )
-			if ( child is not CollisionShape3D ) child.Reparent( piece, true );
-		foreach ( var sub in piece.FindChildren( "*", "StaticBody3D", true, false ).OfType<CreaturePart>().ToList() )
-		{
-			var holder = new Node3D { Name = sub.Name };
-			sub.GetParent().AddChild( holder );
-			holder.GlobalTransform = sub.GlobalTransform;
-			foreach ( var c in sub.GetChildren().OfType<Node3D>().ToList() ) if ( c is not CollisionShape3D ) c.Reparent( holder, true );
-			sub.QueueFree();
-		}
-		source.QueueFree();
-		var gib = Gib.Attach( piece, gore, 4f, 15f, 2f, part.Velocity * 0.4f + push * U.In, gooColor, addCollider: shapes.Count == 0 );
-		foreach ( var (shape, global) in shapes )
-		{
-			var cs = new CollisionShape3D { Shape = shape };
-			gib.AddChild( cs );
-			cs.GlobalTransform = global.Orthonormalized();
-		}
-		gib.AngularVelocity = Rng.InSphere( spin );
-		return piece;
-	}
+	Node3D Detach( Part part, Vector3 push, float spin = 12f ) => Detach( part, push, spin, 4f, 15f, 2f );
 
 	// ---- Death ----
 
-	void OnDied()
+	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
 		agent.Stop();
-		Killed?.Invoke( this );
+		RaiseKilled();
 		DieLocal( lastShotDirection, lastShotPointBlank );
 	}
 

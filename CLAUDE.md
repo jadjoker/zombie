@@ -16,6 +16,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   need. A test that sets up state the real game doesn't can hide bugs: keep `--waveflow` unassisted.
 - Checks that must hold use `Check( ok, what )` in `AutoTest.cs`, which prints `[autotest] FAIL`. The release
   script fails on it.
+- Creatures derive from `Creature` (`godot/Code/Creatures/Creature.cs`: health, death, the Killed event, the
+  `Creature.Everyone` list, spawn and setup). Ones built from shootable limbs (crab, spider, boss) derive from
+  `PartCreature`, which owns the part tree, hit capsules, tint flash, cutting limbs off and loose pieces. A new
+  creature should not copy that code: derive and override.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).

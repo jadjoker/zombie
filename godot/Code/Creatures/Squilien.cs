@@ -7,7 +7,7 @@ using Godot;
 /// and lobs ink balls (two in a row ink your view). Tentacle segments can be shot off; the bell is the body.
 /// Numbers are the s&box ones (inches).
 /// </summary>
-public partial class Squilien : Node3D, ICreature
+public partial class Squilien : Creature
 {
 	public float BellRadius = 22f;
 	public int Tentacles = 6;
@@ -34,13 +34,10 @@ public partial class Squilien : Node3D, ICreature
 	public float Hue = -1f;
 	public int PulseCount;
 	public static readonly List<Squilien> All = new();
-	public bool IsDead => health?.IsDead ?? false;
-	public Health Health => health;
 	public Color BodyColor { get; private set; }
 	public Color SpotColor { get; private set; }
 	public Color GooColor { get; private set; }
 	public Color InkColor { get; private set; }
-	public event Action<Squilien> Killed;
 
 	sealed class Piece
 	{
@@ -79,48 +76,27 @@ public partial class Squilien : Node3D, ICreature
 	bool doubleBlinkPending;
 	readonly List<Tentacle> tentacles = new();
 	readonly List<Piece> all = new();
-	Health health;
-	GoreSystem gore;
 	Vector3 velocity;   // s&box units/s
 	TimeUntil nextPulse;
 	TimeUntil nextThrow;
 	float orbitSign = 1f;
 	int seenPulses;
 	float squeeze;
-	bool diedLocally;
-	TimeSince timeSinceDeath;
-	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
-	bool lastShotPointBlank;
 
 	public static Squilien Spawn( Node parent, Vector3 position, float maxHealth )
-	{
-		var s = new Squilien { Name = "Squilien" };
-		parent.AddChild( s );
-		s.GlobalPosition = position;
-		var h = new Health();
-		h.ResetTo( maxHealth );
-		s.AddChild( h );
-		return s;
-	}
+		=> Place( new Squilien { Name = "Squilien" }, parent, position, maxHealth );
 
-	public override void _Ready()
-	{
-		All.Add( this );
-		CallDeferred( MethodName.Setup );
-	}
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 
-	public override void _ExitTree()
+	protected override void Cleanup()
 	{
-		All.Remove( this );
 		foreach ( var piece in all ) if ( !piece.Gone && IsInstanceValid( piece.Go ) ) piece.Go.QueueFree();
 	}
 
-	void Setup()
+	protected override void Setup()
 	{
-		health = GetNodeOrNull<Health>( "Health" );
-		if ( health is null ) { health = new Health(); health.ResetTo( 130f ); AddChild( health ); }
-		gore = GoreSystem.Get();
+		BeginSetup( 130f );
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
 		BodyColor = Shapes.Hsv( hue, 0.85f, 0.38f );
@@ -131,7 +107,6 @@ public partial class Squilien : Node3D, ICreature
 		nextThrow = Rng.Float( 1f, ThrowCooldown + 1f );
 		orbitSign = Rng.Float() < 0.5f ? -1f : 1f;
 		seenPulses = PulseCount;
-		health.Died += OnDied;
 		Build( hue );
 		// Built after this frame's update: pose it now, or its parts draw at full mesh size for a frame.
 		_Process( 0.0 );
@@ -446,13 +421,12 @@ public partial class Squilien : Node3D, ICreature
 
 	// ---- Getting shot ----
 
-	public void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
 		var piece = all.FirstOrDefault( p => p.Index == index );
 		if ( piece is null || piece.Gone ) piece = bell;
-		lastShotDirection = direction;
-		lastShotPointBlank = (position - origin).Length() < CreatureGore.OverkillRange * U.In;
+		NoteShot( direction, position, origin );
 		var isBell = piece == bell;
 		var cut = false;
 		float hurt;
@@ -541,10 +515,10 @@ public partial class Squilien : Node3D, ICreature
 
 	// ---- Death ----
 
-	void OnDied()
+	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
-		Killed?.Invoke( this );
+		RaiseKilled();
 		DieLocal( lastShotDirection, lastShotPointBlank );
 	}
 

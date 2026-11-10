@@ -51,7 +51,7 @@ public partial class CreaturePart : StaticBody3D, IShootable
 /// loose pieces you can keep shooting, while the rest of the snake keeps coming, shorter. The head is the weak spot:
 /// its health is the whole creature's. Sizes and speeds are the s&box ones in inches.
 /// </summary>
-public partial class Bloober : Node3D, ICreature
+public partial class Bloober : Creature
 {
 	public int SegmentCount = 9;
 	public float HeadRadius = 13f;
@@ -90,12 +90,10 @@ public partial class Bloober : Node3D, ICreature
 	public bool Biting;
 	public int GoneMask;
 
-	public bool IsDead => health?.IsDead ?? false;
 	public Color BodyColor { get; private set; }
 	public Color SpotColor { get; private set; }
 	public Color GooColor { get; private set; }
 
-	public event Action<Bloober> Killed;
 
 	/// <summary> All live Bloobers (s&box Scene.GetAllComponents). </summary>
 	public static readonly List<Bloober> All = new();
@@ -138,8 +136,6 @@ public partial class Bloober : Node3D, ICreature
 	enum Mode { Chase, Lunge, Retreat }
 
 	readonly List<Segment> segments = new();
-	Health health;
-	GoreSystem gore;
 	Mode mode;
 	TimeSince modeTime;
 	TimeSince timeSinceBite = 999f;
@@ -151,38 +147,21 @@ public partial class Bloober : Node3D, ICreature
 	float puff;
 	float mouthOpen;
 	float wigglePhase;
-	bool diedLocally;
-	TimeSince timeSinceDeath;
-	Vector3 lastShotDirection = Vector3.Forward;
 	TimeSince bleedTimer;
-	bool lastShotPointBlank;
 
-	public Health Health => health;
 
 	/// <summary> Spawns a Bloober with this much health, facing a direction. </summary>
 	public static Bloober Spawn( Node parent, Vector3 position, float maxHealth, Vector3? facing = null )
 	{
 		var b = new Bloober { Name = "Bloober" };
-		parent.AddChild( b );
-		b.GlobalPosition = position;
+		Place( b, parent, position, maxHealth );
 		if ( facing is { } f && f.Flat() != Vector3.Zero ) b.GlobalBasis = Shapes.LookAt( f.Flat() );
-		var health = new Health();
-		health.ResetTo( maxHealth );
-		b.AddChild( health );
 		return b;
 	}
 
-	public override void _Ready()
+	protected override void Setup()
 	{
-		All.Add( this );
-		CallDeferred( MethodName.Setup );
-	}
-
-	void Setup()
-	{
-		health = GetNodeOrNull<Health>( "Health" );
-		if ( health is null ) { health = new Health(); health.ResetTo( 160f ); AddChild( health ); }
-		gore = GoreSystem.Get();
+		BeginSetup( 160f );
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
 		BodyColor = Shapes.Hsv( hue, 0.85f, 0.36f );
@@ -192,15 +171,15 @@ public partial class Bloober : Node3D, ICreature
 		heading = -GlobalBasis.Z;
 		wigglePhase = hue * 20f;
 		nextPuff = Rng.Float( PuffEvery.X, PuffEvery.Y );
-		health.Died += OnDied;
 		BuildBody( hue );
 		// Built after this frame's update: pose it now, or its parts draw at full mesh size for a frame.
 		_Process( 0.0 );
 	}
 
-	public override void _ExitTree()
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+
+	protected override void Cleanup()
 	{
-		All.Remove( this );
 		foreach ( var segment in segments )
 			if ( !segment.Gone && IsInstanceValid( segment.Go ) ) segment.Go.QueueFree();
 	}
@@ -639,14 +618,13 @@ public partial class Bloober : Node3D, ICreature
 
 	// ---- Getting shot ----
 
-	public void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead || segments.Count == 0 ) return;
 		if ( index < 0 || index >= segments.Count || segments[index].Gone )
 			index = segments.Where( s => !s.Gone ).OrderBy( s => s.Position.DistanceSquaredTo( position ) ).First().Index;
 
-		lastShotDirection = direction;
-		lastShotPointBlank = (position - origin).Length() < CreatureGore.OverkillRange * U.In;
+		NoteShot( direction, position, origin );
 		var segment = segments[index];
 		var amount = damage * (Puffed ? PuffDamageScale : 1f);
 		var headshot = index == 0;
@@ -756,10 +734,10 @@ public partial class Bloober : Node3D, ICreature
 
 	// ---- Death ----
 
-	void OnDied()
+	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
-		Killed?.Invoke( this );
+		RaiseKilled();
 		DieLocal( lastShotDirection, quiet: false, lastShotPointBlank );
 	}
 

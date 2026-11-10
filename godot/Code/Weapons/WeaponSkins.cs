@@ -27,6 +27,10 @@ public static class WeaponSkins
 			["axered"] = (new Color( 0.82f, 0.12f, 0.1f ), 0.0f),
 			["dark"] = (new Color( 0.05f, 0.055f, 0.06f ), 0.6f),
 			["glow"] = (new Color( 1f, 0.22f, 0.12f ), 0.0f),
+			// The blaster's body: a pale shell, orange bands and a glowing teal core.
+			["shell"] = (new Color( 0.86f, 0.88f, 0.9f ), 0.35f),
+			["band"] = (new Color( 0.95f, 0.5f, 0.12f ), 0.1f),
+			["core"] = (new Color( 0.25f, 1f, 0.9f ), 0.0f),
 			// The player robot (arms and hands): the same on every skin.
 			["plate"] = (new Color( 0.72f, 0.75f, 0.78f ), 0.45f),
 			["joint"] = (new Color( 0.07f, 0.075f, 0.08f ), 0.1f),
@@ -105,7 +109,7 @@ public static class WeaponSkins
 			RoughnessTexture = Wear, RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Red,
 			ClearcoatEnabled = metal, Clearcoat = 0.35f, ClearcoatRoughness = 0.3f,
 		};
-		if ( slot == "glow" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 4f; m.RimEnabled = false; }
+		if ( slot is "glow" or "core" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 4f; m.RimEnabled = false; }
 		if ( skin == "Hologram" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 1.2f; }
 		cache[(skin, slot)] = m;
 		return m;

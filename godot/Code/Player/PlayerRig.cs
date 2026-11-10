@@ -497,8 +497,14 @@ public partial class PlayerRig : Node
 
 	(Node3D Root, AnimationPlayer Player, Skeleton3D Skeleton) WorldGun( PlayerWeapon weapon )
 	{
-		if ( worldGuns.TryGetValue( weapon, out var gun ) && IsInstanceValid( gun.Root ) ) return gun;
-		gun = WeaponModels.Create( weapon.ModelName );
+		var modelName = weapon.ViewModelName;
+		if ( worldGuns.TryGetValue( weapon, out var gun ) && IsInstanceValid( gun.Root ) )
+		{
+			if ( (string)gun.Root.GetMeta( "model", "" ) == modelName ) return gun;
+			gun.Root.QueueFree();   // a different rifle design was picked
+		}
+		gun = WeaponModels.Create( modelName );
+		gun.Root.SetMeta( "model", modelName );
 		gun.Root.Name = $"World {weapon.DisplayName}";
 		gun.Root.TopLevel = true;
 		rigRoot.AddChild( gun.Root );

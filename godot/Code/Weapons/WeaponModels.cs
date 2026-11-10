@@ -48,11 +48,12 @@ public static class WeaponModels
 		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 			mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 
-		if ( skeleton is not null && muzzles.TryGetValue( name, out var muzzle ) )
+		var muzzle = RifleModels.ByModel( name ) is { } design ? ("gun", design.Muzzle) : muzzles.GetValueOrDefault( name );
+		if ( skeleton is not null && muzzle.Item1 is not null )
 		{
-			var attach = new BoneAttachment3D { Name = "MuzzleBone", BoneName = muzzle.Bone };
+			var attach = new BoneAttachment3D { Name = "MuzzleBone", BoneName = muzzle.Item1 };
 			skeleton.AddChild( attach );
-			attach.AddChild( new Node3D { Name = "Muzzle", Position = muzzle.Offset * 0.01f } );
+			attach.AddChild( new Node3D { Name = "Muzzle", Position = muzzle.Item2 * 0.01f } );
 		}
 		return (holder, player, skeleton);
 	}
@@ -63,7 +64,8 @@ public static class WeaponModels
 	{
 		if ( libraries.TryGetValue( name, out var cached ) ) return cached;
 		var library = new AnimationLibrary();
-		foreach ( var (anim, loop) in animations.GetValueOrDefault( name, Array.Empty<(string, bool)>() ) )
+		var set = RifleModels.ByModel( name ) is not null ? "rifle" : name;   // every rifle design has the rifle's animations
+		foreach ( var (anim, loop) in animations.GetValueOrDefault( set, Array.Empty<(string, bool)>() ) )
 		{
 			var path = $"res://assets/models/weapons/{name}/{name}@{anim}.fbx";
 			if ( !ResourceLoader.Exists( path ) ) continue;

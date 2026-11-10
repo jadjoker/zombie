@@ -30,7 +30,7 @@ public partial class DevMenu : CanvasLayer
 		var sb = new System.Text.StringBuilder();
 		foreach ( var f in typeof( DevFlags ).GetFields( System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static ) )
 			if ( f.FieldType == typeof( bool ) || f.FieldType == typeof( float ) || f.FieldType == typeof( int ) ) sb.Append( f.GetValue( null ) ).Append( '|' );
-		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' );
+		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' );
 		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( '|' );
 		sb.Append( GlobalStylize.Current?.Style ).Append( '|' ).Append( Level.Current?.LevelName );
 		return sb.ToString();
@@ -378,9 +378,14 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Cheats", "+1000 points money" ) ) Action( "+1000 points", () => player?.AddPoints( 1000 ) );
 		}
 
-		if ( Sec( "Player", "Appearance", "robot paint outfit skin gun skin weapon " + string.Join( " ", CharacterSkins.Names ) + " " + string.Join( " ", WeaponSkins.Names ) ) )
+		if ( Sec( "Player", "Appearance", "robot paint outfit skin gun skin weapon rifle model design " + string.Join( " ", CharacterSkins.Names ) + " " + string.Join( " ", WeaponSkins.Names ) + " " + string.Join( " ", RifleModels.Names ) ) )
 		{
 			Section( "Appearance" );
+			if ( Show( "Appearance", "rifle model design gun weapon " + string.Join( " ", RifleModels.Names ) ) )
+			{
+				Row( "Rifle" );
+				foreach ( var rifle in RifleModels.Names ) { var r = rifle; Pick( r, RifleModels.Current == r, () => RifleModels.Current = r ); }
+			}
 			if ( Show( "Appearance", "robot paint outfit " + string.Join( " ", CharacterSkins.Names ) ) )
 			{
 				Row( "Robot paint" );

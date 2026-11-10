@@ -18,6 +18,15 @@ public static class GameSettings
 	/// <summary> Horizontal field of view in degrees. </summary>
 	public static float Fov = 90f;
 	public static bool Fullscreen;
+	/// <summary> Which rifle design is in hand (RifleModels). </summary>
+	public static string Rifle = RifleArgument() ?? "Blaster";
+
+	static string RifleArgument()
+	{
+		var args = OS.GetCmdlineUserArgs();
+		var i = Array.IndexOf( args, "--rifle" );
+		return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+	}
 
 	public const float MinSensitivity = 0.2f, MaxSensitivity = 3f, MinFov = 70f, MaxFov = 110f;
 
@@ -33,6 +42,7 @@ public static class GameSettings
 		Volume = MathX.Clamp( (float)file.GetValue( "audio", "volume", 1f ), 0f, 1f );
 		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
+		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
 	}
 
 	public static void Save()
@@ -43,6 +53,7 @@ public static class GameSettings
 		file.SetValue( "audio", "volume", Volume );
 		file.SetValue( "video", "fov", Fov );
 		file.SetValue( "video", "fullscreen", Fullscreen );
+		file.SetValue( "game", "rifle", Rifle );
 		file.Save( Path );
 	}
 

@@ -23,6 +23,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Art direction: simple, lightly cartoonish cel-shaded shapes in flat colours, not overly cartoonish, nothing
   photoreal. The player is a robot: first person arms and hands are robot parts (`robot_arm` and `robot_hand` in
   `Tools/blender/fps_rifle.py`, shared by the shotgun and axe scripts), never gloves.
+- The rifle has four designs (Blaster, the default; Carbine; Marksman; Classic): `RIFLE_VARIANT=<name>
+  RIFLE_OUT=godot/assets/models/weapons/rifle_<name>` with `fps_rifle.py`, listed in
+  `godot/Code/Weapons/RifleModels.cs`, picked in the dev menu (Player, Appearance, Rifle) and saved with the
+  settings. Tests take `--rifle <Name>`; `--rifles` (needs a window) tries them all.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

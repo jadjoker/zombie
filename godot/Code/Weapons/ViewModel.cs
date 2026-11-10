@@ -95,7 +95,8 @@ public partial class ViewModel : Node3D
 
 	(Vector3 Offset, float Yaw) AimPose()
 	{
-		if ( ModelName == "rifle" ) return (new Vector3( -11.5f, 13.8f, -0.4f ), -8f);    // the scope's eyepiece 10 units out
+		// Rifles: the sight (scope eyepiece, reflex window or carry handle) 10 units out, at eye height.
+		if ( RifleModels.ByModel( ModelName ) is { } rifle ) return (new Vector3( -11.5f, 12.25f, 9.55f - rifle.SightHeight ), -8f);
 		if ( ModelName == "shotgun" ) return (new Vector3( -6f, 12.4f, 3.3f ), -8f);      // rear of the rib 17 out, bead on it
 		return (AimOffset, 0f);
 	}

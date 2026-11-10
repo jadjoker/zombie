@@ -1,5 +1,7 @@
 # Builds the first-person Rifle viewmodel: a cartoon rifle held by the player robot's arms, rigged and animated.
 # Run headless:  blender -b --factory-startup --python fps_rifle.py
+# RIFLE_VARIANT picks the design: classic (the scoped rifle, the default), carbine, marksman or blaster. The others
+# are written as rifle_<variant> (same rig, same animations), and the game's dev menu switches between them.
 # Output: Assets/models/weapons/rifle/{rifle.fbx, rifle@<anim>.fbx, rifle.vmdl}
 #
 # Camera space: the player's eye is the origin, +X is forward, +Y is left, +Z is up.
@@ -9,8 +11,9 @@
 import bpy, math, os, sys
 from mathutils import Vector, Matrix, Quaternion, Euler
 
-OUT = os.environ.get("RIFLE_OUT", r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/rifle")
-NAME = "rifle"
+VARIANT = os.environ.get("RIFLE_VARIANT", "classic")
+NAME = "rifle" if VARIANT == "classic" else f"rifle_{VARIANT}"
+OUT = os.environ.get("RIFLE_OUT", rf"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/{NAME}")
 FPS = 30
 os.makedirs(OUT, exist_ok=True)
 
@@ -45,6 +48,12 @@ def build_materials():
     MATS["plate"] = mat("plate", (0.72, 0.75, 0.78, 1), 0.4)
     MATS["joint"] = mat("joint", (0.07, 0.075, 0.08, 1), 0.6)
     MATS["trim"] = mat("trim", (0.95, 0.5, 0.12, 1), 0.45)
+    # The other rifle designs: wood, and the blaster's shell, bands and glowing core (named apart from the robot's
+    # own plates and trim, which the game hides on the third person gun).
+    MATS["wood"] = mat("wood", (0.5, 0.3, 0.16, 1))
+    MATS["shell"] = mat("shell", (0.86, 0.88, 0.9, 1), 0.4)
+    MATS["band"] = mat("band", (0.95, 0.5, 0.12, 1), 0.45)
+    MATS["core"] = mat("core", (0.2, 1.0, 0.9, 1), 0.3)
 
 PARTS = []   # (object, bone, material)
 
@@ -185,7 +194,139 @@ def z_cyl(center, r, length, bone, material, verts=16):
     c = Vector(center)
     return tube(c - Vector((0, 0, length / 2)), c + Vector((0, 0, length / 2)), r, r, bone, material, verts)
 
+def trigger_group(grip_mat):
+    """Pistol grip (joined to the body above it), trigger and guard: the same on every design, since the right hand
+    is posed round it."""
+    bevel_box((-0.6, 0, -4.0), (3.0, 2.7, 7.8), 1.0, "gun", grip_mat, rot=(0, -18, 0))
+    bevel_box((0.3, 0, 0.0), (3.6, 2.7, 1.6), 0.4, "gun", grip_mat)                        # tang up into the body
+    bevel_box((3.0, 0, -0.6), (0.4, 0.5, 2.0), 0.12, "gun", "dark", rot=(0, 18, 0))        # trigger
+    bevel_box((3.3, 0, -1.95), (5.4, 1.0, 0.35), 0.1, "gun", "metal")                      # guard
+    bevel_box((5.85, 0, -0.9), (0.35, 1.0, 2.3), 0.1, "gun", "metal")
+
+
+def rifle_carbine():
+    """A clean modern carbine with a hooded reflex sight and no scope."""
+    bevel_box((7.0, 0, 4.2), (15, 3.2, 2.8), 0.5, "gun", "metal")                          # upper
+    bevel_box((4.5, 0, 1.7), (11, 3.0, 2.6), 0.6, "gun", "metal")                          # lower
+    bevel_box((7.8, 0, -0.3), (3.8, 2.8, 1.2), 0.2, "gun", "metal")                        # mag well
+    bevel_box((7.6, -1.62, 4.2), (4.6, 0.12, 1.3), 0.05, "gun", "dark")                    # ejection port
+    bevel_box((8.5, 0, 5.75), (17, 1.6, 0.35), 0.1, "gun", "dark")                         # flat top
+    # Reflex sight: a small hooded window with a glowing dot.
+    bevel_box((6.0, 0, 6.3), (3.2, 2.0, 0.7), 0.2, "gun", "dark")
+    for sy in (-1, 1):
+        bevel_box((6.9, sy * 0.95, 7.5), (0.5, 0.25, 1.9), 0.08, "gun", "dark")
+    bevel_box((6.9, 0, 8.45), (0.5, 2.15, 0.25), 0.08, "gun", "dark")
+    bevel_box((6.9, 0, 7.5), (0.12, 1.65, 1.65), 0.04, "gun", "lens")
+    ball((6.8, 0, 7.5), (0.13, 0.13, 0.13), "gun", "glow", 8)
+    bevel_box((20.5, 0, 6.05), (1.6, 1.0, 0.45), 0.12, "gun", "dark")                      # folded front sight
+    bevel_box((20.5, 0, 5.6), (1.2, 0.8, 0.9), 0.1, "gun", "dark")
+    # Slim handguard with three long slots a side.
+    bevel_box((17.5, 0, 3.2), (13.5, 3.4, 3.6), 1.2, "gun", "accent")
+    for sy in (-1, 1):
+        for i in range(3):
+            bevel_box((13.6 + i * 3.6, sy * 1.72, 3.5), (2.6, 0.12, 0.7), 0.05, "gun", "dark")
+    x_cyl((29.0, 0, 3.0), 0.7, 10.0, "gun", "metal", 16)                                   # barrel
+    x_cyl((34.6, 0, 3.0), 0.95, 2.8, "gun", "dark", 16)                                    # flash hider
+    x_cyl((36.05, 0, 3.0), 0.5, 0.12, "gun", "dark", 12)
+    # Compact stock on its tube.
+    x_cyl((-4.5, 0, 3.6), 0.95, 8.0, "gun", "metal", 16)
+    bevel_box((-8.6, 0, 2.6), (5.4, 2.4, 4.6), 0.9, "gun", "accent")
+    bevel_box((-11.6, 0, 2.4), (0.8, 2.6, 5.6), 0.35, "gun", "dark")
+    trigger_group("accent")
+    bevel_box((8.0, 0, -3.4), (3.2, 2.2, 5.2), 0.5, "mag", "metal2", rot=(0, -4, 0))       # magazine
+    bevel_box((8.6, 0, -7.3), (3.2, 2.2, 3.6), 0.5, "mag", "metal2", rot=(0, -14, 0))
+    bevel_box((9.1, 0, -9.3), (3.7, 2.5, 0.7), 0.25, "mag", "dark", rot=(0, -14, 0))
+    bevel_box((-1.6, 0, 5.75), (2.6, 2.2, 0.6), 0.2, "bolt", "dark")                       # charging handle
+    return dict(half_width=2.3, top=3.9)
+
+
+def rifle_marksman():
+    """A wooden marksman rifle: long barrel, one-piece stock, a slim scope low on its rings."""
+    z = 3.6                                                                                # barrel line
+    bevel_box((13.5, 0, 2.0), (21, 3.2, 3.0), 1.0, "gun", "wood")                          # fore-end
+    bevel_box((-6.5, 0, 1.7), (9.5, 2.9, 5.2), 1.2, "gun", "wood", rot=(0, 6, 0))          # butt
+    bevel_box((-6.8, 0, 4.5), (6.0, 2.3, 1.2), 0.5, "gun", "wood", rot=(0, 6, 0))          # cheek rest
+    bevel_box((0.6, 0, 1.3), (6.0, 2.9, 3.2), 1.0, "gun", "wood")                          # wrist, joining butt and fore-end
+    bevel_box((-11.4, 0, 1.2), (1.0, 3.0, 6.2), 0.4, "gun", "dark", rot=(0, 6, 0))         # pad
+    bevel_box((24.2, 0, 2.2), (1.2, 3.3, 3.2), 0.4, "gun", "dark")                         # fore-end cap
+    bevel_box((5.0, 0, z + 0.2), (12, 2.8, 2.6), 0.5, "gun", "metal")                      # receiver
+    bevel_box((7.2, -1.42, z + 0.3), (4.4, 0.12, 1.1), 0.05, "gun", "dark")                # port
+    x_cyl((24.5, 0, z), 0.72, 25.0, "gun", "metal", 16)                                    # long barrel
+    x_cyl((36.6, 0, z), 0.9, 0.8, "gun", "metal2", 16)                                     # crown
+    bevel_box((34.6, 0, z + 1.0), (1.4, 0.5, 1.0), 0.12, "gun", "metal")                   # front sight
+    for x in (-9.5, 22.5):
+        y_cyl((x, 0, 0.3 if x > 0 else -0.6), 0.28, 1.2, "gun", "metal2", 8)               # sling swivels
+    # Slim scope.
+    sc = z + 3.1
+    for x in (3.0, 10.0):
+        bevel_box((x, 0, sc - 1.25), (1.2, 1.5, 1.4), 0.15, "gun", "metal")
+        x_cyl((x, 0, sc), 1.15, 1.1, "gun", "metal", 16)
+    x_cyl((6.5, 0, sc), 0.9, 13.0, "gun", "metal", 20)
+    tube((12.5, 0, sc), (15.0, 0, sc), 0.9, 1.45, "gun", "metal", 20)
+    x_cyl((16.2, 0, sc), 1.45, 2.4, "gun", "metal", 20)
+    x_cyl((17.45, 0, sc), 1.25, 0.12, "gun", "lens", 20)
+    tube((0.5, 0, sc), (-1.2, 0, sc), 0.9, 1.25, "gun", "metal", 20)
+    x_cyl((-1.9, 0, sc), 1.3, 1.4, "gun", "dark", 20)
+    x_cyl((-2.66, 0, sc), 1.05, 0.12, "gun", "lens", 20)
+    z_cyl((6.5, 0, sc + 1.2), 0.55, 0.9, "gun", "metal2", 12)
+    y_cyl((6.5, -1.2, sc), 0.55, 0.9, "gun", "metal2", 12)
+    bevel_box((-0.6, 0, -3.6), (3.0, 2.8, 7.2), 1.1, "gun", "wood", rot=(0, -22, 0))       # grip, part of the stock
+    bevel_box((3.0, 0, -0.6), (0.4, 0.5, 2.0), 0.12, "gun", "dark", rot=(0, 18, 0))
+    bevel_box((3.3, 0, -1.95), (5.4, 1.0, 0.35), 0.1, "gun", "metal")
+    bevel_box((5.85, 0, -0.9), (0.35, 1.0, 2.3), 0.1, "gun", "metal")
+    bevel_box((8.0, 0, -1.4), (3.6, 2.3, 4.2), 0.4, "mag", "metal")                        # short box magazine
+    bevel_box((8.0, 0, -3.6), (3.9, 2.5, 0.6), 0.2, "mag", "dark")
+    # Bolt handle (rides the bolt bone), on the right.
+    tube((2.0, -1.3, z + 0.6), (2.0, -3.0, z - 0.4), 0.3, 0.3, "bolt", "metal2", 10)
+    ball((2.0, -3.2, z - 0.5), (0.6, 0.6, 0.6), "bolt", "metal2", 12)
+    return dict(half_width=2.2, top=3.5)
+
+
+def rifle_blaster():
+    """The robot's own blaster: a white shell with orange bands, a glowing core window, a carry-handle sight and a
+    power cell for a magazine."""
+    bevel_box((6.0, 0, 3.6), (18, 3.8, 5.0), 1.4, "gun", "shell")                          # shell
+    bevel_box((6.0, 0, 1.3), (15, 3.0, 2.2), 0.6, "gun", "dark")                           # underframe
+    for sy in (-1, 1):
+        bevel_box((6.0, sy * 1.93, 5.0), (14, 0.12, 0.5), 0.05, "gun", "band")             # stripe
+        bevel_box((7.5, sy * 1.94, 3.3), (5.5, 0.12, 1.5), 0.05, "gun", "core")            # core window
+        for i in range(4):
+            bevel_box((5.6 + i * 1.3, sy * 1.97, 3.3), (0.25, 0.12, 1.6), 0.03, "gun", "dark")   # window bars
+    # Carry-handle sight.
+    for x in (1.5, 10.5):
+        bevel_box((x, 0, 6.9), (1.3, 1.5, 2.2), 0.4, "gun", "shell")
+    bevel_box((6.0, 0, 8.2), (10.6, 1.5, 0.9), 0.4, "gun", "shell")
+    bevel_box((6.0, 0, 8.72), (7.0, 0.5, 0.16), 0.05, "gun", "dark")
+    ball((10.9, 0, 8.85), (0.2, 0.2, 0.2), "gun", "core", 8)
+    # Barrel shroud with dark bands and cooling fins, then the emitter.
+    x_cyl((20.0, 0, 3.0), 2.2, 10.0, "gun", "shell", 20)
+    for x in (15.6, 24.4):
+        x_cyl((x, 0, 3.0), 2.38, 0.9, "gun", "dark", 20)
+    for i in range(4):
+        bevel_box((17.6 + i * 1.6, 0, 5.3), (0.6, 1.4, 0.9), 0.12, "gun", "dark")
+    x_cyl((28.6, 0, 3.0), 1.25, 7.4, "gun", "dark", 16)
+    x_cyl((32.6, 0, 3.0), 1.7, 0.8, "gun", "band", 16)
+    x_cyl((34.9, 0, 3.0), 1.5, 2.4, "gun", "shell", 16)
+    x_cyl((36.15, 0, 3.0), 0.85, 0.12, "gun", "core", 12)
+    # Stock.
+    bevel_box((-6.0, 0, 2.9), (8.0, 3.0, 4.6), 1.2, "gun", "shell")
+    bevel_box((-3.2, 0, 2.9), (0.7, 3.15, 4.75), 0.2, "gun", "band")
+    bevel_box((-10.2, 0, 2.7), (0.9, 3.1, 5.4), 0.4, "gun", "dark")
+    trigger_group("dark")
+    # Power cell.
+    bevel_box((8.0, 0, -3.6), (3.6, 2.6, 6.2), 0.8, "mag", "dark", rot=(0, -4, 0))
+    bevel_box((9.8, 0, -3.7), (0.14, 1.4, 4.2), 0.05, "mag", "core", rot=(0, -4, 0))
+    bevel_box((8.25, 0, -6.9), (3.9, 2.8, 0.7), 0.25, "mag", "band", rot=(0, -4, 0))
+    bevel_box((-2.4, 0, 6.3), (1.8, 2.0, 0.8), 0.3, "bolt", "band")                        # charging knob
+    return dict(half_width=2.75, top=4.4)
+
+
 def build_rifle():
+    """The design RIFLE_VARIANT asks for. Returns how the left hand cups its fore-end (None: the default)."""
+    return {"carbine": rifle_carbine, "marksman": rifle_marksman, "blaster": rifle_blaster}.get(VARIANT, rifle_classic)()
+
+
+def rifle_classic():
     """A chunky stylised carbine with a scope: simple shapes, but layered (panels, rails, vents, screws) so it
     reads as a real gun up close. Gun space, inches: grip at origin, +X forward, muzzle tip at x 36, z 3."""
     # Receiver: an upper and a lower, an ejection port and a forward assist.
@@ -275,7 +416,7 @@ def build_rifle():
 def build_meshes():
     # Rifle (gun space: grip at origin, +X forward)
     def g(v): return v
-    build_rifle()
+    left = build_rifle() or {}
 
     # The rifle was modelled in gun space; move it to where the rest pose holds it.
     for obj, _, _ in PARTS:
@@ -290,7 +431,7 @@ def build_meshes():
         el, wr = solve_elbow(sh, G_REST @ HAND_LOCAL[s], POLE[s])
         robot_arm(s, sh, el, wr)
     grip_hand_right()
-    cradle_hand_left()
+    cradle_hand_left(**left)
 
 # ---------------------------------------------------------------- armature
 BONES = ["root", "gun", "mag", "bolt",
@@ -669,7 +810,7 @@ def main():
     write_vmdl(f"{OUT}/{NAME}.vmdl")
     # keep a .blend for previews
     arm.animation_data.action = None
-    bpy.ops.wm.save_as_mainfile(filepath=r"C:/Users/smitt/Documents/zombie_survival/Tools/blender/fps_rifle.blend")
+    bpy.ops.wm.save_as_mainfile(filepath=rf"C:/Users/smitt/Documents/zombie_survival/Tools/blender/fps_{NAME}.blend")
     print("built", len(mesh.data.polygons), "polys")
 
 main()

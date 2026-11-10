@@ -48,6 +48,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--waveflow" ) ) { await WaveFlowTest(); return; }
 		if ( args.Contains( "--pause" ) ) { await PauseTest(); return; }
 		if ( args.Contains( "--sea" ) ) { await SeaTest(); return; }
+		if ( args.Contains( "--rifles" ) ) { await RiflesTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1155,6 +1156,50 @@ public partial class AutoTest : Node
 			LookAt( fish );
 			await Wait( 0.2f );
 			await Shot( "sea_fish" );
+		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Every rifle design: switched to live (as the dev menu does), held, aimed and fired, with pictures. </summary>
+	async Task RiflesTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DevFlags.FreezeEnemies = true;
+		Fx.FlashLife = 3f;   // hold the flash still for the picture
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var rifle = inventory.Weapons[0];
+		inventory.Select( rifle, force: true );
+		player.EyeAngles = new Angles( 2f, 0f, 0f );
+		foreach ( var design in RifleModels.All )
+		{
+			RifleModels.Current = design.Name;
+			await Wait( 1.3f );
+			var shown = rifle.ViewModel?.ModelName;
+			GD.Print( $"[autotest] rifles: {design.Name} shows {shown}, scope {rifle.HasScope}, ammo {rifle.Ammo}" );
+			Check( shown == design.Model, $"picking {design.Name} did not bring up its model" );
+			await Shot( $"rifle_{design.Name.ToLower()}_held" );
+			rifle.ForceAim = true;
+			await Wait( 0.7f );
+			Check( rifle.HasScope == design.Scope, $"{design.Name}: wrong scope setting" );
+			await Shot( $"rifle_{design.Name.ToLower()}_aimed" );
+			rifle.ForceAim = false;
+			await Wait( 0.5f );
+			var before = rifle.Ammo;
+			rifle.TestFire();
+			await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+			await Shot( $"rifle_{design.Name.ToLower()}_fired" );
+			Check( rifle.Ammo == before - 1, $"{design.Name} did not fire" );
+			foreach ( var flash in GetTree().Root.FindChildren( "Muzzle Flash", "", true, false ) ) flash.QueueFree();
+			await Wait( 0.4f );
+		}
+		player.ThirdPerson = true;
+		player.EyeAngles = new Angles( 8f, 150f, 0f );
+		foreach ( var design in RifleModels.All )
+		{
+			RifleModels.Current = design.Name;
+			await Wait( 0.8f );
+			await Shot( $"rifle_{design.Name.ToLower()}_third_person" );
 		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();

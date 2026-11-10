@@ -50,7 +50,12 @@ public partial class PlayerWeapon : Node
 	public bool IsReloading { get; private set; }
 	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, ReloadTime ), 0f, 1f );
 
-	public bool HasScope => DisplayName == "Rifle" && !(controller?.ThirdPerson ?? false);
+	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.ThirdPerson ?? false);
+
+	Color? FlashTint => ModelName == "rifle" ? RifleModels.Get().Flash : null;
+
+	/// <summary> The model folder to show: the rifle's is whichever design is picked (RifleModels). </summary>
+	public string ViewModelName => ModelName == "rifle" ? RifleModels.Get().Model : ModelName;
 	public float ScopeAmount { get; private set; }
 	public bool IsAiming { get; private set; }
 	public float AimAmount { get; private set; }
@@ -140,13 +145,15 @@ public partial class PlayerWeapon : Node
 	void EnsureViewModel()
 	{
 		if ( ViewModel is not null || controller.Camera is null ) return;
-		ViewModel = ViewModel.Create( controller.Camera, ModelName, controller, this );
+		ViewModel = ViewModel.Create( controller.Camera, ViewModelName, controller, this );
 	}
 
 	public override void _Process( double delta )
 	{
 		if ( !Active ) return;
 		var dt = (float)delta;
+		// A different rifle design was picked: put this one away and bring that one up.
+		if ( ViewModel is not null && ViewModel.ModelName != ViewModelName ) { ViewModel.QueueFree(); ViewModel = null; }
 		EnsureViewModel();
 
 		var melee = MeleeActive?.Invoke() ?? false;
@@ -219,9 +226,9 @@ public partial class PlayerWeapon : Node
 			ViewModel.Fire();
 			var barrel = ViewModel.Muzzle();
 			trailStart = barrel.Origin;
-			Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel );
+			Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
 		}
-		else Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale );
+		else Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale, null, FlashTint );
 
 		hitThisShot.Clear();
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };

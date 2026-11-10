@@ -27,7 +27,7 @@ public static class Fx
 	/// licking forward, two side jets out of the brake, a few sparks, a quick light and a puff of smoke left hanging
 	/// in the air. Every shot is randomised. Rides along with the gun if given a parent. Forward is the barrel.
 	/// </summary>
-	public static void MuzzleFlash( Vector3 at, Vector3 forward, float scale, Node3D parent = null )
+	public static void MuzzleFlash( Vector3 at, Vector3 forward, float scale, Node3D parent = null, Color? tint = null )
 	{
 		var scene = Root;
 		if ( scene is null ) return;
@@ -50,6 +50,7 @@ public static class Fx
 			m.SetShaderParameter( "kind", kind );
 			m.SetShaderParameter( "seed", Rng.Float( 0f, 1f ) );
 			m.SetShaderParameter( "energy", energy );
+			if ( tint is { } c ) { m.SetShaderParameter( "hot", c.Lightened( 0.75f ) ); m.SetShaderParameter( "warm", c ); }
 			materials.Add( m );
 			return m;
 		}
@@ -80,7 +81,7 @@ public static class Fx
 			Tongue( (side * s + forward * 0.35f).Normalized(), forward.Cross( side ).Normalized(), Rng.Float( 5f, 8f ) * k, 2.4f * k, 3f );
 
 		// The flash, light and all, gone in a few frames; it shrinks a little as it fades.
-		var light = new OmniLight3D { LightColor = new Color( 1f, 0.68f, 0.35f ), LightEnergy = 2.5f, OmniRange = 240f * U.In, OmniAttenuation = 1.6f, ShadowEnabled = false };
+		var light = new OmniLight3D { LightColor = tint ?? new Color( 1f, 0.68f, 0.35f ), LightEnergy = 2.5f, OmniRange = 240f * U.In, OmniAttenuation = 1.6f, ShadowEnabled = false };
 		root.AddChild( light );
 		light.GlobalPosition = at + forward * 4f * k;
 		var tween = root.CreateTween();

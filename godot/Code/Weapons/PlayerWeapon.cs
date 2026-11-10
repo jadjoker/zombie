@@ -215,9 +215,9 @@ public partial class PlayerWeapon : Node
 			ViewModel.Fire();
 			var barrel = ViewModel.Muzzle();
 			trailStart = barrel.Origin;
-			Fx.MuzzleFlash( barrel, MuzzleFlashScale, ViewModel );
+			Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel );
 		}
-		else Fx.MuzzleFlash( new Transform3D( basis, trailStart ), MuzzleFlashScale );
+		else Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale );
 
 		hitThisShot.Clear();
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };

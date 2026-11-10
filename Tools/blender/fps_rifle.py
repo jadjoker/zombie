@@ -8,7 +8,7 @@
 import bpy, math, os, sys
 from mathutils import Vector, Matrix, Quaternion, Euler
 
-OUT = r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/rifle"
+OUT = os.environ.get("RIFLE_OUT", r"C:/Users/smitt/Documents/zombie_survival/Assets/models/weapons/rifle")
 NAME = "rifle"
 FPS = 30
 os.makedirs(OUT, exist_ok=True)
@@ -38,6 +38,8 @@ def build_materials():
     MATS["glove"] = mat("glove", (0.20, 0.17, 0.14, 1))
     MATS["sleeve"] = mat("sleeve", (0.15, 0.18, 0.12, 1))
     MATS["lens"] = mat("lens", (0.08, 0.2, 0.3, 1), 0.1)
+    MATS["dark"] = mat("dark", (0.06, 0.065, 0.07, 1), 0.6)
+    MATS["glow"] = mat("glow", (1.0, 0.2, 0.1, 1), 0.3)
 
 PARTS = []   # (object, bone, material)
 
@@ -52,7 +54,7 @@ def bevel_box(center, size, bevel, bone, material, rot=(0, 0, 0)):
     o = bpy.context.active_object
     o.scale = size
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-    b = o.modifiers.new("bevel", 'BEVEL'); b.width = bevel; b.segments = 3; b.limit_method = 'NONE'
+    b = o.modifiers.new("bevel", 'BEVEL'); b.width = min(bevel, min(size) * 0.4); b.segments = 3; b.limit_method = 'NONE'
     bpy.ops.object.modifier_apply(modifier="bevel")
     o.rotation_euler = tuple(math.radians(a) for a in rot)
     o.location = center
@@ -120,36 +122,106 @@ def basis(y, up_hint):
         m[i][0], m[i][1], m[i][2] = x[i], y[i], z[i]
     return m
 
+# ---------------------------------------------------------------- the rifle
+def y_cyl(center, r, length, bone, material, verts=16):
+    c = Vector(center)
+    return tube(c - Vector((0, length / 2, 0)), c + Vector((0, length / 2, 0)), r, r, bone, material, verts)
+
+def z_cyl(center, r, length, bone, material, verts=16):
+    c = Vector(center)
+    return tube(c - Vector((0, 0, length / 2)), c + Vector((0, 0, length / 2)), r, r, bone, material, verts)
+
+def build_rifle():
+    """A chunky stylised carbine with a scope: simple shapes, but layered (panels, rails, vents, screws) so it
+    reads as a real gun up close. Gun space, inches: grip at origin, +X forward, muzzle tip at x 36, z 3."""
+    # Receiver: an upper and a lower, an ejection port and a forward assist.
+    bevel_box((6.5, 0, 4.4), (16, 3.6, 3.2), 0.5, "gun", "metal")               # upper receiver
+    bevel_box((5.0, 0, 1.6), (13, 3.3, 2.8), 0.6, "gun", "metal")               # lower receiver
+    bevel_box((7.5, -1.82, 4.3), (5.0, 0.12, 1.5), 0.1, "gun", "dark")          # ejection port (right side)
+    bevel_box((7.5, -1.86, 5.25), (5.4, 0.12, 0.25), 0.05, "gun", "metal2")     # port cover hinge
+    y_cyl((1.6, -2.0, 4.6), 0.55, 0.9, "gun", "metal2", 12)                     # forward assist
+    bevel_box((4.5, 0, 0.2), (8, 3.5, 0.35), 0.1, "gun", "metal2")              # seam between upper and lower
+    for x in (1.5, 10.5):                                                       # takedown pins
+        y_cyl((x, 0, 1.8), 0.32, 3.6, "gun", "metal2", 10)
+    y_cyl((-0.3, 1.75, 2.0), 0.6, 0.3, "gun", "accent", 12)                     # safety selector
+    bevel_box((-0.1, 1.9, 2.0), (1.1, 0.2, 0.35), 0.08, "gun", "accent")
+    # Picatinny rail along the top, teeth and all.
+    bevel_box((10.0, 0, 6.25), (20, 2.0, 0.55), 0.12, "gun", "metal")
+    for i in range(19):
+        bevel_box((0.6 + i * 1.0, 0, 6.65), (0.5, 2.1, 0.3), 0.06, "gun", "dark")
+    # Handguard: an eight sided tube with vent slots, a rail underneath and a bottom grip panel.
+    hg = x_cyl((18.5, 0, 3.2), 2.35, 13.0, "gun", "metal2", 8)
+    for side in (-1, 1):
+        for i in range(4):
+            bevel_box((14.2 + i * 2.7, side * 2.18, 3.2), (1.7, 0.2, 0.75), 0.08, "gun", "dark")
+    bevel_box((18.5, 0, 0.75), (12.6, 1.6, 0.45), 0.1, "gun", "metal")         # under rail
+    x_cyl((12.4, 0, 3.2), 2.55, 0.7, "gun", "metal", 8)                         # handguard nut
+    # Barrel, gas block, front sight and a ported muzzle brake.
+    x_cyl((28.5, 0, 3.0), 0.75, 11.0, "gun", "metal", 16)
+    bevel_box((26.0, 0, 3.4), (1.6, 1.9, 2.2), 0.25, "gun", "metal")            # gas block
+    bevel_box((26.0, 0, 5.4), (0.9, 0.5, 1.8), 0.15, "gun", "metal")            # front sight post
+    x_cyl((33.2, 0, 3.0), 1.15, 0.5, "gun", "metal2", 16)                       # crush washer
+    x_cyl((34.7, 0, 3.0), 1.2, 2.6, "gun", "accent", 16)                        # brake body
+    for x in (34.0, 35.0):
+        for side in (-1, 1):
+            bevel_box((x, side * 1.05, 3.0), (0.45, 0.35, 1.4), 0.05, "gun", "dark")   # brake ports
+    x_cyl((36.05, 0, 3.0), 0.55, 0.12, "gun", "dark", 16)                       # bore
+    # Stock: a buffer tube, an adjustable stock with a cheek rest, a rubber pad.
+    x_cyl((-5.0, 0, 3.6), 1.05, 9.0, "gun", "metal", 16)
+    x_cyl((-0.6, 0, 3.6), 1.25, 0.6, "gun", "metal2", 16)                       # castle nut
+    bevel_box((-8.0, 0, 2.6), (7.0, 2.8, 4.2), 0.9, "gun", "accent", rot=(0, 3, 0))    # stock body
+    bevel_box((-7.6, 0, 5.0), (6.0, 2.4, 1.2), 0.5, "gun", "accent", rot=(0, 3, 0))    # cheek rest
+    bevel_box((-7.4, 0, 0.0), (5.0, 2.2, 1.1), 0.4, "gun", "accent", rot=(0, 3, 0))    # stock tail
+    bevel_box((-11.75, 0, 2.2), (0.9, 3.0, 6.6), 0.4, "gun", "metal", rot=(0, 3, 0))   # butt pad
+    y_cyl((-10.0, 0, 0.4), 0.45, 3.1, "gun", "metal2", 10)                      # sling loop pin
+    # Pistol grip with finger bumps, trigger and a proper trigger guard.
+    bevel_box((-0.6, 0, -4.0), (3.2, 2.9, 8.0), 1.0, "gun", "accent", rot=(0, -18, 0))
+    for i in range(3):
+        bevel_box((0.9 - i * 0.55, 0, -2.6 - i * 1.9), (0.9, 2.7, 1.1), 0.4, "gun", "accent", rot=(0, -18, 0))
+    bevel_box((-1.1, 0, -7.9), (3.6, 3.1, 0.6), 0.25, "gun", "dark", rot=(0, -18, 0))  # grip cap
+    bevel_box((3.0, 0, -0.6), (0.4, 0.5, 2.0), 0.12, "gun", "dark", rot=(0, 18, 0))    # trigger
+    bevel_box((3.3, 0, -1.95), (5.4, 1.0, 0.35), 0.1, "gun", "metal")           # guard bottom
+    bevel_box((5.85, 0, -0.9), (0.35, 1.0, 2.3), 0.1, "gun", "metal")           # guard front
+    # Magazine: two tilted halves for the curve, ribs, a floor plate and a witness hole.
+    bevel_box((8.0, 0, -3.3), (3.4, 2.4, 5.2), 0.5, "mag", "metal2", rot=(0, -4, 0))
+    bevel_box((8.6, 0, -7.4), (3.4, 2.4, 3.8), 0.5, "mag", "metal2", rot=(0, -14, 0))
+    for i in range(3):
+        bevel_box((8.15 + i * 0.12, 0, -2.4 - i * 1.6), (2.6, 2.55, 0.35), 0.1, "mag", "metal", rot=(0, -4 - i * 3, 0))
+    bevel_box((9.15, 0, -9.5), (4.0, 2.8, 0.8), 0.3, "mag", "accent", rot=(0, -14, 0))
+    bevel_box((7.2, 1.22, -4.4), (0.8, 0.1, 0.8), 0.1, "mag", "dark")
+    bevel_box((7.6, 0, -0.6), (4.0, 2.9, 0.9), 0.2, "gun", "metal")             # mag well flare
+    # Scope: slimmer tube on proper rings, cylinder turrets, tapered bell and a sunshade, glass both ends.
+    SC = 9.4
+    for x in (2.0, 10.0):
+        bevel_box((x, 0, 7.15), (1.6, 2.2, 1.0), 0.2, "gun", "metal")           # ring base
+        x_cyl((x, 0, SC), 1.75, 1.4, "gun", "metal", 20)                        # ring
+        for side in (-1, 1):
+            y_cyl((x, side * 1.75, SC - 1.2), 0.3, 0.4, "gun", "metal2", 8)     # ring screws
+    x_cyl((6.0, 0, SC), 1.4, 13.0, "gun", "metal", 24)                          # tube
+    x_cyl((6.0, 0, SC), 1.7, 2.6, "gun", "metal", 24)                           # turret saddle
+    z_cyl((6.0, 0, SC + 1.9), 0.85, 1.4, "gun", "accent", 16)                   # elevation turret
+    z_cyl((6.0, 0, SC + 2.65), 0.95, 0.25, "gun", "metal2", 16)
+    y_cyl((6.0, -1.9, SC), 0.85, 1.4, "gun", "accent", 16)                      # windage turret
+    y_cyl((6.0, -2.65, SC), 0.95, 0.25, "gun", "metal2", 16)
+    tube((12.5, 0, SC), (15.5, 0, SC), 1.4, 2.1, "gun", "metal", 24)            # objective bell
+    x_cyl((16.6, 0, SC), 2.1, 2.2, "gun", "metal", 24)                          # sunshade
+    x_cyl((15.65, 0, SC), 2.2, 0.25, "gun", "accent", 24)                       # accent band
+    x_cyl((17.6, 0, SC), 1.85, 0.12, "gun", "lens", 24)                         # front glass (recessed)
+    tube((-0.5, 0, SC), (-2.5, 0, SC), 1.4, 1.85, "gun", "metal", 24)           # eyepiece
+    x_cyl((-2.9, 0, SC), 1.95, 0.8, "gun", "accent", 24)                        # eye cup
+    x_cyl((-3.36, 0, SC), 1.6, 0.12, "gun", "lens", 24)                         # rear glass, proud of the cup
+    # A tiny glowing dot on the turret so it reads at a glance.
+    bevel_box((6.0, 0.97, SC + 2.0), (0.3, 0.1, 0.3), 0.05, "gun", "glow")
+    # Charging handle (rides the bolt bone).
+    bevel_box((-2.2, 0, 5.4), (2.0, 2.4, 0.7), 0.2, "bolt", "metal")
+    bevel_box((-3.1, 0, 5.4), (0.6, 3.6, 0.8), 0.2, "bolt", "accent")
+
+
 # ---------------------------------------------------------------- build geometry
 def build_meshes():
     # Rifle (gun space: grip at origin, +X forward)
     def g(v): return v
-    bevel_box((6, 0, 3.2), (17, 3.8, 5.6), 0.7, "gun", "metal")                 # receiver
-    bevel_box((6.5, 0, 6.5), (13, 2.2, 1.2), 0.3, "gun", "metal2")              # top rail
-    # Scope: tube on two rings, a wide objective bell up front, an eyepiece at the back, glass at both ends.
-    SC = 9.6                                                                    # height of the scope's axis
-    for x in (2.5, 10.0):
-        bevel_box((x, 0, 7.9), (2.2, 2.6, 2.6), 0.4, "gun", "metal")            # rings
-    x_cyl((6.0, 0, SC), 1.55, 12.0, "gun", "metal")                             # tube
-    x_cyl((6.0, 0, SC), 1.75, 2.4, "gun", "metal2")                             # turret band
-    ball((6.0, 0, SC + 1.9), (1.0, 1.0, 0.8), "gun", "accent", 14)              # elevation turret
-    ball((6.0, -1.9, SC), (1.0, 0.8, 1.0), "gun", "accent", 14)                 # windage turret
-    tube((12.0, 0, SC), (16.0, 0, SC), 1.6, 2.35, "gun", "metal", 24)           # objective bell
-    x_cyl((16.4, 0, SC), 2.35, 0.8, "gun", "accent", 24)                        # objective ring
-    x_cyl((16.75, 0, SC), 2.0, 0.15, "gun", "lens", 24)                         # front glass
-    x_cyl((-1.0, 0, SC), 1.9, 2.4, "gun", "metal2", 24)                         # eyepiece
-    x_cyl((-2.25, 0, SC), 1.6, 0.15, "gun", "lens", 24)                         # rear glass
-    bevel_box((21.5, 0, 5.6), (1.0, 1.0, 1.4), 0.3, "gun", "accent")            # low front sight post
-    bevel_box((17.5, 0, 2.6), (13, 4.6, 4.6), 1.4, "gun", "metal2")             # handguard
-    x_cyl((29.5, 0, 3.0), 0.95, 9.0, "gun", "metal")                            # barrel
-    x_cyl((34.5, 0, 3.0), 1.45, 2.2, "gun", "accent")                           # muzzle brake
-    bevel_box((-6.0, 0, 2.2), (8, 3.2, 6.0), 1.0, "gun", "metal", rot=(0, 4, 0))   # stock
-    bevel_box((-10.4, 0, 1.8), (1.4, 3.4, 6.8), 0.6, "gun", "accent", rot=(0, 4, 0))   # butt pad
-    bevel_box((-0.6, 0, -4.2), (3.4, 3.2, 8.6), 1.0, "gun", "metal", rot=(0, -16, 0))  # pistol grip
-    bevel_box((3.5, 0, -0.9), (2.2, 0.8, 2.4), 0.3, "gun", "accent")            # trigger guard bit
-    bevel_box((8.0, 0, -5.2), (3.6, 3.0, 9.4), 0.9, "mag", "metal2", rot=(0, -6, 0))   # magazine
-    bevel_box((8.0, 0, -9.6), (3.8, 3.2, 1.0), 0.4, "mag", "accent", rot=(0, -6, 0))   # mag floor plate
-    bevel_box((-1.5, 0, 7.8), (3.2, 2.8, 1.4), 0.4, "bolt", "accent")           # charging handle
+    build_rifle()
 
     # The rifle was modelled in gun space; move it to where the rest pose holds it.
     for obj, _, _ in PARTS:
@@ -523,7 +595,7 @@ def write_vmdl(path):
 						_class = "Attachment"
 						name = "muzzle"
 						parent_bone = "gun"
-						relative_origin = [ 0.0, 36.0, 3.0 ]
+						relative_origin = [ 0.0, 36.2, 3.0 ]
 						relative_angles = [ 0.0, 0.0, 0.0 ]
 						weight = 1.0
 						ignore_rotation = false

@@ -18,7 +18,7 @@ public static class WeaponModels
 	/// <summary> Muzzle attachments from the .vmdl: bone and offset in the bone's space (inches). </summary>
 	static readonly Dictionary<string, (string Bone, Vector3 Offset)> muzzles = new()
 	{
-		["rifle"] = ("gun", new Vector3( 0f, 36f, 3f )),
+		["rifle"] = ("gun", new Vector3( 0f, 36.2f, 3f )),
 		["shotgun"] = ("gun", new Vector3( 0f, 40f, 5.2f )),
 	};
 

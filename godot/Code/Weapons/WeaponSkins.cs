@@ -25,6 +25,8 @@ public static class WeaponSkins
 			["lens"] = (new Color( 0.08f, 0.2f, 0.3f ), 0.6f),
 			["wood"] = (new Color( 0.55f, 0.34f, 0.18f ), 0.0f),
 			["axered"] = (new Color( 0.82f, 0.12f, 0.1f ), 0.0f),
+			["dark"] = (new Color( 0.05f, 0.055f, 0.06f ), 0.6f),
+			["glow"] = (new Color( 1f, 0.22f, 0.12f ), 0.0f),
 		},
 		["Arctic"] = new()
 		{
@@ -80,9 +82,13 @@ public static class WeaponSkins
 		ColorRamp = new Gradient { Offsets = new[] { 0f, 1f }, Colors = new[] { new Color( 0.75f, 0.75f, 0.75f ), new Color( 1.15f, 1.15f, 1.15f ) } },
 	};
 
+	static ShaderMaterial lens;
+
 	/// <summary> A skin's material for a slot (falls back to Military, then to null for slots no skin covers). </summary>
-	public static StandardMaterial3D Resolve( string skin, string slot )
+	public static Material Resolve( string skin, string slot )
 	{
+		// Scope glass is the same coated lens on every skin.
+		if ( slot == "lens" ) return lens ??= new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/scope_lens.gdshader" ), ResourceName = "lens" };
 		if ( cache.TryGetValue( (skin, slot), out var m ) ) return m;
 		(Color Color, float Metal) entry;
 		if ( !(table.TryGetValue( skin, out var s ) && s.TryGetValue( slot, out entry )) && !table["Military"].TryGetValue( slot, out entry ) ) return null;
@@ -95,6 +101,7 @@ public static class WeaponSkins
 			RoughnessTexture = Wear, RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Red,
 			ClearcoatEnabled = metal, Clearcoat = 0.35f, ClearcoatRoughness = 0.3f,
 		};
+		if ( slot == "glow" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 4f; m.RimEnabled = false; }
 		if ( skin == "Hologram" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 1.2f; }
 		cache[(skin, slot)] = m;
 		return m;

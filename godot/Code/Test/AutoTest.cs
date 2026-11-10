@@ -35,6 +35,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--hitframes" ) ) { await HitFramesTest(); return; }
 		if ( args.Contains( "--swimframes" ) ) { await SwimFramesTest(); return; }
 		if ( args.Contains( "--devclick" ) ) { await DevClickTest(); return; }
+		if ( args.Contains( "--flash" ) ) { await FlashTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1018,6 +1019,50 @@ public partial class AutoTest : Node
 	async Task Wait( float seconds )
 	{
 		await ToSignal( GetTree().CreateTimer( seconds, processAlways: true, processInPhysics: true ), SceneTreeTimer.SignalName.Timeout );
+	}
+
+	/// <summary> The rifle up close and its muzzle flash, frame by frame, in first and third person. </summary>
+	async Task FlashTest()
+	{
+		if ( OS.GetCmdlineUserArgs().Contains( "--hold" ) ) Fx.FlashLife = 3f;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DevFlags.FreezeEnemies = true;
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		foreach ( var weaponIndex in new[] { 0, 1 } )
+		{
+			inventory.Select( inventory.Weapons[weaponIndex], force: true );
+			await Wait( 1.2f );
+			player.EyeAngles = new Angles( 4f, 30f, 0f );
+			await Wait( 0.3f );
+			await Shot( $"gun_w{weaponIndex}_idle" );
+			player.EyeAngles = new Angles( 2f, 0f, 0f );   // out of the door, over the sea
+			await Wait( 0.3f );
+			var weapon = inventory.Weapons[weaponIndex];
+			if ( weapon.ViewModel is { } vm )
+			{
+				var m = vm.Muzzle();
+				var cam = GetViewport().GetCamera3D();
+				GD.Print( $"[autotest] flash: barrel forward vs view {m.Basis.Y.Normalized().Dot( -cam.GlobalBasis.Z ):0.00} (expect near 1)" );
+			}
+			weapon.TestFire();
+			var flashNode = GetTree().Root.FindChild( "Muzzle Flash", true, false ) as Node3D;
+			GD.Print( $"[autotest] flash: node {(flashNode is null ? "missing" : $"at {flashNode.GlobalPosition}, children {flashNode.GetChildCount()}, parent scale {(flashNode.GetParent() as Node3D)?.GlobalBasis.Scale}, visible {flashNode.IsVisibleInTree()}")}, camera at {GetViewport().GetCamera3D().GlobalPosition}" );
+			for ( var f = 0; f < 4; f++ )
+			{
+				await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+				await Shot( $"flash_w{weaponIndex}_f{f}" );
+			}
+			await Wait( 1f );
+		}
+		player.ThirdPerson = true;
+		inventory.Select( inventory.Weapons[0], force: true );
+		player.EyeAngles = new Angles( 4f, 120f, 0f );
+		await Wait( 1f );
+		inventory.Weapons[0].TestFire();
+		await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+		await Shot( "flash_3p" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
 	}
 
 	async Task Shot( string name )

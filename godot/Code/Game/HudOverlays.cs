@@ -142,8 +142,15 @@ public partial class HudOverlays : Control
 		}
 		else speech.Visible = false;
 
-		var station = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" )?.Hovered;
-		prompt.Visible = station is not null;
+		var use = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" );
+		var station = use?.Hovered;
+		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false);
+		if ( station is null && (use?.AtDivingBoard ?? false) )
+		{
+			promptTitle.Text = "Dive in";
+			promptDesc.Text = "Head down to the sea floor";
+			promptTitle.AddThemeColorOverride( "font_color", Colors.White );
+		}
 		if ( station is not null )
 		{
 			var afford = !station.SoldOut && (player?.Points ?? 0) >= station.CurrentCost;

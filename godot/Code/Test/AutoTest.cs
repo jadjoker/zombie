@@ -598,6 +598,24 @@ public partial class AutoTest : Node
 			player.EyeAngles = new Angles( 12f, -40f, 0f );
 			await Wait( 0.3f );
 			await Shot( "dock_sea" );
+			if ( !dock.DiveSequence )
+			{
+				// Walk to the end of the diving board: the prompt shows, E takes you down to the sea floor.
+				player.GlobalPosition = U.Sbox( dock.Origin.X + dock.PierLength + 30f, dock.Origin.Y, dock.SurfaceHeight + 24f );
+				player.EyeAngles = new Angles( 10f, 0f, 0f );
+				await Wait( 0.4f );
+				var use = player.GetNode<PlayerUse>( "PlayerUse" );
+				GD.Print( $"[autotest] at board: prompt {use.AtDivingBoard}, waves held {DockHouse.HoldWaves}, wave {WaveDirector.Current?.Wave}" );
+				await Shot( "board_prompt" );
+				use.PressUse();
+				await Wait( 1.6f );
+				GD.Print( $"[autotest] sea floor: at {player.GlobalPosition}, on ground {player.IsOnGround}, waves held {DockHouse.HoldWaves}, weapons held {DockHouse.WeaponsHeld}" );
+				await Shot( "sea_floor" );
+				await Wait( 4f );
+				GD.Print( $"[autotest] after landing: wave {WaveDirector.Current?.Wave}, state {WaveDirector.Current?.State}" );
+			}
+			else
+			{
 			dock.TestDive();
 			var t0 = Clock.Real;
 			while ( !DockHouse.Diving && Clock.Real - t0 < 5 ) await Wait( 0.05f );
@@ -612,6 +630,7 @@ public partial class AutoTest : Node
 			await Wait( 0.2f );
 			await Shot( "dive_land" );
 			while ( DockHouse.Diving && Clock.Real - t0 < 70 ) await Wait( 0.1f );
+			}
 			player.EyeAngles = new Angles( 30f, 0f, 0f );
 			await Wait( 1.5f );
 			await Shot( "crater" );
@@ -871,14 +890,31 @@ public partial class AutoTest : Node
 	void SeabedMap()
 	{
 		var center = new Vector3( 8.9f, 0f, -18.8f );
-		for ( var z = -40; z <= 40; z += 4 )
+		var walk = Nav.Closest( player, center with { Y = 400f } );
+		GD.Print( $"[seabed] nav near 400 m: {walk}" );
+		foreach ( var n in GetTree().Root.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>() )
+			if ( n.GlobalPosition.Y > 300f && n.GlobalPosition.Y < 500f && n is not MeshInstance3D && n.GetParent() is not Node3D { Name: var pn } || false )
+				GD.Print( $"[seabed] node {n.GetPath()} at {n.GlobalPosition}" );
+		var counts = new System.Collections.Generic.Dictionary<string, int>();
+		foreach ( var n in GetTree().Root.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>() )
+			if ( n.GlobalPosition.Y > 300f && n.GlobalPosition.Y < 500f )
+			{
+				var top = n; while ( top.GetParent() is Node3D up && up.GlobalPosition.Y > 300f && up.GlobalPosition.Y < 500f ) top = up;
+				var key = top.GetPath().ToString();
+				counts[key] = counts.GetValueOrDefault( key ) + 1;
+			}
+		foreach ( var (k, v) in counts.OrderByDescending( x => x.Value ).Take( 15 ) ) GD.Print( $"[seabed] group {k} x{v}" );
+		GD.Print( $"[seabed] level {Level.Current?.LevelName} at {Level.Current?.GlobalPosition}, navmesh {Nav.Region?.GetPath()}" );
+		foreach ( var n in GetTree().Root.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>() )
+			if ( n.GlobalPosition.Y > 100f && n.GlobalPosition.Y < 700f ) GD.Print( $"[seabed] shape at {n.GlobalPosition} under {n.GetParent()?.GetParent()?.Name}/{n.GetParent()?.Name} {n.Shape?.GetType().Name}" );
+		for ( var z = -100; z <= 100; z += 10 )
 		{
 			var row = "";
-			for ( var x = -40; x <= 40; x += 4 )
+			for ( var x = -100; x <= 100; x += 10 )
 			{
 				var at = center + new Vector3( x, 0f, z );
 				var hit = Trace.Ray( player, at + Vector3.Up * 800f, at + Vector3.Down * 200f, Layers.World, new Godot.Collections.Array<Rid> { player.GetRid() } );
-				row += !hit.Hit ? "." : hit.HitPosition.Y > 600f ? "^" : "#";
+				row += !hit.Hit ? "." : hit.HitPosition.Y > 600f ? "^" : hit.HitPosition.Y > 100f ? "S" : "0";
 			}
 			GD.Print( $"[seabed] z {center.Z + z,6:0} {row}" );
 		}

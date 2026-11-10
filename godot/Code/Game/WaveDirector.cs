@@ -185,6 +185,7 @@ public partial class WaveDirector : Node3D
 
 		if ( State == WaveState.Intermission )
 		{
+			if ( DockHouse.HoldWaves && Wave == 0 ) { nextWaveAt = MathF.Max( (float)nextWaveAt, FirstWaveDelay ); return; }
 			if ( nextWaveAt <= 0f ) StartWave();
 			return;
 		}

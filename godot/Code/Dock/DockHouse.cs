@@ -18,6 +18,10 @@ public partial class DockHouse : Node3D
 	public float DiveBrakeSpeed = 650f;
 	public float DiveSteerSpeed = 750f;
 	public int DiveBloobers = 60;
+	/// <summary> The old free-fall dive (off for now): the diving board takes you straight to the sea floor instead. </summary>
+	public bool DiveSequence = false;
+	/// <summary> How close (s&box units) you must be to the end of the diving board to use it. </summary>
+	public float BoardReach = 110f;
 	public float BlooberDelay = 3.5f;
 
 	public static int DiveCrushed { get; private set; }
@@ -31,6 +35,59 @@ public partial class DockHouse : Node3D
 	public static DockHouse Current { get; private set; }
 	/// <summary> No shooting on the dock or during the dive: guns come out once you've landed on the seabed. </summary>
 	public static bool WeaponsHeld => Current is { } d && !d.dived;
+	/// <summary> Waves wait while the player is still up on the dock. </summary>
+	public static bool HoldWaves => Current is { } d && !d.dived;
+
+	Vector3 BoardEnd => new( Origin.X + PierLength + 40f, Origin.Y, Deck + 6f );
+
+	/// <summary> True when the player stands at the diving board (shows the E prompt). </summary>
+	public bool BoardInReach( PlayerController controller ) =>
+		!DiveSequence && !dived && entering is null && controller.GlobalPosition.DistanceTo( U.Sbox( BoardEnd ) ) < BoardReach * U.In;
+
+	Tween entering;
+
+	/// <summary> Off the board and down to the sea floor: fade out, land on the seabed below the board, fade in. </summary>
+	public void EnterSea()
+	{
+		var player = LocalPlayer;
+		if ( player is null || dived || entering is not null ) return;
+		var controller = player.Controller;
+		var fade = new ColorRect { Color = new Color( 0.02f, 0.08f, 0.16f, 0f ), MouseFilter = Control.MouseFilterEnum.Ignore };
+		fade.SetAnchorsPreset( Control.LayoutPreset.FullRect );
+		var layer = new CanvasLayer { Layer = 50, Name = "Sea Fade" };
+		AddChild( layer );
+		layer.AddChild( fade );
+		Sfx.Play2D( "splash", 0.9f );
+		controller.UseInputControls = false;
+		entering = CreateTween();
+		entering.TweenProperty( fade, "color:a", 1f, 0.35f );
+		entering.TweenCallback( Callable.From( () =>
+		{
+			// Straight down from the end of the board to the sea floor (the nearest walkable spot there).
+			var above = U.Sbox( BoardEnd ) + Vector3.Down * 2f;
+			// (From just under the board: the seabed is far below, an old arena floor further still.)
+			var floorHit = Trace.Ray( controller, above + Vector3.Down * 3f, above + Vector3.Down * 5000f, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+			var floor = floorHit.Hit ? floorHit.HitPosition : U.Sbox( BoardEnd.X, BoardEnd.Y, 0f );
+			var land = Nav.Closest( controller, floor );
+			if ( land == Vector3.Zero ) land = floor;
+			controller.GlobalPosition = land + Vector3.Up * 4f * U.In;
+			controller.Velocity = Vector3.Zero;
+			dived = true;
+			Diving = false;
+			Jetpack.Diving = false;
+			for ( var i = 0; i < 30; i++ )
+				WaterBubble.Create( controller.GlobalPosition + Rng.InSphere( 50f * U.In ) + Vector3.Up * 40f * U.In, Rng.Float( 0.8f, 2.2f ), i * 0.01f );
+			controller.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.25f );
+		} ) );
+		entering.TweenInterval( 0.15f );
+		entering.TweenProperty( fade, "color:a", 0f, 0.6f );
+		entering.TweenCallback( Callable.From( () =>
+		{
+			controller.UseInputControls = true;
+			layer.QueueFree();
+			entering = null;
+		} ) );
+	}
 
 	float Deck => SurfaceHeight + 18f;
 	Vector3 DivePoint => new( Origin.X + PierLength - 20f, Origin.Y, Deck );
@@ -247,7 +304,11 @@ public partial class DockHouse : Node3D
 		}
 
 		if ( phase != Phase.None ) { UpdateDive( player, controller, (float)delta ); return; }
-		if ( !dived && player.IsAlive && controller.GlobalPosition.Y < (SurfaceHeight - 6f) * U.In ) StartDive( player, controller );
+		if ( !dived && player.IsAlive && controller.GlobalPosition.Y < (SurfaceHeight - 6f) * U.In )
+		{
+			if ( DiveSequence ) StartDive( player, controller );
+			else EnterSea();
+		}
 	}
 
 	/// <summary> Testing aid: dive from just past the board. </summary>

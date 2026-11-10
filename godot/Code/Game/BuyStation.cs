@@ -80,6 +80,8 @@ public partial class PlayerUse : Node
 {
 	public float ReachLength = 130f;
 	public BuyStation Hovered { get; private set; }
+	/// <summary> Standing at the diving board (the prompt shows "Dive in"). </summary>
+	public bool AtDivingBoard { get; private set; }
 	PlayerController controller;
 	PlayerSurvivor survivor;
 
@@ -96,7 +98,19 @@ public partial class PlayerUse : Node
 		var from = cam.GlobalPosition;
 		var tr = Trace.Ray( controller, from, from + -cam.GlobalBasis.Z * ReachLength * U.In, Layers.World );
 		Hovered = tr.Hit ? BuyStation.On( tr.Node ) : null;
-		if ( Hovered is not null && Input.IsActionJustPressed( "use" ) ) TryPress();
+		AtDivingBoard = Hovered is null && DockHouse.Current is { } dock && dock.BoardInReach( controller );
+		if ( Input.IsActionJustPressed( "use" ) )
+		{
+			if ( Hovered is not null ) TryPress();
+			else if ( AtDivingBoard ) DockHouse.Current.EnterSea();
+		}
+	}
+
+	/// <summary> What pressing E does now (tests call it directly; a simulated key press can miss the frame). </summary>
+	public void PressUse()
+	{
+		if ( Hovered is not null ) TryPress();
+		else if ( AtDivingBoard ) DockHouse.Current.EnterSea();
 	}
 
 	/// <summary> Presses what you're looking at (also used by tests). False if refused. </summary>

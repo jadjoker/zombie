@@ -14,12 +14,14 @@ public static class Nav
 		var mesh = new NavigationMesh
 		{
 			// s&box 64 / 16 / 18 inches, snapped to whole cells the way Godot snaps them anyway (it warned on every bake).
-			AgentHeight = 1.65f,   // 64 in = 1.63 m, up to 33 cells of 0.05
+			AgentHeight = 1.7f,    // 64 in = 1.63 m, up to 17 cells of 0.1
 			AgentRadius = 0.5f,    // 16 in = 0.41 m, up to 5 cells of 0.1
-			AgentMaxClimb = 0.45f, // 18 in = 0.46 m, down to 9 cells of 0.05
+			AgentMaxClimb = 0.4f,  // 18 in = 0.46 m, down to 4 cells of 0.1
 			AgentMaxSlope = 40f,
 			CellSize = 0.1f,
-			CellHeight = 0.05f,
+			// 0.1 m steps: the baker keeps 8191 steps of height, so 0.05 m capped it at 409 m and squashed the water
+			// level's dock (813 m up) onto a phantom floor at 409 m that spawns snapped to.
+			CellHeight = 0.1f,
 			GeometryParsedGeometryType = NavigationMesh.ParsedGeometryType.StaticColliders,
 			GeometryCollisionMask = Layers.World,
 			GeometrySourceGeometryMode = NavigationMesh.SourceGeometryMode.GroupsWithChildren,

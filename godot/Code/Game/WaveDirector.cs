@@ -47,6 +47,7 @@ public partial class WaveDirector : Node3D
 	public float BossBaseHealth = 2000f;
 	public float BossHealthPerVisit = 800f;
 	public float BossSpawnHeight = 160f;
+	public float KrakenBaseHealth = 3500f;
 
 	public int AnchorSnapEvery = 4;
 	public bool FloatRound;
@@ -87,7 +88,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSpiders;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken }
 
 	/// <summary> How each kind is made, given a spot on the ground, its health and a facing. Null: not ported yet. </summary>
 	public static readonly Dictionary<EnemyKind, Func<WaveDirector, Vector3, float, Node3D>> Spawners = new()
@@ -123,6 +124,14 @@ public partial class WaveDirector : Node3D
 			m.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
 			m.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return m;
+		},
+		[EnemyKind.Kraken] = ( d, at, health ) =>
+		{
+			var k = Kraken.Spawn( d.GetTree().CurrentScene, at, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) k.GlobalBasis = Shapes.LookAt( toPlayer );
+			k.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return k;
 		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
@@ -326,6 +335,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
 			EnemyKind.Crab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
+			EnemyKind.Kraken => KrakenBaseHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};

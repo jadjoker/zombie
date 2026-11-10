@@ -363,6 +363,14 @@ public partial class DevMenu : CanvasLayer
 			Action( "Teleport to MC61", TeleportToBoss );
 		}
 
+		if ( Sec( "Enemies", "Kraken", "kraken boss dome helmet brain tentacle 10% hp" ) )
+		{
+			Section( "Kraken" );
+			Row();
+			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
+			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
+		}
+
 		// ======== PLAYER
 		var player = Player;
 		var weapons = Controller?.GetChildren().OfType<PlayerWeapon>().ToList() ?? new();
@@ -522,6 +530,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Junk Crab", WaveDirector.EnemyKind.Crab ),
 		new( "Sea Spider", WaveDirector.EnemyKind.Spider ),
 		new( "MC61 boss", WaveDirector.EnemyKind.Boss ),
+		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
 	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };

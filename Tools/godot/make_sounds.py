@@ -296,6 +296,16 @@ def build():
     s["beam_fire"] = reverb(zap(1.0, 160, 120, 0.9) + spectral(noise(1.0), lo=1500, hi=8000) * bell(int(SR * 1.0), 0.1) * 0.4, room=0.5, wet=0.3)
     s["boss_spawn"] = reverb(mix(*[(tone(2.0, f, f * 1.5) * bell(int(SR * 2.0), 0.7) * (0.7 + 0.3 * tone(2.0, 6 + i)), 0, 0.5) for i, f in enumerate((110, 165, 220, 277))],
                                  (spectral(noise(2.0), lo=3000) * bell(int(SR * 2.0), 0.8) * 0.15, 0, 1.0)), room=1.2, wet=0.4)
+    # The Kraken: the sea bed rumbling as it comes up, shots on its glass dome, the dome shattering.
+    s["kraken_rise"] = reverb(mix((spectral(noise(5.0), lo=25, hi=160) * bell(int(SR * 5.0), 0.55) * (0.75 + 0.25 * tone(5.0, 7)), 0, 1.6),
+                                  (spectral(noise(5.0), lo=400, hi=2500) * bell(int(SR * 5.0), 0.6) * 0.12, 0, 1.0),
+                                  (thump(0.9, 60, 24, 0.6), 0.1, 1.2), (thump(0.9, 55, 22, 0.6), 3.3, 1.0),
+                                  (tone(3.0, 48, 96) * bell(int(SR * 3.0), 0.8) * 0.5, 1.6, 1.0)), room=1.4, wet=0.4)
+    s["glass_hit"] = mix((click(5200, 0.05, 0.02), 0, 1.0), (tone(0.25, 2350) * env(int(SR * 0.25), 0.001, 0.12) * 0.3, 0, 1.0),
+                         (tone(0.25, 3720) * env(int(SR * 0.25), 0.001, 0.08) * 0.18, 0, 1.0))
+    s["glass_break"] = reverb(mix((spectral(noise(0.5), lo=2500) * env(int(SR * 0.5), 0.001, 0.22), 0, 1.0),
+                                  *[(click(f, 0.06, 0.03), t, 0.6) for f, t in ((6200, 0.03), (4800, 0.09), (7100, 0.16), (5300, 0.27), (6600, 0.4))],
+                                  (thump(0.2, 180, 70, 0.08), 0, 0.6)), room=0.5, wet=0.3)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

@@ -49,6 +49,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--pause" ) ) { await PauseTest(); return; }
 		if ( args.Contains( "--sea" ) ) { await SeaTest(); return; }
 		if ( args.Contains( "--rifles" ) ) { await RiflesTest(); return; }
+		if ( args.Contains( "--kraken" ) ) { await KrakenTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1201,6 +1202,100 @@ public partial class AutoTest : Node
 			await Wait( 0.8f );
 			await Shot( $"rifle_{design.Name.ToLower()}_third_person" );
 		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The Kraken, stage 1: it burrows up, its dome soaks shots and shatters, the brain is the weak point, a tentacle comes off, it dies. </summary>
+	async Task KrakenTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var director = WaveDirector.Current;
+		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
+		var stand = Nav.Closest( player, ground + new Vector3( 8f, 0f, 9f ) );
+		player.GlobalPosition = stand + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
+		var kraken = director.SpawnAt( WaveDirector.EnemyKind.Kraken, ground, player.GlobalPosition ) as Kraken;
+		Check( kraken is not null, "the Kraken did not spawn" );
+		if ( kraken is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		await Wait( 0.3f );
+		Check( kraken.State == Kraken.Mode.Burrowing, "the Kraken did not start underground" );
+		var buried = kraken.BrainPosition.Y - ground.Y;
+		LookAt( ground + Vector3.Up * 1.5f );
+		foreach ( var (at, name) in new[] { (0.5f, "kraken_rise_a"), (1.2f, "kraken_rise_b"), (1.2f, "kraken_rise_c"), (1.4f, "kraken_unfurl") } )
+		{
+			await Wait( at );
+			await Shot( name );
+		}
+		await Wait( 1.6f );
+		var up = kraken.BrainPosition.Y - ground.Y;
+		GD.Print( $"[autotest] kraken: brain {buried:0.0} m at spawn, {up:0.0} m once up, state {kraken.State}, health {kraken.Health.Current:0}, tentacles {kraken.TentaclesLeft}" );
+		Check( buried < 0f && up > 2.5f, "the Kraken did not come up out of the ground" );
+		Check( kraken.State == Kraken.Mode.Idle, "the Kraken never finished arriving" );
+		LookAt( ground + Vector3.Up * 2f );
+		await Wait( 0.3f );
+		await Shot( "kraken_idle" );
+
+		// Real shots at the dome: it takes them, the Kraken doesn't.
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var weapon = inventory.Weapons[0];
+		inventory.Select( weapon, force: true );
+		await Wait( 1.2f );
+		var full = kraken.Health.Current;
+		LookAt( kraken.BrainPosition ); await Wait( 0.2f );
+		for ( var k = 0; k < 4; k++ ) { LookAt( kraken.BrainPosition ); weapon.TestFire(); await Wait( 0.15f ); }
+		GD.Print( $"[autotest] kraken: dome at {kraken.HelmetFraction:0.00} after 4 shots, health {kraken.Health.Current:0}/{full:0}" );
+		Check( kraken.HelmetFraction < 1f, "shots at the brain did not hit the dome" );
+		Check( kraken.Health.Current == full, "the Kraken was hurt through its dome" );
+		await Shot( "kraken_dome_hit" );
+		kraken.ReceiveShot( 1, 5000f, -kraken.GlobalBasis.Z, kraken.BrainPosition, player.GlobalPosition, null, false );
+		Check( !kraken.HelmetOn, "the dome did not shatter" );
+		await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
+		await Wait( 0.12f );
+		await Shot( "kraken_dome_shatter" );
+		await Wait( 0.8f );
+
+		// Real shots at the bare brain: triple damage.
+		var before = kraken.Health.Current;
+		LookAt( kraken.BrainPosition ); await Wait( 0.2f );
+		for ( var k = 0; k < 3; k++ ) { LookAt( kraken.BrainPosition ); weapon.TestFire(); await Wait( 0.15f ); }
+		var brainDamage = (before - kraken.Health.Current) / 3f;
+		before = kraken.Health.Current;
+		LookAt( kraken.GlobalPosition + Vector3.Up * 1.6f ); await Wait( 0.2f );
+		for ( var k = 0; k < 3; k++ ) { LookAt( kraken.GlobalPosition + Vector3.Up * 1.6f ); weapon.TestFire(); await Wait( 0.15f ); }
+		var headDamage = (before - kraken.Health.Current) / 3f;
+		GD.Print( $"[autotest] kraken: per shot, brain {brainDamage:0}, head {headDamage:0}" );
+		Check( headDamage > 0f && brainDamage > headDamage * 2.5f, "the bare brain is not the weak point" );
+		await Shot( "kraken_brain_bare" );
+
+		// A tentacle: real shots land on it, then it comes off.
+		before = kraken.Health.Current;
+		LookAt( kraken.TentaclePosition( 3 ) ); await Wait( 0.2f );
+		for ( var k = 0; k < 3; k++ ) { LookAt( kraken.TentaclePosition( 3 ) ); weapon.TestFire(); await Wait( 0.15f ); }
+		GD.Print( $"[autotest] kraken: 3 shots at a tentacle took {before - kraken.Health.Current:0}" );
+		Check( kraken.Health.Current < before, "shots at a tentacle missed" );
+		kraken.ReceiveShot( 3 + 3, 1000f, Vector3.Right, kraken.TentaclePosition( 3 ), player.GlobalPosition, null, false );
+		Check( kraken.TentaclesLeft == Kraken.Tentacles - 1, "the tentacle did not come off" );
+		await Wait( 0.5f );
+		await Shot( "kraken_tentacle_cut" );
+
+		// From the side and close up, then the death.
+		player.GlobalPosition = Nav.Closest( player, ground + kraken.GlobalBasis * new Vector3( 1.5f, 0f, -5.5f ) ) + Vector3.Up * 0.1f;
+		await Wait( 0.4f );
+		LookAt( kraken.GlobalPosition + Vector3.Up * 1.7f );
+		await Wait( 0.2f );
+		await Shot( "kraken_face" );
+		kraken.ReceiveShot( 0, 100000f, (kraken.GlobalPosition - player.GlobalPosition).Normalized(), kraken.GlobalPosition + Vector3.Up * 2f, player.GlobalPosition, null, false );
+		Check( kraken.IsDead, "the Kraken did not die" );
+		await Wait( 0.9f );
+		await Shot( "kraken_death" );
+		await Wait( 1.2f );
+		await Shot( "kraken_sinking" );
+		await Wait( 2f );
+		Check( Kraken.All.Count == 0, "the dead Kraken was not cleared away" );
+		await Shot( "kraken_remains" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

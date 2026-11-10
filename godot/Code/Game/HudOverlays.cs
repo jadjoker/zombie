@@ -242,6 +242,21 @@ public partial class HudOverlays : Control
 			DrawRect( new Rect2( at, new Vector2( width * b.HealthFraction, 14f ) ), new Color( "ff4fd8" ) );
 			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 22f ), "M C 6 1", HorizontalAlignment.Center, width, 22, new Color( "ff4fd8" ) );
 		}
+		else if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } kraken )
+		{
+			var green = new Color( "58ff6a" );
+			var at = new Vector2( Size.X * 0.3f, 96f + 62f );
+			var width = Size.X * 0.4f;
+			DrawRect( new Rect2( at, new Vector2( width, 14f ) ), new Color( 0, 0, 0, 0.55f ) );
+			DrawRect( new Rect2( at, new Vector2( width * kraken.Health.Fraction, 14f ) ), green );
+			if ( kraken.HelmetOn )
+			{
+				// The glass dome over its brain.
+				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width, 5f ) ), new Color( 0, 0, 0, 0.55f ) );
+				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width * kraken.HelmetFraction, 5f ) ), new Color( "bfeaff" ) );
+			}
+			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
+		}
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

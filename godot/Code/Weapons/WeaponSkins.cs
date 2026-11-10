@@ -72,13 +72,29 @@ public static class WeaponSkins
 
 	static readonly Dictionary<(string, string), StandardMaterial3D> cache = new();
 
+	/// <summary> Fine mottled wear for the roughness (so painted metal isn't one flat sheen). </summary>
+	static readonly NoiseTexture2D Wear = new()
+	{
+		Width = 256, Height = 256, Seamless = true, GenerateMipmaps = true,
+		Noise = new FastNoiseLite { NoiseType = FastNoiseLite.NoiseTypeEnum.Cellular, Frequency = 0.06f, FractalOctaves = 3 },
+		ColorRamp = new Gradient { Offsets = new[] { 0f, 1f }, Colors = new[] { new Color( 0.75f, 0.75f, 0.75f ), new Color( 1.15f, 1.15f, 1.15f ) } },
+	};
+
 	/// <summary> A skin's material for a slot (falls back to Military, then to null for slots no skin covers). </summary>
 	public static StandardMaterial3D Resolve( string skin, string slot )
 	{
 		if ( cache.TryGetValue( (skin, slot), out var m ) ) return m;
 		(Color Color, float Metal) entry;
 		if ( !(table.TryGetValue( skin, out var s ) && s.TryGetValue( slot, out entry )) && !table["Military"].TryGetValue( slot, out entry ) ) return null;
-		m = new StandardMaterial3D { AlbedoColor = entry.Color, Metallic = entry.Metal, Roughness = entry.Metal > 0.3f ? 0.45f : 0.8f, ResourceName = slot };
+		var metal = entry.Metal > 0.3f;
+		m = new StandardMaterial3D
+		{
+			AlbedoColor = entry.Color, Metallic = entry.Metal, Roughness = metal ? 0.42f : 0.78f, ResourceName = slot,
+			// A soft rim, fine wear in the roughness, and a clear coat on metal so it catches highlights.
+			RimEnabled = true, Rim = metal ? 0.25f : 0.35f, RimTint = 0.6f,
+			RoughnessTexture = Wear, RoughnessTextureChannel = BaseMaterial3D.TextureChannel.Red,
+			ClearcoatEnabled = metal, Clearcoat = 0.35f, ClearcoatRoughness = 0.3f,
+		};
 		if ( skin == "Hologram" ) { m.EmissionEnabled = true; m.Emission = entry.Color; m.EmissionEnergyMultiplier = 1.2f; }
 		cache[(skin, slot)] = m;
 		return m;

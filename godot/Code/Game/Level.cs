@@ -215,6 +215,7 @@ public partial class Level : Node3D
 				HealthPerPurchase = bs.GetProperty( "HealthPerPurchase" ).GetSingle(),
 			} );
 			node.AddToGroup( "buy_station" );
+			BuyStation.Dress( node, Enum.Parse<BuyStationKind>( bs.GetProperty( "Kind" ).GetString() ), tint );
 		}
 		if ( o.TryGetProperty( "marine_snow", out _ ) ) AddChild( new MarineSnow() );
 		if ( o.TryGetProperty( "dock_house", out var dock ) )
@@ -317,6 +318,13 @@ public partial class Level : Node3D
 		return m;
 	}
 
+	/// <summary> Fine organic bumps (a seamless noise normal map) for plain coloured props. </summary>
+	static readonly NoiseTexture2D Bumps = new()
+	{
+		Width = 512, Height = 512, Seamless = true, AsNormalMap = true, BumpStrength = 6f, GenerateMipmaps = true,
+		Noise = new FastNoiseLite { NoiseType = FastNoiseLite.NoiseTypeEnum.Cellular, Frequency = 0.035f, FractalType = FastNoiseLite.FractalTypeEnum.Fbm, FractalOctaves = 3 },
+	};
+
 	static Material MakeMaterial( JsonElement? m, Color tint, bool triplanar )
 	{
 		if ( m is { } nm && nm.TryGetProperty( "nature", out var nat ) ) return MakeNature( nm.GetProperty( "name" ).GetString(), nat );
@@ -353,6 +361,24 @@ public partial class Level : Node3D
 			}
 			var name = mat.GetProperty( "name" ).GetString();
 			if ( name is "slime" or "jelly" or "eelskin" ) material.Roughness = 0.35f;
+		}
+		if ( material.AlbedoTexture is null && material.Metallic < 0.3f )
+		{
+			// Plain coloured props (coral, sponges, painted blocks): a fine bumpy surface, a little light let through
+			// at the edges and a soft rim, so they read as living things rather than flat plastic.
+			material.NormalEnabled = true;
+			material.NormalTexture = Bumps;
+			material.NormalScale = 0.6f;
+			material.Uv1Triplanar = true;
+			material.Uv1WorldTriplanar = true;
+			material.Uv1Scale = Vector3.One * 1.6f;
+			material.Roughness = 0.62f;
+			material.RimEnabled = true;
+			material.Rim = 0.3f;
+			material.RimTint = 0.7f;
+			material.SubsurfScatterEnabled = true;
+			material.SubsurfScatterStrength = 0.25f;
+			material.SubsurfScatterSkinMode = false;
 		}
 		materials[key] = material;
 		return material;

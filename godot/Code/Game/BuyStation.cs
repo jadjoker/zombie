@@ -28,6 +28,65 @@ public partial class BuyStation : Node
 	};
 
 	/// <summary> The station on this collider (or one of its parents), if any. </summary>
+	static PackedScene model;
+
+	/// <summary>
+	/// Swaps the plain box for the Blender terminal (Tools/blender/buy_station.py): painted and lit in the station
+	/// colour, with the hologram icon for its kind floating above (the box's collider stays).
+	/// </summary>
+	public static void Dress( Node3D node, BuyStationKind kind, Color tint )
+	{
+		model ??= ResourceLoader.Exists( "res://assets/models/props/buy_station.glb" ) ? GD.Load<PackedScene>( "res://assets/models/props/buy_station.glb" ) : null;
+		if ( model is null ) return;
+		var box = node.GetChildren().OfType<MeshInstance3D>().FirstOrDefault( m => m.Mesh is BoxMesh );
+		if ( box is null ) return;
+		box.Visible = false;
+		var terminal = model.Instantiate<Node3D>();
+		node.AddChild( terminal );
+		// The box is a 50 inch cube scaled by the node; the model is 1.5 x 1.0 x 1.5 m.
+		var cube = 50f * U.In;
+		terminal.Scale = new Vector3( cube / 1.5f, cube / 1.0f, cube / 1.5f );
+		var paint = new StandardMaterial3D { AlbedoColor = tint.Darkened( 0.25f ), Metallic = 0.4f, Roughness = 0.45f, ClearcoatEnabled = true, Clearcoat = 0.3f };
+		var glow = new StandardMaterial3D { AlbedoColor = tint, EmissionEnabled = true, Emission = tint, EmissionEnergyMultiplier = 2.2f };
+		var holo = new StandardMaterial3D { AlbedoColor = tint with { A = 0.75f }, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, EmissionEnabled = true, Emission = tint, EmissionEnergyMultiplier = 3f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
+		foreach ( var mesh in terminal.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			var name = mesh.Name.ToString();
+			if ( name.StartsWith( "Icon" ) )
+			{
+				mesh.Visible = name == "Icon" + kind;
+				mesh.MaterialOverride = holo;
+				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				if ( mesh.Visible ) mesh.AddChild( new Spin { Name = "Spin" } );
+				continue;
+			}
+			for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+				switch ( mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName )
+				{
+					case "StationPaint": mesh.SetSurfaceOverrideMaterial( i, paint ); break;
+					case "StationGlow": mesh.SetSurfaceOverrideMaterial( i, glow ); break;
+				}
+		}
+		var light = new OmniLight3D { LightColor = tint, LightEnergy = 0.8f, OmniRange = 2.5f, ShadowEnabled = false };
+		terminal.AddChild( light );
+		light.Position = new Vector3( 0f, 0.9f, 0f );
+	}
+
+	/// <summary> Turns and bobs the hologram icon it sits under. </summary>
+	partial class Spin : Node
+	{
+		float time;
+		Vector3 home;
+		public override void _Ready() => home = GetParent<Node3D>().Position;
+		public override void _Process( double delta )
+		{
+			time += (float)delta;
+			var icon = GetParent<Node3D>();
+			icon.Rotation = new Vector3( 0f, time * 1.2f, 0f );
+			icon.Position = home + Vector3.Up * MathF.Sin( time * 2f ) * 0.04f;
+		}
+	}
+
 	public static BuyStation On( Node node )
 	{
 		for ( var n = node; n is not null; n = n.GetParent() )

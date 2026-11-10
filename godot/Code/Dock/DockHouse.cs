@@ -168,6 +168,15 @@ public partial class DockHouse : Node3D
 		waves.Surface = SurfaceHeight * U.In;
 		root.AddChild( waves );
 		waves.GlobalPosition = U.Sbox( o.X, o.Y, SurfaceHeight );
+		// The level's murk is underwater fog; above the surface it glowed green in the air and filled the hut.
+		// A big negative-density volume clears it from the surface up.
+		var air = new FogVolume
+		{
+			Name = "Clear Air", Shape = RenderingServer.FogVolumeShape.Box, Size = new Vector3( 9000f, 3000f, 9000f ) * U.In,
+			Material = new FogMaterial { Density = -1f, Albedo = Colors.White, Emission = Colors.Black, EdgeFade = 0.05f },
+		};
+		root.AddChild( air );
+		air.GlobalPosition = U.Sbox( o.X, o.Y, SurfaceHeight + 1500f + 10f );
 
 		for ( var i = 0; i < 9; i++ )
 		{
@@ -263,9 +272,19 @@ public partial class DockHouse : Node3D
 				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.On;
 		}
 
-		var inside = new OmniLight3D { LightColor = new Color( 1f, 0.75f, 0.5f ), LightEnergy = 0.8f, OmniRange = 200f * U.In };
+		var inside = new OmniLight3D { LightColor = new Color( 1f, 0.72f, 0.45f ), LightEnergy = 1.1f, OmniRange = 220f * U.In, ShadowEnabled = true, ShadowBlur = 1.5f };
 		root.AddChild( inside );
 		inside.GlobalPosition = U.Sbox( hx - 20f, o.Y, deck + 90f );
+		// The level's flat teal ambient lit the inside as brightly as the open sea. Inside the hut it's swapped for a
+		// dim warm fill, so the lamp does the lighting and the doorway reads bright against it.
+		var probe = new ReflectionProbe
+		{
+			Name = "Hut Interior", Size = new Vector3( 200f, 110f, 220f ) * U.In, BoxProjection = true, Interior = true,
+			AmbientMode = ReflectionProbe.AmbientModeEnum.Color, AmbientColor = new Color( 0.16f, 0.12f, 0.09f ), AmbientColorEnergy = 1f,
+			UpdateMode = ReflectionProbe.UpdateModeEnum.Once,
+		};
+		root.AddChild( probe );
+		probe.GlobalPosition = U.Sbox( hx, o.Y, deck + 55f );
 	}
 
 	// ---- The player on the dock, and the dive ----

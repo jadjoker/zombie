@@ -66,7 +66,8 @@ public partial class WaterSurfaceFx : Node3D
 	public Vector3 Center;
 	public List<Vector3> Stilts = new();
 
-	const int GlintCount = 70;
+	// The lit water catches the real sun now, so only a few sparkles are added on top.
+	const int GlintCount = 20;
 	readonly List<(MeshInstance3D Mesh, Vector3 Pos, float Phase)> glints = new();
 	readonly List<(MeshInstance3D Mesh, float Phase)> foams = new();
 
@@ -88,9 +89,9 @@ public partial class WaterSurfaceFx : Node3D
 		for ( var i = 0; i < GlintCount; i++ )
 		{
 			var pos = Center + new Vector3( Rng.Float( -1400f, 1400f ), 0f, Rng.Float( -1400f, 1400f ) ) * U.In;
-			glints.Add( (Blob( this, new Color( 1f, 0.98f, 0.9f ) * 2.5f, glow: true ), pos, Rng.Float( 0f, 6.28f )) );
+			glints.Add( (Blob( this, new Color( 1f, 0.98f, 0.9f ) * 1.4f, glow: true ), pos, Rng.Float( 0f, 6.28f )) );
 		}
-		foreach ( var _ in Stilts ) foams.Add( (Blob( this, new Color( 0.9f, 0.97f, 1f ) ), Rng.Float( 0f, 6.28f )) );
+		// Foam round the stilts is drawn by the water shader now (contact froth), so no flat white discs here.
 	}
 
 	public override void _Process( double delta )

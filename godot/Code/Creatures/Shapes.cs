@@ -52,6 +52,28 @@ public static class Shapes
 			m.Uv1Triplanar = true;
 			m.Uv1Scale = Vector3.One * 2f;
 		}
+		else
+		{
+			// Wet skin: a glossy clear coat over the colour, a soft rim and a little light through thin parts.
+			m.ClearcoatEnabled = true;
+			m.Clearcoat = 0.55f;
+			m.ClearcoatRoughness = 0.15f;
+			m.RimEnabled = true;
+			m.Rim = 0.3f;
+			m.RimTint = 0.5f;
+			m.SubsurfScatterEnabled = true;
+			m.SubsurfScatterStrength = 0.2f;
+		}
+		if ( skin is not null )
+		{
+			// Skins are wet too, just with the texture's own roughness under the coat.
+			m.ClearcoatEnabled = true;
+			m.Clearcoat = 0.45f;
+			m.ClearcoatRoughness = 0.2f;
+			m.RimEnabled = true;
+			m.Rim = 0.25f;
+			m.RimTint = 0.5f;
+		}
 		if ( glow )
 		{
 			m.EmissionEnabled = true;

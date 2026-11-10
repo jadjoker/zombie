@@ -1,8 +1,9 @@
-// Port of the s&box fx_water shader: the open sea. Moving swell (shared with the CPU so floaters ride it), wave
-// normals from a height field, sky reflection with fresnel, sun glitter, crest foam and distance haze; from below a
-// bright circular window overhead and a dark mirror outside it. Maths kept in s&box space (inches, xy across, z up).
+// Port of the s&box fx_water shader: the open sea. Moving swell (shared with the CPU so floaters ride it) and wave
+// normals from a height field. From above the surface is lit by the engine, so it reflects the level's real sky
+// (day or night) with proper fresnel and catches the real sun; foam rides the crests and froths round anything poking
+// through. From below: a bright circular window overhead and a dark mirror outside it. Maths in s&box space (inches).
 shader_type spatial;
-render_mode unshaded, cull_disabled;
+render_mode cull_disabled, specular_schlick_ggx;
 
 uniform float wave_time = 0.0;
 // Step 8: the scene depth behind the water, for foam where it meets the stilts, the dock and anything floating.
@@ -11,6 +12,8 @@ const float IN = 0.0254;
 
 vec2 sb2(vec3 w) { return vec2(-w.z, -w.x) / IN; }
 vec3 sb3(vec3 v) { return vec3(-v.z, -v.x, v.y) / IN; }
+// s&box direction back to a Godot world direction.
+vec3 gd3(vec3 v) { return vec3(-v.y, v.z, -v.x); }
 
 float swell(vec2 p, float t) {
 	float h = 0.0;
@@ -67,35 +70,39 @@ void fragment() {
 	vec3 n = normalize(vec3(-dx * 0.55, -dy * 0.55, e * 0.35));
 	n = normalize(mix(n, vec3(0, 0, 1), clamp(dist / 9000.0, 0.0, 1.0)));
 
-	vec3 sun_dir = normalize(vec3(0.45, 0.25, 0.85));
-	vec3 sun_col = vec3(1.0, 0.93, 0.78);
-	vec3 col;
 	if (above) {
+		// Fine ripples on top of the swell so close water isn't glassy.
+		float r0 = vnoise2(p * 0.55 + vec2(t * 1.1, t * 0.8));
+		float rx = vnoise2(p * 0.55 + vec2(t * 1.1, t * 0.8) + vec2(0.08, 0.0)) - r0;
+		float ry = vnoise2(p * 0.55 + vec2(t * 1.1, t * 0.8) + vec2(0.0, 0.08)) - r0;
+		float near = 1.0 - clamp(dist / 2500.0, 0.0, 1.0);
+		n = normalize(n + vec3(-rx, -ry, 0.0) * 1.6 * near);
 		float ndv = clamp(dot(n, view), 0.0, 1.0);
-		float fres = 0.03 + 0.97 * pow(1.0 - ndv, 5.0);
-		vec3 deep = vec3(0.012, 0.10, 0.17);
-		vec3 shallow = vec3(0.05, 0.38, 0.42);
+		// The body: dark deep water, a touch lighter and greener where crests thin out and light passes through.
 		float crest = clamp(h0 * 0.35 + 0.45, 0.0, 1.0);
-		vec3 body = mix(deep, shallow, crest * 0.7 + (1.0 - ndv) * 0.15);
-		vec3 refl = reflect(-view, n);
-		vec3 sky = mix(vec3(0.72, 0.86, 0.95), vec3(0.20, 0.45, 0.82), clamp(refl.z * 1.4, 0.0, 1.0));
-		sky += sun_col * pow(clamp(dot(refl, sun_dir), 0.0, 1.0), 24.0) * 0.35;
-		col = mix(body, sky, fres);
-		float spec = pow(clamp(dot(refl, sun_dir), 0.0, 1.0), 380.0) * 14.0;
-		float spec2 = pow(clamp(dot(refl, sun_dir), 0.0, 1.0), 60.0) * 0.6;
-		col += sun_col * (spec + spec2);
+		vec3 deep = vec3(0.006, 0.035, 0.05);
+		vec3 shallow = vec3(0.02, 0.16, 0.17);
+		vec3 body = mix(deep, shallow, crest * 0.6);
+		// Crest foam: sparse streaks on the tallest waves only.
 		float foam_noise = vnoise2(p * 0.12 + t * 0.3) * 0.6 + vnoise2(p * 0.35 - t * 0.4) * 0.4;
-		float foam = smoothstep(1.25, 1.9, h0 + foam_noise * 0.9 - 0.2);
-		col = mix(col, vec3(0.92, 0.97, 1.0), foam * 0.85);
-		// Contact foam: a frothy band where something pokes through the surface (depth behind vs the water itself).
+		float foam = smoothstep(1.7, 2.3, h0 + foam_noise * 0.9 - 0.2) * 0.7;
+		// Contact foam: a thin frothy band where something pokes through the surface (scene depth vs the water).
 		float scene_d = texture(depth_tex, SCREEN_UV).r;
 		vec4 sv = INV_PROJECTION_MATRIX * vec4(SCREEN_UV * 2.0 - 1.0, scene_d, 1.0);
 		float behind = (-sv.z / sv.w - -VERTEX.z) / IN;
 		float froth = vnoise2(p * 0.18 + vec2(t * 0.5, -t * 0.35)) * 0.6 + vnoise2(p * 0.5 - t * 0.6) * 0.4;
-		float contact = (1.0 - smoothstep(0.0, 14.0 + froth * 10.0, behind)) * step(0.0, behind);
-		col = mix(col, vec3(0.92, 0.97, 1.0), contact * (0.55 + 0.45 * froth));
-		col = mix(col, vec3(0.62, 0.78, 0.88), clamp((dist - 3500.0) / 14000.0, 0.0, 1.0) * 0.7);
+		float contact = (1.0 - smoothstep(0.0, 5.0 + froth * 6.0, behind)) * step(0.0, behind) * smoothstep(0.35, 0.7, froth + 0.2);
+		foam = max(foam, contact * 0.6);
+		ALBEDO = mix(body, vec3(0.75, 0.8, 0.82), foam);
+		ROUGHNESS = mix(0.04 + (1.0 - near) * 0.06, 0.8, foam);
+		METALLIC = 0.0;
+		SPECULAR = mix(0.5, 0.2, foam);
+		// A little light scattered up through the wave faces facing away from us.
+		EMISSION = shallow * crest * (1.0 - ndv) * 0.25 * (1.0 - foam);
+		NORMAL = normalize((VIEW_MATRIX * vec4(gd3(n), 0.0)).xyz);
 	} else {
+		vec3 sun_dir = normalize(vec3(0.45, 0.25, 0.85));
+		vec3 sun_col = vec3(1.0, 0.93, 0.78);
 		float cosi = clamp(dot(vec3(-n.xy, -n.z), -view), 0.0, 1.0);
 		float window = smoothstep(0.60, 0.72, cosi);
 		float shimmer = height(p * 1.6, t * 1.5) * 0.5 + 0.5;
@@ -103,10 +110,14 @@ void fragment() {
 		float sun_glow = pow(clamp(dot(refract(-view, -n, 0.75), sun_dir), 0.0, 1.0), 18.0);
 		sky_through += sun_col * sun_glow * 1.6;
 		vec3 mirror = vec3(0.008, 0.055, 0.10) + vec3(0.0, 0.05, 0.05) * shimmer;
-		col = mix(mirror, sky_through, window);
+		vec3 col = mix(mirror, sky_through, window);
 		float rim = 1.0 - abs(cosi - 0.66) * 14.0;
 		col += vec3(0.25, 0.6, 0.7) * max(rim, 0.0) * 0.5;
+		// From below it glows on its own (unlit look): no albedo or reflections, just the emission.
+		ALBEDO = vec3(0.0);
+		ROUGHNESS = 1.0;
+		SPECULAR = 0.0;
+		EMISSION = col;
 	}
-	ALBEDO = col;
 	ALPHA = 1.0;
 }

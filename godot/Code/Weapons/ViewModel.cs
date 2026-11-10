@@ -28,12 +28,37 @@ public partial class ViewModel : Node3D
 	string appliedSkin;
 	bool shellReloading;
 
+	/// <summary> Render layer 2: the first person gun and arms. </summary>
+	public const uint ViewLayer = 1u << 1;
+
+	/// <summary>
+	/// A soft key from the upper right and a cool rim from behind, lighting only the first person gun and arms, so
+	/// they read in dark scenes (underwater the metal otherwise reflects the murk and goes black).
+	/// </summary>
+	static void AddStudioLights( Camera3D camera )
+	{
+		if ( camera.GetNodeOrNull( "ViewModel Key" ) is not null ) return;
+		var key = new OmniLight3D { Name = "ViewModel Key", LightColor = new Color( 1f, 0.95f, 0.88f ), LightEnergy = 0.9f, OmniRange = 2.2f, OmniAttenuation = 0.8f, LightCullMask = ViewLayer, ShadowEnabled = false };
+		camera.AddChild( key );
+		key.Position = new Vector3( 0.6f, 0.45f, 0.1f );
+		var rim = new OmniLight3D { Name = "ViewModel Rim", LightColor = new Color( 0.6f, 0.85f, 1f ), LightEnergy = 1.4f, OmniRange = 2f, OmniAttenuation = 1.2f, LightCullMask = ViewLayer, ShadowEnabled = false, LightSpecular = 1.5f };
+		camera.AddChild( rim );
+		rim.Position = new Vector3( -0.2f, 0.35f, -1.1f );
+	}
+
 	public static ViewModel Create( Camera3D camera, string modelName, PlayerController controller, PlayerWeapon weapon )
 	{
 		var (root, player, _) = WeaponModels.Create( modelName );
 		var vm = new ViewModel { Name = "ViewModel_" + modelName, ModelName = modelName, controller = controller, weapon = weapon, Player = player, model = root };
 		vm.AddChild( root );
 		camera.AddChild( vm );
+		// First person meshes live on their own render layer, so the studio lights below light only them.
+		foreach ( var mesh in root.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			mesh.Layers = ViewLayer;
+			mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+		}
+		AddStudioLights( camera );
 		vm.movement = controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" );
 		vm.lastEyeAngles = controller.EyeAngles;
 		vm.PlayOnce( "draw", 0.8f, 1f );

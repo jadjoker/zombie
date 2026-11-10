@@ -141,7 +141,7 @@ public partial class SeaSpider : Node3D, ICreature
 		if ( IsAlly )
 		{
 			glowColor = Shapes.Hsv( 0.47f, 0.85f, 1f );
-			shellColor = Shapes.Hsv( 0.46f, 0.2f, 0.97f );
+			shellColor = Shapes.Hsv( 0.47f, 0.42f, 0.7f );   // pale sea-glass teal (near white blew out under the tonemapper)
 			darkColor = shellColor.Lerp( new Color( 0.05f, 0.35f, 0.4f ), 0.6f );
 			gooColor = Shapes.Hsv( 0.5f, 0.8f, 1f );
 		}

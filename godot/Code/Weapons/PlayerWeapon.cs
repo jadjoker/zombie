@@ -151,6 +151,13 @@ public partial class PlayerWeapon : Node
 	public override void _Process( double delta )
 	{
 		if ( !Active ) return;
+		// Dead (issue #34): no gun on screen, no aiming, no firing or reloading.
+		if ( controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) is { Health: not null, IsAlive: false } )
+		{
+			if ( ViewModel is not null ) ViewModel.Visible = false;
+			AimAmount = ScopeAmount = 0f;
+			return;
+		}
 		var dt = (float)delta;
 		// A different rifle design was picked: put this one away and bring that one up.
 		if ( ViewModel is not null && ViewModel.ModelName != ViewModelName ) { ViewModel.QueueFree(); ViewModel = null; }

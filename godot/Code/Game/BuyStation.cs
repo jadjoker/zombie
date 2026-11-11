@@ -155,8 +155,13 @@ public partial class PlayerUse : Node
 		survivor ??= controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
 		var cam = controller.Camera;
 		var from = cam.GlobalPosition;
-		var tr = Trace.Ray( controller, from, from + -cam.GlobalBasis.Z * ReachLength * U.In, Layers.World );
-		Hovered = tr.Hit ? BuyStation.On( tr.Node ) : null;
+		// In third person the camera hangs well behind the robot (issue #38): the look reaches that much farther,
+		// and what it lands on still has to be within arm's reach of the robot itself.
+		var eye = controller.EyeTransform.Origin;
+		var behind = controller.ThirdPerson ? from.DistanceTo( eye ) : 0f;
+		var tr = Trace.Ray( controller, from, from + -cam.GlobalBasis.Z * (ReachLength * U.In + behind), Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+		Hovered = tr.Hit && tr.HitPosition.DistanceTo( eye ) <= ReachLength * U.In * 1.25f ? BuyStation.On( tr.Node ) : null;
+		if ( PlayerSurvivor.LocalDead ) Hovered = null;
 		AtDivingBoard = Hovered is null && DockHouse.Current is { } dock && dock.BoardInReach( controller );
 		if ( Input.IsActionJustPressed( "use" ) )
 		{

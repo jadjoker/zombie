@@ -96,6 +96,7 @@ public partial class HudOverlays : Control
 		var dt = (float)delta;
 		var now = (float)Clock.Now;
 		var a = Afflictions;
+		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no HUD on the death screen
 
 		var health = player?.Health;
 		var hurtOpacity = 0f;

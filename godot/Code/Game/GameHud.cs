@@ -170,6 +170,10 @@ public partial class GameHud : Control
 			depthSpeed.Text = $"{DockHouse.DiveVelocity.Length() / U.PerMetre * 3.6f:0} km/h";
 		}
 		gameOver.Visible = d?.State == WaveState.GameOver;
+		// Dead: nothing on screen but the body and the You Died screen (issues #34 and #40).
+		var gone = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;
+		SelfModulate = gone;
+		foreach ( var child in GetChildren().OfType<CanvasItem>() ) if ( child != gameOver ) child.Modulate = gone;
 		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress JUMP to try again";
 		UpdateGooPhysics( (float)delta );
 		QueueRedraw();

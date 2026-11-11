@@ -21,6 +21,8 @@ public partial class PlayerSurvivor : Node
 	public PlayerAfflictions Afflictions => Controller.GetNodeOrNull<PlayerAfflictions>( "PlayerAfflictions" );
 	public PlayerWeapon Weapon => Controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
 	public bool IsAlive => Health is not null && !Health.IsDead;
+	/// <summary> Is the player at this screen dead (the HUD, the gun and the camera all change when they are). </summary>
+	public static bool LocalDead => All.FirstOrDefault() is { Health: not null, IsAlive: false };
 	public Vector3 WorldPosition => Controller.GlobalPosition;
 
 	public int Points { get; private set; }

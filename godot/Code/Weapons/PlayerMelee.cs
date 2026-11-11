@@ -44,7 +44,7 @@ public partial class PlayerMelee : Node
 
 	public override void _Process( double delta )
 	{
-		if ( Input.IsActionJustPressed( "melee" ) && Swing >= Cooldown && !DevFlags.Placing && !DevFlags.FreeCam && !DockHouse.WeaponsHeld && !DevMenu.IsOpen && !PlayerWeapon.MouseFree ) TestSwing();
+		if ( Input.IsActionJustPressed( "melee" ) && !PlayerSurvivor.LocalDead && Swing >= Cooldown && !DevFlags.Placing && !DevFlags.FreeCam && !DockHouse.WeaponsHeld && !DevMenu.IsOpen && !PlayerWeapon.MouseFree ) TestSwing();
 		if ( !struck && Swing >= WindUp && Swing < Cooldown )
 		{
 			struck = true;

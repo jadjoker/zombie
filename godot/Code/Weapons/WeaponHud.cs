@@ -7,6 +7,8 @@ using Godot;
 /// </summary>
 public partial class WeaponHud : Control
 {
+	/// <summary> For tests: how solid the centre dot was drawn last frame. </summary>
+	public static float DotAlpha { get; private set; }
 	PlayerController player;
 	WeaponInventory inventory;
 	PlayerWeapon Weapon => inventory?.Current;
@@ -62,6 +64,7 @@ public partial class WeaponHud : Control
 
 	public override void _Process( double delta )
 	{
+		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no ammo counter on the death screen
 		var weapon = Weapon;
 		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant();
 		mag.Text = (weapon?.Ammo ?? 0).ToString();
@@ -109,10 +112,12 @@ public partial class WeaponHud : Control
 			DrawCircle( c, 2.5f, new Color( "ff3b2e" ) with { A = scope } );
 		}
 
-		// Centre dot: kicks out with each shot, fades as you aim.
+		// Centre dot: kicks out with each shot. It stays while you aim down the sights (issue #37) and only
+		// gives way to the scope's own reticle.
 		var since = weapon is null ? 999f : (float)weapon.TimeSinceShot;
 		var dotScale = 1f + MathX.Clamp( 1f - since / 0.12f, 0f, 1f ) * 1.2f;
-		var dotAlpha = MathF.Max( 0f, 1f - (weapon?.AimAmount ?? 0f) * 1.6f );
+		var dotAlpha = PlayerSurvivor.LocalDead ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
+		DotAlpha = dotAlpha;
 		if ( dotAlpha > 0f ) DrawCircle( c, 3f * dotScale, new Color( 1, 1, 1, 0.9f * dotAlpha ) );
 
 		// Hitmarker.

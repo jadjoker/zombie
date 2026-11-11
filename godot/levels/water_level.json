@@ -8422,7 +8422,7 @@
     ]
    },
    "buy_station": {
-    "Cost": 1000,
+    "Cost": 500,
     "CostIncrease": 500,
     "HealthPerPurchase": 25,
     "Kind": "Damage",

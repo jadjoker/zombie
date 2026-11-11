@@ -179,11 +179,29 @@ public partial class PlayerRig : Node
 			PlaceFrame( dt );
 			Pose( dt );
 			ragdoll = RobotRagdoll.Create( model, controller.Velocity, meshes );
+			// The camera leaves the eyes and watches the body (issues #34 and #40).
+			deathCamAt = controller.Camera.GlobalPosition;
+			// From behind where they were looking, or the nearest side with room if something is in the way there.
+			var behind = MathX.Rad( controller.EyeAngles.Yaw );   // looking along -(sin, cos) of the yaw, so +(sin, cos) is behind
+			deathCamAngle = behind;
+			var most = -1f;
+			for ( var i = 0; i < 8; i++ )
+			{
+				var angle = behind + (i % 2 == 0 ? 1f : -1f) * ((i + 1) / 2) * MathF.PI * 0.25f;
+				var body = ragdoll.Centre + Vector3.Up * 0.3f;
+				var to = body + new Vector3( MathF.Sin( angle ), 0f, MathF.Cos( angle ) ) * 3.8f + Vector3.Up * 2.1f;
+				// Swept from a little above the body: it is lying on the sea bed, and a sweep that starts touching it sees no room at all.
+				var tr = Trace.Sphere( controller, 0.25f, body + Vector3.Up * 0.5f, to, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+				var room = tr.Hit && !tr.StartedSolid ? tr.Distance : 4.4f;
+				if ( room > most + 0.3f ) { most = room; deathCamAngle = angle; }
+			}
+			controller.CameraOverride = DeathCamera;
 		}
 		else if ( alive && ragdoll is not null )
 		{
 			if ( IsInstanceValid( ragdoll ) ) ragdoll.QueueFree();
 			ragdoll = null;
+			controller.CameraOverride = null;
 		}
 		var show = alive && (ShowsBody || DevFlags.FreeCam && ShowsBody);
 		rigRoot.Visible = show;
@@ -199,6 +217,34 @@ public partial class PlayerRig : Node
 	}
 
 	/// <summary> Our own over-the-shoulder camera, tightening in while aiming (PlayerAppearance). </summary>
+	Vector3 deathCamAt;
+	float deathCamAngle;
+
+	/// <summary>
+	/// Dead: the camera pulls back and up from where the eyes were, keeps the ragdoll in the middle of the view and
+	/// drifts slowly round it, staying clear of walls.
+	/// </summary>
+	Transform3D? DeathCamera( float dt )
+	{
+		if ( ragdoll is null || !IsInstanceValid( ragdoll ) ) return null;
+		var body = ragdoll.Centre + Vector3.Up * 0.3f;
+		deathCamAngle += dt * 0.25f;
+		var wanted = body + new Vector3( MathF.Sin( deathCamAngle ), 0f, MathF.Cos( deathCamAngle ) ) * 3.8f + Vector3.Up * 2.1f;
+		var above = body + Vector3.Up * 0.5f;
+		var tr = Trace.Sphere( controller, 0.25f, above, wanted, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+		if ( tr.Hit && !tr.StartedSolid )
+		{
+			wanted = above + (wanted - above).SafeNormal() * MathF.Max( 0.6f, tr.Distance );
+			// Something is in the way on this side: swing round it rather than sit pressed up close.
+			if ( tr.Distance < 2.5f ) deathCamAngle += dt * 1.6f;
+		}
+		deathCamAt = deathCamAt.Lerp( wanted, 1f - MathF.Exp( -3f * dt ) );
+		// Aimed a little over the body, so it sits below the You Died text and not under it.
+		var look = body + Vector3.Up * 1f - deathCamAt;
+		if ( look.LengthSquared() < 0.01f ) look = Vector3.Forward;
+		return new Transform3D( Shapes.LookAt( look ), deathCamAt );
+	}
+
 	void UpdateCamera( float dt )
 	{
 		if ( !controller.ThirdPerson ) return;

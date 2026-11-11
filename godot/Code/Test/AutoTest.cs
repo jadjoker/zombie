@@ -53,6 +53,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--whirlpool" ) ) { await WhirlpoolTest(); return; }
 		if ( args.Contains( "--slam" ) ) { await SlamTest(); return; }
 		if ( args.Contains( "--bite" ) ) { await BiteTest(); return; }
+		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1732,6 +1733,88 @@ public partial class AutoTest : Node
 		kraken.HoldAttacks( 0.2f );
 		await Wait( 2.2f );
 		Check( kraken.InkSpat > spat, "a Kraken with no tentacles did not fall back on its ink" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Board items #31, #32, #34, #37, #38, #40: gun distance, damage machine price, the death screen, the aim dot, third-person buying. </summary>
+	async Task Board1Test()
+	{
+		DevFlags.FreezeEnemies = true;
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		DockHouse.Current?.SkipDive();
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var weapon = inventory.Weapons[0];
+		inventory.Select( weapon, force: true );
+		var stations = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().ToList();
+		var damage = stations.FirstOrDefault( s => s.Kind == BuyStationKind.Damage );
+		Check( damage is not null, "no damage upgrade machine in the level" );
+
+		// #32: the damage machine starts at 500.
+		GD.Print( $"[autotest] board: damage machine costs {damage?.Cost}, then +{damage?.CostIncrease} each ({string.Join( ", ", Enumerable.Range( 0, damage?.MaxPurchases ?? 0 ).Select( i => damage.Cost + damage.CostIncrease * i ) )})" );
+		Check( damage is { Cost: 500 }, "the damage machine does not start at 500" );
+
+		// #38: buying in third person. Stand at the machine, look at it, switch to third person.
+		var use = player.GetNode<PlayerUse>( "PlayerUse" );
+		var at = (damage.GetParent() as Node3D).GlobalPosition;
+		player.GlobalPosition = Nav.Closest( player, at + new Vector3( 1.9f, 0f, 0f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.6f );
+		LookAt( at + Vector3.Up * 0.3f );
+		await Wait( 0.3f );
+		Check( use.Hovered == damage, "could not reach the machine in first person (the test is standing wrong)" );
+		player.ThirdPerson = true;
+		await Wait( 0.8f );
+		GD.Print( $"[autotest] board: third person, {player.Camera.GlobalPosition.DistanceTo( player.EyeTransform.Origin ):0.0} m behind the robot, looking at {use.Hovered?.Title ?? "nothing"}" );
+		Check( use.Hovered == damage, "the machine is out of reach in third person" );
+		survivor.AddPoints( 5000 );
+		var bought = use.TryPress();
+		Check( bought && damage.Purchases == 1, "could not buy in third person" );
+		await Shot( "third_person_buy" );
+		player.ThirdPerson = false;
+		await Wait( 0.4f );
+
+		// #37: the dot stays when aimed down the sights (the Blaster has no scope).
+		weapon.ForceAim = true;
+		await Wait( 0.8f );
+		GD.Print( $"[autotest] board: aimed {weapon.AimAmount:0.00}, scope {weapon.ScopeAmount:0.00}, dot drawn at {WeaponHud.DotAlpha:0.00}" );
+		Check( weapon.AimAmount > 0.9f && WeaponHud.DotAlpha > 0.9f, "the dot is missing when aimed down the sights" );
+		await Shot( "aimed_dot" );
+		weapon.ForceAim = false;
+		await Wait( 0.5f );
+
+		// #31: the gun distance setting moves the gun.
+		var vm = weapon.ViewModel;
+		var usual = vm.Position;
+		GameSettings.GunDistance = 8f;
+		await Wait( 0.3f );
+		var moved = vm.Position.DistanceTo( usual );
+		GD.Print( $"[autotest] board: gun distance +8 moved the gun {moved / U.In:0.0} in" );
+		Check( moved > 6f * U.In, "the gun distance setting did not move the gun" );
+		await Shot( "gun_far" );
+		GameSettings.GunDistance = 0f;
+
+		// #34 and #40: dead. No gun, no shooting, no HUD, and the camera watches the body.
+		var eye = player.Camera.GlobalPosition;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 100000f } );
+		await Wait( 2.5f );
+		var ragdoll = GetTree().Root.FindChild( "Robot Ragdoll", true, false ) as RobotRagdoll;
+		var ammo = weapon.Ammo;
+		Input.ParseInputEvent( new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = true } );
+		await Wait( 0.3f );
+		Input.ParseInputEvent( new InputEventMouseButton { ButtonIndex = MouseButton.Left, Pressed = false } );
+		var hud = GetTree().Root.FindChildren( "*", "", true, false ).OfType<HudOverlays>().FirstOrDefault();
+		var cam = player.Camera;
+		var toBody = ragdoll is null ? 99f : MathX.Deg( (ragdoll.Centre - cam.GlobalPosition).AngleTo( -cam.GlobalBasis.Z ) );
+		GD.Print( $"[autotest] board: dead: ragdoll {ragdoll is not null}, gun shown {weapon.ViewModel?.Visible}, ammo {ammo} -> {weapon.Ammo}, HUD alpha {hud?.Modulate.A:0.0}, camera moved {cam.GlobalPosition.DistanceTo( eye ):0.0} m and looks {toBody:0} deg off the body" );
+		Check( ragdoll is not null, "no ragdoll on death" );
+		Check( weapon.ViewModel is not { Visible: true }, "the gun is still on screen when dead" );
+		Check( weapon.Ammo == ammo, "a dead player could still shoot" );
+		Check( hud is { Modulate.A: < 0.01f }, "the HUD is still showing when dead" );
+		var back = cam.GlobalPosition.DistanceTo( ragdoll?.Centre ?? eye );
+		GD.Print( $"[autotest] board: death camera {back:0.0} m from the body" );
+		Check( back > 2.5f && toBody < 22f, "the camera is not standing back watching the body" );
+		await Shot( "death_camera" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

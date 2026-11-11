@@ -78,6 +78,8 @@ public partial class PlayerController : CharacterBody3D
 
 	/// <summary> Supplies the ground velocity while a slide, dash or carry drives the ground (MoveModeSlide). </summary>
 	public Func<Vector3?> GroundOverride;
+	/// <summary> When this gives a transform the camera goes there instead of to the eye (the death camera). </summary>
+	public Func<float, Transform3D?> CameraOverride;
 
 	CollisionShape3D shape;
 	CapsuleShape3D capsule;
@@ -435,7 +437,7 @@ public partial class PlayerController : CharacterBody3D
 			eye += cameraDelta.SafeNormal() * cameraDistance;
 		}
 
-		Camera.GlobalTransform = new Transform3D( basis, eye );
+		Camera.GlobalTransform = CameraOverride?.Invoke( dt ) ?? new Transform3D( basis, eye );
 		Camera.Fov = FieldOfView;
 
 		foreach ( var child in GetChildren() )

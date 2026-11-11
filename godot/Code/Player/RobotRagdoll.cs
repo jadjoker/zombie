@@ -53,6 +53,9 @@ public partial class RobotRagdoll : Node3D
 		return rag;
 	}
 
+	/// <summary> Where the body is (its pelvis): what the death camera watches. </summary>
+	public Vector3 Centre => limbs.Count > 0 && IsInstanceValid( limbs[0].Body ) ? limbs[0].Body.GlobalPosition : GlobalPosition;
+
 	Transform3D BoneWorld( int bone ) => skeleton.GlobalTransform * skeleton.GetBoneGlobalPose( bone );
 
 	void Build( Vector3 velocity )

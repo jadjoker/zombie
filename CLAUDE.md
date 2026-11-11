@@ -50,6 +50,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Stage 5 is in (`WaveDirector.RollKraken`, `KrakenSpot`): 10% on wave 7, then odds that climb with the rounds
   since it last came (0, 5, 15, 25, 45, 75, 100%), never on an MC61 wave, coming up near the map centre clear of
   the buy stations. Dev menu (World, waves): Kraken next wave, Wave 7; (Enemies, Wave spawning): Kraken waves.
+- A dead player has no gun, HUD or input: `PlayerSurvivor.LocalDead` gates them, and `PlayerRig.DeathCamera` (through
+  `PlayerController.CameraOverride`) watches the ragdoll. Test for board items #31 to #40: `--board1` (needs a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

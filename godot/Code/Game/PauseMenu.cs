@@ -53,6 +53,7 @@ public partial class PauseMenu : CanvasLayer
 		column.AddChild( Slider( "Mouse sensitivity", GameSettings.MinSensitivity, GameSettings.MaxSensitivity, 0.05f, () => GameSettings.Sensitivity, v => GameSettings.Sensitivity = v, v => $"{v:0.00}x" ) );
 		column.AddChild( Slider( "Volume", 0f, 1f, 0.05f, () => GameSettings.Volume, v => GameSettings.Volume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Field of view", GameSettings.MinFov, GameSettings.MaxFov, 1f, () => GameSettings.Fov, v => GameSettings.Fov = v, v => $"{v:0}" ) );
+		column.AddChild( Slider( "Gun distance", GameSettings.MinGunDistance, GameSettings.MaxGunDistance, 0.5f, () => GameSettings.GunDistance, v => GameSettings.GunDistance = v, v => v == 0f ? "Default" : $"{v:+0.0;-0.0}" ) );
 		var full = new Button { ToggleMode = true, ButtonPressed = GameSettings.Fullscreen, Name = "Fullscreen", CustomMinimumSize = new Vector2( 0, 40 ) };
 		full.AddThemeFontSizeOverride( "font_size", 20 );
 		full.Text = GameSettings.Fullscreen ? "Fullscreen: On" : "Fullscreen: Off";

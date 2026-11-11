@@ -18,6 +18,9 @@ public static class GameSettings
 	/// <summary> Horizontal field of view in degrees. </summary>
 	public static float Fov = 90f;
 	public static bool Fullscreen;
+	/// <summary> How far out from the body the gun is held in first person, in inches from the usual spot (issue #31). </summary>
+	public static float GunDistance;
+	public const float MinGunDistance = -4f, MaxGunDistance = 10f;
 	/// <summary> Which rifle design is in hand (RifleModels). </summary>
 	public static string Rifle = RifleArgument() ?? "Blaster";
 
@@ -42,6 +45,7 @@ public static class GameSettings
 		Volume = MathX.Clamp( (float)file.GetValue( "audio", "volume", 1f ), 0f, 1f );
 		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
+		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
 	}
 
@@ -53,6 +57,7 @@ public static class GameSettings
 		file.SetValue( "audio", "volume", Volume );
 		file.SetValue( "video", "fov", Fov );
 		file.SetValue( "video", "fullscreen", Fullscreen );
+		file.SetValue( "video", "gun_distance", GunDistance );
 		file.SetValue( "game", "rifle", Rifle );
 		file.Save( Path );
 	}

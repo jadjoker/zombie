@@ -1342,6 +1342,8 @@ public partial class AutoTest : Node
 		LookAt( kraken.GlobalPosition + Vector3.Up * 3.6f ); await Wait( 0.2f );
 		for ( var k = 0; k < 3; k++ ) { LookAt( kraken.GlobalPosition + Vector3.Up * 3.6f ); await Wait( 0.06f ); weapon.TestFire(); for ( var i = 0; i < 3; i++ ) { await Wait( 0.05f ); lurch = MathF.Max( lurch, kraken.HeadLean ); } }
 		var headDamage = (before - kraken.Health.Current) / 3f;
+		GD.Print( $"[autotest] kraken: {kraken.BleedingHoles} bullet holes spurting, {kraken.Craters} pieces of hide torn off so far" );
+		Check( kraken.BleedingHoles >= 2, "shots did not leave bleeding bullet holes" );
 		GD.Print( $"[autotest] kraken: per shot, brain {brainDamage:0}, head {headDamage:0}; head knocked up to {lurch:0.0} deg off by the shots" );
 		Check( lurch > 1f, "the head did not lurch when shot" );
 		Check( headDamage > 0f && brainDamage > headDamage * 2.5f, "the bare brain is not the weak point" );
@@ -1388,6 +1390,12 @@ public partial class AutoTest : Node
 		await Wait( 0.2f );
 		await Shot( "kraken_under" );
 
+		// Hurt badly: pieces of hide tear off and leave craters.
+		var tornBefore = kraken.Craters;
+		kraken.ReceiveShot( 0, kraken.Health.Current * 0.55f, (kraken.GlobalPosition - player.GlobalPosition).Normalized(), kraken.GlobalPosition + Vector3.Up * 3.6f - kraken.GlobalBasis.Z * 1.6f, player.GlobalPosition, null, false );
+		GD.Print( $"[autotest] kraken: down to {kraken.Health.Fraction:0.00} of its health, {kraken.Craters - tornBefore} more pieces torn off ({kraken.Craters} in all)" );
+		Check( kraken.Craters - tornBefore >= 2 && !kraken.IsDead, "losing half its health did not tear hide off its head" );
+
 		// From the side and close up, then the death.
 		player.GlobalPosition = Nav.Closest( player, ground + kraken.GlobalBasis * new Vector3( 3f, 0f, -13f ) ) + Vector3.Up * 0.1f;
 		await Wait( 0.4f );
@@ -1396,16 +1404,16 @@ public partial class AutoTest : Node
 		await Shot( "kraken_face" );
 		kraken.ReceiveShot( 0, 100000f, (kraken.GlobalPosition - player.GlobalPosition).Normalized(), kraken.GlobalPosition + Vector3.Up * 2f, player.GlobalPosition, null, false );
 		Check( kraken.IsDead, "the Kraken did not die" );
-		await Wait( 0.3f );
+		await Wait( 0.4f );
 		await Shot( "kraken_swelling" );
-		await Wait( 0.45f );
+		await Wait( 0.75f );
 		await Shot( "kraken_burst" );
-		var chunks = GetTree().Root.FindChildren( "Kraken Chunk*", "", true, false ).Count;
-		GD.Print( $"[autotest] kraken: burst into {chunks} chunks and {GetTree().Root.FindChildren( "Kraken Piece*", "", true, false ).Count} tentacle pieces" );
-		Check( chunks == 16, "the Kraken did not burst into its chunks" );
+		GD.Print( $"[autotest] kraken: burst into {Kraken.LastBurstPieces} loose pieces (chunks, teeth, guts, lumps) and {GetTree().Root.FindChildren( "Kraken Piece*", "", true, false ).Count} tentacle pieces" );
+		Check( Kraken.LastBurstPieces >= 100, "the Kraken did not burst into a lot of pieces" );
 		await Wait( 1.2f );
 		await Shot( "kraken_chunks" );
-		await Wait( 3.2f );
+		Check( Engine.TimeScale > 0.99, "the slow motion after the burst never ended" );
+		await Wait( 4.5f );
 		Check( Kraken.All.Count == 0, "the dead Kraken was not cleared away" );
 		await Shot( "kraken_remains" );
 		GD.Print( "[autotest] done" );
@@ -1492,7 +1500,7 @@ public partial class AutoTest : Node
 		kraken.ReceiveShot( 0, 100000f, Vector3.Forward, kraken.GlobalPosition + Vector3.Up * 2f, player.GlobalPosition, null, false );
 		await Wait( 0.3f );
 		Check( !player.Scripted && Kraken.WhirlpoolWarning( survivor ) is null, "the dead Kraken kept hold of the player" );
-		await Wait( 5f );
+		await Wait( 7f );
 		Check( GetTree().Root.FindChild( "Kraken Ring", true, false ) is null, "the ring stayed after the Kraken was gone" );
 		Check( GetTree().Root.FindChild( "Kraken Mound", true, false ) is null, "the sand mound stayed after the Kraken was gone" );
 		GD.Print( "[autotest] done" );

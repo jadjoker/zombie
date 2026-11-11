@@ -309,6 +309,7 @@ public partial class Kraken : PartCreature
 		Animate( dt );
 		TintParts( dt );
 		Bleed();
+		UpdateWounds();
 		RefreshRing();
 		UpdateWhirlpool( dt );
 		CreatureGore.BleedTrail( parts[Head].Go.GlobalPosition + Vector3.Up * 1.4f * Size, Goo, health.Fraction, ref bleedTimer );
@@ -461,6 +462,7 @@ public partial class Kraken : PartCreature
 		Hit( index, position, direction, 1f - health.Fraction );
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );
+		TearIfHurt( position, direction );
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( IsDead, index == Brain, scoreHit );
 	}
 
@@ -472,6 +474,7 @@ public partial class Kraken : PartCreature
 		var part = parts[Tentacle0 + k];
 		part.Flash = 0f;
 		KickSegment( k, j, direction, 240f );
+		Bloody( segments[k, j], position, direction, Dark, big: false );
 		segHealth[k, j] -= damage;
 		var goo = Goo;
 		CreatureGore.AddWound( segments[k, j], position, direction, Dark, goo, 5f );
@@ -489,6 +492,7 @@ public partial class Kraken : PartCreature
 		part.Flash = 0f;
 		part.Hurt = MathF.Max( part.Hurt, hurt * 0.7f );
 		if ( index == Head ) KickHead( direction, 30f );
+		Bloody( part.Go, position, direction, index == Brain ? BrainPink : Skin, big: true );
 		var goo = index == Brain ? BrainPink : Goo;
 		if ( part.Renderers.Count > 0 ) CreatureGore.AddWound( part.Go, position, direction, part.Renderers[0].Tint, goo, index == Head ? 9f : 6f );
 		gore.GooBurst( position, -direction, goo, index == Brain ? 10 : 7, 240f, index == Brain ? 1.3f : 1f );
@@ -557,7 +561,7 @@ public partial class Kraken : PartCreature
 	/// Cuts a tentacle at a segment. Everything from there to the tip comes loose as a chain of physics pieces
 	/// pinned end to end, so it flops; the stump left behind gushes and keeps pumping goo.
 	/// </summary>
-	void CutAt( int k, int j, Vector3 direction, bool heavy = true, float fling = 1f )
+	void CutAt( int k, int j, Vector3 direction, bool heavy = true, float fling = 1f, float snap = 0f )
 	{
 		var count = length[k];
 		if ( j < 0 || j >= count ) return;
@@ -611,6 +615,8 @@ public partial class Kraken : PartCreature
 		// Pin each piece to the next at the joint between them.
 		for ( var s = j; s < count - 1; s++ )
 		{
+			// In the death burst some joints snap, so the tentacle scatters in short lengths.
+			if ( Rng.Float() < snap ) continue;
 			var joint = new PinJoint3D { Name = "Joint" };
 			gibs[s].AddChild( joint );
 			joint.GlobalPosition = gibs[s + 1].GlobalPosition;

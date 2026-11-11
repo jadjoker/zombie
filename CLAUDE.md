@@ -42,6 +42,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   dome is about 30 panes that crack, pop off and blow out as rigid bodies, and on death it swells and bursts
   into `chunk0..15` plus its tentacles. In `kraken.py`, bake every object's transform before joining (a torus
   left with an offset once threw whole material groups to the origin).
+  Playtest round 4 is in: `KrakenGore.cs` (spurting bullet holes, hide tearing off at health steps, craters) and
+  a far bigger death burst (46 chunks, teeth, jointed guts, lumps, pieces that burst again, goo rain, a beat
+  of slow motion). `kraken.py` writes chunk0..N and the game loads them until one is missing.
   Stage 4 is in (`KrakenSpit.cs`): it bites players at its mouth and spits three globs of ink; both irradiate
   (`PlayerAfflictions.Irradiate`: green glow, slow stamina, and damage over time when poisoned). Test: `--bite`.
   Stage 5 is in (`WaveDirector.RollKraken`, `KrakenSpot`): 10% on wave 7, then odds that climb with the rounds

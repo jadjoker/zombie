@@ -197,12 +197,15 @@ public partial class Kraken
 
 	// ---- Dying ----
 
-	const int ChunkCount = 16;
-	const float SwellTime = 0.55f;
+	const float SwellTime = 0.7f;
 	bool burst;
 	TimeSince sinceThrash;
+	Vector3 burstAt;
 
-	/// <summary> Dead: it swells and shudders for half a second, bursts, and then only the sand it pushed up is left to settle. </summary>
+	/// <summary> For tests: loose pieces the burst threw out (chunks, teeth, guts, lumps), not counting tentacles. </summary>
+	public static int LastBurstPieces { get; private set; }
+
+	/// <summary> Dead: it swells and shudders, bursts, goo rains down for a while, and then the sand it pushed up settles. </summary>
 	void Dying( float dt )
 	{
 		if ( !burst )
@@ -210,24 +213,39 @@ public partial class Kraken
 			if ( !IsInstanceValid( rig ) ) { burst = true; return; }
 			time += dt;
 			var swell = MathX.Clamp( (float)timeSinceDeath / SwellTime, 0f, 1f );
-			var shudder = Rng.InSphere( 0.12f * swell * Size );
+			var shudder = Rng.InSphere( 0.14f * swell * Size );
 			rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition + shudder );
 			UpdateLife( dt );
 			Animate( dt );
-			if ( headPivot is not null && IsInstanceValid( headPivot ) ) headPivot.Scale = Vector3.One * (1f + 0.22f * swell * swell);
+			UpdateWounds();
+			// It bulges unevenly, as if something inside is pushing out.
+			if ( headPivot is not null && IsInstanceValid( headPivot ) )
+				headPivot.Scale = new Vector3( 1f + 0.26f * swell * swell + MathF.Sin( time * 37f ) * 0.05f * swell, 1f + 0.16f * swell * swell + MathF.Sin( time * 29f ) * 0.05f * swell, 1f + 0.26f * swell * swell + MathF.Sin( time * 43f ) * 0.05f * swell );
 			foreach ( var mesh in glowing ) if ( IsInstanceValid( mesh ) && mesh.MaterialOverride is StandardMaterial3D m ) m.EmissionEnergyMultiplier = 1.5f + swell * 7f;
-			if ( sinceThrash > 0.1f )
+			if ( sinceThrash > 0.08f )
 			{
 				sinceThrash = 0f;
-				for ( var k = 0; k < Tentacles; k++ ) Thrash( k, 260f );
-				ShakeNear( 0.25f );
-				gore.GooBurst( BrainPosition, Rng.OnSphere(), Goo, 6, 300f, 3f );
+				for ( var k = 0; k < Tentacles; k++ ) Thrash( k, 280f );
+				ShakeNear( 0.3f );
+				// Seams split and squirt before it goes.
+				var seam = parts[Head].Go.GlobalTransform * (new Vector3( 0f, 1.9f, 0f ) + Rng.OnSphere() * 0.9f);
+				gore.GooBurst( seam, seam - GlobalPosition, Goo, 8, 380f, 3.5f );
+				if ( Rng.Float() < 0.5f ) gore.ThrowBlob( seam, seam - GlobalPosition, Rng.Float() < 0.5f ? Skin : Flesh, Goo, Rng.Float( 3f, 6f ) );
 			}
 			if ( timeSinceDeath >= SwellTime ) Burst();
 			return;
 		}
-		// The sand settles, then it is all cleared away.
-		var settle = MathX.Clamp( ((float)timeSinceDeath - SwellTime - 2f) / 2f, 0f, 1f );
+		// Goo and bits keep raining down round where it stood.
+		var since = (float)timeSinceDeath - SwellTime;
+		if ( since < 2.6f )
+		{
+			for ( var i = 0; i < 2; i++ )
+			{
+				var over = burstAt + Rng.InSphere( 15f ).Flat() + Vector3.Up * Rng.Float( 5f, 10f );
+				GooDroplet.Spawn( over, Vector3.Down * Rng.Float( 4f, 9f ) + Rng.InSphere( 1.5f ), Rng.Float() < 0.2f ? Flesh : Goo, Rng.Float( 2f, 4.5f ), 2.5f );
+			}
+		}
+		var settle = MathX.Clamp( (since - 2.5f) / 2f, 0f, 1f );
 		if ( IsInstanceValid( mound ) ) mound.Scale = Vector3.One * MathF.Max( 0.01f, 1f - Ease( settle ) );
 		if ( settle >= 1f )
 		{
@@ -236,7 +254,11 @@ public partial class Kraken
 		}
 	}
 
-	/// <summary> The whole Kraken comes apart: dome, brain, collar, hide in chunks, every tentacle, and a lot of goo. </summary>
+	/// <summary>
+	/// The whole Kraken comes apart (playtest round 4: nastier, smaller, farther): every chunk of its hide, the
+	/// collar, the brain, its teeth, ropes of gut, lumps of flesh and every tentacle in short lengths. Some pieces
+	/// burst again in the air, and goo goes everywhere.
+	/// </summary>
 	void Burst()
 	{
 		burst = true;
@@ -244,6 +266,10 @@ public partial class Kraken
 		var frame = head.GlobalTransform;
 		var core = frame * new Vector3( 0f, 1.9f, 0f );
 		var away = lastShotDirection.SafeNormal();
+		var mouth = MouthPosition;
+		burstAt = core;
+		gore.MaxGibs = Math.Max( gore.MaxGibs, 280 );   // room for all of it at once
+		var pieces = 0;
 
 		// The glow it built up while swelling goes out, so the loose pieces are not left blazing.
 		foreach ( var mesh in glowing ) if ( IsInstanceValid( mesh ) && mesh.MaterialOverride is StandardMaterial3D m ) m.EmissionEnergyMultiplier = 1.1f;
@@ -253,56 +279,158 @@ public partial class Kraken
 		{
 			if ( length[k] == 0 ) continue;
 			var outward = (parts[Tentacle0 + k].Go.GlobalPosition - GlobalPosition).Flat().SafeNormal();
-			CutAt( k, 0, outward, heavy: false, fling: 3.2f );
+			CutAt( k, 0, outward, heavy: false, fling: 5.5f, snap: 0.55f );
 		}
 
-		for ( var i = 0; i < ChunkCount; i++ )
+		// Its hide, collar and brain: every chunk from where it sat, thrown hard. Some burst again on the way.
+		for ( var i = 0; ; i++ )
 		{
-			var piece = new Node3D { Name = "Kraken Chunk" };
-			GetTree().CurrentScene.AddChild( piece );
-			piece.GlobalTransform = frame;
-			var model = Model( $"chunk{i}" );
-			piece.AddChild( model );
-			Aabb? box = null;
-			foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
-			{
-				mesh.MaterialOverride = Paint( mesh.Name.ToString(), out _ );
-				box = box is { } b ? b.Merge( mesh.GetAabb() ) : mesh.GetAabb();
-			}
-			if ( box is not { } bounds ) { piece.QueueFree(); continue; }
-			var middle = frame * bounds.GetCenter();
-			var radius = MathF.Max( 0.25f, bounds.Size.Length() * 0.22f * Size );
-			var outward = (middle - core).SafeNormal();
+			if ( !ResourceLoader.Exists( $"res://assets/models/creatures/kraken/chunk{i}.glb" ) ) break;
+			if ( SpawnChunk( i, frame, null, 120f ) is not { } chunk ) continue;
+			pieces++;
+			var outward = (chunk.Middle - core).SafeNormal();
 			if ( outward == Vector3.Zero ) outward = Vector3.Up;
-			var velocity = outward * Rng.Float( 6f, 12f ) + away * Rng.Float( 0f, 3f ) + Vector3.Up * Rng.Float( 2.5f, 6f );
-			var gib = Gib.Attach( piece, gore, radius / U.In, 160f, 8f + radius * 25f, velocity, Goo, addCollider: false );
-			var collider = new CollisionShape3D { Shape = new SphereShape3D { Radius = radius } };
-			gib.AddChild( collider );
-			collider.GlobalPosition = middle;
-			gib.AngularVelocity = Rng.InSphere( 6f );
-			CreatureGore.Twitch( gib, Rng.Float( 1.5f, 3f ), 0.25f );
-			gore.GooBurst( middle, outward, Goo, 6, 420f, 5f );
+			chunk.Gib.LinearVelocity = outward * Rng.Float( 11f, 24f ) + away * Rng.Float( 0f, 4f ) + Vector3.Up * Rng.Float( 3f, 9f );
+			chunk.Gib.AngularVelocity = Rng.InSphere( 10f );
+			gore.GooBurst( chunk.Middle, outward, Goo, 5, 460f, 5f );
+			if ( Rng.Float() < 0.4f ) PopLater( chunk.Gib, Rng.Float( 0.35f, 1.1f ) );
 		}
 
-		// Goo everywhere.
-		for ( var i = 0; i < 14; i++ ) gore.GooBurst( core, Rng.OnSphere() + Vector3.Up * 0.4f, i % 3 == 0 ? BrainPink : Goo, 12, 560f, Rng.Float( 4f, 8f ) );
-		for ( var i = 0; i < 16; i++ )
+		// Teeth, spinning off like shrapnel.
+		for ( var i = 0; i < 14; i++ )
 		{
-			var angle = i / 16f * MathF.Tau;
-			gore.GooSpray( core, new Vector3( MathF.Cos( angle ), -0.25f, MathF.Sin( angle ) ), 2, Goo, 620f, 2.5f, 4.5f, sag: 0.4f );
+			var tooth = new Node3D { Name = "Kraken Tooth" };
+			GetTree().CurrentScene.AddChild( tooth );
+			tooth.GlobalPosition = mouth + Rng.InSphere( 0.6f );
+			tooth.AddChild( new MeshInstance3D { Mesh = new CylinderMesh { TopRadius = 0.01f, BottomRadius = 0.14f, Height = 0.55f, RadialSegments = 8 }, MaterialOverride = Shapes.Material( new Color( 0.93f, 0.9f, 0.78f ) ) } );
+			var gib = Gib.Attach( tooth, gore, 4f, 30f, 0.5f, (Rng.OnSphere() + Vector3.Up * 0.6f).Normalized() * Rng.Float( 9f, 20f ), Goo );
+			gib.AngularVelocity = Rng.InSphere( 20f );
+			pieces++;
 		}
-		for ( var i = 0; i < 10; i++ ) gore.ThrowBlob( core, Rng.OnSphere() + Vector3.Up * 0.5f, i % 2 == 0 ? Fold : Dark, Goo, Rng.Float( 6f, 11f ) );
-		if ( gore.TraceWorld( core, core + Vector3.Down * 14f ) is { } floor ) gore.GooSplat( floor.Position, floor.Normal, 8f, Goo );
+
+		// Ropes of gut: links pinned end to end, so they whip and flop as they fly and drape where they land.
+		for ( var rope = 0; rope < 5; rope++ )
+		{
+			var start = core + Rng.InSphere( 0.8f );
+			var along = (Rng.OnSphere() + Vector3.Up * 0.3f).Normalized();
+			var throwIt = (Rng.OnSphere() + Vector3.Up * 0.7f).Normalized() * Rng.Float( 8f, 17f );
+			var color = rope % 2 == 0 ? Flesh : new Color( 0.85f, 0.45f, 0.5f );
+			Gib previous = null;
+			var links = Rng.Int( 6, 9 );
+			for ( var i = 0; i < links; i++ )
+			{
+				var link = new Node3D { Name = "Kraken Gut" };
+				GetTree().CurrentScene.AddChild( link );
+				link.GlobalTransform = new Transform3D( Shapes.LookAt( along ), start + along * i * 0.42f );
+				var fat = Rng.Float( 0.17f, 0.24f );
+				link.AddChild( new MeshInstance3D { Mesh = Shapes.Sphere, Scale = new Vector3( fat * 2f, fat * 2f, 0.62f ), MaterialOverride = Shapes.Material( color ) } );
+				var gib = Gib.Attach( link, gore, fat / U.In, 40f, 1.2f, throwIt + Rng.InSphere( 2.5f ), Goo );
+				gib.AngularVelocity = Rng.InSphere( 3f );
+				if ( previous is not null )
+				{
+					var joint = new PinJoint3D { Name = "Joint" };
+					previous.AddChild( joint );
+					joint.GlobalPosition = (previous.GlobalPosition + gib.GlobalPosition) * 0.5f;
+					joint.NodeA = previous.GetPath();
+					joint.NodeB = gib.GetPath();
+				}
+				previous = gib;
+				pieces++;
+			}
+		}
+
+		// Lumps of flesh, hide and brain, thrown wide.
+		for ( var i = 0; i < 30; i++ )
+		{
+			var color = (i % 4) switch { 0 => Skin, 1 => Flesh, 2 => BrainPink, _ => Dark };
+			var lump = gore.ThrowBlob( core + Rng.InSphere( 1.2f ), Rng.OnSphere() + Vector3.Up * 0.5f, color, Goo, Rng.Float( 3.5f, 10f ) );
+			if ( lump is null ) continue;
+			lump.LinearVelocity *= Rng.Float( 2.5f, 4.5f );
+			pieces++;
+		}
+		LastBurstPieces = pieces;
+
+		// Goo everywhere: a blast of it, a mist, streaks out across the sea bed, and a pool where it stood.
+		for ( var i = 0; i < 18; i++ ) gore.GooBurst( core, Rng.OnSphere() + Vector3.Up * 0.4f, i % 3 == 0 ? BrainPink : Goo, 12, 640f, Rng.Float( 4f, 9f ) );
+		GooMist( core );
+		for ( var i = 0; i < 20; i++ )
+		{
+			var angle = i / 20f * MathF.Tau + Rng.Float( -0.15f, 0.15f );
+			gore.GooSpray( core, new Vector3( MathF.Cos( angle ), -0.2f, MathF.Sin( angle ) ), 2, Goo, 720f, 2.5f, 5f, sag: 0.35f );
+			var reach = new Vector3( MathF.Cos( angle ), 0f, MathF.Sin( angle ) ) * Rng.Float( 4f, 15f );
+			if ( gore.TraceWorld( GlobalPosition + reach + Vector3.Up * 3f, GlobalPosition + reach + Vector3.Down * 6f ) is { } spot )
+				gore.GooSplat( spot.Position, spot.Normal, Rng.Float( 2.5f, 6f ), Goo );
+		}
+		if ( gore.TraceWorld( core, core + Vector3.Down * 14f ) is { } floor ) gore.GooSplat( floor.Position, floor.Normal, 10f, Goo );
 		gore.Squelch( core, 1.6f, 0.55f );
 		Sfx.Play( "kraken_burst", core, 1f );
+		Sfx.Play( "gib", core, 1f, 0.5f );
 		SandBurst( GlobalPosition, 1.6f, 28, 3.5f );
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			var distance = player.WorldPosition.DistanceTo( core );
-			if ( distance > 45f ) continue;
-			player.Juice?.Shake( 1f - distance / 60f );
-			if ( distance < 14f ) player.Afflictions?.Splattered( Goo, distance < 8f ? 8 : 4 );
+			if ( distance > 50f ) continue;
+			player.Juice?.Shake( 1f - distance / 70f );
+			if ( distance < 26f ) player.Afflictions?.Splattered( Goo, distance < 12f ? 10 : 5 );
+		}
+		// A beat of slow motion to take it in (left alone if the dev menu has changed the speed).
+		if ( Engine.TimeScale == 1.0 )
+		{
+			Engine.TimeScale = 0.3;
+			GetTree().CreateTimer( 0.4, true, false, true ).Timeout += () => { if ( Engine.TimeScale == 0.3 ) Engine.TimeScale = 1.0; };
 		}
 		rig.QueueFree();
+	}
+
+	/// <summary> A thrown piece bursts again after a moment: goo, and smaller lumps carrying on the way it was going. </summary>
+	void PopLater( Gib gib, float seconds )
+	{
+		GetTree().CreateTimer( seconds ).Timeout += () =>
+		{
+			if ( !IsInstanceValid( gib ) || gib.IsFading ) return;
+			var at = gib.GetChildren().OfType<CollisionShape3D>().FirstOrDefault()?.GlobalPosition ?? gib.GlobalPosition;
+			var going = gib.LinearVelocity;
+			for ( var i = 0; i < 3; i++ )
+			{
+				var lump = GoreSystem.Get().ThrowBlob( at, going + Rng.InSphere( 3f ), i == 0 ? Skin : Flesh, Goo, Rng.Float( 3f, 6f ) );
+				if ( lump is not null ) lump.LinearVelocity = going * Rng.Float( 0.5f, 1.1f ) + Rng.InSphere( 5f );
+			}
+			gib.Pulverize( at, going.SafeNormal() );
+		};
+	}
+
+	/// <summary> A cloud of fine goo hanging in the water where it burst. </summary>
+	void GooMist( Vector3 at )
+	{
+		var material = new StandardMaterial3D { AlbedoColor = new Color( 0.3f, 0.95f, 0.3f, 0.75f ), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha };
+		var fade = new Gradient();
+		fade.SetColor( 0, Colors.White );
+		fade.SetColor( 1, new Color( 1f, 1f, 1f, 0f ) );
+		var mist = new CpuParticles3D
+		{
+			Name = "Kraken Mist",
+			Mesh = new SphereMesh { Radius = 0.09f, Height = 0.18f, RadialSegments = 6, Rings = 3, Material = material },
+			Amount = 160,
+			Lifetime = 2.2f,
+			OneShot = true,
+			Explosiveness = 1f,
+			EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+			EmissionSphereRadius = 1.5f,
+			Direction = Vector3.Up,
+			Spread = 180f,
+			InitialVelocityMin = 5f,
+			InitialVelocityMax = 22f,
+			Gravity = new Vector3( 0f, -2.5f, 0f ),
+			DampingMin = 3f,
+			DampingMax = 5f,
+			ScaleAmountMin = 0.6f,
+			ScaleAmountMax = 2.2f,
+			ColorRamp = fade,
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+		};
+		GetTree().CurrentScene.AddChild( mist );
+		mist.GlobalPosition = at;
+		mist.Emitting = true;
+		Fx.Expire( mist, 3.5f );
 	}
 }

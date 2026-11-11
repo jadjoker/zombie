@@ -207,7 +207,7 @@ def mouth_parts(centre, normal, scale=1.0):
         cone(rim, tip, 0.08 * scale, 0.008, TOOTH, verts=8)
 
 
-def shell_chunk(ballspec, d, extras=None, seed=0):
+def shell_chunk(ballspec, d, extras=None, seed=0, spread=(30, 46)):
     """
     A piece of the head for when it bursts: a thick slab of hide cut out round a direction, cracked skin outside
     and raw flesh on every cut face, with whatever was on that part of the head still on it.
@@ -226,8 +226,8 @@ def shell_chunk(ballspec, d, extras=None, seed=0):
     for i in range(sides):
         a = turn + i / sides * math.tau + rnd.uniform(-0.25, 0.25)
         out = u * math.cos(a) + v * math.sin(a)
-        spread = math.radians(rnd.uniform(30, 46))
-        planes.append(out * math.cos(spread) - d * math.sin(spread))
+        angle = math.radians(rnd.uniform(*spread))
+        planes.append(out * math.cos(angle) - d * math.sin(angle))
     depth = min(r) * rnd.uniform(0.42, 0.55)
     skin = ball(c, r, SKIN, segs=32)
     flesh = ball(c, tuple(x * 0.93 for x in r), FLESH, segs=24)
@@ -348,44 +348,75 @@ def mouth():
 
 
 def chunks():
-    """What the head bursts into. Each is exported in the head's own space, so the game starts it where it was."""
+    """
+    What the head bursts into (playtest round 4: many small pieces). Each is exported in the head's own space, so
+    the game starts it where it was. The game loads chunk0, chunk1, ... until one is missing.
+    """
+    # The pieces that carry something: the eyes, the tank, the siphons, the mouth.
     for side in (-1, 1):
-        shell_chunk(CRANIUM, (side * 0.75, 0.6, -0.42), lambda side=side: eye(side), seed=10 + side)
-        shell_chunk(CRANIUM, (side * 0.8, -0.55, -0.45), lambda side=side: [crater(*h) for h in HOLES[2:6] if h[2][0] * side > 0], seed=20 + side)
-        shell_chunk(FACE, (side * 1.0, 0.1, -0.1), lambda side=side: [crater(*h) for h in HOLES[6:8] if h[2][0] * side > 0], seed=30 + side)
-        shell_chunk(MANTLE, (side * 0.8, 0.5, -0.1), lambda side=side: siphon(side), seed=40 + side)
-    shell_chunk(CRANIUM, (0, -1, -0.3), tank, seed=50)
-    shell_chunk(FACE, (0, 1, -0.3), lambda: mouth_parts(on_ball(FACE[0], FACE[1], (0, 1, -0.55))[0], (0, 0.85, -0.5), scale=0.8), seed=51)
-    shell_chunk(MANTLE, (0, -1, 0.1), lambda: [crater(*h) for h in HOLES[9:11]], seed=52)
+        shell_chunk(FACE, (side * 0.46, 1.0, 0.3), lambda side=side: eye(side), seed=10 + side, spread=(24, 32))
+        shell_chunk(MANTLE, (side * 1.0, -0.25, 0.55), lambda side=side: siphon(side), seed=40 + side, spread=(22, 30))
+    shell_chunk(CRANIUM, (0, -1, -0.3), tank, seed=50, spread=(24, 32))
+    shell_chunk(FACE, (0, 1, -0.45), lambda: mouth_parts(on_ball(FACE[0], FACE[1], (0, 1, -0.55))[0], (0, 0.85, -0.5), scale=0.8), seed=51, spread=(22, 30))
 
-    # The collar in three bent arcs, bolts and all.
-    for i in range(3):
+    # The rest of the hide in small slabs, all round each part of the head.
+    rnd = random.Random(404)
+    plain = []
+    for i in range(12):      # the head, below the collar
+        turn = i / 12 * math.tau + rnd.uniform(-0.2, 0.2)
+        plain.append((CRANIUM, (math.cos(turn), math.sin(turn), rnd.uniform(-0.75, -0.15))))
+    for i in range(9):       # the face
+        turn = i / 9 * math.tau + rnd.uniform(-0.25, 0.25)
+        plain.append((FACE, (math.cos(turn), math.sin(turn), rnd.uniform(-0.6, 0.2))))
+    for i in range(9):       # the mantle
+        turn = i / 9 * math.tau + rnd.uniform(-0.25, 0.25)
+        plain.append((MANTLE, (math.cos(turn), math.sin(turn), rnd.uniform(-0.5, 0.5))))
+    for i, (spec, d) in enumerate(plain):
+        near = [h for h in HOLES if h[0] == spec[0] and Vector(h[2]).normalized().dot(Vector(d).normalized()) > 0.9]
+        shell_chunk(spec, d, (lambda near=near: [crater(*h) for h in near]) if near else None, seed=100 + i, spread=(17, 25))
+
+    # The collar in six bent arcs, bolts and all.
+    for i in range(6):
         def arc(i=i):
             ring = torus(COLLAR, COLLAR_RADIUS + 0.02, 0.1, COLLAR_M)
             seal = torus(COLLAR + Vector((0, 0, -0.15)), COLLAR_RADIUS + 0.02, 0.05, COLLAR_M)
-            a0, a1 = i / 3 * math.tau, (i + 1) / 3 * math.tau - 0.12
+            a0, a1 = i / 6 * math.tau, (i + 1) / 6 * math.tau - 0.1
             for o in (ring, seal):
                 slice_off(o, COLLAR, Vector((math.sin(a0), -math.cos(a0), 0)))
                 slice_off(o, COLLAR, Vector((-math.sin(a1), math.cos(a1), 0)))
             for k in range(14):
                 a = k / 14 * math.tau
-                if a0 + 0.1 < a < a1 - 0.1:
+                if a0 + 0.08 < a < a1 - 0.08:
                     ball(COLLAR + Vector((math.cos(a) * (COLLAR_RADIUS + 0.11), math.sin(a) * (COLLAR_RADIUS + 0.11), 0.0)), 0.05, COLLAR_M, segs=10)
         loose_chunk(arc)
 
-    # The brain in two halves, torn down the middle.
+    # The brain in four torn quarters.
     for side in (-1, 1):
-        def half(side=side):
-            k = 1.55
-            lobe = ball(COLLAR + Vector((side * 0.26, 0, 0.16)) * k, (0.33 * k, 0.52 * k, 0.36 * k), BRAIN, segs=24)
-            slice_off(lobe, COLLAR, Vector((-side, 0, 0)))
-            for i in range(7):
-                y = -0.4 + i * 0.135
-                x = side * (0.3 + 0.07 * math.sin(i * 1.7))
-                z = 0.16 + 0.345 * math.sqrt(max(0.0, 1 - (y / 0.52) ** 2))
-                torus(COLLAR + Vector((x, y, z - 0.07)) * k, 0.14 * k, 0.035 * k, FOLD, rot=(90 + random.uniform(-25, 25), 0, random.uniform(-35, 35)))
-            ball(COLLAR + Vector((side * 0.08, 0, 0.2)) * k, (0.06, 0.6, 0.4), FLESH, segs=14)
-        loose_chunk(half)
+        for end in (-1, 1):
+            def quarter(side=side, end=end):
+                k = 1.55
+                lobe = ball(COLLAR + Vector((side * 0.26, 0, 0.16)) * k, (0.33 * k, 0.52 * k, 0.36 * k), BRAIN, segs=24)
+                slice_off(lobe, COLLAR, Vector((-side, 0, 0)))
+                slice_off(lobe, COLLAR, Vector((0, -end, 0)))
+                for i in range(7):
+                    y = -0.4 + i * 0.135
+                    if y * end < 0.02:
+                        continue
+                    x = side * (0.3 + 0.07 * math.sin(i * 1.7))
+                    z = 0.16 + 0.345 * math.sqrt(max(0.0, 1 - (y / 0.52) ** 2))
+                    torus(COLLAR + Vector((x, y, z - 0.07)) * k, 0.14 * k, 0.035 * k, FOLD, rot=(90 + random.uniform(-25, 25), 0, random.uniform(-35, 35)))
+                # Raw on the torn faces.
+                ball(COLLAR + Vector((side * 0.07, end * 0.3, 0.2)) * k, (0.05, 0.3, 0.36), FLESH, segs=12)
+                ball(COLLAR + Vector((side * 0.28, end * 0.04, 0.2)) * k, (0.3, 0.05, 0.36), FLESH, segs=12)
+            loose_chunk(quarter)
+    # Anything left over from an earlier, longer list would still be loaded: clear it.
+    index = CHUNKS
+    while os.path.exists(os.path.join(OUT, f"chunk{index}.glb")):
+        for ext in (".glb", ".glb.import"):
+            path = os.path.join(OUT, f"chunk{index}{ext}")
+            if os.path.exists(path):
+                os.remove(path)
+        index += 1
     print("chunks", CHUNKS)
 
 

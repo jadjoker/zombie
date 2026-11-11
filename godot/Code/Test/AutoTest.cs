@@ -50,6 +50,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--sea" ) ) { await SeaTest(); return; }
 		if ( args.Contains( "--rifles" ) ) { await RiflesTest(); return; }
 		if ( args.Contains( "--kraken" ) ) { await KrakenTest(); return; }
+		if ( args.Contains( "--whirlpool" ) ) { await WhirlpoolTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1356,6 +1357,90 @@ public partial class AutoTest : Node
 		await Wait( 2f );
 		Check( Kraken.All.Count == 0, "the dead Kraken was not cleared away" );
 		await Shot( "kraken_remains" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The Kraken's whirlpool: a warning outside its ring, cancelled by going back in, and the ride back when it runs out. </summary>
+	async Task WhirlpoolTest()
+	{
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
+		player.GlobalPosition = Nav.Closest( player, ground + new Vector3( 7f, 0f, 7f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
+		var kraken = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Kraken, ground, player.GlobalPosition ) as Kraken;
+		Check( kraken is not null, "the Kraken did not spawn" );
+		if ( kraken is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		await Wait( 5.6f );
+		Check( kraken.State == Kraken.Mode.Idle, "the Kraken never finished arriving" );
+		Check( Kraken.WhirlpoolWarning( survivor ) is null, "a whirlpool warning showed inside the ring" );
+		var ring = GetTree().Root.FindChild( "Kraken Ring", true, false );
+		GD.Print( $"[autotest] whirlpool: ring markers {ring?.GetChildCount()}, radius {Kraken.FightRadius} m" );
+		Check( ring is not null && ring.GetChildCount() > 12, "the fight ring was not laid out" );
+
+		// Outside the ring: the countdown starts. Find a spot on the navmesh that is really outside.
+		var inside = player.GlobalPosition;
+		var outside = inside;
+		foreach ( var angle in new[] { 0f, 90f, 180f, 270f, 45f, 135f, 225f, 315f } )
+		{
+			var dir = new Vector3( MathF.Sin( MathX.Rad( angle ) ), 0f, MathF.Cos( MathX.Rad( angle ) ) );
+			var spot = Nav.Closest( player, ground + dir * (Kraken.FightRadius + 7f) );
+			if ( (spot - ground).Flat().Length() > Kraken.FightRadius + 3f ) { outside = spot + Vector3.Up * 0.1f; break; }
+		}
+		Check( outside != inside, "found nowhere outside the ring to stand" );
+		player.GlobalPosition = outside;
+		await Wait( 1.5f );
+		var warning = Kraken.WhirlpoolWarning( survivor );
+		GD.Print( $"[autotest] whirlpool: {(outside - ground).Flat().Length():0.0} m out, warning {warning:0.0} s left (expect about 3.5)" );
+		Check( warning is > 2.5f and < 4.5f, "no 5 second warning outside the ring" );
+		LookAt( ground + Vector3.Up * 2f );
+		await Wait( 0.2f );
+		await Shot( "whirlpool_warning" );
+		player.ThirdPerson = true;
+		await Wait( 0.3f );
+		await Shot( "whirlpool_warning_third_person" );
+		player.ThirdPerson = false;
+		var funnel = GetTree().Root.FindChild( "Kraken Whirlpool", true, false ) as Node3D;
+		GD.Print( $"[autotest] whirlpool: funnel {funnel is not null}, visible {funnel?.Visible}, {funnel?.GlobalPosition.DistanceTo( player.GlobalPosition ):0.0} m from the player, scale {funnel?.Scale}" );
+		Check( funnel is { Visible: true }, "no whirlpool gathers round the player during the warning" );
+
+		// Back inside: it dies away.
+		player.GlobalPosition = inside;
+		await Wait( 2.5f );
+		Check( Kraken.WhirlpoolWarning( survivor ) is null, "the warning did not clear after going back inside" );
+		Check( !player.Scripted, "the player was taken although they went back in time" );
+
+		// Outside and staying there: taken after 5 seconds and put down inside the ring.
+		player.GlobalPosition = outside;
+		await Wait( 5.4f );
+		Check( Kraken.Carrying( survivor ) && player.Scripted, "the whirlpool did not take the player after the warning" );
+		await Wait( 0.9f );
+		await Shot( "whirlpool_ride" );
+		player.ThirdPerson = true;
+		await Wait( 0.3f );
+		await Shot( "whirlpool_ride_third_person" );
+		player.ThirdPerson = false;
+		await Wait( 2.2f );
+		var away = (player.GlobalPosition - ground).Flat().Length();
+		GD.Print( $"[autotest] whirlpool: put down {away:0.0} m from the Kraken, carried {Kraken.Carrying( survivor )}, scripted {player.Scripted}, on ground {player.IsOnGround}" );
+		Check( !Kraken.Carrying( survivor ) && !player.Scripted, "the whirlpool never let go" );
+		Check( away < Kraken.FightRadius, "the whirlpool did not bring the player back inside the ring" );
+		Check( Kraken.WhirlpoolWarning( survivor ) is null, "a warning was still showing after the ride" );
+		await Wait( 0.6f );
+		Check( player.IsOnGround, "the player was not put down on the sea bed" );
+
+		// Killed mid-ride: it must let go.
+		player.GlobalPosition = outside;
+		await Wait( 5.6f );
+		Check( Kraken.Carrying( survivor ), "the second whirlpool did not start" );
+		kraken.ReceiveShot( 0, 100000f, Vector3.Forward, kraken.GlobalPosition + Vector3.Up * 2f, player.GlobalPosition, null, false );
+		await Wait( 0.3f );
+		Check( !player.Scripted && Kraken.WhirlpoolWarning( survivor ) is null, "the dead Kraken kept hold of the player" );
+		await Wait( 4f );
+		Check( GetTree().Root.FindChild( "Kraken Ring", true, false ) is null, "the ring stayed after the Kraken was gone" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

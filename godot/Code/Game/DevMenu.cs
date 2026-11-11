@@ -30,7 +30,7 @@ public partial class DevMenu : CanvasLayer
 		var sb = new System.Text.StringBuilder();
 		foreach ( var f in typeof( DevFlags ).GetFields( System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static ) )
 			if ( f.FieldType == typeof( bool ) || f.FieldType == typeof( float ) || f.FieldType == typeof( int ) ) sb.Append( f.GetValue( null ) ).Append( '|' );
-		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' );
+		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' ).Append( Kraken.FightRadius ).Append( '|' );
 		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( '|' );
 		sb.Append( GlobalStylize.Current?.Style ).Append( '|' ).Append( Level.Current?.LevelName );
 		return sb.ToString();
@@ -371,7 +371,10 @@ public partial class DevMenu : CanvasLayer
 			Section( "Kraken" );
 			Row();
 			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
+			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 9f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
+			Row( "Fight radius" );
+			foreach ( var r in new[] { 12f, 20f, 30f } ) { var radius = r; Pick( $"{r:0} m", Kraken.FightRadius == radius, () => Kraken.FightRadius = radius ); }
 		}
 
 		// ======== PLAYER

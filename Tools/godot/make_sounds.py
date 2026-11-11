@@ -306,6 +306,12 @@ def build():
     s["glass_break"] = reverb(mix((spectral(noise(0.5), lo=2500) * env(int(SR * 0.5), 0.001, 0.22), 0, 1.0),
                                   *[(click(f, 0.06, 0.03), t, 0.6) for f, t in ((6200, 0.03), (4800, 0.09), (7100, 0.16), (5300, 0.27), (6600, 0.4))],
                                   (thump(0.2, 180, 70, 0.08), 0, 0.6)), room=0.5, wet=0.3)
+    # The Kraken's whirlpool: the warning tick, and the water taking you.
+    s["whirl_warn"] = mix((tone(0.16, 880) * env(int(SR * 0.16), 0.002, 0.09), 0, 0.6), (tone(0.16, 1320) * env(int(SR * 0.16), 0.002, 0.06), 0, 0.3),
+                          (whoosh(0.3, 500, 1400, 0.3, 0.5), 0, 0.5))
+    s["whirlpool"] = reverb(mix((whoosh(2.6, 180, 900, 0.45, 0.7), 0, 1.2), (whoosh(2.6, 900, 300, 0.6, 0.5), 0.1, 0.7),
+                                (spectral(noise(2.6), lo=40, hi=220) * bell(int(SR * 2.6), 0.5) * (0.7 + 0.3 * tone(2.6, 5)), 0, 1.0),
+                                *[(blub(300 + 90 * i, 900 + 150 * i, 0.07), 0.2 + 0.27 * i, 0.35) for i in range(8)]), room=0.9, wet=0.35)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

@@ -30,8 +30,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - The Kraken event boss (issue #30) is being built in stages: `godot/Code/Creatures/Kraken.cs`, model from
   `Tools/blender/kraken.py` (one glb per part, one mesh per material, painted by mesh name). Stage 1 is in: it
   burrows up, its glass dome soaks shots and shatters, the brain is the weak point, tentacles shoot off, it sinks
-  when dead. Spawn it from the dev menu (Enemies, Spawn an enemy, Kraken). Test: `--kraken` (needs a window for shots).
-  Still to come: whirlpool, tentacle slam, bite and ink, the wave odds.
+  when dead. Stage 2 is in (`KrakenWhirlpool.cs`): a ring of lights at `Kraken.FightRadius`, a 5 second warning
+  outside it, then a whirlpool carries the player back in. Spawn it from the dev menu (Enemies, Spawn an enemy,
+  Kraken). Tests: `--kraken` (needs a window for shots) and `--whirlpool`.
+  Still to come: tentacle slam, bite and ink, the wave odds.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

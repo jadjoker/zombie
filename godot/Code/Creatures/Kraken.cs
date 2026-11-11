@@ -5,7 +5,8 @@ using Godot;
 /// up, turning to face the nearest player. Its brain sits on top of its head under a spacesuit glass dome: the dome
 /// has its own health and shatters, and after that the brain is the weak point. A tentacle can be shot through at
 /// any segment: what is past the cut drops off as a limp chain of pieces, and the stump pumps goo.
-/// Stage 1: the body, the arrival and dying. The attacks, the whirlpool and the wave odds come in later stages.
+/// Stage 1: the body, the arrival and dying. Stage 2: the whirlpool that keeps players close (KrakenWhirlpool.cs).
+/// The attacks and the wave odds come in later stages.
 /// Model: Tools/blender/kraken.py (assets/models/creatures/kraken, metres, mouth facing forward).
 /// </summary>
 public partial class Kraken : PartCreature
@@ -287,6 +288,8 @@ public partial class Kraken : PartCreature
 		Animate( dt );
 		TintParts( dt );
 		Bleed();
+		RefreshRing();
+		UpdateWhirlpool( dt );
 		CreatureGore.BleedTrail( parts[Head].Go.GlobalPosition + Vector3.Up * 1.4f, Goo, health.Fraction, ref bleedTimer );
 	}
 
@@ -652,6 +655,7 @@ public partial class Kraken : PartCreature
 	{
 		timeSinceDeath = 0f;
 		RaiseKilled();
+		ReleaseAll();
 		if ( diedLocally ) return;
 		diedLocally = true;
 		if ( rig is null || !IsInstanceValid( rig ) ) return;

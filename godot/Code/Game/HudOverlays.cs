@@ -257,6 +257,25 @@ public partial class HudOverlays : Control
 			}
 			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
 		}
+
+		// The Kraken's whirlpool: a countdown while the player is outside its ring, then the ride back.
+		if ( player is not null && Kraken.WhirlpoolWarning( player ) is { } left )
+		{
+			var warn = new Color( "7dfff0" );
+			var pulse = 0.75f + 0.25f * MathF.Sin( (float)Clock.Now * 10f );
+			var y = Size.Y * 0.3f;
+			var title = left > 0f ? $"WHIRLPOOL IN {MathF.Ceiling( left ):0}" : "WHIRLPOOL";
+			DrawString( ThemeDB.FallbackFont, new Vector2( 3f, y + 3f ), title, HorizontalAlignment.Center, Size.X, 54, new Color( 0, 0, 0, 0.6f ) );
+			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, y ), title, HorizontalAlignment.Center, Size.X, 54, warn with { A = pulse } );
+			if ( left > 0f )
+			{
+				DrawString( ThemeDB.FallbackFont, new Vector2( 0f, y + 34f ), "Get back inside the ring of lights", HorizontalAlignment.Center, Size.X, 22, new Color( 1, 1, 1, 0.9f ) );
+				var width = Size.X * 0.24f;
+				var at = new Vector2( (Size.X - width) * 0.5f, y + 46f );
+				DrawRect( new Rect2( at, new Vector2( width, 6f ) ), new Color( 0, 0, 0, 0.55f ) );
+				DrawRect( new Rect2( at, new Vector2( width * MathX.Clamp( left / 5f, 0f, 1f ), 6f ) ), warn );
+			}
+		}
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

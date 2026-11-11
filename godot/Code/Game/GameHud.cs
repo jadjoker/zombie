@@ -136,7 +136,7 @@ public partial class GameHud : Control
 			bannerBig.AddThemeColorOverride( "font_color", isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
 			bannerSmall.Text = d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
 				: floatStart ? $"Wave {d.Wave}: you're floating. Jump to rise, crouch to sink"
-				: isStart ? (d.BossWave ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
+				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
 		}
 
 		var k = d?.Kills ?? 0;

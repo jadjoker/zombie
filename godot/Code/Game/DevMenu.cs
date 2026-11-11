@@ -31,7 +31,7 @@ public partial class DevMenu : CanvasLayer
 		foreach ( var f in typeof( DevFlags ).GetFields( System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static ) )
 			if ( f.FieldType == typeof( bool ) || f.FieldType == typeof( float ) || f.FieldType == typeof( int ) ) sb.Append( f.GetValue( null ) ).Append( '|' );
 		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' ).Append( Kraken.FightRadius ).Append( '|' );
-		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( '|' );
+		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( d.KrakenChanceNext ).Append( d.SpawnKrakenWaves ).Append( '|' );
 		sb.Append( GlobalStylize.Current?.Style ).Append( '|' ).Append( Level.Current?.LevelName );
 		return sb.ToString();
 	}
@@ -320,6 +320,7 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Wave spawning", "junk crabs" ) ) Chip( "Junk Crabs", d is null || d.SpawnCrabs, () => { if ( d is not null ) d.SpawnCrabs = !d.SpawnCrabs; } );
 			if ( Show( "Wave spawning", "sea spiders" ) ) Chip( "Sea Spiders", d is null || d.SpawnSpiders, () => { if ( d is not null ) d.SpawnSpiders = !d.SpawnSpiders; } );
 			if ( Show( "Wave spawning", "boss waves mc61" ) ) Chip( "Boss waves", d is null || d.SpawnBossWaves, () => { if ( d is not null ) d.SpawnBossWaves = !d.SpawnBossWaves; } );
+			if ( Show( "Wave spawning", "kraken waves event" ) ) Chip( "Kraken waves", d is null || d.SpawnKrakenWaves, () => { if ( d is not null ) d.SpawnKrakenWaves = !d.SpawnKrakenWaves; } );
 			Row();
 			if ( Show( "Wave spawning", "kill all enemies clear" ) ) Action( "Kill all enemies", () => d?.ClearEnemies() );
 			if ( Show( "Wave spawning", "skip wave" ) ) Action( "Skip wave", () => d?.SkipWave() );
@@ -485,6 +486,8 @@ public partial class DevMenu : CanvasLayer
 			Action( "Next wave", () => d?.JumpToWave( wave + 1 ) );
 			Action( "+5 waves", () => d?.JumpToWave( wave + 5 ) );
 			if ( d is { NextBossWave: > 0 } ) Action( $"Boss wave ({d.NextBossWave})", () => d.JumpToWave( d.NextBossWave ) );
+			if ( d is { OpenWorld: false } ) Action( $"Kraken next wave (now {d.KrakenChanceNext * 100f:0}%)", () => d.ForceKrakenNextWave() );
+			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
 			Info( $"Wave {wave}    Kills {d?.Kills ?? 0}    Enemies left {d?.ZombiesRemaining ?? 0}    Phase {d?.State.ToString() ?? "-"}" );
 		}
 

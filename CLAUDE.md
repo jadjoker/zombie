@@ -44,7 +44,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   left with an offset once threw whole material groups to the origin).
   Stage 4 is in (`KrakenSpit.cs`): it bites players at its mouth and spits three globs of ink; both irradiate
   (`PlayerAfflictions.Irradiate`: green glow, slow stamina, and damage over time when poisoned). Test: `--bite`.
-  Still to come: the wave odds.
+  Stage 5 is in (`WaveDirector.RollKraken`, `KrakenSpot`): 10% on wave 7, then odds that climb with the rounds
+  since it last came (0, 5, 15, 25, 45, 75, 100%), never on an MC61 wave, coming up near the map centre clear of
+  the buy stations. Dev menu (World, waves): Kraken next wave, Wave 7; (Enemies, Wave spawning): Kraken waves.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

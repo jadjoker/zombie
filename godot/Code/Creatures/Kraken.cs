@@ -7,7 +7,7 @@ using Godot;
 /// any segment: what is past the cut drops off as a limp chain of pieces, and the stump pumps goo.
 /// Stage 1: the body, the arrival and dying. Stage 2: the whirlpool that keeps players close (KrakenWhirlpool.cs).
 /// Stage 3: the tentacle slam (KrakenSlam.cs). Stage 4: the bite and the ink spit (KrakenSpit.cs).
-/// The wave odds come in the last stage.
+/// Stage 5: when it comes is rolled by the wave director (WaveDirector.RollKraken).
 /// Playtest round 3: the mouth, the dome's glass and the death are in KrakenBurst.cs.
 /// Playtest round 1: drawn at twice the model's size (Size), slower, and alive (KrakenLife.cs).
 /// Model: Tools/blender/kraken.py (assets/models/creatures/kraken; the mouth is underneath).

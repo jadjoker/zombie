@@ -48,6 +48,96 @@ public partial class WaveDirector : Node3D
 	public float BossHealthPerVisit = 800f;
 	public float BossSpawnHeight = 160f;
 	public float KrakenBaseHealth = 3500f;
+	public float KrakenHealthPerVisit = 1000f;
+
+	// ---- The Kraken event (issue #30, stage 5): it turns up on waves of its own choosing ----
+	/// <summary> Dev menu: lets the Kraken event happen. </summary>
+	public bool SpawnKrakenWaves = true;
+	/// <summary> The first wave it can come on, and its chance on that wave. </summary>
+	public int KrakenFirstWave = 7;
+	public float KrakenFirstChance = 0.10f;
+	/// <summary>
+	/// Its chance by how many rounds it is since it last came: none the round after, then 5%, 15%, 25%, 45%, 75%,
+	/// and certain by the seventh. Before its first visit, the wave after the first one counts as three rounds.
+	/// </summary>
+	static readonly float[] KrakenOdds = { 0f, 0f, 0.05f, 0.15f, 0.25f, 0.45f, 0.75f, 1f };
+	/// <summary> Is the Kraken part of this wave, and how many times it has come this game. </summary>
+	public bool KrakenWave { get; private set; }
+	public int KrakenVisits { get; private set; }
+	int krakenRoundsSince;
+	bool krakenPending, krakenForced;
+
+	/// <summary> The chance the Kraken comes on the next wave (0 to 1). </summary>
+	public float KrakenChanceNext
+	{
+		get
+		{
+			var next = Wave + 1;
+			if ( krakenForced ) return 1f;
+			if ( !SpawnKrakenWaves || OpenWorld || next < KrakenFirstWave ) return 0f;
+			if ( BossEvery > 0 && next % BossEvery == 0 ) return 0f;   // never on an MC61 wave: held over
+			if ( KrakenVisits == 0 && next == KrakenFirstWave ) return KrakenFirstChance;
+			var rounds = KrakenVisits == 0 && krakenRoundsSince == 0 ? 3 : krakenRoundsSince + 1;
+			return KrakenOdds[Math.Min( rounds, KrakenOdds.Length - 1 )];
+		}
+	}
+
+	/// <summary> Dev menu: the Kraken comes on the next wave whatever the odds. </summary>
+	public void ForceKrakenNextWave() => krakenForced = true;
+
+	/// <summary> Rolls for the Kraken at the start of a wave. </summary>
+	void RollKraken()
+	{
+		KrakenWave = false;
+		if ( OpenWorld || (!krakenForced && (!SpawnKrakenWaves || Wave < KrakenFirstWave)) ) return;
+		float chance;
+		if ( KrakenVisits == 0 && Wave == KrakenFirstWave )
+		{
+			chance = KrakenFirstChance;
+			krakenRoundsSince = 2;   // so the next wave counts as three rounds after
+		}
+		else
+		{
+			if ( KrakenVisits == 0 && krakenRoundsSince == 0 ) krakenRoundsSince = 2;   // joined late (a dev wave jump)
+			krakenRoundsSince++;
+			chance = KrakenOdds[Math.Min( krakenRoundsSince, KrakenOdds.Length - 1 )];
+		}
+		// Not on top of MC61: the roll is held over and the odds keep climbing.
+		if ( !krakenForced && (BossWave || Rng.Float() >= chance) ) return;
+		krakenForced = false;
+		KrakenWave = true;
+		krakenPending = true;
+		krakenRoundsSince = 0;
+		KrakenVisits++;
+		toSpawn /= 2;   // it brings fewer friends
+	}
+
+	/// <summary>
+	/// Where the Kraken comes up: on the sea bed near the middle of the map, as far as it can get from the buy
+	/// stations and from where the players are standing.
+	/// </summary>
+	Vector3 KrakenSpot()
+	{
+		var players = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.WorldPosition ).ToList();
+		var height = players.Count > 0 ? players[0].Y : GlobalPosition.Y;
+		var avoid = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().Select( s => s.GetParent() ).OfType<Node3D>().Select( n => n.GlobalPosition ).ToList();
+		var best = Nav.Closest( this, new Vector3( 0f, height, 0f ) );
+		var bestScore = float.MinValue;
+		foreach ( var radius in new[] { 0f, 5f, 9f, 13f } )
+		{
+			for ( var i = 0; i < (radius == 0f ? 1 : 10); i++ )
+			{
+				var angle = i / 10f * MathF.Tau;
+				var spot = Nav.Closest( this, new Vector3( MathF.Cos( angle ) * radius, height, MathF.Sin( angle ) * radius ) );
+				var clear = avoid.Count > 0 ? avoid.Min( a => a.DistanceTo( spot ) ) : 20f;
+				var room = players.Count > 0 ? players.Min( a => a.DistanceTo( spot ) ) : 20f;
+				// Clear of the stations matters most, then not under a player, then nearer the middle.
+				var score = MathF.Min( clear, 10f ) * 2f + MathF.Min( room, 12f ) - spot.Flat().Length() * 0.4f;
+				if ( score > bestScore ) { bestScore = score; best = spot; }
+			}
+		}
+		return best;
+	}
 
 	public int AnchorSnapEvery = 4;
 	public bool FloatRound;
@@ -205,13 +295,20 @@ public partial class WaveDirector : Node3D
 			else if ( !SpawningPaused && Spawn( EnemyKind.Boss ) ) bossPending = false;
 		}
 
+		if ( krakenPending && !SpawningPaused )
+		{
+			var spot = KrakenSpot();
+			var toward = PlayerSurvivor.FindNearestAlive( spot )?.WorldPosition ?? spot + Vector3.Forward;
+			if ( SpawnAt( EnemyKind.Kraken, spot, toward ) is not null ) krakenPending = false;
+		}
+
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
 			if ( !SpawningPaused && TrySpawnEnemy() ) toSpawn--;
 			timeSinceSpawn = 0f;
 		}
 
-		if ( toSpawn <= 0 && !bossPending && alive.Count == 0 )
+		if ( toSpawn <= 0 && !bossPending && !krakenPending && alive.Count == 0 )
 		{
 			State = WaveState.Intermission;
 			nextWaveAt = IntermissionSeconds;
@@ -317,6 +414,7 @@ public partial class WaveDirector : Node3D
 		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
 		FloatRound = AnchorSnapEvery > 0 && Wave % AnchorSnapEvery == 0;
 		bossPending = BossWave;
+		RollKraken();
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
 		TimeSinceWaveStarted = 0f;
@@ -335,7 +433,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
 			EnemyKind.Crab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
-			EnemyKind.Kraken => KrakenBaseHealth,
+			EnemyKind.Kraken => KrakenBaseHealth + KrakenHealthPerVisit * Math.Max( 0, KrakenVisits - 1 ),
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};
@@ -372,6 +470,7 @@ public partial class WaveDirector : Node3D
 	{
 		toSpawn = 0;
 		bossPending = false;
+		krakenPending = false;
 		ClearEnemies();
 	}
 
@@ -392,6 +491,10 @@ public partial class WaveDirector : Node3D
 		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
 		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
 		foreach ( var m in MC61.All.ToList() ) m.QueueFree();
+		foreach ( var k in Kraken.All.ToList() ) k.QueueFree();
+		KrakenWave = krakenPending = krakenForced = false;
+		KrakenVisits = 0;
+		krakenRoundsSince = 0;
 		alive.Clear();
 		Wave = 0;
 		Kills = 0;

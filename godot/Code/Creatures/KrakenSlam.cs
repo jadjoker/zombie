@@ -3,7 +3,7 @@ using Godot;
 /// <summary>
 /// The Kraken's tentacle slam (issue #30, stage 3). It sucks players toward its mouth for a second, rears up to
 /// three tentacles over the nearest player, then whips them down. The strike lines show on the sea bed and lock a
-/// moment before the hit, so running or dashing sideways gets you clear. A player high up off the sea bed is
+/// moment before the hit, so running or dashing sideways gets you clear (walking does not). A player high up off the sea bed is
 /// swatted back down instead, for less damage. Tentacles stretch to reach anywhere inside the ring; ones that
 /// have been shot short reach less far, and with none left there is no slam.
 /// </summary>
@@ -13,19 +13,23 @@ public partial class Kraken
 	public Attack Attacking { get; private set; }
 
 	/// <summary> Seconds of each part of the slam. </summary>
-	public float SuckTime = 1f, RearTime = 0.9f, WhipTime = 0.16f, HoldTime = 0.55f, RecoverTime = 0.9f;
+	public float SuckTime = 1f, RearTime = 1.1f, WhipTime = 0.2f, HoldTime = 0.65f, RecoverTime = 1.1f;
 	/// <summary> The strike lines stop following the player this long before the hit. </summary>
-	public float LockBefore = 0.3f;
+	public float LockBefore = 0.45f;
 	/// <summary> How hard the mouth pulls players in (metres per second, per second). </summary>
 	public float SuckPull = 30f;
 	/// <summary> Damage of a slam on a player on the sea bed, and of the swat on one high above it. </summary>
 	public float SlamDamage = 35f, SwatDamage = 12f;
 	/// <summary> A player this far above the sea bed (metres) is swatted down rather than crushed. </summary>
 	public float SwatHeight = 3f;
-	/// <summary> Half the width of a strike line (metres), and the angle between the tentacles of one slam. </summary>
-	public float SlamHalfWidth = 1.3f, FanAngle = 13f;
+	/// <summary>
+	/// Half the width of a strike line, and how far to each side of the player the second and third lines land
+	/// (metres). Together they make the danger zone about 4.4 m either side at any range: a walk does not clear
+	/// it in the time the lines are locked, a run or a dash does.
+	/// </summary>
+	public float SlamHalfWidth = 1.4f, FanSpacing = 2.6f;
 	/// <summary> How far a tentacle can stretch (times its length), and seconds between attacks. </summary>
-	public float MaxStretch = 3.4f, AttackGapMin = 5f, AttackGapMax = 8f;
+	public float MaxStretch = 2.4f, AttackGapMin = 5f, AttackGapMax = 8f;
 
 	/// <summary> For tests: how many players the last slam hit, and how many of those were swatted out of the air. </summary>
 	public int LastSlamHits { get; private set; }
@@ -46,7 +50,7 @@ public partial class Kraken
 	bool aimLocked;
 	CpuParticles3D suction;
 
-	Vector3 MouthPosition => rig.GlobalTransform * new Vector3( 0f, 0.9f, -1.1f );
+	Vector3 MouthPosition => rig.GlobalTransform * new Vector3( 0f, 0.55f, -0.45f );
 
 	/// <summary> Dev menu and tests: start a slam now. </summary>
 	public void ForceSlam()
@@ -159,7 +163,7 @@ public partial class Kraken
 			if ( !player.IsAlive || player.Controller is not { Scripted: false } controller ) continue;
 			var to = (mouth - player.WorldPosition).Flat();
 			var distance = to.Length();
-			if ( distance > FightRadius * 1.25f || distance < 2.5f ) continue;
+			if ( distance > FightRadius * 1.25f || distance < 5f ) continue;
 			controller.Velocity += to / distance * SuckPull * dt;
 			controller.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.35f * dt );
 		}
@@ -207,24 +211,32 @@ public partial class Kraken
 
 	Vector3 RootPosition( int k ) => parts[Tentacle0 + k].Go.GlobalPosition;
 
-	/// <summary> The way tentacle i of the slam strikes: at the aim point, fanned out for the second and third. </summary>
-	Vector3 StrikeDirection( int k )
+	/// <summary> Where a tentacle of the slam comes down: the first on the player, the others a fixed step to each side. </summary>
+	Vector3 StrikeTarget( int k )
 	{
 		var i = slammers.IndexOf( k );
-		var offset = i <= 0 ? 0f : (i == 1 ? FanAngle : -FanAngle);
-		var to = (aimPoint - RootPosition( k )).Flat().SafeNormal();
-		if ( to == Vector3.Zero ) to = -GlobalBasis.Z;
-		return to.Rotated( Vector3.Up, MathX.Rad( offset ) );
+		var offset = i <= 0 ? 0f : (i == 1 ? FanSpacing : -FanSpacing);
+		var toAim = (aimPoint - GlobalPosition).Flat().SafeNormal();
+		if ( toAim == Vector3.Zero ) toAim = -GlobalBasis.Z;
+		return aimPoint + toAim.Cross( Vector3.Up ) * offset;
+	}
+
+	Vector3 StrikeDirection( int k )
+	{
+		var to = (StrikeTarget( k ) - RootPosition( k )).Flat().SafeNormal();
+		return to == Vector3.Zero ? -GlobalBasis.Z : to;
 	}
 
 	float WantedStretch( int k )
 	{
-		var natural = length[k] * SegLength;
-		var needed = (aimPoint - RootPosition( k )).Flat().Length() + 0.6f;
+		var natural = length[k] * SegLength * Size;
+		var needed = (StrikeTarget( k ) - RootPosition( k )).Flat().Length() + 1f;
 		return MathX.Clamp( needed / MathF.Max( natural, 0.1f ), 1f, MaxStretch );
 	}
 
-	float Reach( int k ) => length[k] * SegLength * stretch[k];
+	float Reach( int k ) => length[k] * SegLength * Size * stretch[k];
+
+	readonly float[] shownStretch = Enumerable.Repeat( 1f, Tentacles ).ToArray();
 
 	/// <summary> After the idle pose each frame: lays the striking tentacles over it, and stretches the segments. </summary>
 	void ApplySlamPose()
@@ -238,8 +250,10 @@ public partial class Kraken
 			{
 				var segment = segments[k, j];
 				if ( j > 0 ) segment.Position = new Vector3( 0f, 0f, -SegLength * stretch[k] );
-				if ( segment.GetChildCount() > 0 && segment.GetChild( 0 ) is Node3D model ) model.Scale = new Vector3( 1f, 1f, stretch[k] );
+				// Only when it changes: a hit's wobble plays on the same scale.
+				if ( shownStretch[k] != stretch[k] && segment.GetChildCount() > 0 && segment.GetChild( 0 ) is Node3D model ) model.Scale = new Vector3( 1f, 1f, stretch[k] );
 			}
+			shownStretch[k] = stretch[k];
 			var blend = Ease( slamBlend[k] );
 			if ( blend <= 0.001f ) { root.Basis = restBasis[k].Value; continue; }
 
@@ -253,7 +267,7 @@ public partial class Kraken
 				Attack.Hold or Attack.Recover => 1f,
 				_ => 0f,
 			};
-			var flat = -MathX.Deg( MathF.Atan2( 0.45f, MathF.Max( 1f, Reach( k ) ) ) );
+			var flat = -MathX.Deg( MathF.Atan2( 1.05f * Size, MathF.Max( 1f, Reach( k ) ) ) );
 			for ( var j = 0; j < length[k]; j++ )
 			{
 				var strike = MathX.Lerp( RearBend[j], j == 0 ? flat : 0f, down );
@@ -289,7 +303,7 @@ public partial class Kraken
 			var k = slammers[i];
 			var from = RootPosition( k ).WithY( GlobalPosition.Y + 0.12f );
 			var direction = StrikeDirection( k );
-			var reach = length[k] * SegLength * WantedStretch( k );
+			var reach = length[k] * SegLength * Size * WantedStretch( k );
 			strips[i].GlobalTransform = new Transform3D( Shapes.LookAt( direction ) * Basis.FromScale( new Vector3( SlamHalfWidth * 2f, 0.04f, reach ) ), from + direction * reach * 0.5f );
 		}
 	}
@@ -306,8 +320,9 @@ public partial class Kraken
 			var from = RootPosition( k ).WithY( GlobalPosition.Y );
 			var direction = StrikeDirection( k );
 			var reach = Reach( k );
-			for ( var d = 1.5f; d < reach; d += 2.5f ) SandBurst( from + direction * d, 0.9f, 12, 2.6f );
-			SandBurst( from + direction * reach, 1.4f, 26, 3.4f );
+			for ( var d = 3f; d < reach; d += 4f ) SandBurst( from + direction * d, 0.6f, 12, 2.6f );
+			Thrash( k, 160f );
+			SandBurst( from + direction * reach, 0.9f, 26, 3.4f );
 			foreach ( var player in PlayerSurvivor.All )
 			{
 				if ( !player.IsAlive || struck.Contains( player ) || player.Controller is not { } controller ) continue;

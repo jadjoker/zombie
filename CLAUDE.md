@@ -35,6 +35,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Kraken). Stage 3 is in (`KrakenSlam.cs`): it sucks players in for a second, rears up to three tentacles and
   slams them along strike lines that lock just before the hit. Tests: `--kraken` (needs a window for shots),
   `--whirlpool` and `--slam`; they freeze enemies so the Kraken only attacks when the test calls `ForceSlam`.
+  Playtest round 1 is in: drawn at `Kraken.Size` (2) times the model, slower, mouth underneath, dry mud-crack
+  skin (`python Tools/blender/mudcrack_texture.py`), and `KrakenLife.cs` (springy head and tentacle segments, kept
+  above the sea bed). Sizes in the Kraken code are in the model's units unless they say metres: multiply by Size.
   Still to come: bite and ink, the wave odds.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.

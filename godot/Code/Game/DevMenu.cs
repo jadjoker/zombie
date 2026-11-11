@@ -372,10 +372,10 @@ public partial class DevMenu : CanvasLayer
 			Row();
 			Action( "Slam now", () => { foreach ( var k in Kraken.All ) k.ForceSlam(); } );
 			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
-			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 9f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
+			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 18f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
 			Row( "Fight radius" );
-			foreach ( var r in new[] { 12f, 20f, 30f } ) { var radius = r; Pick( $"{r:0} m", Kraken.FightRadius == radius, () => Kraken.FightRadius = radius ); }
+			foreach ( var r in new[] { 18f, 26f, 34f } ) { var radius = r; Pick( $"{r:0} m", Kraken.FightRadius == radius, () => Kraken.FightRadius = radius ); }
 		}
 
 		// ======== PLAYER

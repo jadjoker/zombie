@@ -9,13 +9,13 @@ using Godot;
 public partial class Kraken
 {
 	/// <summary> How far from the Kraken players may go (metres, on the flat). </summary>
-	public static float FightRadius = 20f;
+	public static float FightRadius = 26f;
 	/// <summary> Seconds of warning before the whirlpool takes a player who is outside. </summary>
 	public float WarningSeconds = 5f;
 	/// <summary> Seconds the whirlpool takes to carry a player back. </summary>
 	public float PullSeconds = 2.4f;
 	/// <summary> Where a carried player is put down, as a fraction of the fighting radius. </summary>
-	public float DropAt = 0.55f;
+	public float DropAt = 0.6f;
 
 	sealed class Leash
 	{
@@ -57,6 +57,7 @@ public partial class Kraken
 		ReleaseAll();
 		EndAttack();
 		if ( ring is not null && IsInstanceValid( ring ) ) ring.QueueFree();
+		if ( mound is not null && IsInstanceValid( mound ) ) mound.QueueFree();
 	}
 
 	/// <summary> Lets go of everyone (it died or left the scene). </summary>

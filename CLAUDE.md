@@ -38,6 +38,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Playtest round 1 is in: drawn at `Kraken.Size` (2) times the model, slower, mouth underneath, dry mud-crack
   skin (`python Tools/blender/mudcrack_texture.py`), and `KrakenLife.cs` (springy head and tentacle segments, kept
   above the sea bed). Sizes in the Kraken code are in the model's units unless they say metres: multiply by Size.
+  Playtest rounds 2 and 3 are in (`KrakenBurst.cs`): the mouth is its own part shown only during the suck, the
+  dome is about 30 panes that crack, pop off and blow out as rigid bodies, and on death it swells and bursts
+  into `chunk0..15` plus its tentacles. In `kraken.py`, bake every object's transform before joining (a torus
+  left with an offset once threw whole material groups to the origin).
   Still to come: bite and ink, the wave odds.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.

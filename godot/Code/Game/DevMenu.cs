@@ -139,7 +139,8 @@ public partial class DevMenu : CanvasLayer
 	public override void _UnhandledInput( InputEvent e )
 	{
 		if ( e is InputEventMouseMotion motion && DevFlags.FreeCam && !open && Input.MouseMode == Input.MouseModeEnum.Captured ) freeLook += motion.Relative;
-		if ( DevFlags.Placing && !open && e is InputEventMouseButton { Pressed: true } mb )
+		// Not the click that pressed Spawn: that same press reaches here once the menu has closed.
+		if ( DevFlags.Placing && !open && Engine.GetProcessFrames() > placeStarted + 1 && e is InputEventMouseButton { Pressed: true } mb )
 		{
 			if ( mb.ButtonIndex == MouseButton.Right ) DevFlags.Placing = false;
 			else if ( mb.ButtonIndex == MouseButton.Left ) PlaceAtCrosshair();
@@ -163,7 +164,7 @@ public partial class DevMenu : CanvasLayer
 			var s = new Vector3( -p.Z, -p.X, p.Y ) / U.In;   // s&box units, x forward, z up
 			stats.Text = $"{Engine.GetFramesPerSecond()} fps ({1000.0 / Math.Max( 1, Engine.GetFramesPerSecond() ):0.0} ms)   enemies {CreatureRegistry.Alive().Count()}   time {Engine.TimeScale}x   {s.X:0} {s.Y:0} {s.Z:0}";
 		}
-		hintText.Text = !open && DevFlags.Placing ? $"Placing {placeKind}: left click to place, right click to stop"
+		hintText.Text = !open && DevFlags.Placing ? $"Placing {placeKind}: left click to place it where you are aiming, right click to cancel"
 			: !open && DevFlags.FreeCam && !DevFlags.HideHud ? "Free camera: WASD, Space up, Ctrl down, Shift fast (turn it off in the menu)" : "";
 
 		// While open, redraw only when something it shows changed (checked four times a second). Rebuilding
@@ -332,8 +333,8 @@ public partial class DevMenu : CanvasLayer
 				if ( !Show( "Spawn an enemy", k.Name + " spawn place crosshair" ) ) continue;
 				Row( k.Name );
 				var kind = k.Kind;
-				Action( "Spawn", () => d?.Spawn( kind ) );
-				Action( "Place at crosshair", () => StartPlacing( kind ) );
+				// One way to spawn: the menu closes and the next left click puts it where the crosshair points.
+				Action( "Spawn", () => StartPlacing( kind ) );
 			}
 		}
 
@@ -589,9 +590,12 @@ public partial class DevMenu : CanvasLayer
 		foreach ( var a in SeaSpider.All.Where( s => s.IsAlly ).ToList() ) a.QueueFree();
 	}
 
+	ulong placeStarted;
+
 	void StartPlacing( WaveDirector.EnemyKind kind )
 	{
 		placeKind = kind;
+		placeStarted = Engine.GetProcessFrames();
 		DevFlags.Placing = true;
 		SetOpen( false );
 	}
@@ -624,6 +628,7 @@ public partial class DevMenu : CanvasLayer
 	{
 		if ( CrosshairHit() is not { } hit ) return;
 		Director?.SpawnAt( placeKind, hit.Position + hit.Normal * 2f * U.In, GetViewport().GetCamera3D().GlobalPosition );
+		DevFlags.Placing = false;   // one click, one enemy: Spawn again for another
 	}
 
 	void UpdateNoclip( float dt )

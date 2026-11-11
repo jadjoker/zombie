@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary>
-/// The Kraken's tentacle slam (issue #30, stage 3). It sucks players toward its mouth for a second, rears up to
+/// The Kraken's tentacle slam (issue #30, stage 3). Its mouth opens and it sucks players toward it for a second, rears up to
 /// three tentacles over the nearest player, then whips them down. The strike lines show on the sea bed and lock a
 /// moment before the hit, so running or dashing sideways gets you clear (walking does not). A player high up off the sea bed is
 /// swatted back down instead, for less damage. Tentacles stretch to reach anywhere inside the ring; ones that
@@ -50,7 +50,7 @@ public partial class Kraken
 	bool aimLocked;
 	CpuParticles3D suction;
 
-	Vector3 MouthPosition => rig.GlobalTransform * new Vector3( 0f, 0.55f, -0.45f );
+	Vector3 MouthPosition => mouthNode is not null && IsInstanceValid( mouthNode ) ? mouthNode.GlobalPosition : rig.GlobalTransform * new Vector3( 0f, 1.1f, -0.87f );
 
 	/// <summary> Dev menu and tests: start a slam now. </summary>
 	public void ForceSlam()
@@ -121,6 +121,10 @@ public partial class Kraken
 			}
 		}
 		if ( Attacking == Attack.None ) return;
+		// A tentacle shot off mid-strike drops out of it; with none left the strike is over.
+		// (Playtest round 2: its root part is gone, and reaching for it stopped the Kraken dead every frame.)
+		slammers.RemoveAll( k => length[k] == 0 );
+		if ( slammers.Count == 0 && Attacking is Attack.Raise or Attack.Slam ) { Begin( Attack.Recover ); return; }
 		attackTime += dt;
 		var target = PlayerSurvivor.FindNearestAlive( GlobalPosition );
 		switch ( Attacking )

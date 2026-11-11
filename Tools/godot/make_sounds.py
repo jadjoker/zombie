@@ -318,6 +318,11 @@ def build():
     s["kraken_slam"] = reverb(mix((thump(0.9, 85, 26, 0.5), 0, 1.6), (thump(0.5, 140, 50, 0.2), 0.02, 0.9),
                                   (spectral(noise(0.7), lo=150, hi=3500) * env(int(SR * 0.7), 0.002, 0.3), 0, 0.8),
                                   (squelch(0.4, 200, 900, 1.0), 0.03, 0.5)), room=1.0, wet=0.35)
+    # The Kraken bursting: a deep boom, a wet tear, and bits raining down.
+    s["kraken_burst"] = reverb(mix((thump(1.3, 110, 22, 0.8), 0, 1.8), (thump(0.5, 220, 60, 0.15), 0, 1.0),
+                                   (spectral(noise(1.2), lo=120, hi=5000) * env(int(SR * 1.2), 0.002, 0.45), 0, 1.0),
+                                   (squelch(0.7, 180, 1200, 1.5), 0.02, 0.9), (squelch(0.5, 250, 900, 1.0), 0.35, 0.5),
+                                   *[(squelch(0.2, 300, 1100, 0.6), 0.5 + 0.17 * i, 0.3) for i in range(6)]), room=1.3, wet=0.4)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

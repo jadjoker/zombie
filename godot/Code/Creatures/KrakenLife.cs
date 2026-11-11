@@ -20,6 +20,8 @@ public partial class Kraken
 	readonly float[,] wigBend = new float[Tentacles, Segments], wigSwing = new float[Tentacles, Segments];
 	readonly float[,] wigBendSpeed = new float[Tentacles, Segments], wigSwingSpeed = new float[Tentacles, Segments];
 
+	/// <summary> How far the body is sunk toward the sea bed from where the model stands (model units). </summary>
+	const float Seat = 0.32f;
 	const float HeadSpring = 38f, HeadDamping = 4.2f, MaxLean = 15f;
 	const float SegSpring = 26f, SegDamping = 2.6f, MaxWiggle = 55f;
 
@@ -39,6 +41,8 @@ public partial class Kraken
 			}
 		return lowest;
 	}
+	/// <summary> For tests: seconds it has been animating (stops if an error is cutting its frames short). </summary>
+	public float Age => time;
 	/// <summary> For tests: the sand it pushed up. </summary>
 	public Node3D Mound => mound;
 
@@ -63,11 +67,14 @@ public partial class Kraken
 			var back = headLean.X + MathF.Sin( time * 0.45f ) * 2.2f;
 			var roll = headLean.Y + MathF.Sin( time * 0.33f + 1.3f ) * 2.8f;
 			head.Basis = new Basis( Vector3.Right, MathX.Rad( back ) ) * new Basis( Vector3.Back, MathX.Rad( roll ) );
-			head.Position = Vector3.Up * (State == Mode.Idle ? MathF.Sin( time * 0.8f ) * 0.07f : 0f);
+			// It sits down into the sand it pushed up (Seat), and bobs a little on top of that.
+			head.Position = Vector3.Up * ((State == Mode.Idle ? MathF.Sin( time * 0.8f ) * 0.05f : 0f) - Seat);
 			// Breathing: it swells and settles.
 			var breath = MathF.Sin( time * 1.15f ) * 0.022f;
 			headPivot.Scale = new Vector3( 1f + breath, 1f - breath * 0.5f, 1f + breath );
 		}
+
+		UpdateMouth( dt );
 
 		for ( var k = 0; k < Tentacles; k++ )
 		{

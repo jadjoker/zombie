@@ -7,6 +7,7 @@ using Godot;
 /// any segment: what is past the cut drops off as a limp chain of pieces, and the stump pumps goo.
 /// Stage 1: the body, the arrival and dying. Stage 2: the whirlpool that keeps players close (KrakenWhirlpool.cs).
 /// Stage 3: the tentacle slam (KrakenSlam.cs). The bite, the ink and the wave odds come in later stages.
+/// Playtest round 3: the mouth, the dome's glass and the death are in KrakenBurst.cs.
 /// Playtest round 1: drawn at twice the model's size (Size), slower, and alive (KrakenLife.cs).
 /// Model: Tools/blender/kraken.py (assets/models/creatures/kraken; the mouth is underneath).
 /// </summary>
@@ -17,7 +18,7 @@ public partial class Kraken : PartCreature
 	// Shared with kraken.py.
 	const int Segments = 8;
 	const float SegLength = 0.85f, RootRadius = 0.34f, TipRadius = 0.07f;
-	static readonly Vector3 Collar = new( 0f, 3.55f, 0.25f );
+	static readonly Vector3 Collar = new( 0f, 2.78f, 0.25f );
 
 	public static readonly List<Kraken> All = new();
 
@@ -46,7 +47,7 @@ public partial class Kraken : PartCreature
 	const int SegBase = 100;
 
 	/// <summary> Where its brain is in the world (the middle of the dome). </summary>
-	public Vector3 BrainPosition => rig.GlobalTransform * (Collar + Vector3.Up * 0.3f);
+	public Vector3 BrainPosition => (Has( Head ) ? parts[Head].Go.GlobalTransform : rig.GlobalTransform) * (Collar + Vector3.Up * 0.45f);
 	/// <summary> The base of a tentacle in the world. </summary>
 	public Vector3 TentaclePosition( int k, int j = 2 ) => segments[k, Math.Min( j, Math.Max( 0, length[k] - 1 ) )].GlobalTransform * new Vector3( 0f, 0f, -SegLength * 0.5f );
 	/// <summary> Dev menu: the dome goes at once. </summary>
@@ -75,7 +76,6 @@ public partial class Kraken : PartCreature
 	TimeSince sinceSpurt;
 	readonly List<MeshInstance3D> glowing = new();
 	Node3D mound, brainModel;
-	MeshInstance3D glass;
 	StandardMaterial3D glassMaterial;
 	TimeSince sinceSpawned, sinceDust, sinceGlassHit = 99f;
 	float time;
@@ -127,6 +127,7 @@ public partial class Kraken : PartCreature
 			"collar" => new Color( 0.72f, 0.74f, 0.78f ),
 			"brain" => BrainPink,
 			"fold" => Fold,
+			"flesh" => new Color( 0.72f, 0.28f, 0.4f ),
 			_ => Green,
 		};
 		switch ( surface )
@@ -188,20 +189,19 @@ public partial class Kraken : PartCreature
 		headPivot = new Node3D { Name = "Head Pivot" };
 		head.Go.AddChild( headPivot );
 		headModel = Sculpt( head, headPivot, "head" );
-		HitShape( head.Go, Head, new Vector3( 0f, 1.25f, -0.1f ), new Vector3( 0f, 2.0f, 0f ), 0.9f );
-		// Stops at the collar, so a shot up at the dome or the brain from below is not caught by the head.
-		HitShape( head.Go, Head, new Vector3( 0f, 2.45f, 0.25f ), new Vector3( 0f, 2.6f, 0.25f ), 0.95f );
+		BuildMouth( head );
+		// Both stop at the collar (the dome is the whole top half of the head now), so a shot up at the dome or
+		// the brain from below is not caught by the head.
+		HitShape( head.Go, Head, new Vector3( 0f, 1.2f, -0.1f ), new Vector3( 0f, 1.8f, 0.05f ), 0.9f );
+		HitShape( head.Go, Head, new Vector3( 0f, 1.7f, 0.25f ), new Vector3( 0f, 1.76f, 0.25f ), 1f );
 
 		var brain = AddPart( Brain, Head, head.Go, "Brain", Vector3.Zero, Basis.Identity, 0f );
 		brain.Go.Position = Collar;
 		brainModel = Sculpt( brain, brain.Go, "brain" );
-		HitShape( brain.Go, Brain, new Vector3( 0f, 0.18f, 0f ), new Vector3( 0f, 0.22f, 0f ), 0.5f );
+		HitShape( brain.Go, Brain, new Vector3( 0f, 0.3f, 0f ), new Vector3( 0f, 0.36f, 0f ), 0.75f );
 
 		var helmet = AddPart( Helmet, Head, head.Go, "Helmet", Vector3.Zero, Basis.Identity, HelmetHealth );
 		helmet.Go.Position = Collar;
-		var dome = Model( "helmet" );
-		helmet.Go.AddChild( dome );
-		glass = dome.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().First();
 		glassMaterial = new StandardMaterial3D
 		{
 			AlbedoColor = new Color( 0.75f, 0.92f, 1f, 0.2f ),
@@ -216,9 +216,8 @@ public partial class Kraken : PartCreature
 			Emission = new Color( 0.5f, 0.8f, 1f ),
 			EmissionEnergyMultiplier = 0.12f,
 		};
-		glass.MaterialOverride = glassMaterial;
-		glass.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-		HitShape( helmet.Go, Helmet, new Vector3( 0f, 0.2f, 0f ), new Vector3( 0f, 0.3f, 0f ), 0.8f );
+		BuildDome( helmet.Go );
+		HitShape( helmet.Go, Helmet, new Vector3( 0f, 0.18f, 0f ), new Vector3( 0f, 0.3f, 0f ), 1.13f );
 
 		for ( var k = 0; k < Tentacles; k++ )
 		{
@@ -250,16 +249,18 @@ public partial class Kraken : PartCreature
 		mound = new Node3D { Name = "Kraken Mound" };
 		GetTree().CurrentScene.AddChild( mound );
 		mound.GlobalPosition = GlobalPosition;
-		for ( var i = 0; i < 14; i++ )
+		// An outer ring, and a taller inner one the body sits down into (playtest round 2: it looked like it floated).
+		for ( var i = 0; i < 26; i++ )
 		{
-			var a = i / 14f * MathF.Tau + Rng.Float( -0.15f, 0.15f );
-			var r = Rng.Float( 1.5f, 2.3f ) * Size;
+			var inner = i >= 14;
+			var a = (inner ? (i - 14) / 12f : i / 14f) * MathF.Tau + Rng.Float( -0.15f, 0.15f );
+			var r = (inner ? Rng.Float( 0.85f, 1.2f ) : Rng.Float( 1.5f, 2.3f )) * Size;
 			var lump = new MeshInstance3D
 			{
 				Mesh = Shapes.Sphere,
 				MaterialOverride = new StandardMaterial3D { AlbedoColor = (Sand * Rng.Float( 0.85f, 1.05f )) with { A = 1f }, Roughness = 1f },
 				Position = new Vector3( MathF.Cos( a ) * r, -0.05f, MathF.Sin( a ) * r ),
-				Scale = new Vector3( Rng.Float( 0.9f, 1.5f ), Rng.Float( 0.35f, 0.6f ), Rng.Float( 0.9f, 1.5f ) ) * 1.7f,
+				Scale = new Vector3( Rng.Float( 0.9f, 1.5f ), Rng.Float( 0.35f, 0.6f ) * (inner ? 1.7f : 1f), Rng.Float( 0.9f, 1.5f ) ) * 1.7f,
 				RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f ),
 			};
 			mound.AddChild( lump );
@@ -291,7 +292,7 @@ public partial class Kraken : PartCreature
 		if ( IsDead )
 		{
 			Bleed();
-			Sink();
+			Dying( dt );
 			return;
 		}
 		if ( !IsInstanceValid( rig ) ) return;
@@ -313,25 +314,6 @@ public partial class Kraken : PartCreature
 	}
 
 	TimeSince bleedTimer;
-
-	/// <summary> Dead: what's left of it shudders and slides back down the hole, then it is cleared away. </summary>
-	void Sink()
-	{
-		if ( !IsInstanceValid( rig ) ) { QueueFree(); return; }
-		var t = MathX.Clamp( ((float)timeSinceDeath - 0.5f) / SinkTime, 0f, 1f );
-		time += (float)GetProcessDeltaTime();
-		var shudder = MathF.Sin( time * 27f ) * 0.04f * (1f - t);
-		var lean = new Basis( Vector3.Right, MathX.Rad( -14f * Ease( MathX.Clamp( (float)timeSinceDeath / 0.6f, 0f, 1f ) ) ) );
-		rig.GlobalTransform = new Transform3D( (GlobalBasis.Orthonormalized() * lean).Scaled( Vector3.One * Size ), GlobalPosition + Vector3.Down * (Depth + 0.5f) * Size * t * t + new Vector3( shudder, 0f, shudder ) );
-		mound.Scale = Vector3.One * MathF.Max( 0.01f, 1f - Ease( MathX.Clamp( t * 1.4f - 0.4f, 0f, 1f ) ) );
-		if ( t > 0f && sinceDust > 0.3f )
-		{
-			sinceDust = 0f;
-			SandBurst( GlobalPosition, 1.8f, 20, 2.4f );
-			gore.GooBurst( GlobalPosition + Vector3.Up * 0.3f, Vector3.Up, Goo, 4, 200f, 1f );
-		}
-		if ( t >= 1f ) { rig.QueueFree(); mound.QueueFree(); QueueFree(); }
-	}
 
 	void Burrow()
 	{
@@ -408,7 +390,7 @@ public partial class Kraken : PartCreature
 		speed *= 1.4f;
 		sandMaterial ??= new StandardMaterial3D
 		{
-			AlbedoColor = Sand with { A = 0.32f },
+			AlbedoColor = Sand with { A = 0.24f },
 			Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
 			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
 			VertexColorUseAsAlbedo = true,
@@ -422,7 +404,7 @@ public partial class Kraken : PartCreature
 		var puff = new CpuParticles3D
 		{
 			Name = "Kraken Sand",
-			Mesh = new SphereMesh { Radius = 0.8f, Height = 1.6f, RadialSegments = 16, Rings = 8, Material = sandMaterial },
+			Mesh = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 16, Rings = 8, Material = sandMaterial },
 			Amount = amount,
 			Lifetime = 2.2f,
 			OneShot = true,
@@ -469,6 +451,7 @@ public partial class Kraken : PartCreature
 			Fx.ImpactWorld( position, -direction );
 			Sfx.Play( "glass_hit", position, 0.8f, Rng.Float( 0.9f, 1.15f ) );
 			if ( part.Health <= 0f ) ShatterHelmet( direction );
+			else CrackDome( position, direction );
 			shooter?.RewardHit( false, false, scoreHit );
 			return;
 		}
@@ -518,8 +501,10 @@ public partial class Kraken : PartCreature
 		if ( part is null || part.Gone ) return;
 		GoneMask |= SubtreeMask( Helmet );
 		MarkGone( Helmet );
-		var at = part.Go.GlobalPosition + Vector3.Up * 0.4f * Size;
+		var at = part.Go.GlobalPosition + Vector3.Up * 0.55f * Size;
 		Sfx.Play( "glass_break", at, 1f );
+		// The panes themselves fly (BlowDome); the particles are only the glitter between them.
+		BlowDome( direction );
 		GlassShards( at, direction );
 		part.Go.QueueFree();
 		ShakeNear( 0.3f );
@@ -540,13 +525,13 @@ public partial class Kraken : PartCreature
 		var shards = new CpuParticles3D
 		{
 			Name = "Kraken Glass",
-			Mesh = new PrismMesh { Size = new Vector3( 0.38f, 0.5f, 0.03f ), Material = material },
-			Amount = 48,
+			Mesh = new PrismMesh { Size = new Vector3( 0.12f, 0.16f, 0.015f ), Material = material },
+			Amount = 80,
 			Lifetime = 2.4f,
 			OneShot = true,
 			Explosiveness = 1f,
 			EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
-			EmissionSphereRadius = 0.7f * Size,
+			EmissionSphereRadius = 1.05f * Size,
 			Direction = (direction.SafeNormal() * 0.4f + Vector3.Up).Normalized(),
 			Spread = 80f,
 			InitialVelocityMin = 4f,
@@ -571,7 +556,7 @@ public partial class Kraken : PartCreature
 	/// Cuts a tentacle at a segment. Everything from there to the tip comes loose as a chain of physics pieces
 	/// pinned end to end, so it flops; the stump left behind gushes and keeps pumping goo.
 	/// </summary>
-	void CutAt( int k, int j, Vector3 direction, bool heavy = true )
+	void CutAt( int k, int j, Vector3 direction, bool heavy = true, float fling = 1f )
 	{
 		var count = length[k];
 		if ( j < 0 || j >= count ) return;
@@ -579,7 +564,7 @@ public partial class Kraken : PartCreature
 		var cutAt = segments[k, j].GlobalPosition;
 		var along = -segments[k, j].GlobalBasis.Z.Normalized();
 		var cutRadius = SegRadius( j ) * Size / U.In;
-		var push = (direction.SafeNormal() * 0.8f + along * 0.6f + Vector3.Up * 0.3f) * Rng.Float( 0.9f, 1.5f );
+		var push = (direction.SafeNormal() * 0.8f + along * 0.6f + Vector3.Up * 0.3f) * Rng.Float( 0.9f, 1.5f ) * fling;
 
 		// From the tip inward, so each segment is taken before the one it hangs from.
 		var gibs = new Gib[Segments];
@@ -640,6 +625,8 @@ public partial class Kraken : PartCreature
 		{
 			GoneMask |= 1 << (Tentacle0 + k);
 			MarkGone( Tentacle0 + k );
+			slammers.Remove( k );
+			slamBlend[k] = 0f;
 			part.Go.QueueFree();
 		}
 		if ( CreatureGore.AddStump( keep, cutAt, along, cutRadius * 0.95f, Dark, Goo, 14f ) is { } stump && heavy ) bleeders.Add( (stump, 0f, cutRadius / 26f) );
@@ -677,7 +664,6 @@ public partial class Kraken : PartCreature
 	}
 
 	// ---- Death ----
-
 	protected override void OnDied()
 	{
 		timeSinceDeath = 0f;
@@ -687,25 +673,9 @@ public partial class Kraken : PartCreature
 		if ( diedLocally ) return;
 		diedLocally = true;
 		if ( rig is null || !IsInstanceValid( rig ) ) return;
-		var direction = lastShotDirection;
-		var top = parts[Head].Go.GlobalPosition + parts[Head].Go.GlobalBasis * Collar;
-		Sfx.Play( "creature_death", top, 1f, 0.5f );
-		if ( Has( Helmet ) ) ShatterHelmet( direction );
-		// The brain bursts.
-		for ( var i = 0; i < 6; i++ ) gore.GooBurst( top, direction + Vector3.Up, i % 2 == 0 ? BrainPink : Goo, 12, 400f, 1.7f );
-		for ( var i = 0; i < 5; i++ ) gore.ThrowBlob( top, direction + Rng.OnSphere() * 0.6f, BrainPink, Goo, 7f );
-		gore.GooSpray( top, Vector3.Down, 10, Goo, 320f, 0.9f, 2f );
-		if ( Has( Brain ) ) { MarkGone( Brain ); parts[Brain].Go.QueueFree(); }
-		for ( var k = 0; k < Tentacles; k++ )
-		{
-			if ( length[k] == 0 ) continue;
-			CutAt( k, 0, (parts[Tentacle0 + k].Go.GlobalPosition - GlobalPosition).Flat().SafeNormal(), heavy: false );
-		}
-		// The head stays on the rig and sinks (Sink); nothing on it can be shot any more.
+		// Nothing on it can be shot any more; it swells for a moment and then bursts (Dying, in KrakenBurst.cs).
 		foreach ( var body in rig.FindChildren( "*", "StaticBody3D", true, false ).OfType<StaticBody3D>() ) body.CollisionLayer = 0;
-		foreach ( var mesh in glowing ) if ( IsInstanceValid( mesh ) && mesh.MaterialOverride is StandardMaterial3D m ) m.EmissionEnergyMultiplier = 0.15f;
-		sinceDust = 0f;
-		SandBurst( GlobalPosition, 2.5f, 50, 2.5f );
+		Sfx.Play( "creature_death", BrainPosition, 1f, 0.5f );
 		ShakeNear( 0.5f );
 	}
 }

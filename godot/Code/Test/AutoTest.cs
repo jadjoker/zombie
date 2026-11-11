@@ -1050,10 +1050,26 @@ public partial class AutoTest : Node
 			await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
 			GetViewport().PushInput( new InputEventMouseButton { Position = at, GlobalPosition = at, ButtonIndex = MouseButton.Left, Pressed = false }, true );
 			await Wait( 0.5f );
+			// Spawn does not spawn: it closes the menu and waits for a click on the spot.
+			GD.Print( $"[autotest] devclick: after Spawn menu open {DevMenu.IsOpen}, placing {DevFlags.Placing}, paused {GetTree().Paused}, Krakens {Kraken.All.Count}" );
+			Check( !DevMenu.IsOpen && DevFlags.Placing && !GetTree().Paused, "Spawn did not close the menu ready to place" );
+			Check( Kraken.All.Count == 0, "Spawn made a Kraken before any click on the sea bed" );
+			var spot = Nav.Closest( player, player.GlobalPosition + new Vector3( 10f, 0f, 10f ) );
+			LookAt( spot );
+			await Wait( 0.4f );
+			var middle = GetViewport().GetVisibleRect().Size * 0.5f;
+			Input.ParseInputEvent( new InputEventMouseButton { Position = middle, GlobalPosition = middle, ButtonIndex = MouseButton.Left, Pressed = true } );
+			await Wait( 0.1f );
+			Input.ParseInputEvent( new InputEventMouseButton { Position = middle, GlobalPosition = middle, ButtonIndex = MouseButton.Left, Pressed = false } );
+			await Wait( 0.4f );
 			var kraken = Kraken.All.FirstOrDefault();
-			GD.Print( $"[autotest] devclick: Kraken spawned {kraken is not null}, tree paused {GetTree().Paused}, state {kraken?.State}" );
-			Check( kraken is not null, "clicking Spawn did not make a Kraken" );
-			Check( GetTree().Paused, "the game was running behind the dev menu" );
+			GD.Print( $"[autotest] devclick: after the click Krakens {Kraken.All.Count}, {(kraken is null ? 0f : (kraken.GlobalPosition - spot).Flat().Length()):0.0} m from where the crosshair pointed, still placing {DevFlags.Placing}" );
+			Check( kraken is not null, "clicking on the sea bed did not place the Kraken" );
+			// Something may stand between the player and that spot: what matters is that it is on the line of sight.
+			var offLine = kraken is null ? 0f : MathX.Deg( (kraken.GlobalPosition - player.Camera.GlobalPosition).AngleTo( -player.Camera.GlobalBasis.Z ) );
+			GD.Print( $"[autotest] devclick: the Kraken is {offLine:0.0} degrees off the crosshair" );
+			Check( offLine < 6f, "the Kraken was not placed where the crosshair pointed" );
+			Check( !DevFlags.Placing, "placing carried on after the one click" );
 			menu.SetOpen( false );
 			// It takes about 5 seconds to arrive; allow a slow machine twice that.
 			for ( var waited = 0f; waited < 10f && kraken is not null && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
@@ -1298,13 +1314,18 @@ public partial class AutoTest : Node
 		await Wait( 1.2f );
 		var full = kraken.Health.Current;
 		LookAt( kraken.BrainPosition ); await Wait( 0.2f );
-		for ( var k = 0; k < 4; k++ ) { LookAt( kraken.BrainPosition ); await Wait( 0.06f ); weapon.TestFire(); await Wait( 0.15f ); }
-		GD.Print( $"[autotest] kraken: dome at {kraken.HelmetFraction:0.00} after 4 shots, health {kraken.Health.Current:0}/{full:0}" );
+		// The dome is flush with the head: a shot at the edge of the head's top half must land on glass.
+		for ( var k = 0; k < 4; k++ ) { LookAt( kraken.BrainPosition + (k % 2 == 0 ? Vector3.Zero : player.Camera.GlobalBasis.X * 1.7f) ); await Wait( 0.06f ); weapon.TestFire(); await Wait( 0.15f ); }
+		Check( kraken.PanesLeft < 32 && kraken.PanesLeft > 20, "shots on the dome did not knock a few panes out" );
+		GD.Print( $"[autotest] kraken: {kraken.PanesLeft} of 32 panes still on the dome; dome at {kraken.HelmetFraction:0.00} after 4 shots, health {kraken.Health.Current:0}/{full:0}" );
 		Check( kraken.HelmetFraction < 1f, "shots at the brain did not hit the dome" );
 		Check( kraken.Health.Current == full, "the Kraken was hurt through its dome" );
 		await Shot( "kraken_dome_hit" );
 		kraken.ReceiveShot( 1, 5000f, -kraken.GlobalBasis.Z, kraken.BrainPosition, player.GlobalPosition, null, false );
 		Check( !kraken.HelmetOn, "the dome did not shatter" );
+		var shards = GetTree().GetNodesInGroup( "kraken_glass" );
+		GD.Print( $"[autotest] kraken: the dome broke into {shards.Count} loose shards, {kraken.PanesLeft} panes left on it" );
+		Check( shards.Count >= 24 && kraken.PanesLeft == 0, "the dome did not come apart as loose glass shards" );
 		await ToSignal( RenderingServer.Singleton, RenderingServer.SignalName.FramePostDraw );
 		await Wait( 0.12f );
 		await Shot( "kraken_dome_shatter" );
@@ -1359,6 +1380,13 @@ public partial class AutoTest : Node
 		for ( var k = 0; k < 2; k++ ) { LookAt( kraken.TentaclePosition( 3, 1 ) ); await Wait( 0.2f ); await Wait( 0.06f ); weapon.TestFire(); await Wait( 0.15f ); }
 		Check( kraken.Health.Current < before, "the stump of a cut tentacle cannot be shot" );
 
+		// Low and close in front, looking up under the body.
+		player.GlobalPosition = Nav.Closest( player, ground + kraken.GlobalBasis * new Vector3( 0.5f, 0f, -6.5f ) ) + Vector3.Up * 0.1f;
+		await Wait( 0.4f );
+		LookAt( kraken.GlobalPosition + Vector3.Up * 1.6f );
+		await Wait( 0.2f );
+		await Shot( "kraken_under" );
+
 		// From the side and close up, then the death.
 		player.GlobalPosition = Nav.Closest( player, ground + kraken.GlobalBasis * new Vector3( 3f, 0f, -13f ) ) + Vector3.Up * 0.1f;
 		await Wait( 0.4f );
@@ -1367,10 +1395,15 @@ public partial class AutoTest : Node
 		await Shot( "kraken_face" );
 		kraken.ReceiveShot( 0, 100000f, (kraken.GlobalPosition - player.GlobalPosition).Normalized(), kraken.GlobalPosition + Vector3.Up * 2f, player.GlobalPosition, null, false );
 		Check( kraken.IsDead, "the Kraken did not die" );
-		await Wait( 0.9f );
-		await Shot( "kraken_death" );
+		await Wait( 0.3f );
+		await Shot( "kraken_swelling" );
+		await Wait( 0.45f );
+		await Shot( "kraken_burst" );
+		var chunks = GetTree().Root.FindChildren( "Kraken Chunk*", "", true, false ).Count;
+		GD.Print( $"[autotest] kraken: burst into {chunks} chunks and {GetTree().Root.FindChildren( "Kraken Piece*", "", true, false ).Count} tentacle pieces" );
+		Check( chunks == 16, "the Kraken did not burst into its chunks" );
 		await Wait( 1.2f );
-		await Shot( "kraken_sinking" );
+		await Shot( "kraken_chunks" );
 		await Wait( 3.2f );
 		Check( Kraken.All.Count == 0, "the dead Kraken was not cleared away" );
 		await Shot( "kraken_remains" );
@@ -1486,9 +1519,12 @@ public partial class AutoTest : Node
 		// 1. Standing still: pulled in during the suck, then hit.
 		var startDistance = (player.GlobalPosition - ground).Flat().Length();
 		var health = survivor.Health.Current;
+		Check( kraken.MouthOpen < 0.02f, "the mouth was showing before the suck" );
 		kraken.ForceSlam();
 		Check( kraken.Attacking == Kraken.Attack.Suck, "the slam did not start with the suck" );
 		await Wait( 0.6f );
+		GD.Print( $"[autotest] slam: mouth open {kraken.MouthOpen:0.00} during the suck" );
+		Check( kraken.MouthOpen > 0.9f, "the mouth did not open for the suck" );
 		await Shot( "slam_suck" );
 		await Wait( 0.5f );
 		var pulled = startDistance - (player.GlobalPosition - ground).Flat().Length();
@@ -1507,6 +1543,7 @@ public partial class AutoTest : Node
 		Check( MathF.Abs( health - survivor.Health.Current - kraken.SlamDamage ) < 6f, "standing still under the slam did not take its damage once" );
 		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
 		Check( kraken.Attacking == Kraken.Attack.None, "the slam never finished" );
+		Check( kraken.MouthOpen < 0.02f, "the mouth stayed out after the suck" );
 
 		// 2. Stepping aside once the lines lock: missed.
 		player.GlobalPosition = stand;
@@ -1544,6 +1581,23 @@ public partial class AutoTest : Node
 		Check( falling < -8f, "the swat did not knock the player back down" );
 		await Shot( "slam_swat" );
 		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
+
+		// 3b. Playtest round 2: every tentacle of a slam shot off while it is reared. It must carry on, not seize up.
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		kraken.Health.Invulnerable = true;   // the cuts below would otherwise kill it, which ends the slam another way
+		kraken.ForceSlam();
+		await Wait( kraken.SuckTime + 0.5f );
+		Check( kraken.Attacking == Kraken.Attack.Raise, "the slam was not rearing when the test cut its tentacles" );
+		foreach ( var k in new[] { 0, 7, 1 } )
+			kraken.ReceiveShot( Kraken.SegIndex( k, 0 ), 5000f, Vector3.Right, kraken.GlobalPosition, player.GlobalPosition, null, false );
+		var clock = kraken.Age;
+		await Wait( 2.5f );
+		GD.Print( $"[autotest] slam: after losing its striking tentacles the Kraken ran on {kraken.Age - clock:0.0} s of 2.5, attack {kraken.Attacking}, tentacles {kraken.TentaclesLeft}" );
+		Check( kraken.Age - clock > 2f, "the Kraken seized up after a striking tentacle was shot off" );
+		Check( kraken.Attacking == Kraken.Attack.None, "the slam did not end after its tentacles were shot off" );
+		Check( !kraken.IsDead && kraken.TentaclesLeft == Kraken.Tentacles - 3, "the test did not leave the Kraken alive with five tentacles" );
 
 		// 4. A short tentacle reaches less far; with none left it does not slam at all.
 		for ( var k = 0; k < Kraken.Tentacles; k++ )

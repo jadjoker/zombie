@@ -52,6 +52,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--kraken" ) ) { await KrakenTest(); return; }
 		if ( args.Contains( "--whirlpool" ) ) { await WhirlpoolTest(); return; }
 		if ( args.Contains( "--slam" ) ) { await SlamTest(); return; }
+		if ( args.Contains( "--bite" ) ) { await BiteTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1613,6 +1614,116 @@ public partial class AutoTest : Node
 
 		// 5. Left alone (not frozen) it attacks on its own.
 		kraken.Health.Current = kraken.Health.MaxHealth;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The Kraken's mouth attacks: the bite at close range with its radiation, and the ink spit, hit and dodged. </summary>
+	async Task BiteTest()
+	{
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var afflictions = survivor.Afflictions;
+		DockHouse.Current?.SkipDive();
+		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
+		var stand = Nav.Closest( player, ground + new Vector3( 11f, 0f, 11f ) ) + Vector3.Up * 0.1f;
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
+		DevFlags.FreezeEnemies = true;
+		var kraken = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Kraken, ground, player.GlobalPosition ) as Kraken;
+		Check( kraken is not null, "the Kraken did not spawn" );
+		if ( kraken is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		for ( var waited = 0f; waited < 12f && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
+		// Awake, but with no slam or ink of its own, so only what the test provokes happens.
+		kraken.HoldAttacks( 9999f );
+		DevFlags.FreezeEnemies = false;
+		survivor.Health.ResetTo( 1000f );
+		kraken.BiteRadiationChance = 1f;
+
+		// 1. Out of reach of the mouth: no bite.
+		await Wait( 1.5f );
+		Check( kraken.Bites == 0, "the Kraken bit a player who was nowhere near its mouth" );
+
+		// 2. Right at its mouth: bitten, thrown back, irradiated and poisoned.
+		var health = survivor.Health.Current;
+		var forward = -kraken.GlobalBasis.Z;
+		player.GlobalPosition = Nav.Closest( player, kraken.GlobalPosition + forward * 4.4f ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		var atMouth = (player.GlobalPosition + Vector3.Up * 0.9f).DistanceTo( kraken.MouthWorld );
+		await Wait( 0.25f );
+		LookAt( kraken.MouthWorld );
+		await Shot( "bite" );
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] bite: {atMouth:0.0} m from the mouth, bites {kraken.Bites}, lost {health - survivor.Health.Current:0}, radiation {afflictions.RadiationLeft:0.0} s (poison {afflictions.RadiationPoisonLeft:0.0} s), mouth open {kraken.MouthOpen:0.0}" );
+		Check( kraken.Bites >= 1 && health - survivor.Health.Current >= kraken.BiteDamage - 1f, "a player at the mouth was not bitten" );
+		Check( afflictions.RadiationLeft > 0f && afflictions.RadiationPoisonLeft > 0f, "the bite did not irradiate" );
+		Check( afflictions.StaminaRegenScale < 0.5f, "radiation does not slow stamina recovery" );
+		await Wait( 1.2f );
+		var thrown = (player.GlobalPosition + Vector3.Up * 0.9f).DistanceTo( kraken.MouthWorld );
+		GD.Print( $"[autotest] bite: thrown back to {thrown:0.0} m from the mouth after {kraken.Bites} bites" );
+		Check( thrown > atMouth + 1.5f, "the bite did not throw the player back" );
+
+		// The dose: it hurts for a while with no more bites, and the body glows.
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.3f );
+		var bitesBefore = kraken.Bites;
+		health = survivor.Health.Current;
+		player.ThirdPerson = true;
+		await Wait( 0.4f );
+		await Shot( "irradiated" );
+		player.ThirdPerson = false;
+		await Wait( 2f );
+		var glow = player.GetNodeOrNull<Node3D>( "Radiation Glow" );
+		GD.Print( $"[autotest] bite: the dose took {health - survivor.Health.Current:0} in 2.4 s with {kraken.Bites - bitesBefore} more bites; glow on the body {glow is { Visible: true }}" );
+		Check( kraken.Bites == bitesBefore && health - survivor.Health.Current >= 5f, "the poisoned dose did no damage over time" );
+		Check( glow is { Visible: true }, "an irradiated player does not glow" );
+		afflictions.Clear();
+		await Wait( 0.2f );
+		Check( player.GetNodeOrNull<Node3D>( "Radiation Glow" ) is not { Visible: true }, "the glow stayed after the radiation was gone" );
+
+		// 3. Ink, standing still: three globs, and the one aimed at the player lands on them.
+		health = survivor.Health.Current;
+		kraken.ForceInk();
+		Check( kraken.Attacking == Kraken.Attack.Ink, "the ink attack did not start" );
+		await Wait( 0.6f );
+		Check( kraken.MouthOpen > 0.8f, "the mouth did not open to spit" );
+		LookAt( kraken.MouthWorld );
+		await Wait( 0.45f );
+		await Shot( "ink_flying" );
+		var flying = GetTree().GetNodesInGroup( "kraken_ink" ).Count;
+		GD.Print( $"[autotest] ink: spat {kraken.InkSpat}, {flying} in flight" );
+		Check( kraken.InkSpat == 3 && flying >= 1, "it did not spit three globs of ink" );
+		await Wait( 2.6f );
+		GD.Print( $"[autotest] ink: standing still lost {health - survivor.Health.Current:0}, ink on the view {afflictions.InkLeft:0.0} s, radiation {afflictions.RadiationLeft:0.0} s (poison {afflictions.RadiationPoisonLeft:0.0} s), stamina recovery x{afflictions.StaminaRegenScale:0.00}" );
+		Check( health - survivor.Health.Current >= kraken.InkDamage - 1f, "the ink did not hurt a player who stood still" );
+		Check( afflictions.RadiationLeft > 0f && afflictions.StaminaRegenScale < 0.5f, "the ink did not leave the player glowing with slow stamina" );
+		Check( afflictions.RadiationPoisonLeft <= 0f, "the ink poisoned as well (only the bite should)" );
+		await Shot( "inked" );
+		Check( GetTree().GetNodesInGroup( "kraken_ink" ).Count == 0, "ink globs were left in flight" );
+
+		// 4. Ink, stepping well aside after it is spat: missed.
+		afflictions.Clear();
+		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.3f );
+		kraken.ForceInk();
+		await Wait( kraken.InkWindTime + 0.15f );
+		var aside = (player.GlobalPosition - ground).Flat().Normalized().Cross( Vector3.Up );
+		player.GlobalPosition = Nav.Closest( player, player.GlobalPosition + aside * 11f ) + Vector3.Up * 0.1f;
+		await Wait( 2.8f );
+		GD.Print( $"[autotest] ink: after stepping aside radiation {afflictions.RadiationLeft:0.0} s, ink {afflictions.InkLeft:0.0} s" );
+		Check( afflictions.RadiationLeft <= 0f && afflictions.InkLeft <= 0f, "stepping well aside did not dodge the ink" );
+
+		// 5. With every tentacle gone it still has the ink.
+		kraken.Health.Invulnerable = true;
+		for ( var k = 0; k < Kraken.Tentacles; k++ )
+			kraken.ReceiveShot( Kraken.SegIndex( k, 0 ), 5000f, Vector3.Right, kraken.GlobalPosition, player.GlobalPosition, null, false );
+		var spat = kraken.InkSpat;
+		kraken.HoldAttacks( 0.2f );
+		await Wait( 2.2f );
+		Check( kraken.InkSpat > spat, "a Kraken with no tentacles did not fall back on its ink" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

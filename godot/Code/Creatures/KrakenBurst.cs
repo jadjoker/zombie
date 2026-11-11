@@ -25,15 +25,17 @@ public partial class Kraken
 	void UpdateMouth( float dt )
 	{
 		if ( mouthNode is null || !IsInstanceValid( mouthNode ) ) return;
-		var want = Attacking == Attack.Suck && !IsDead ? 1f : 0f;
-		mouthOpen = MathX.Approach( mouthOpen, want, dt * (want > mouthOpen ? 5f : 3.5f) );
+		// Open for the suck, to spit ink, and for a moment at each bite.
+		var open = Attacking == Attack.Suck || (Attacking == Attack.Ink && attackTime < InkWindTime + 0.35f) || Biting;
+		var want = open && !IsDead ? 1f : 0f;
+		mouthOpen = MathX.Approach( mouthOpen, want, dt * (want > mouthOpen ? (Biting ? 12f : 5f) : 3.5f) );
 		mouthNode.Visible = mouthOpen > 0.02f;
 		if ( !mouthNode.Visible ) return;
 		// It pushes out with a little overshoot, and quivers while it pulls.
 		var t = mouthOpen - 1f;
-		var open = 1f + 2.7f * t * t * t + 1.7f * t * t;
+		var wide = 1f + 2.7f * t * t * t + 1.7f * t * t;
 		var quiver = 1f + MathF.Sin( time * 26f ) * 0.05f * mouthOpen;
-		mouthNode.Scale = new Vector3( open * quiver, open * quiver, 0.45f + 0.55f * open );
+		mouthNode.Scale = new Vector3( wide * quiver, wide * quiver, 0.45f + 0.55f * wide );
 	}
 
 	// ---- The dome, in panes ----

@@ -9,7 +9,7 @@ using Godot;
 /// </summary>
 public partial class Kraken
 {
-	public enum Attack { None, Suck, Raise, Slam, Hold, Recover }
+	public enum Attack { None, Suck, Raise, Slam, Hold, Recover, Ink }
 	public Attack Attacking { get; private set; }
 
 	/// <summary> Seconds of each part of the slam. </summary>
@@ -63,7 +63,9 @@ public partial class Kraken
 	{
 		if ( PlayerSurvivor.FindNearestAlive( GlobalPosition ) is not { } target ) return;
 		if ( Attacking is not (Attack.Slam or Attack.Hold) && !aimLocked ) Face( target.WorldPosition - GlobalPosition, TurnRate * (Attacking == Attack.None ? 1f : 2.5f), dt );
-		if ( Attacking == Attack.None && nextAttack <= 0f && TentaclesLeft > 0 ) Begin( Attack.Suck );
+		// The slam needs tentacles; the ink does not (KrakenSpit.cs).
+		if ( Attacking == Attack.None && nextAttack <= 0f ) Begin( TentaclesLeft == 0 || Rng.Float() < InkChance ? Attack.Ink : Attack.Suck );
+		UpdateBite();
 	}
 
 	void Begin( Attack next )
@@ -84,6 +86,11 @@ public partial class Kraken
 				break;
 			case Attack.Slam:
 				Sfx.Play( "axe_swing", MouthPosition, 1f, 0.5f );
+				break;
+			case Attack.Ink:
+				inkLaunched = false;
+				aimLocked = false;
+				Sfx.Play( "beam_charge", MouthPosition, 0.6f, 1.6f );
 				break;
 			case Attack.Hold:
 				Impact();
@@ -153,6 +160,9 @@ public partial class Kraken
 				break;
 			case Attack.Recover:
 				if ( attackTime >= RecoverTime ) Begin( Attack.None );
+				break;
+			case Attack.Ink:
+				UpdateInk( dt );
 				break;
 		}
 	}

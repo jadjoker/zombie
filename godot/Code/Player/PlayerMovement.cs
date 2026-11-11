@@ -157,7 +157,9 @@ public partial class PlayerMovement : Node, ICameraModifier
 	void RegenStamina( float dt )
 	{
 		if ( TimeSinceStaminaSpent < StaminaRegenDelay ) return;
-		Stamina = MathF.Min( MaxStamina, Stamina + dt / MathF.Max( 0.05f, StaminaRegenTime ) );
+		// Irradiated players get it back slowly.
+		var scale = Controller.GetNodeOrNull<PlayerAfflictions>( "PlayerAfflictions" )?.StaminaRegenScale ?? 1f;
+		Stamina = MathF.Min( MaxStamina, Stamina + dt * scale / MathF.Max( 0.05f, StaminaRegenTime ) );
 	}
 
 	public void ResetStamina() => Stamina = MaxStamina;

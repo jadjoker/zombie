@@ -8,7 +8,7 @@ using Godot;
 public partial class HudOverlays : Control
 {
 	PlayerSurvivor player;
-	ColorRect hurt, venom, burn, slow, slam;
+	ColorRect hurt, venom, radiation, burn, slow, slam;
 	Control boss, prompt;
 	Label speech, promptKey, promptTitle, promptDesc;
 	float jetShown, staminaShown;
@@ -50,6 +50,7 @@ public partial class HudOverlays : Control
 	{
 		hurt = Glow( new Color( "b00000" ) with { A = 0.9f }, 0.4f );
 		venom = Glow( new Color( "3cff20" ) with { A = 0.75f }, 0.45f );
+		radiation = Glow( new Color( "9dff1a" ) with { A = 0.7f }, 0.52f );
 		burn = Glow( new Color( "ff3c00" ) with { A = 0.8f }, 0.45f );
 		slow = Glow( new Color( "a8e6ff" ) with { A = 0.8f }, 0.5f );
 		slam = Glow( new Color( "0a3040" ) with { A = 0f }, 0f, new Color( 1f, 1f, 1f, 0.9f ), 0.8f );
@@ -113,6 +114,7 @@ public partial class HudOverlays : Control
 		}
 		Show( venom, venomOpacity );
 		Show( burn, a is not null && a.BurnLeft > 0f ? (0.3f + 0.15f * MathF.Sin( now * 11f )) * MathX.Clamp( a.BurnLeft / 0.6f, 0f, 1f ) : 0f );
+		Show( radiation, a is not null && a.RadiationLeft > 0f ? (0.34f + 0.14f * MathF.Sin( now * 5f )) * MathX.Clamp( a.RadiationLeft / 0.6f, 0f, 1f ) : 0f );
 		Show( slow, a is not null && a.SlowLeft > 0f ? 0.45f * MathX.Clamp( a.SlowLeft / 0.6f, 0f, 1f ) : 0f );
 
 		var jet = Jet;
@@ -256,6 +258,14 @@ public partial class HudOverlays : Control
 				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width * kraken.HelmetFraction, 5f ) ), new Color( "bfeaff" ) );
 			}
 			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
+		}
+
+		// Irradiated by the Kraken: how long is left, and what it is doing to you.
+		if ( player?.Afflictions is { RadiationLeft: > 0f } dose )
+		{
+			var words = dose.RadiationPoisonLeft > 0f ? "poisoned, and stamina recovers slowly" : "stamina recovers slowly";
+			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", HorizontalAlignment.Center, Size.X, 26, new Color( "9dff1a" ) );
+			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, Size.Y * 0.74f + 22f ), words, HorizontalAlignment.Center, Size.X, 16, new Color( 1, 1, 1, 0.8f ) );
 		}
 
 		// The Kraken's whirlpool: a countdown while the player is outside its ring, then the ride back.

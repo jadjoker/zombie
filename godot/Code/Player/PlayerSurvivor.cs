@@ -136,7 +136,7 @@ public partial class PlayerSurvivor : Node
 
 /// <summary>
 /// Port of s&box PlayerAfflictions: venom from repeated bites (damage over time), ink blots over the view, MC61's
-/// curses (burn, poison, slow, ink), and goo splatted on the camera by close kills.
+/// curses (burn, poison, slow, ink), the Kraken's radiation, and goo splatted on the camera by close kills.
 /// </summary>
 public partial class PlayerAfflictions : Node
 {
@@ -152,6 +152,9 @@ public partial class PlayerAfflictions : Node
 	public float BurnDamagePerSecond = 8f;
 	public float SlowDuration = 3.5f;
 	public float SlowSpeed = 0.45f;
+	/// <summary> Irradiated (the Kraken): stamina comes back this much slower, and a poisoned dose also hurts. </summary>
+	public float RadiationStaminaScale = 0.35f;
+	public float RadiationDamagePerSecond = 4f;
 
 	public readonly record struct Blot( float X, float Y, float Size, int Seed );
 	public readonly record struct ScreenDrip( float X, float Y, float Size, Color Color, float Born, float Slide );
@@ -161,6 +164,11 @@ public partial class PlayerAfflictions : Node
 	public float BurnLeft { get; private set; }
 	public float SlowLeft { get; private set; }
 	public float VenomLeft { get; private set; }
+	/// <summary> Seconds of green glow and slow stamina left, and seconds of that which also do damage. </summary>
+	public float RadiationLeft { get; private set; }
+	public float RadiationPoisonLeft { get; private set; }
+	/// <summary> How fast stamina comes back just now (1 is normal). </summary>
+	public float StaminaRegenScale => RadiationLeft > 0f ? RadiationStaminaScale : 1f;
 	public bool Venomed { get; private set; }
 	public float SpeedScale => SlowLeft > 0f ? SlowSpeed : 1f;
 	public TimeSince TimeSinceVenomed { get; private set; } = 999f;
@@ -227,6 +235,53 @@ public partial class PlayerAfflictions : Node
 		Juice?.Shake( 0.3f );
 	}
 
+	/// <summary>
+	/// The Kraken's radiation: the player glows green and their stamina comes back slowly for a while. A poisoned
+	/// dose (its bite) also does damage over that time.
+	/// </summary>
+	public void Irradiate( float seconds, bool poison )
+	{
+		if ( Health is null || Health.IsDead ) return;
+		RadiationLeft = MathF.Max( RadiationLeft, seconds );
+		if ( poison ) RadiationPoisonLeft = MathF.Max( RadiationPoisonLeft, seconds );
+		Juice?.Shake( 0.3f );
+	}
+
+	Node3D glow;
+	OmniLight3D glowLight;
+
+	/// <summary> The green glow on an irradiated player's body: a light and drifting motes, seen by everyone. </summary>
+	void UpdateGlow()
+	{
+		var on = RadiationLeft > 0f;
+		if ( !on && glow is null ) return;
+		if ( glow is null )
+		{
+			if ( GetParent() is not Node3D body ) return;
+			glow = new Node3D { Name = "Radiation Glow", Position = Vector3.Up * 1f };
+			body.AddChild( glow );
+			glowLight = new OmniLight3D { LightColor = new Color( 0.35f, 1f, 0.3f ), LightEnergy = 1.6f, OmniRange = 4f, ShadowEnabled = false };
+			glow.AddChild( glowLight );
+			var mote = new StandardMaterial3D { AlbedoColor = new Color( 0.45f, 1f, 0.35f, 0.8f ), ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha };
+			glow.AddChild( new CpuParticles3D
+			{
+				Mesh = new SphereMesh { Radius = 0.035f, Height = 0.07f, RadialSegments = 6, Rings = 3, Material = mote },
+				Amount = 26,
+				Lifetime = 1.3f,
+				EmissionShape = CpuParticles3D.EmissionShapeEnum.Sphere,
+				EmissionSphereRadius = 0.55f,
+				Direction = Vector3.Up,
+				Spread = 25f,
+				InitialVelocityMin = 0.3f,
+				InitialVelocityMax = 0.9f,
+				Gravity = Vector3.Zero,
+				CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			} );
+		}
+		glow.Visible = on;
+		if ( on ) glowLight.LightEnergy = (1.4f + MathF.Sin( (float)Clock.Now * 6f ) * 0.5f) * MathX.Clamp( RadiationLeft / 0.8f, 0f, 1f );
+	}
+
 	public enum Curse { Burn, Poison, Slow, Ink }
 
 	public void Cursed( Curse kind )
@@ -245,7 +300,7 @@ public partial class PlayerAfflictions : Node
 
 	public void Clear()
 	{
-		BurnLeft = SlowLeft = VenomLeft = InkLeft = 0f;
+		BurnLeft = SlowLeft = VenomLeft = InkLeft = RadiationLeft = RadiationPoisonLeft = 0f;
 		blots.Clear();
 		recentInk.Clear();
 		recentBites.Clear();
@@ -260,16 +315,20 @@ public partial class PlayerAfflictions : Node
 		var health = Health;
 		if ( health is null || health.IsDead )
 		{
-			if ( VenomLeft > 0f || BurnLeft > 0f || SlowLeft > 0f || InkLeft > 0f || Venomed ) Clear();
+			if ( VenomLeft > 0f || BurnLeft > 0f || SlowLeft > 0f || InkLeft > 0f || RadiationLeft > 0f || Venomed ) Clear();
+			UpdateGlow();
 			return;
 		}
 		if ( InkLeft > 0f ) InkLeft = MathF.Max( 0f, InkLeft - dt );
 		if ( SlowLeft > 0f ) SlowLeft = MathF.Max( 0f, SlowLeft - dt );
 		if ( BurnLeft > 0f ) BurnLeft = MathF.Max( 0f, BurnLeft - dt );
-		var dps = (VenomLeft > 0f ? VenomDamagePerSecond : 0f) + (BurnLeft > 0f ? BurnDamagePerSecond : 0f);
+		if ( RadiationLeft > 0f ) RadiationLeft = MathF.Max( 0f, RadiationLeft - dt );
+		UpdateGlow();
+		var dps = (VenomLeft > 0f ? VenomDamagePerSecond : 0f) + (BurnLeft > 0f ? BurnDamagePerSecond : 0f) + (RadiationPoisonLeft > 0f ? RadiationDamagePerSecond : 0f);
 		if ( dps > 0f )
 		{
 			if ( VenomLeft > 0f ) VenomLeft = MathF.Max( 0f, VenomLeft - dt );
+			if ( RadiationPoisonLeft > 0f ) RadiationPoisonLeft = MathF.Max( 0f, RadiationPoisonLeft - dt );
 			tickTimer += dt;
 			if ( tickTimer >= 0.5f )
 			{

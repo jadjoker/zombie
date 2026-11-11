@@ -323,6 +323,9 @@ def build():
                                    (spectral(noise(1.2), lo=120, hi=5000) * env(int(SR * 1.2), 0.002, 0.45), 0, 1.0),
                                    (squelch(0.7, 180, 1200, 1.5), 0.02, 0.9), (squelch(0.5, 250, 900, 1.0), 0.35, 0.5),
                                    *[(squelch(0.2, 300, 1100, 0.6), 0.5 + 0.17 * i, 0.3) for i in range(6)]), room=1.3, wet=0.4)
+    # The Kraken spitting ink: a wet cough and three globs going.
+    s["kraken_spit"] = reverb(mix((squelch(0.35, 300, 1500, 1.2), 0, 1.2), (whoosh(0.5, 900, 250, 0.2, 0.6), 0.02, 1.0),
+                                  (thump(0.3, 150, 60, 0.12), 0, 0.9), *[(blub(260 + 70 * i, 700, 0.09), 0.08 + 0.1 * i, 0.5) for i in range(3)]), room=0.5, wet=0.25)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

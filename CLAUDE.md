@@ -42,7 +42,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   dome is about 30 panes that crack, pop off and blow out as rigid bodies, and on death it swells and bursts
   into `chunk0..15` plus its tentacles. In `kraken.py`, bake every object's transform before joining (a torus
   left with an offset once threw whole material groups to the origin).
-  Still to come: bite and ink, the wave odds.
+  Stage 4 is in (`KrakenSpit.cs`): it bites players at its mouth and spits three globs of ink; both irradiate
+  (`PlayerAfflictions.Irradiate`: green glow, slow stamina, and damage over time when poisoned). Test: `--bite`.
+  Still to come: the wave odds.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

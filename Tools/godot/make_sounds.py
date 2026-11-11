@@ -312,6 +312,12 @@ def build():
     s["whirlpool"] = reverb(mix((whoosh(2.6, 180, 900, 0.45, 0.7), 0, 1.2), (whoosh(2.6, 900, 300, 0.6, 0.5), 0.1, 0.7),
                                 (spectral(noise(2.6), lo=40, hi=220) * bell(int(SR * 2.6), 0.5) * (0.7 + 0.3 * tone(2.6, 5)), 0, 1.0),
                                 *[(blub(300 + 90 * i, 900 + 150 * i, 0.07), 0.2 + 0.27 * i, 0.35) for i in range(8)]), room=0.9, wet=0.35)
+    # The Kraken's slam: the mouth dragging water in, and the tentacles landing.
+    s["kraken_suck"] = reverb(mix((whoosh(1.1, 250, 1500, 0.85, 0.6), 0, 1.2), (spectral(noise(1.1), lo=60, hi=300) * np.linspace(0.2, 1.0, int(SR * 1.1)) ** 2, 0, 0.9),
+                                  (tone(1.1, 70, 160) * np.linspace(0.1, 1.0, int(SR * 1.1)) * 0.5, 0, 1.0)), room=0.5, wet=0.25)
+    s["kraken_slam"] = reverb(mix((thump(0.9, 85, 26, 0.5), 0, 1.6), (thump(0.5, 140, 50, 0.2), 0.02, 0.9),
+                                  (spectral(noise(0.7), lo=150, hi=3500) * env(int(SR * 0.7), 0.002, 0.3), 0, 0.8),
+                                  (squelch(0.4, 200, 900, 1.0), 0.03, 0.5)), room=1.0, wet=0.35)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

@@ -370,6 +370,7 @@ public partial class DevMenu : CanvasLayer
 		{
 			Section( "Kraken" );
 			Row();
+			Action( "Slam now", () => { foreach ( var k in Kraken.All ) k.ForceSlam(); } );
 			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
 			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 9f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );

@@ -32,8 +32,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   burrows up, its glass dome soaks shots and shatters, the brain is the weak point, tentacles shoot off, it sinks
   when dead. Stage 2 is in (`KrakenWhirlpool.cs`): a ring of lights at `Kraken.FightRadius`, a 5 second warning
   outside it, then a whirlpool carries the player back in. Spawn it from the dev menu (Enemies, Spawn an enemy,
-  Kraken). Tests: `--kraken` (needs a window for shots) and `--whirlpool`.
-  Still to come: tentacle slam, bite and ink, the wave odds.
+  Kraken). Stage 3 is in (`KrakenSlam.cs`): it sucks players in for a second, rears up to three tentacles and
+  slams them along strike lines that lock just before the hit. Tests: `--kraken` (needs a window for shots),
+  `--whirlpool` and `--slam`; they freeze enemies so the Kraken only attacks when the test calls `ForceSlam`.
+  Still to come: bite and ink, the wave odds.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

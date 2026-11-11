@@ -55,6 +55,7 @@ public partial class Kraken
 	{
 		base.Cleanup();
 		ReleaseAll();
+		EndAttack();
 		if ( ring is not null && IsInstanceValid( ring ) ) ring.QueueFree();
 	}
 

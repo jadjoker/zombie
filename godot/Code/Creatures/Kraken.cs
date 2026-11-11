@@ -6,7 +6,7 @@ using Godot;
 /// has its own health and shatters, and after that the brain is the weak point. A tentacle can be shot through at
 /// any segment: what is past the cut drops off as a limp chain of pieces, and the stump pumps goo.
 /// Stage 1: the body, the arrival and dying. Stage 2: the whirlpool that keeps players close (KrakenWhirlpool.cs).
-/// The attacks and the wave odds come in later stages.
+/// Stage 3: the tentacle slam (KrakenSlam.cs). The bite, the ink and the wave odds come in later stages.
 /// Model: Tools/blender/kraken.py (assets/models/creatures/kraken, metres, mouth facing forward).
 /// </summary>
 public partial class Kraken : PartCreature
@@ -282,8 +282,11 @@ public partial class Kraken : PartCreature
 		if ( !IsInstanceValid( rig ) ) return;
 		time += dt;
 		if ( State == Mode.Burrowing ) Burrow();
-		else if ( !DevFlags.FreezeEnemies && PlayerSurvivor.FindNearestAlive( GlobalPosition ) is { } target )
-			Face( target.WorldPosition - GlobalPosition, TurnRate, dt );
+		else
+		{
+			if ( !DevFlags.FreezeEnemies ) Think( dt );
+			UpdateAttack( dt );
+		}
 		PlaceRig();
 		Animate( dt );
 		TintParts( dt );
@@ -350,6 +353,7 @@ public partial class Kraken : PartCreature
 				segments[k, j].Basis = new Basis( Vector3.Up, MathX.Rad( sway ) ) * new Basis( Vector3.Right, MathX.Rad( bend ) );
 			}
 		}
+		ApplySlamPose();
 		// The brain throbs, faster once the dome is gone; the holes and suckers pulse.
 		if ( Has( Brain ) )
 		{
@@ -656,6 +660,7 @@ public partial class Kraken : PartCreature
 		timeSinceDeath = 0f;
 		RaiseKilled();
 		ReleaseAll();
+		EndAttack();
 		if ( diedLocally ) return;
 		diedLocally = true;
 		if ( rig is null || !IsInstanceValid( rig ) ) return;

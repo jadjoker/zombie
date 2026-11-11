@@ -51,6 +51,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--rifles" ) ) { await RiflesTest(); return; }
 		if ( args.Contains( "--kraken" ) ) { await KrakenTest(); return; }
 		if ( args.Contains( "--whirlpool" ) ) { await WhirlpoolTest(); return; }
+		if ( args.Contains( "--slam" ) ) { await SlamTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1249,6 +1250,7 @@ public partial class AutoTest : Node
 	/// <summary> The Kraken, stage 1: it burrows up, its dome soaks shots and shatters, the brain is the weak point, a tentacle comes off, it dies. </summary>
 	async Task KrakenTest()
 	{
+		DevFlags.FreezeEnemies = true;   // its body and damage only: no attacks to move the player about
 		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
 		DockHouse.Current?.SkipDive();
 		var director = WaveDirector.Current;
@@ -1269,7 +1271,7 @@ public partial class AutoTest : Node
 			await Wait( at );
 			await Shot( name );
 		}
-		await Wait( 1.6f );
+		for ( var waited = 0f; waited < 12f && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
 		var up = kraken.BrainPosition.Y - ground.Y;
 		GD.Print( $"[autotest] kraken: brain {buried:0.0} m at spawn, {up:0.0} m once up, state {kraken.State}, health {kraken.Health.Current:0}, tentacles {kraken.TentaclesLeft}" );
 		Check( buried < 0f && up > 2.5f, "the Kraken did not come up out of the ground" );
@@ -1365,6 +1367,7 @@ public partial class AutoTest : Node
 	/// <summary> The Kraken's whirlpool: a warning outside its ring, cancelled by going back in, and the ride back when it runs out. </summary>
 	async Task WhirlpoolTest()
 	{
+		DevFlags.FreezeEnemies = true;   // the whirlpool only: no slams
 		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
 		survivor.Health.Invulnerable = true;
 		DockHouse.Current?.SkipDive();
@@ -1375,7 +1378,8 @@ public partial class AutoTest : Node
 		var kraken = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Kraken, ground, player.GlobalPosition ) as Kraken;
 		Check( kraken is not null, "the Kraken did not spawn" );
 		if ( kraken is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		await Wait( 5.6f );
+		for ( var waited = 0f; waited < 12f && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
+		await Wait( 0.3f );
 		Check( kraken.State == Kraken.Mode.Idle, "the Kraken never finished arriving" );
 		Check( Kraken.WhirlpoolWarning( survivor ) is null, "a whirlpool warning showed inside the ring" );
 		var ring = GetTree().Root.FindChild( "Kraken Ring", true, false );
@@ -1442,6 +1446,104 @@ public partial class AutoTest : Node
 		Check( !player.Scripted && Kraken.WhirlpoolWarning( survivor ) is null, "the dead Kraken kept hold of the player" );
 		await Wait( 4f );
 		Check( GetTree().Root.FindChild( "Kraken Ring", true, false ) is null, "the ring stayed after the Kraken was gone" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The Kraken's tentacle slam: the pull, a hit standing still, a miss stepping aside, the swat in the air, and none with no tentacles. </summary>
+	async Task SlamTest()
+	{
+		DevFlags.FreezeEnemies = true;   // slams only when the test asks for one
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		DockHouse.Current?.SkipDive();
+		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
+		var stand = Nav.Closest( player, ground + new Vector3( 8f, 0f, 8f ) ) + Vector3.Up * 0.1f;
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
+		var kraken = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Kraken, ground, player.GlobalPosition ) as Kraken;
+		Check( kraken is not null, "the Kraken did not spawn" );
+		if ( kraken is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		for ( var waited = 0f; waited < 10f && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
+		LookAt( ground + Vector3.Up * 2f );
+		survivor.Health.ResetTo( 1000f );
+
+		// 1. Standing still: pulled in during the suck, then hit.
+		var startDistance = (player.GlobalPosition - ground).Flat().Length();
+		var health = survivor.Health.Current;
+		kraken.ForceSlam();
+		Check( kraken.Attacking == Kraken.Attack.Suck, "the slam did not start with the suck" );
+		await Wait( 0.6f );
+		await Shot( "slam_suck" );
+		await Wait( 0.5f );
+		var pulled = startDistance - (player.GlobalPosition - ground).Flat().Length();
+		GD.Print( $"[autotest] slam: pulled {pulled:0.0} m toward the mouth in the suck (from {startDistance:0.0} m)" );
+		Check( pulled > 1.5f, "the suck did not pull the player in" );
+		Check( kraken.Attacking == Kraken.Attack.Raise, "the tentacles did not rear up after the suck" );
+		await Wait( 0.45f );
+		LookAt( ground + Vector3.Up * 4f );
+		await Wait( 0.1f );
+		await Shot( "slam_reared" );
+		await Wait( 0.27f );
+		await Shot( "slam_locked" );
+		await Wait( 0.3f );
+		await Shot( "slam_impact" );
+		GD.Print( $"[autotest] slam: standing still lost {health - survivor.Health.Current:0} health, hits {kraken.LastSlamHits}, state {kraken.Attacking}" );
+		Check( MathF.Abs( health - survivor.Health.Current - kraken.SlamDamage ) < 6f, "standing still under the slam did not take its damage once" );
+		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
+		Check( kraken.Attacking == Kraken.Attack.None, "the slam never finished" );
+
+		// 2. Stepping aside once the lines lock: missed.
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		health = survivor.Health.Current;
+		kraken.ForceSlam();
+		await Wait( kraken.SuckTime + kraken.RearTime - kraken.LockBefore + 0.06f );
+		var side = (player.GlobalPosition - ground).Flat().Normalized().Cross( Vector3.Up );
+		player.GlobalPosition = Nav.Closest( player, player.GlobalPosition + side * 6f ) + Vector3.Up * 0.1f;
+		await Wait( 0.8f );
+		GD.Print( $"[autotest] slam: dodged sideways lost {health - survivor.Health.Current:0} health, hits {kraken.LastSlamHits}" );
+		Check( health <= survivor.Health.Current && kraken.LastSlamHits == 0, "stepping aside after the lines locked did not dodge the slam" );
+		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
+
+		// 3. High above the sea bed: swatted down for less.
+		player.GlobalPosition = stand;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		health = survivor.Health.Current;
+		kraken.ForceSlam();
+		await Wait( kraken.SuckTime + 0.2f );
+		var gravity = player.GravityScale;
+		for ( var held = 0f; kraken.Attacking is Kraken.Attack.Raise or Kraken.Attack.Slam; held += 0.02f )
+		{
+			// Held up in the water until the tentacles come down.
+			player.GlobalPosition = player.GlobalPosition.WithY( ground.Y + 7f );
+			player.Velocity = Vector3.Zero;
+			await ToSignal( GetTree(), SceneTree.SignalName.PhysicsFrame );
+		}
+		var falling = player.Velocity.Y;
+		await Wait( 0.1f );
+		GD.Print( $"[autotest] slam: in the air lost {health - survivor.Health.Current:0} health, swats {kraken.LastSlamSwats}, falling at {falling:0.0} m/s" );
+		Check( kraken.LastSlamSwats == 1 && MathF.Abs( health - survivor.Health.Current - kraken.SwatDamage ) < 6f, "a player high up was not swatted for the smaller damage" );
+		Check( falling < -8f, "the swat did not knock the player back down" );
+		await Shot( "slam_swat" );
+		for ( var waited = 0f; waited < 4f && kraken.Attacking != Kraken.Attack.None; waited += 0.25f ) await Wait( 0.25f );
+
+		// 4. A short tentacle reaches less far; with none left it does not slam at all.
+		for ( var k = 0; k < Kraken.Tentacles; k++ )
+			kraken.ReceiveShot( Kraken.SegIndex( k, 0 ), 5000f, Vector3.Right, kraken.GlobalPosition, player.GlobalPosition, null, false );
+		Check( kraken.TentaclesLeft == 0, "could not shoot every tentacle off" );
+		player.GlobalPosition = stand;
+		await Wait( 0.4f );
+		health = survivor.Health.Current;
+		kraken.ForceSlam();
+		await Wait( kraken.SuckTime + kraken.RearTime + 0.6f );
+		Check( health <= survivor.Health.Current, "a Kraken with no tentacles still slammed" );
+		Check( kraken.Attacking == Kraken.Attack.None, "a Kraken with no tentacles got stuck in its attack" );
+
+		// 5. Left alone (not frozen) it attacks on its own.
+		kraken.Health.Current = kraken.Health.MaxHealth;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

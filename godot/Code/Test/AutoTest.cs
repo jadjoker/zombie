@@ -1314,10 +1314,32 @@ public partial class AutoTest : Node
 		for ( var k = 0; k < 3; k++ ) { LookAt( kraken.TentaclePosition( 3 ) ); weapon.TestFire(); await Wait( 0.15f ); }
 		GD.Print( $"[autotest] kraken: 3 shots at a tentacle took {before - kraken.Health.Current:0}" );
 		Check( kraken.Health.Current < before, "shots at a tentacle missed" );
-		kraken.ReceiveShot( 3 + 3, 1000f, Vector3.Right, kraken.TentaclePosition( 3 ), player.GlobalPosition, null, false );
-		Check( kraken.TentaclesLeft == Kraken.Tentacles - 1, "the tentacle did not come off" );
-		await Wait( 0.5f );
+		// Shot through half way along: the far half drops, the near half stays. Then another one off at the root.
+		var cutSpot = kraken.TentaclePosition( 3, 4 );
+		var backTo = player.GlobalPosition;
+		player.GlobalPosition = Nav.Closest( player, cutSpot + (cutSpot - kraken.GlobalPosition).Flat().Normalized() * 4.5f ) + Vector3.Up * 0.1f;
+		await Wait( 0.4f );
+		LookAt( cutSpot );
+		await Wait( 0.2f );
+		kraken.ReceiveShot( Kraken.SegIndex( 3, 4 ), 1000f, Vector3.Right, kraken.TentaclePosition( 3, 4 ), player.GlobalPosition, null, false );
+		GD.Print( $"[autotest] kraken: cut at segment 4, {kraken.SegmentsLeft( 3 )} segments left on it, {kraken.TentaclesLeft} tentacles" );
+		Check( kraken.SegmentsLeft( 3 ) == 4 && kraken.TentaclesLeft == Kraken.Tentacles, "the tentacle was not cut at the segment that was shot" );
+		await Wait( 0.35f );
 		await Shot( "kraken_tentacle_cut" );
+		kraken.ReceiveShot( Kraken.SegIndex( 4, 0 ), 1000f, Vector3.Right, kraken.TentaclePosition( 4, 0 ), player.GlobalPosition, null, false );
+		Check( kraken.TentaclesLeft == Kraken.Tentacles - 1, "the tentacle did not come off at the root" );
+		await Wait( 2.2f );
+		LookAt( cutSpot + Vector3.Down * 0.3f );
+		await Wait( 0.1f );
+		await Shot( "kraken_tentacle_flop" );
+		player.GlobalPosition = backTo;
+		await Wait( 0.4f );
+		var loose = GetTree().Root.FindChildren( "Kraken Piece", "", true, false ).Count;
+		GD.Print( $"[autotest] kraken: {loose} loose tentacle pieces" );
+		Check( loose == 12, "the cut tentacles did not come loose as one piece per segment" );
+		before = kraken.Health.Current;
+		for ( var k = 0; k < 2; k++ ) { LookAt( kraken.TentaclePosition( 3, 1 ) ); await Wait( 0.2f ); weapon.TestFire(); await Wait( 0.15f ); }
+		Check( kraken.Health.Current < before, "the stump of a cut tentacle cannot be shot" );
 
 		// From the side and close up, then the death.
 		player.GlobalPosition = Nav.Closest( player, ground + kraken.GlobalBasis * new Vector3( 1.5f, 0f, -5.5f ) ) + Vector3.Up * 0.1f;

@@ -3,7 +3,8 @@ using Godot;
 /// <summary>
 /// The Kraken event boss (issue #30). It burrows up out of the sea bed in a cloud of sand and stays where it came
 /// up, turning to face the nearest player. Its brain sits on top of its head under a spacesuit glass dome: the dome
-/// has its own health and shatters, and after that the brain is the weak point. Each tentacle can be shot off.
+/// has its own health and shatters, and after that the brain is the weak point. A tentacle can be shot through at
+/// any segment: what is past the cut drops off as a limp chain of pieces, and the stump pumps goo.
 /// Stage 1: the body, the arrival and dying. The attacks, the whirlpool and the wave odds come in later stages.
 /// Model: Tools/blender/kraken.py (assets/models/creatures/kraken, metres, mouth facing forward).
 /// </summary>
@@ -19,7 +20,8 @@ public partial class Kraken : PartCreature
 	public static readonly List<Kraken> All = new();
 
 	public float HelmetHealth = 600f;
-	public float TentacleHealth = 350f;
+	/// <summary> Health of a tentacle's thickest segment; the tip has TipHealthScale of it. </summary>
+	public float SegmentHealth = 220f, TipHealthScale = 0.3f;
 	/// <summary> Damage to the whole Kraken per point of damage on: the brain, the head, a tentacle. </summary>
 	public float BrainMultiplier = 3f, HeadMultiplier = 1f, TentacleMultiplier = 0.5f;
 	/// <summary> Seconds to come up out of the ground, and how deep it starts (metres). </summary>
@@ -34,12 +36,17 @@ public partial class Kraken : PartCreature
 	/// <summary> 0 to 1: how much of the dome's health is left (0 once shattered). </summary>
 	public float HelmetFraction => Has( Helmet ) ? MathX.Clamp( parts[Helmet].Health / MathF.Max( 1f, parts[Helmet].MaxHealth ), 0f, 1f ) : 0f;
 	public bool HelmetOn => parts is not null && Has( Helmet );
-	public int TentaclesLeft => parts is null ? 0 : Enumerable.Range( Tentacle0, Tentacles ).Count( Has );
+	public int TentaclesLeft => length.Count( n => n > 0 );
+	/// <summary> How many segments a tentacle still has (0: shot off at the root). </summary>
+	public int SegmentsLeft( int k ) => length[k];
+	/// <summary> The part index shots report for one segment of one tentacle. </summary>
+	public static int SegIndex( int k, int j ) => SegBase + k * Segments + j;
+	const int SegBase = 100;
 
 	/// <summary> Where its brain is in the world (the middle of the dome). </summary>
 	public Vector3 BrainPosition => rig.GlobalTransform * (Collar + Vector3.Up * 0.3f);
 	/// <summary> The base of a tentacle in the world. </summary>
-	public Vector3 TentaclePosition( int k ) => segments[k, 2].GlobalPosition;
+	public Vector3 TentaclePosition( int k, int j = 2 ) => segments[k, Math.Min( j, Math.Max( 0, length[k] - 1 ) )].GlobalTransform * new Vector3( 0f, 0f, -SegLength * 0.5f );
 	/// <summary> Dev menu: the dome goes at once. </summary>
 	public void BreakHelmet() => ShatterHelmet( -GlobalBasis.Z );
 
@@ -59,6 +66,10 @@ public partial class Kraken : PartCreature
 
 	readonly Node3D[,] segments = new Node3D[Tentacles, Segments];
 	readonly float[] phase = new float[Tentacles];
+	readonly float[,] segHealth = new float[Tentacles, Segments];
+	readonly int[] length = new int[Tentacles];
+	readonly List<(Node3D Stump, TimeSince Age, float Size)> bleeders = new();
+	TimeSince sinceSpurt;
 	readonly List<MeshInstance3D> glowing = new();
 	Node3D mound, brainModel;
 	MeshInstance3D glass;
@@ -200,9 +211,10 @@ public partial class Kraken : PartCreature
 			// Evenly round the base, two of them either side of the mouth.
 			var angle = (k + 0.5f) / Tentacles * MathF.Tau;
 			var outward = new Vector3( MathF.Sin( angle ), 0f, -MathF.Cos( angle ) );
-			var tentacle = AddPart( Tentacle0 + k, Head, head.Go, $"Tentacle {k}", Vector3.Zero, Shapes.LookAt( outward ), TentacleHealth );
+			var tentacle = AddPart( Tentacle0 + k, Head, head.Go, $"Tentacle {k}", Vector3.Zero, Shapes.LookAt( outward ), 0f );
 			tentacle.Go.Position = outward * 0.8f + Vector3.Up * 0.5f;
 			phase[k] = Rng.Float( 0f, MathF.Tau );
+			length[k] = Segments;
 			Node3D parent = tentacle.Go;
 			for ( var j = 0; j < Segments; j++ )
 			{
@@ -212,7 +224,8 @@ public partial class Kraken : PartCreature
 				var radius = RootRadius * MathF.Pow( TipRadius / RootRadius, (j + 0.5f) / Segments );
 				var hit = new Node3D { Name = "Hit" };
 				segment.AddChild( hit );
-				HitShape( hit, Tentacle0 + k, new Vector3( 0f, 0f, -radius ), new Vector3( 0f, 0f, -SegLength + radius ), radius * 1.15f );
+				segHealth[k, j] = SegmentHealth * MathX.Lerp( 1f, TipHealthScale, j / (Segments - 1f) );
+				HitShape( hit, SegIndex( k, j ), new Vector3( 0f, 0f, -radius ), new Vector3( 0f, 0f, -SegLength + radius ), radius * 1.15f );
 				segments[k, j] = segment;
 				parent = segment;
 			}
@@ -261,6 +274,7 @@ public partial class Kraken : PartCreature
 		var dt = (float)delta;
 		if ( IsDead )
 		{
+			Bleed();
 			Sink();
 			return;
 		}
@@ -272,6 +286,7 @@ public partial class Kraken : PartCreature
 		PlaceRig();
 		Animate( dt );
 		TintParts( dt );
+		Bleed();
 		CreatureGore.BleedTrail( parts[Head].Go.GlobalPosition + Vector3.Up * 1.4f, Goo, health.Fraction, ref bleedTimer );
 	}
 
@@ -325,8 +340,7 @@ public partial class Kraken : PartCreature
 		var unfurl = Ease( Unfurled );
 		for ( var k = 0; k < Tentacles; k++ )
 		{
-			if ( !Has( Tentacle0 + k ) ) continue;
-			for ( var j = 0; j < Segments; j++ )
+			for ( var j = 0; j < length[k]; j++ )
 			{
 				var bend = MathX.Lerp( CurlBend[j], RestBend[j], unfurl ) + MathF.Sin( time * 0.9f + j * 0.7f + phase[k] ) * (2.5f + j * 1.1f);
 				var sway = MathF.Sin( time * 0.6f + j * 0.5f + phase[k] * 1.7f ) * (2f + j) * unfurl;
@@ -417,7 +431,8 @@ public partial class Kraken : PartCreature
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
-		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Head;
+		if ( index >= SegBase ) { ShotSegment( (index - SegBase) / Segments, (index - SegBase) % Segments, damage, direction, position, origin, shooter, scoreHit ); return; }
+		if ( index < 0 || index >= Tentacle0 || !Has( index ) ) index = Head;
 		NoteShot( direction, position, origin );
 		var part = parts[index];
 
@@ -433,22 +448,29 @@ public partial class Kraken : PartCreature
 			return;
 		}
 
-		var multiplier = index == Brain ? BrainMultiplier : index == Head ? HeadMultiplier : TentacleMultiplier;
-		var cut = false;
-		if ( index >= Tentacle0 )
-		{
-			part.Health -= damage;
-			cut = part.Health <= 0f;
-		}
-		var hurt = index >= Tentacle0
-			? 1f - MathX.Clamp( part.Health / MathF.Max( 1f, part.MaxHealth ), 0f, 1f )
-			: 1f - health.Fraction;
-		if ( cut ) CutTentacle( index, direction );
-		else Hit( index, position, direction, hurt );
-
+		var multiplier = index == Brain ? BrainMultiplier : HeadMultiplier;
+		Hit( index, position, direction, 1f - health.Fraction );
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( IsDead, index == Brain, scoreHit );
+	}
+
+	/// <summary> A shot on one segment of a tentacle: it bleeds, and when its health is gone the tentacle is cut there. </summary>
+	void ShotSegment( int k, int j, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	{
+		if ( k < 0 || k >= Tentacles || j >= length[k] ) return;
+		NoteShot( direction, position, origin );
+		var part = parts[Tentacle0 + k];
+		part.Flash = 0f;
+		segHealth[k, j] -= damage;
+		var goo = Goo;
+		CreatureGore.AddWound( segments[k, j], position, direction, Dark, goo, 3f );
+		gore.GooBurst( position, -direction, goo, 10, 300f, 2f );
+		gore.GooSpray( position, direction, 3, goo, 260f, 0.9f, 1.8f );
+		if ( segHealth[k, j] <= 0f ) CutAt( k, j, direction );
+		var wasAlive = !IsDead;
+		health.OnDamage( new DamageInfo { Damage = damage * TentacleMultiplier, Position = position, Origin = origin, Attacker = shooter } );
+		if ( wasAlive && shooter is not null ) shooter.RewardHit( IsDead, false, scoreHit );
 	}
 
 	void Hit( int index, Vector3 position, Vector3 direction, float hurt )
@@ -516,18 +538,112 @@ public partial class Kraken : PartCreature
 		Fx.Expire( shards, 3.5f );
 	}
 
-	void CutTentacle( int index, Vector3 direction )
+	static float SegRadius( float j ) => RootRadius * MathF.Pow( TipRadius / RootRadius, j / Segments );
+
+	/// <summary>
+	/// Cuts a tentacle at a segment. Everything from there to the tip comes loose as a chain of physics pieces
+	/// pinned end to end, so it flops; the stump left behind gushes and keeps pumping goo.
+	/// </summary>
+	void CutAt( int k, int j, Vector3 direction, bool heavy = true )
 	{
-		var part = parts[index];
-		if ( part is null || part.Gone ) return;
-		GoneMask |= SubtreeMask( index );
-		MarkGone( index );
-		var at = part.Go.GlobalPosition;
-		if ( Has( Head ) ) CreatureGore.AddStump( parts[Head].Go, at, (at - parts[Head].Go.GlobalPosition).Flat().SafeNormal(), 14f, Dark, Goo );
-		for ( var i = 0; i < 3; i++ ) gore.GooBurst( at, direction, Goo, 8, 300f, 1.4f );
-		gore.GooSpray( at, direction, 5, Goo, 260f, 0.7f, 1.5f );
-		var piece = Detach( part, direction * Rng.Float( 60f, 140f ) + Vector3.Up * 60f, 3f, 14f, 120f, 30f );
-		CreatureGore.Twitch( piece, Rng.Float( 2.5f, 4f ), 0.25f );
+		var count = length[k];
+		if ( j < 0 || j >= count ) return;
+		var part = parts[Tentacle0 + k];
+		var cutAt = segments[k, j].GlobalPosition;
+		var along = -segments[k, j].GlobalBasis.Z.Normalized();
+		var cutRadius = SegRadius( j ) / U.In;
+		var push = (direction.SafeNormal() * 0.8f + along * 0.6f + Vector3.Up * 0.3f) * Rng.Float( 0.9f, 1.5f );
+
+		// From the tip inward, so each segment is taken before the one it hangs from.
+		var gibs = new Gib[Segments];
+		for ( var s = count - 1; s >= j; s-- )
+		{
+			var segment = segments[k, s];
+			var piece = new Node3D { Name = "Kraken Piece" };
+			GetTree().CurrentScene.AddChild( piece );
+			piece.GlobalTransform = segment.GlobalTransform.Orthonormalized();
+			(Shape3D Shape, Transform3D Global)? shape = null;
+			foreach ( var child in segment.GetChildren().OfType<Node3D>().ToList() )
+			{
+				if ( child.Name == "Hit" )
+				{
+					if ( child.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>().FirstOrDefault() is { } cs ) shape = (cs.Shape, cs.GlobalTransform);
+					child.QueueFree();
+					continue;
+				}
+				foreach ( var mesh in child.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				{
+					part.Renderers.RemoveAll( r => r.Renderer == mesh );
+					glowing.Remove( mesh );
+				}
+				child.Reparent( piece, true );
+			}
+			segment.QueueFree();
+			segments[k, s] = null;
+			var radius = SegRadius( s + 0.5f );
+			var gib = Gib.Attach( piece, gore, radius / U.In, 70f, 3f + radius * 40f, part.Velocity * 0.4f + push, Goo, addCollider: false );
+			if ( shape is { } found )
+			{
+				var collider = new CollisionShape3D { Shape = found.Shape };
+				gib.AddChild( collider );
+				collider.GlobalTransform = found.Global.Orthonormalized();
+			}
+			gib.AngularVelocity = Rng.InSphere( 2f );
+			CreatureGore.Twitch( gib, Rng.Float( 2.5f, 4.5f ), 0.2f );
+			gibs[s] = gib;
+			if ( s == j && CreatureGore.AddStump( piece, cutAt, -along, cutRadius * 0.9f, Dark, Goo, 8f ) is { } looseEnd && heavy ) bleeders.Add( (looseEnd, 0f, cutRadius / 13f * 0.6f) );
+		}
+		// Pin each piece to the next at the joint between them.
+		for ( var s = j; s < count - 1; s++ )
+		{
+			var joint = new PinJoint3D { Name = "Joint" };
+			gibs[s].AddChild( joint );
+			joint.GlobalPosition = gibs[s + 1].GlobalPosition;
+			joint.NodeA = gibs[s].GetPath();
+			joint.NodeB = gibs[s + 1].GetPath();
+		}
+		length[k] = j;
+
+		// The stump: on the segment before the cut, or on the head if the whole tentacle went.
+		var keep = j == 0 ? parts[Head].Go : segments[k, j - 1];
+		if ( j == 0 )
+		{
+			GoneMask |= 1 << (Tentacle0 + k);
+			MarkGone( Tentacle0 + k );
+			part.Go.QueueFree();
+		}
+		if ( CreatureGore.AddStump( keep, cutAt, along, cutRadius * 0.95f, Dark, Goo, 14f ) is { } stump && heavy ) bleeders.Add( (stump, 0f, cutRadius / 13f) );
+		// A lot of goo, sized for something this big: a gush out of the cut, a pool under it, chunks.
+		var big = MathX.Lerp( 2.2f, 5f, cutRadius / 13f );
+		var bursts = heavy ? 7 : 2;
+		for ( var i = 0; i < bursts; i++ ) gore.GooBurst( cutAt, along + direction.SafeNormal() * 0.4f + Rng.InSphere( 0.4f ), Goo, 12, 420f, big );
+		gore.GooSpray( cutAt, along, heavy ? 10 : 3, Goo, 380f, 1.5f, 3.2f );
+		gore.GooSpray( cutAt, Vector3.Down, heavy ? 6 : 2, Goo, 300f, 2f, 3.6f );
+		if ( gore.TraceWorld( cutAt, cutAt + Vector3.Down * 6f ) is { } floor ) gore.GooSplat( floor.Position, floor.Normal, heavy ? 4.5f : 2.5f, Goo );
+		if ( heavy ) for ( var i = 0; i < 4; i++ ) gore.ThrowBlob( cutAt, along + Rng.OnSphere() * 0.5f, Dark, Goo, MathF.Max( 3f, cutRadius * 0.45f ) );
+		gore.Squelch( cutAt, 1.3f, 0.75f );
+	}
+
+	/// <summary> Fresh stumps pump goo in beats for a while. </summary>
+	void Bleed()
+	{
+		if ( bleeders.Count == 0 || sinceSpurt < 0.1f ) return;
+		sinceSpurt = 0f;
+		bleeders.RemoveAll( b => b.Age > 8f || !IsInstanceValid( b.Stump ) );
+		foreach ( var (stump, age, size) in bleeders )
+		{
+			// A heartbeat: strong squirts that weaken as it bleeds out, and a pool that keeps growing underneath.
+			var beat = MathF.Max( 0f, MathF.Sin( age * 9f ) );
+			var strength = (1f - age / 8f) * (0.35f + beat);
+			var outward = -stump.GlobalBasis.Z.Normalized();
+			var at = stump.GlobalPosition + outward * 0.05f;
+			gore.GooBurst( at, outward * 2f + Vector3.Up * 0.3f, Goo, beat > 0.6f ? 7 : 3, 380f * strength, MathX.Lerp( 1.6f, 3.6f, size ) );
+			if ( beat > 0.85f )
+			{
+				gore.GooSpray( at, outward, 2, Goo, 340f, 1.2f, 2.6f );
+				if ( gore.TraceWorld( at, at + Vector3.Down * 6f ) is { } floor ) gore.GooSplat( floor.Position + Rng.InSphere( 0.5f ).Flat(), floor.Normal, Rng.Float( 1.2f, 2.4f ), Goo );
+			}
+		}
 	}
 
 	// ---- Death ----
@@ -550,12 +666,8 @@ public partial class Kraken : PartCreature
 		if ( Has( Brain ) ) { MarkGone( Brain ); parts[Brain].Go.QueueFree(); }
 		for ( var k = 0; k < Tentacles; k++ )
 		{
-			if ( !Has( Tentacle0 + k ) ) continue;
-			var part = parts[Tentacle0 + k];
-			MarkGone( Tentacle0 + k );
-			var outward = (part.Go.GlobalPosition - GlobalPosition).Flat().SafeNormal();
-			var piece = Detach( part, outward * Rng.Float( 80f, 160f ) + Vector3.Up * 40f, 2f, 14f, 120f, 30f );
-			CreatureGore.Twitch( piece, Rng.Float( 2f, 4f ), 0.25f );
+			if ( length[k] == 0 ) continue;
+			CutAt( k, 0, (parts[Tentacle0 + k].Go.GlobalPosition - GlobalPosition).Flat().SafeNormal(), heavy: false );
 		}
 		// The head stays on the rig and sinks (Sink); nothing on it can be shot any more.
 		foreach ( var body in rig.FindChildren( "*", "StaticBody3D", true, false ).OfType<StaticBody3D>() ) body.CollisionLayer = 0;

@@ -1054,7 +1054,8 @@ public partial class AutoTest : Node
 			Check( kraken is not null, "clicking Spawn did not make a Kraken" );
 			Check( GetTree().Paused, "the game was running behind the dev menu" );
 			menu.SetOpen( false );
-			await Wait( 6f );
+			// It takes about 5 seconds to arrive; allow a slow machine twice that.
+			for ( var waited = 0f; waited < 10f && kraken is not null && kraken.State != Kraken.Mode.Idle; waited += 0.5f ) await Wait( 0.5f );
 			if ( kraken is not null )
 			{
 				var away = kraken.GlobalPosition.DistanceTo( player.GlobalPosition );

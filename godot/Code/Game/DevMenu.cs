@@ -363,6 +363,8 @@ public partial class DevMenu : CanvasLayer
 		if ( !open ) return;
 		var first = body.FindChildren( "*", "Button", true, false ).OfType<Button>().FirstOrDefault( b => !b.IsQueuedForDeletion() ) ?? Focusables().FirstOrDefault();
 		first?.GrabFocus();
+		// If the menu was rebuilt in that same moment the grab can be lost: look again a moment later.
+		GetTree().CreateTimer( 0.12, true, false, true ).Timeout += () => { if ( open && FocusedChip is null ) FocusFirst(); };
 	}
 
 	void RebuildChips()

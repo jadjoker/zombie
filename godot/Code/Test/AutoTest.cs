@@ -2198,9 +2198,13 @@ public partial class AutoTest : Node
 		Controls.Force( Scheme.Controller );
 		GameSettings.AimAssist = 0.7f;
 		float AngleTo( Vector3 point ) => MathX.Deg( (-player.Camera.GlobalBasis.Z).AngleTo( (point - player.Camera.GlobalPosition).Normalized() ) );
+		await Wait( 0.8f );   // let it settle on the sea bed
 		var mark = crab.GlobalPosition + Vector3.Up * 0.35f;
 		void AimAtCrab( float yawOff )
 		{
+			// The middle of its first hit shape: the very point the aim assist works from.
+			var bodyPart = CreaturePart.All.FirstOrDefault( p => IsInstanceValid( p ) && p.Creature == crab );
+			if ( bodyPart?.GetChildren().OfType<CollisionShape3D>().FirstOrDefault() is { } shape ) mark = shape.GlobalPosition;
 			var look = (mark - player.Camera.GlobalPosition).Normalized();
 			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ) + yawOff, 0f );
 		}

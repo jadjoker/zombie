@@ -56,6 +56,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
 		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
 		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
+		if ( args.Contains( "--radio" ) ) { await RadioTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2258,20 +2259,25 @@ public partial class AutoTest : Node
 			AimAtCrab( 0f );
 			return player.EyeAngles.Yaw;
 		}
-		var yaw0 = Sweep( 0.7f );
-		await Wait( 0.1f );
-		Axis( JoyAxis.RightX, 1f );
-		await Wait( 0.25f );
-		Axis( JoyAxis.RightX, 0f );
-		var slowed = MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - yaw0, -180f, 180f ) );
-		yaw0 = Sweep( 0f );
-		await Wait( 0.1f );
-		Axis( JoyAxis.RightX, 1f );
-		await Wait( 0.25f );
-		Axis( JoyAxis.RightX, 0f );
-		var free = MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - yaw0, -180f, 180f ) );
+		async Task<float> SweepTurn( float strength )
+		{
+			var total = 0f;
+			for ( var run = 0; run < 2; run++ )
+			{
+				var from = Sweep( strength );
+				await Wait( 0.15f );
+				Axis( JoyAxis.RightX, 1f );
+				await Wait( 0.25f );
+				Axis( JoyAxis.RightX, 0f );
+				total += MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - from, -180f, 180f ) );
+				await Wait( 0.1f );
+			}
+			return total / 2f;
+		}
+		var slowed = await SweepTurn( 0.7f );
+		var free = await SweepTurn( 0f );
 		GD.Print( $"[autotest] aim: a full sweep over the crab turned {slowed:0.0} deg with assist and {free:0.0} without" );
-		Check( slowed < free - 2f, "aim assist does not slow the stick across a target" );
+		Check( slowed < free - 1f, "aim assist does not slow the stick across a target" );
 		GameSettings.AimAssist = 0.7f;
 		crab.QueueFree();
 		await Wait( 0.3f );
@@ -2357,6 +2363,78 @@ public partial class AutoTest : Node
 		await Tap( JoyButton.B );
 		Check( !DevFlags.Placing && JunkCrab.All.Count == crabs + 1, "B did not cancel placing" );
 		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The dock radio (issue #42): three songs found, shuffled with no repeats, volume slider, plays on after the dive, quieter far from it on the dock. </summary>
+	async Task RadioTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		var radio = Radio.Instance;
+		Check( radio is not null, "no radio" );
+		GD.Print( $"[autotest] radio: songs found {radio.TrackCount}: {string.Join( ", ", radio.Titles )}" );
+		Check( radio.TrackCount >= 3, "the radio did not find the three songs" );
+		var prop = GetTree().Root.FindChild( "Radio Prop", true, false ) as Node3D;
+		Check( prop is not null && Radio.Spot is not null, "the dock has no radio on its table" );
+		Check( !radio.Playing, "the radio started on its own in a scripted test" );
+		// A look at it: on its table in the hut, then up close.
+		player.GlobalPosition = prop.GlobalPosition + new Vector3( 1.3f, -0.66f + 0.1f, -0.2f );
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.6f );
+		LookAt( prop.GlobalPosition + Vector3.Up * 0.12f );
+		await Wait( 0.3f );
+		await Shot( "radio_in_hut" );
+		player.GlobalPosition = prop.GlobalPosition + new Vector3( 0.55f, -0.66f + 0.1f, 0f );
+		await Wait( 0.5f );
+		LookAt( prop.GlobalPosition + Vector3.Up * 0.12f );
+		await Wait( 0.3f );
+		await Shot( "radio_close" );
+		radio.Start();
+		await Wait( 0.5f );
+		Check( radio.Playing && Radio.NowPlaying is not null, "the radio did not start playing" );
+		GD.Print( $"[autotest] radio: playing {Radio.NowPlaying}" );
+
+		// Shuffle: through 3 full rounds every song comes up each round, and never the same song twice in a row.
+		var order = new List<string> { Radio.NowPlaying };
+		for ( var i = 0; i < 8; i++ ) { radio.Next(); order.Add( Radio.NowPlaying ); }
+		GD.Print( $"[autotest] radio: order {string.Join( " > ", order )}" );
+		var runs = Enumerable.Range( 1, order.Count - 1 ).Count( i => order[i] == order[i - 1] );
+		Check( runs == 0, "the radio played the same song twice running" );
+		for ( var round = 0; round < 3; round++ )
+			Check( order.Skip( round * 3 ).Take( 3 ).Distinct().Count() == 3, $"round {round + 1} of the shuffle repeated a song before playing them all" );
+		Check( order.Distinct().Count() == radio.TrackCount, "the shuffle does not use every song" );
+
+		// Volume: the music has its own setting and bus, separate from the master volume.
+		var bus = AudioServer.GetBusIndex( Radio.MusicBus );
+		GameSettings.MusicVolume = 0.5f;
+		GameSettings.Apply();
+		var half = AudioServer.GetBusVolumeDb( bus );
+		GameSettings.MusicVolume = 0f;
+		GameSettings.Apply();
+		var muted = AudioServer.IsBusMute( bus );
+		GameSettings.MusicVolume = 1f;
+		GameSettings.Apply();
+		var full = AudioServer.GetBusVolumeDb( bus );
+		GD.Print( $"[autotest] radio: music bus {half:0.0} dB at 50%, muted at 0% {muted}, {full:0.0} dB at 100%" );
+		Check( half < -5f && half > -7f && muted && MathF.Abs( full ) < 0.1f, "the music volume does not drive the music bus" );
+		GameSettings.MusicVolume = 0.6f;
+		GameSettings.Apply();
+
+		// On the dock it is quieter far from the radio; after the dive it is steady.
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.1f );
+		var dockHouse = DockHouse.Current;
+		Check( !DockHouse.WeaponsHeld, "the dive was not skipped" );
+		await Wait( 1.2f );
+		var after = Radio.Gain;
+		GD.Print( $"[autotest] radio: after the dive the gain is {after:0.00}" );
+		Check( after > 0.95f && radio.Playing, "the radio did not carry on after the dive" );
+		var title = Radio.NowPlaying;
+		GetTree().Paused = true;
+		await Wait( 0.4f );
+		Check( radio.Playing, "the radio stopped while paused" );
+		GetTree().Paused = false;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

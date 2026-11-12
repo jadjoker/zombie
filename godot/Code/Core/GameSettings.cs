@@ -15,6 +15,8 @@ public static class GameSettings
 	public static float Sensitivity = 1f;
 	/// <summary> Master volume, 0 to 1. </summary>
 	public static float Volume = 1f;
+	/// <summary> The radio's music, 0 to 1, on top of the master volume. </summary>
+	public static float MusicVolume = 0.6f;
 	/// <summary> Horizontal field of view in degrees. </summary>
 	public static float Fov = 90f;
 	public static bool Fullscreen;
@@ -52,6 +54,7 @@ public static class GameSettings
 		if ( file.Load( Path ) != Error.Ok ) return;
 		Sensitivity = MathX.Clamp( (float)file.GetValue( "controls", "sensitivity", 1f ), MinSensitivity, MaxSensitivity );
 		Volume = MathX.Clamp( (float)file.GetValue( "audio", "volume", 1f ), 0f, 1f );
+		MusicVolume = MathX.Clamp( (float)file.GetValue( "audio", "music", 0.6f ), 0f, 1f );
 		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
 		StickSensitivity = MathX.Clamp( (float)file.GetValue( "controller", "stick_sensitivity", 1f ), MinStick, MaxStick );
@@ -68,6 +71,7 @@ public static class GameSettings
 		var file = new ConfigFile();
 		file.SetValue( "controls", "sensitivity", Sensitivity );
 		file.SetValue( "audio", "volume", Volume );
+		file.SetValue( "audio", "music", MusicVolume );
 		file.SetValue( "video", "fov", Fov );
 		file.SetValue( "video", "fullscreen", Fullscreen );
 		file.SetValue( "controller", "stick_sensitivity", StickSensitivity );
@@ -85,6 +89,9 @@ public static class GameSettings
 		var master = AudioServer.GetBusIndex( "Master" );
 		AudioServer.SetBusVolumeDb( master, Mathf.LinearToDb( MathF.Max( Volume, 0.0001f ) ) );
 		AudioServer.SetBusMute( master, Volume <= 0.001f );
+		var music = AudioServer.GetBusIndex( Radio.MusicBus );
+		AudioServer.SetBusVolumeDb( music, Mathf.LinearToDb( MathF.Max( MusicVolume, 0.0001f ) ) );
+		AudioServer.SetBusMute( music, MusicVolume <= 0.001f );
 		if ( !AutoTest.Requested )
 		{
 			var now = DisplayServer.WindowGetMode();

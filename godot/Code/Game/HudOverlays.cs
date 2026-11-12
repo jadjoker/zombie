@@ -267,6 +267,15 @@ public partial class HudOverlays : Control
 			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
 		}
 
+		// The radio: the song's name for a few seconds when it changes.
+		if ( Radio.NowPlaying is { } song && Radio.SinceChange < 5f && GameSettings.MusicVolume > 0f && !PlayerSurvivor.LocalDead )
+		{
+			var fade = MathX.Clamp( MathF.Min( (float)Radio.SinceChange / 0.4f, (5f - (float)Radio.SinceChange) / 0.8f ), 0f, 1f );
+			var at = new Vector2( Size.X * 0.2f, Size.Y - 56f );
+			DrawString( ThemeDB.FallbackFont, at + new Vector2( 1f, 2f ), $"Now playing: {song}", HorizontalAlignment.Center, Size.X * 0.6f, 18, new Color( 0, 0, 0, 0.6f * fade ) );
+			DrawString( ThemeDB.FallbackFont, at, $"Now playing: {song}", HorizontalAlignment.Center, Size.X * 0.6f, 18, new Color( 1f, 0.85f, 0.55f, fade ) );
+		}
+
 		// The robot's own readout while the suit is failing.
 		var suitFailing = WaveDirector.Current is { FloatRound: true, State: WaveState.Fighting };
 		if ( suitFailing && !PlayerSurvivor.LocalDead )

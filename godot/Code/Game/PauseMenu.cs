@@ -60,6 +60,7 @@ public partial class PauseMenu : CanvasLayer
 		vibration.Toggled += on => { GameSettings.Vibration = on; vibration.Text = on ? "Controller vibration: On" : "Controller vibration: Off"; if ( on ) Controls.Rumble( 0.5f ); };
 		column.AddChild( vibration );
 		column.AddChild( Slider( "Aim assist", 0f, 1f, 0.05f, () => GameSettings.AimAssist, v => GameSettings.AimAssist = v, v => v <= 0f ? "Off" : $"{v * 100f:0}%" ) );
+		column.AddChild( Slider( "Music volume", 0f, 1f, 0.05f, () => GameSettings.MusicVolume, v => GameSettings.MusicVolume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Volume", 0f, 1f, 0.05f, () => GameSettings.Volume, v => GameSettings.Volume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Field of view", GameSettings.MinFov, GameSettings.MaxFov, 1f, () => GameSettings.Fov, v => GameSettings.Fov = v, v => $"{v:0}" ) );
 		column.AddChild( Slider( "Gun up and down", GameSettings.MinGunHeight, GameSettings.MaxGunHeight, 0.5f, () => GameSettings.GunHeight, v => GameSettings.GunHeight = v, v => v == 0f ? "Default" : $"{v:+0.0;-0.0}" ) );

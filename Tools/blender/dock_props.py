@@ -1,7 +1,7 @@
 """
-Dock props for the water level (Risk of Copyright, Godot): a floating barrel, the pier lamp and a rope coil.
+Dock props for the water level (Risk of Copyright, Godot): a floating barrel, the pier lamp, a rope coil and the radio.
 Run in Blender:  exec(open(r"C:/Users/smitt/Documents/zombie_survival/Tools/blender/dock_props.py").read())
-Exports godot/assets/models/dock/{barrel,lamp,rope_coil}.glb (metres, origin at the centre for the barrel,
+Exports godot/assets/models/dock/{barrel,lamp,rope_coil,radio}.glb (set DOCK_ONLY=radio to write just one) (metres, origin at the centre for the barrel,
 at the bottom for the lamp and the coil). The lamp's glass is the material "LampGlow" (made emissive in code).
 """
 import bpy
@@ -155,6 +155,54 @@ def rope_coil():
     return join(parts, "Rope Coil")
 
 
+def radio():
+    """
+    An old-timey tabletop radio (origin at the middle of its base, the front toward -Y): a wooden cabinet with an
+    arched top, a cloth speaker with cream slats, a dial with a glowing strip, two knobs and little feet. The strip is
+    the material "RadioGlow" (made emissive in code and lit while it plays).
+    """
+    wood = mat("RadioWood", (0.3, 0.14, 0.07), 0.0, 0.55)
+    cloth = mat("RadioCloth", (0.16, 0.1, 0.07), 0.0, 0.9)
+    cream = mat("RadioTrim", (0.9, 0.82, 0.62), 0.0, 0.5)
+    brass = mat("RadioBrass", (0.78, 0.6, 0.24), 0.7, 0.35)
+    knob = mat("RadioKnob", (0.13, 0.08, 0.05), 0.0, 0.4)
+    glow = mat("RadioGlow", (1.0, 0.72, 0.28), 0.0, 0.3)
+    w, d, h, b = 0.36, 0.17, 0.17, 0.012
+    front = -d / 2
+    parts = []
+
+    def box(size, at, material, bevel=0.0):
+        bpy.ops.mesh.primitive_cube_add(size=1, location=at)
+        o = bpy.context.active_object
+        o.scale = size
+        bpy.ops.object.transform_apply(scale=True)
+        parts.append(done(o, material, bevel, smooth=False))
+
+    def cyl(radius, depth, at, material, axis_y=True, bevel=0.0, verts=32):
+        bpy.ops.mesh.primitive_cylinder_add(vertices=verts, radius=radius, depth=depth, location=at, rotation=(math.pi / 2, 0, 0) if axis_y else (0, 0, 0))
+        parts.append(done(bpy.context.active_object, material, bevel))
+
+    box((w, d, h), (0, 0, b + h / 2), wood, 0.012)
+    cyl(w / 2, d, (0, 0, b + h), wood, bevel=0.008)
+    # Speaker: cloth under an arch, cream slats across it, a brass rim.
+    box((0.25, 0.012, 0.115), (0, front - 0.002, b + 0.115), cloth)
+    cyl(0.125, 0.012, (0, front - 0.002, b + 0.172), cloth)
+    for i in range(-2, 3):
+        box((0.008, 0.01, 0.17), (i * 0.045, front - 0.008, b + 0.15), cream)
+    cyl(0.135, 0.008, (0, front + 0.003, b + 0.172), brass, verts=32)
+    # Dial and its glowing strip, two knobs.
+    box((0.24, 0.01, 0.034), (0, front - 0.004, b + 0.03), cream, 0.004)
+    box((0.19, 0.006, 0.008), (0, front - 0.011, b + 0.03), glow)
+    for x in (-0.145, 0.145):
+        cyl(0.024, 0.022, (x, front - 0.011, b + 0.03), knob, bevel=0.004, verts=20)
+        cyl(0.012, 0.006, (x, front - 0.024, b + 0.03), brass, verts=16)
+    # Feet.
+    for x in (-0.15, 0.15):
+        for y in (-0.06, 0.06):
+            cyl(0.016, b, (x, y, b / 2), brass, axis_y=False, verts=12)
+    return join(parts, "Radio")
+
+
 def export(obj, name):
     os.makedirs(OUT, exist_ok=True)
     loc = obj.location.copy()
@@ -167,11 +215,17 @@ def export(obj, name):
 
 def build():
     collection()
-    items = [(barrel(), "barrel.glb", (-0.8, 0, 0.43)), (lamp(), "lamp.glb", (0, 0, 0)), (rope_coil(), "rope_coil.glb", (0.8, 0, 0))]
-    for obj, name, at in items:
+    makers = [(barrel, "barrel.glb", (-0.8, 0, 0.43)), (lamp, "lamp.glb", (0, 0, 0)), (rope_coil, "rope_coil.glb", (0.8, 0, 0)), (radio, "radio.glb", (1.6, 0, 0))]
+    only = os.environ.get("DOCK_ONLY")
+    names = []
+    for make, name, at in makers:
+        if only and not name.startswith(only):
+            continue
+        obj = make()
         export(obj, name)
         obj.location = at
-    return [o.name for o, _, _ in items]
+        names.append(name)
+    return names
 
 
 if __name__ == "__main__":

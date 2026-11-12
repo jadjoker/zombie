@@ -263,6 +263,7 @@ public partial class DockHouse : Node3D
 
 		Box( "Table", new Vector3( hx - 60f, o.Y + 50f, deck + 24f ), new Vector3( 50f, 34f, 4f ), WoodPale, solid: true );
 		Box( "Crate", new Vector3( hx - 70f, o.Y - 60f, deck + 16f ), new Vector3( 30f, 30f, 30f ), WoodDark, solid: true );
+		BuildRadio( new Vector3( hx - 60f, o.Y + 50f, deck + 26f ) );
 		// The modelled pier and house (Tools/blender/dock_house.py, same layout): the boxes stay as invisible colliders.
 		if ( Prop( root, "dock_house", U.Sbox( o.X, o.Y, deck ) ) is { } house )
 		{
@@ -362,6 +363,29 @@ public partial class DockHouse : Node3D
 	/// <summary> Testing aid: dive from just past the board. </summary>
 	/// <summary> Testing aid: count the dive as done, so going below the surface doesn't start one. </summary>
 	public void SkipDive() => dived = true;
+
+	/// <summary>
+	/// The old-timey radio on the hut's table (issue #42). It starts the music, which then carries on through the dive
+	/// and the rest of the game (Radio). Its dial glows warm while it plays.
+	/// </summary>
+	void BuildRadio( Vector3 tableTop )
+	{
+		if ( Prop( root, "radio", U.Sbox( tableTop ) ) is { } radio )
+		{
+			radio.Name = "Radio Prop";
+			radio.RotationDegrees = new Vector3( 0f, 90f, 0f );   // the front toward the middle of the hut
+			radio.Scale = Vector3.One * 1.3f;
+			var glow = new StandardMaterial3D { AlbedoColor = new Color( 1f, 0.72f, 0.28f ), EmissionEnabled = true, Emission = new Color( 1f, 0.72f, 0.28f ), EmissionEnergyMultiplier = 2.2f };
+			foreach ( var mesh in radio.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+					if ( mesh.Mesh.SurfaceGetMaterial( i )?.ResourceName == "RadioGlow" ) mesh.SetSurfaceOverrideMaterial( i, glow );
+			var light = new OmniLight3D { LightColor = new Color( 1f, 0.78f, 0.4f ), LightEnergy = 0.25f, OmniRange = 1.6f, ShadowEnabled = false, Position = new Vector3( 0f, 0.1f, -0.12f ) };
+			radio.AddChild( light );
+			Radio.Spot = radio.GlobalPosition;
+		}
+		// Under a scripted test it stays silent unless the test starts it.
+		if ( !AutoTest.Requested ) Radio.Instance?.Start();
+	}
 
 	TimeUntil nextLap = 1.5f, nextGull = 12f, secondGull = 99999f;
 

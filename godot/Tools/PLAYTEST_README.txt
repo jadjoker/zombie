@@ -37,7 +37,10 @@ CONTROLLER (the game switches by itself to whichever you touched last: pad, or k
   Third person        D-pad up
   Command ally        D-pad down
   Pause               Start (B closes the menu); sticks and D-pad move through it, A picks
-  Settings            Stick sensitivity and vibration are in the pause menu
+  Settings            Stick sensitivity, aim assist and vibration are in the pause menu
+  Aim assist          On by default with a pad: the stick slows over an enemy and the aim is drawn toward it
+  Dev menu            D-pad or left stick to move, A to press, bumpers change tab, right stick scrolls, B closes;
+                      after Spawn, right trigger places the enemy and B cancels
 
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

@@ -59,6 +59,7 @@ public partial class PauseMenu : CanvasLayer
 		vibration.Text = GameSettings.Vibration ? "Controller vibration: On" : "Controller vibration: Off";
 		vibration.Toggled += on => { GameSettings.Vibration = on; vibration.Text = on ? "Controller vibration: On" : "Controller vibration: Off"; if ( on ) Controls.Rumble( 0.5f ); };
 		column.AddChild( vibration );
+		column.AddChild( Slider( "Aim assist", 0f, 1f, 0.05f, () => GameSettings.AimAssist, v => GameSettings.AimAssist = v, v => v <= 0f ? "Off" : $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Volume", 0f, 1f, 0.05f, () => GameSettings.Volume, v => GameSettings.Volume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Field of view", GameSettings.MinFov, GameSettings.MaxFov, 1f, () => GameSettings.Fov, v => GameSettings.Fov = v, v => $"{v:0}" ) );
 		column.AddChild( Slider( "Gun up and down", GameSettings.MinGunHeight, GameSettings.MaxGunHeight, 0.5f, () => GameSettings.GunHeight, v => GameSettings.GunHeight = v, v => v == 0f ? "Default" : $"{v:+0.0;-0.0}" ) );
@@ -130,7 +131,7 @@ public partial class PauseMenu : CanvasLayer
 	public override void _Input( InputEvent e )
 	{
 		// Esc or the pad's Start pauses and resumes; the pad's B (cancel) also closes it.
-		if ( !(e.IsActionPressed( "pause" ) || (IsOpen && e.IsActionPressed( "ui_cancel" ))) ) return;
+		if ( !(e.IsActionPressed( "pause" ) || ((IsOpen || DevMenu.IsOpen) && e.IsActionPressed( "ui_cancel" ))) ) return;
 		GetViewport().SetInputAsHandled();
 		// Esc backs out of the dev menu first.
 		if ( DevMenu.IsOpen && !IsOpen ) { (GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu)?.SetOpen( false ); return; }

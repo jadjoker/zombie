@@ -19,7 +19,8 @@ public partial class DevMenu : CanvasLayer
 	LineEdit searchEntry;
 	HBoxContainer tabRow;
 	VBoxContainer body;
-	Label stats, hintText;
+	Label stats, hintText, hintLabel;
+	ScrollContainer scroll;
 	int lastHash;
 	TimeSince rebuilt;
 	string shownState = "";
@@ -58,6 +59,7 @@ public partial class DevMenu : CanvasLayer
 		ProcessMode = ProcessModeEnum.Always;
 		DevFlags.Reset();
 		Engine.TimeScale = 1f;
+		Controls.Changed += OnSchemeChanged;
 
 		root = new Control { MouseFilter = Control.MouseFilterEnum.Ignore };
 		root.SetAnchorsPreset( Control.LayoutPreset.FullRect );
@@ -101,11 +103,12 @@ public partial class DevMenu : CanvasLayer
 		title.AddThemeFontSizeOverride( "font_size", 26 );
 		title.AddThemeColorOverride( "font_color", new Color( "5fffe0" ) );
 		header.AddChild( title );
-		searchEntry = new LineEdit { PlaceholderText = "Search... (god, boss, skin, time)", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ClearButtonEnabled = true };
+		// Clicked into with a mouse; a pad has no keyboard to type with, so the stick never lands in it.
+		searchEntry = new LineEdit { PlaceholderText = "Search... (god, boss, skin, time)", SizeFlagsHorizontal = Control.SizeFlags.ExpandFill, ClearButtonEnabled = true, FocusMode = Control.FocusModeEnum.Click };
 		searchEntry.AddThemeFontSizeOverride( "font_size", 18 );
 		searchEntry.TextChanged += t => { search = t; Rebuild(); };
 		header.AddChild( searchEntry );
-		var hintLabel = new Label { Text = "Esc to close" };
+		hintLabel = new Label { Text = "Esc to close" };
 		hintLabel.AddThemeColorOverride( "font_color", new Color( 1, 1, 1, 0.5f ) );
 		header.AddChild( hintLabel );
 		header.AddChild( Button( "X", false, () => SetOpen( false ) ) );
@@ -114,7 +117,7 @@ public partial class DevMenu : CanvasLayer
 		tabRow.AddThemeConstantOverride( "separation", 6 );
 		column.AddChild( tabRow );
 
-		var scroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled };
+		scroll = new ScrollContainer { SizeFlagsVertical = Control.SizeFlags.ExpandFill, HorizontalScrollMode = ScrollContainer.ScrollMode.Disabled, FollowFocus = true };
 		column.AddChild( scroll );
 		body = new VBoxContainer { SizeFlagsHorizontal = Control.SizeFlags.ExpandFill };
 		body.AddThemeConstantOverride( "separation", 14 );
@@ -129,6 +132,7 @@ public partial class DevMenu : CanvasLayer
 
 	public override void _ExitTree()
 	{
+		Controls.Changed -= OnSchemeChanged;
 		if ( IsOpen ) GetTree().Paused = false;
 		IsOpen = false;
 		DevFlags.Reset();
@@ -136,14 +140,42 @@ public partial class DevMenu : CanvasLayer
 		if ( placeMarker is not null && IsInstanceValid( placeMarker ) ) placeMarker.QueueFree();
 	}
 
+	void UpdateHint()
+	{
+		if ( hintLabel is null ) return;
+		hintLabel.Text = Controls.IsController ? $"{Controls.Label( "pause" )} or B to close   LB RB: tabs   right stick: scroll" : "Esc to close";
+	}
+
+	void OnSchemeChanged( Scheme scheme )
+	{
+		UpdateHint();
+		if ( open && scheme == Scheme.Controller && GetViewport().GuiGetFocusOwner() is not Godot.Button ) FocusFirst();
+	}
+
+	public override void _Input( InputEvent e )
+	{
+		// The bumpers flip between the tabs.
+		if ( !open || e is not InputEventJoypadButton { Pressed: true } pad ) return;
+		var step = pad.ButtonIndex == JoyButton.RightShoulder ? 1 : pad.ButtonIndex == JoyButton.LeftShoulder ? -1 : 0;
+		if ( step == 0 ) return;
+		GetViewport().SetInputAsHandled();
+		var index = Math.Max( 0, Array.IndexOf( Tabs, tab ) );
+		tab = Tabs[(index + step + Tabs.Length) % Tabs.Length];
+		search = "";
+		searchEntry.Text = "";
+		Rebuild();
+		CallDeferred( MethodName.FocusFirst );
+	}
+
 	public override void _UnhandledInput( InputEvent e )
 	{
 		if ( e is InputEventMouseMotion motion && DevFlags.FreeCam && !open && Input.MouseMode == Input.MouseModeEnum.Captured ) freeLook += motion.Relative;
 		// Not the click that pressed Spawn: that same press reaches here once the menu has closed.
-		if ( DevFlags.Placing && !open && Engine.GetProcessFrames() > placeStarted + 1 && e is InputEventMouseButton { Pressed: true } mb )
+		if ( DevFlags.Placing && !open && Engine.GetProcessFrames() > placeStarted + 1 )
 		{
-			if ( mb.ButtonIndex == MouseButton.Right ) DevFlags.Placing = false;
-			else if ( mb.ButtonIndex == MouseButton.Left ) PlaceAtCrosshair();
+			// Left click or the right trigger places it; right click or B cancels.
+			if ( e is InputEventMouseButton { Pressed: true, ButtonIndex: MouseButton.Right } || e.IsActionPressed( "ui_cancel" ) ) DevFlags.Placing = false;
+			else if ( e.IsActionPressed( "attack1" ) ) PlaceAtCrosshair();
 		}
 	}
 
@@ -151,6 +183,9 @@ public partial class DevMenu : CanvasLayer
 	{
 		if ( !Allowed ) return;
 		var dt = (float)(delta / MathF.Max( 0.0001f, (float)Engine.TimeScale ));
+		// The right stick scrolls the menu.
+		if ( open && Controls.IsController && Input.GetAxis( "look_up", "look_down" ) is var scrolling && MathF.Abs( scrolling ) > 0.05f )
+			scroll.ScrollVertical += (int)(scrolling * 1100f * (float)delta);
 		UpdateNoclip( dt );
 		UpdateFreeCam( dt );
 		UpdatePlacing();
@@ -164,7 +199,7 @@ public partial class DevMenu : CanvasLayer
 			var s = new Vector3( -p.Z, -p.X, p.Y ) / U.In;   // s&box units, x forward, z up
 			stats.Text = $"{Engine.GetFramesPerSecond()} fps ({1000.0 / Math.Max( 1, Engine.GetFramesPerSecond() ):0.0} ms)   enemies {CreatureRegistry.Alive().Count()}   time {Engine.TimeScale}x   {s.X:0} {s.Y:0} {s.Z:0}";
 		}
-		hintText.Text = !open && DevFlags.Placing ? $"Placing {placeKind}: left click to place it where you are aiming, right click to cancel"
+		hintText.Text = !open && DevFlags.Placing ? $"Placing {placeKind}: {(Controls.IsController ? "right trigger" : "left click")} to place it where you are aiming, {(Controls.IsController ? "B" : "right click")} to cancel"
 			: !open && DevFlags.FreeCam && !DevFlags.HideHud ? "Free camera: WASD, Space up, Ctrl down, Shift fast (turn it off in the menu)" : "";
 
 		// While open, redraw only when something it shows changed (checked four times a second). Rebuilding
@@ -217,7 +252,7 @@ public partial class DevMenu : CanvasLayer
 				controller.UseLookControls = !DevFlags.FreeCam;
 			}
 		}
-		if ( open ) Rebuild();
+		if ( open ) { Rebuild(); UpdateHint(); if ( Controls.IsController ) CallDeferred( MethodName.FocusFirst ); }
 		else searchEntry.ReleaseFocus();
 	}
 
@@ -235,12 +270,14 @@ public partial class DevMenu : CanvasLayer
 
 	static Button Button( string text, bool? on, Action click )
 	{
-		var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.None, ActionMode = BaseButton.ActionModeEnum.Press };
+		var b = new Button { Text = text, FocusMode = Control.FocusModeEnum.All, ActionMode = BaseButton.ActionModeEnum.Press };
 		b.Pressed += () => Sfx.Play2D( "ui_click", 0.5f );
 		b.AddThemeFontSizeOverride( "font_size", 16 );
 		var bg = on switch { true => new Color( "1f8f7a" ), false => new Color( "2a2f3a" ), null => new Color( "343b4a" ) };
 		foreach ( var state in new[] { "normal", "hover", "pressed" } )
 			b.AddThemeStyleboxOverride( state, new StyleBoxFlat { BgColor = state == "hover" ? bg.Lightened( 0.15f ) : bg, CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6, CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6, ContentMarginLeft = 12, ContentMarginRight = 12, ContentMarginTop = 6, ContentMarginBottom = 6 } );
+		// The button the pad is on: a bright outline.
+		b.AddThemeStyleboxOverride( "focus", new StyleBoxFlat { BgColor = bg.Lightened( 0.1f ), BorderColor = new Color( "5fffe0" ), BorderWidthBottom = 3, BorderWidthTop = 3, BorderWidthLeft = 3, BorderWidthRight = 3, CornerRadiusBottomLeft = 6, CornerRadiusBottomRight = 6, CornerRadiusTopLeft = 6, CornerRadiusTopRight = 6, ContentMarginLeft = 12, ContentMarginRight = 12, ContentMarginTop = 6, ContentMarginBottom = 6 } );
 		b.AddThemeColorOverride( "font_color", on == false ? new Color( 1, 1, 1, 0.6f ) : Colors.White );
 		b.Pressed += () => click();
 		return b;
@@ -291,7 +328,44 @@ public partial class DevMenu : CanvasLayer
 	/// <summary> Testing aid: the first chip whose text starts with this. </summary>
 	public Button FindChip( string text ) => body.FindChildren( "*", "Button", true, false ).OfType<Button>().FirstOrDefault( b => b.Text.StartsWith( text ) );
 
+	IEnumerable<Button> Focusables() => tabRow.GetChildren().OfType<Button>().Concat( body.FindChildren( "*", "Button", true, false ).OfType<Button>() ).Where( b => !b.IsQueuedForDeletion() );
+
+	/// <summary> Which button the pad is on (it comes back to the same one when the chips are rebuilt). </summary>
+	public string FocusedChip => GetViewport().GuiGetFocusOwner() is Godot.Button b && (tabRow.IsAncestorOf( b ) || body.IsAncestorOf( b )) ? b.Text : null;
+	public string Tab => tab;
+	/// <summary> For tests: how far down the menu is scrolled. </summary>
+	public int ScrollPosition => scroll.ScrollVertical;
+
 	void Rebuild()
+	{
+		string rememberedText = null;
+		var rememberedIndex = -1;
+		if ( open && GetViewport().GuiGetFocusOwner() is Godot.Button focused && (tabRow.IsAncestorOf( focused ) || body.IsAncestorOf( focused )) )
+		{
+			rememberedText = focused.Text;
+			rememberedIndex = Focusables().ToList().IndexOf( focused );
+		}
+		RebuildChips();
+		if ( rememberedText is not null ) CallDeferred( MethodName.RestoreFocus, rememberedText, rememberedIndex );
+	}
+
+	void RestoreFocus( string text, int index )
+	{
+		var all = Focusables().ToList();
+		var same = all.Where( b => b.Text == text ).ToList();
+		var pick = same.Count == 0 ? (all.Count == 0 ? null : all[Math.Clamp( index, 0, all.Count - 1 )]) : (index >= 0 && index < all.Count && all[index].Text == text ? all[index] : same[0]);
+		pick?.GrabFocus();
+	}
+
+	/// <summary> A pad opened the menu: start on the first chip so the stick has somewhere to be. </summary>
+	void FocusFirst()
+	{
+		if ( !open ) return;
+		var first = body.FindChildren( "*", "Button", true, false ).OfType<Button>().FirstOrDefault( b => !b.IsQueuedForDeletion() ) ?? Focusables().FirstOrDefault();
+		first?.GrabFocus();
+	}
+
+	void RebuildChips()
 	{
 		Rebuilds++;
 		shownState = StateKey();

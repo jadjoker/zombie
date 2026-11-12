@@ -56,6 +56,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
 		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
 		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
+		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -2141,6 +2142,197 @@ public partial class AutoTest : Node
 		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.3f );
 		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.3f );
 		Check( !PauseMenu.IsOpen, "Start did not resume" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Aim assist, and the dev menu driven entirely by a pad (focus, bumpers, scrolling, A, B, placing an enemy with the trigger). </summary>
+	async Task PadMenusTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var director = WaveDirector.Current;
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var weapon = inventory.Weapons[0];
+		inventory.Select( weapon, force: true );
+		void Axis( JoyAxis axis, float value ) => Input.ParseInputEvent( new InputEventJoypadMotion { Axis = axis, AxisValue = value } );
+		void Pad( JoyButton button, bool down ) => Input.ParseInputEvent( new InputEventJoypadButton { ButtonIndex = button, Pressed = down } );
+		async Task Tap( JoyButton button ) { Pad( button, true ); await Wait( 0.12f ); Pad( button, false ); await Wait( 0.25f ); }
+
+		// ---- aim assist ----
+		var ground = Nav.Closest( player, new Vector3( 2f, 0f, 2f ) );
+		player.GlobalPosition = ground + Vector3.Up * 0.1f;
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		await Wait( 0.6f );
+		var forward = -player.Camera.GlobalBasis.Z.Flat().Normalized();
+		var crab = director.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, ground + forward * 14f ), ground ) as JunkCrab;
+		Check( crab is not null, "no crab to aim at" );
+		await Wait( 0.6f );
+		Controls.Force( Scheme.Controller );
+		GameSettings.AimAssist = 0.7f;
+		float AngleTo( Vector3 point ) => MathX.Deg( (-player.Camera.GlobalBasis.Z).AngleTo( (point - player.Camera.GlobalPosition).Normalized() ) );
+		var mark = crab.GlobalPosition + Vector3.Up * 0.35f;
+		void AimAtCrab( float yawOff )
+		{
+			var look = (mark - player.Camera.GlobalPosition).Normalized();
+			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ) + yawOff, 0f );
+		}
+
+		// What it decides: near the crab it slows and pulls; off it, nothing; on the keyboard or with the setting off, nothing.
+		AimAtCrab( 0.8f );
+		await Wait( 0.2f );
+		var near = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, true, false, 0f );
+		GD.Print( $"[autotest] aim: near the crab slow {near.Slow:0.00}, pull {near.Pull.Length() * 1000f:0} milli-degrees, closeness {near.Closeness:0.00}" );
+		Check( near.Slow < 0.9f && near.Pull.Length() > 0f && near.Closeness > 0.2f, "aim assist does nothing near an enemy" );
+		var still = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, false, false, 0f );
+		Check( still.Slow < 0.9f && still.Pull == Vector2.Zero, "aim assist pulled with no stick or trigger" );
+		var firing = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, false, true, 0f );
+		Check( firing.Pull.Length() > 0f, "aim assist does not help while firing" );
+		AimAtCrab( 30f );
+		await Wait( 0.2f );
+		var far = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, true, false, 0f );
+		Check( far.Slow == 1f && far.Pull == Vector2.Zero, "aim assist reached a long way off the target" );
+		AimAtCrab( 0.8f );
+		await Wait( 0.2f );
+		Controls.Force( Scheme.KeyboardMouse );
+		var keyboard = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, true, false, 0f );
+		Check( keyboard.Slow == 1f && keyboard.Pull == Vector2.Zero, "aim assist works on a keyboard and mouse" );
+		Controls.Force( Scheme.Controller );
+		GameSettings.AimAssist = 0f;
+		var off = AimAssist.Evaluate( player, player.EyeAngles, 0.016f, true, false, 0f );
+		Check( off.Slow == 1f && off.Pull == Vector2.Zero, "aim assist ignored its off setting" );
+		GameSettings.AimAssist = 0.7f;
+
+		// What it does to the aim: a gentle stick push away from the crab still ends up nearer it with assist, and further without.
+		async Task<float> PushAway( float strength )
+		{
+			GameSettings.AimAssist = strength;
+			AimAtCrab( 2f );
+			await Wait( 0.15f );   // the camera follows the eyes a frame later
+			return AngleTo( mark );
+		}
+		var before1 = await PushAway( 0.7f );
+		Axis( JoyAxis.RightX, -0.25f );   // left, which is away from where the crab is (it is to the right of the aim)
+		await Wait( 0.7f );
+		Axis( JoyAxis.RightX, 0f );
+		await Wait( 0.15f );
+		var withAssist = AngleTo( mark );
+		var before2 = await PushAway( 0f );
+		Axis( JoyAxis.RightX, -0.25f );
+		await Wait( 0.7f );
+		Axis( JoyAxis.RightX, 0f );
+		await Wait( 0.15f );
+		var without = AngleTo( mark );
+		GD.Print( $"[autotest] aim: a stick push away left the crab {withAssist:0.0} deg off with assist (from {before1:0.0}) and {without:0.0} without (from {before2:0.0})" );
+		Check( withAssist - before1 < without - before2 - 1.5f, "aim assist did not hold the aim on the crab against a stick push" );
+		// Across the crab at full speed it slows: less turn in the same time.
+		float Sweep( float strength )
+		{
+			GameSettings.AimAssist = strength;
+			AimAtCrab( 0f );
+			return player.EyeAngles.Yaw;
+		}
+		var yaw0 = Sweep( 0.7f );
+		await Wait( 0.1f );
+		Axis( JoyAxis.RightX, 1f );
+		await Wait( 0.25f );
+		Axis( JoyAxis.RightX, 0f );
+		var slowed = MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - yaw0, -180f, 180f ) );
+		yaw0 = Sweep( 0f );
+		await Wait( 0.1f );
+		Axis( JoyAxis.RightX, 1f );
+		await Wait( 0.25f );
+		Axis( JoyAxis.RightX, 0f );
+		var free = MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - yaw0, -180f, 180f ) );
+		GD.Print( $"[autotest] aim: a full sweep over the crab turned {slowed:0.0} deg with assist and {free:0.0} without" );
+		Check( slowed < free - 2f, "aim assist does not slow the stick across a target" );
+		GameSettings.AimAssist = 0.7f;
+		crab.QueueFree();
+		await Wait( 0.3f );
+
+		// ---- the dev menu by pad ----
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		await Wait( 0.3f );
+		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.4f );
+		Check( PauseMenu.IsOpen, "Start did not pause" );
+		for ( var i = 0; i < 16 && GetViewport().GuiGetFocusOwner()?.Name != "Dev menu"; i++ ) await Tap( JoyButton.DpadDown );
+		Check( GetViewport().GuiGetFocusOwner()?.Name == "Dev menu", "the D-pad could not reach the Dev menu button" );
+		await Tap( JoyButton.A );
+		var menu = GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu;
+		await Wait( 0.4f );
+		var first = menu.FocusedChip;
+		GD.Print( $"[autotest] menu: A on Dev menu opened it {DevMenu.IsOpen}; the pad is on {first}; pause menu still open {PauseMenu.IsOpen}" );
+		Check( DevMenu.IsOpen && !PauseMenu.IsOpen, "A on the Dev menu button did not open the dev menu" );
+		Check( first is not null, "the dev menu did not put the pad on a button" );
+		Check( GetTree().Paused, "the game ran behind the dev menu" );
+
+		// Move, press, and the pad stays on the button after the chips are rebuilt.
+		await Tap( JoyButton.DpadDown );
+		var second = menu.FocusedChip;
+		await Tap( JoyButton.DpadUp );
+		Check( second is not null && second != first, "the D-pad did not move through the dev menu" );
+		var paused = director.SpawningPaused;
+		await Tap( JoyButton.A );
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] menu: A on {first} flipped wave spawning paused {paused} -> {director.SpawningPaused}; the pad is on {menu.FocusedChip}" );
+		Check( director.SpawningPaused != paused, "A on a chip did not press it" );
+		Check( menu.FocusedChip is { } kept && kept.StartsWith( "Spawning" ), "the pad lost its place when the chips rebuilt" );
+		await Tap( JoyButton.A );
+
+		// Bumpers change tab; the right stick scrolls.
+		var tab0 = menu.Tab;
+		await Tap( JoyButton.RightShoulder );
+		var tab1 = menu.Tab;
+		await Tap( JoyButton.LeftShoulder );
+		GD.Print( $"[autotest] menu: right bumper went from {tab0} to {tab1}, left bumper back to {menu.Tab}" );
+		Check( tab1 != tab0 && menu.Tab == tab0, "the bumpers do not change tabs" );
+		Check( menu.FocusedChip is not null, "no button focused after changing tab" );
+		var scrolled0 = menu.ScrollPosition;
+		Axis( JoyAxis.RightY, 1f );
+		await Wait( 0.5f );
+		Axis( JoyAxis.RightY, 0f );
+		GD.Print( $"[autotest] menu: the right stick scrolled the menu from {scrolled0} to {menu.ScrollPosition}" );
+		Check( menu.ScrollPosition > scrolled0, "the right stick does not scroll the dev menu" );
+
+		// B closes it and the game carries on.
+		await Tap( JoyButton.B );
+		Check( !DevMenu.IsOpen && !PauseMenu.IsOpen && !GetTree().Paused, "B did not close the dev menu" );
+
+		// Spawn an enemy: open it, press Spawn on the crab's row, aim, pull the right trigger.
+		menu.SetOpen( true );
+		await Wait( 0.5f );
+		var crabRow = menu.FindChildren( "*", "HFlowContainer", true, false ).OfType<HFlowContainer>().FirstOrDefault( r => r.GetChildren().OfType<Label>().Any( l => l.Text == "Junk Crab" ) );
+		var spawn = crabRow?.GetChildren().OfType<Godot.Button>().FirstOrDefault( b => b.Text == "Spawn" );
+		Check( spawn is not null, "no Spawn button on the Junk Crab row" );
+		spawn?.GrabFocus();
+		await Wait( 0.2f );
+		await Tap( JoyButton.A );
+		GD.Print( $"[autotest] menu: Spawn on the crab row closed the menu {!DevMenu.IsOpen}, placing {DevFlags.Placing}" );
+		Check( !DevMenu.IsOpen && DevFlags.Placing, "Spawn did not leave the game ready to place" );
+		await Wait( 0.4f );
+		player.EyeAngles = new Angles( 25f, 0f, 0f );
+		await Wait( 0.3f );
+		var crabs = JunkCrab.All.Count;
+		Axis( JoyAxis.TriggerRight, 1f );
+		await Wait( 0.15f );
+		Axis( JoyAxis.TriggerRight, 0f );
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] menu: the right trigger placed a crab: {crabs} -> {JunkCrab.All.Count}, still placing {DevFlags.Placing}" );
+		Check( JunkCrab.All.Count == crabs + 1 && !DevFlags.Placing, "the right trigger did not place the enemy" );
+		// And B backs out of placing.
+		menu.SetOpen( true );
+		await Wait( 0.4f );
+		spawn = menu.FindChildren( "*", "HFlowContainer", true, false ).OfType<HFlowContainer>().First( r => r.GetChildren().OfType<Label>().Any( l => l.Text == "Junk Crab" ) ).GetChildren().OfType<Godot.Button>().First( b => b.Text == "Spawn" );
+		spawn.GrabFocus();
+		await Wait( 0.2f );
+		await Tap( JoyButton.A );
+		Check( DevFlags.Placing, "could not start placing a second time" );
+		await Wait( 0.3f );
+		await Tap( JoyButton.B );
+		Check( !DevFlags.Placing && JunkCrab.All.Count == crabs + 1, "B did not cancel placing" );
+		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

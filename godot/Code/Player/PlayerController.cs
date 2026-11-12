@@ -181,14 +181,20 @@ public partial class PlayerController : CharacterBody3D
 			e.Pitch += lookDelta.Y * LookSensitivity;
 			// The right stick: a curve so small tilts are fine and a full tilt turns fast, slowed along with the mouse when aiming.
 			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down" );
+			// Aim assist (controller only): the stick slows near an enemy and the aim is drawn toward it.
+			var assist = AimAssist.None;
+			if ( Controls.IsController && GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { } held )
+				assist = AimAssist.Evaluate( this, e, dt, stick != Vector2.Zero, Input.IsActionPressed( "attack1" ), held.AimAmount );
 			if ( stick != Vector2.Zero )
 			{
 				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.8f );
 				var zoomScale = GameSettings.LookSensitivity > 0f ? LookSensitivity / GameSettings.LookSensitivity : 1f;
-				var speed = 210f * GameSettings.StickSensitivity * zoomScale;   // degrees a second at full tilt
+				var speed = 210f * GameSettings.StickSensitivity * zoomScale * assist.Slow;   // degrees a second at full tilt
 				e.Yaw -= shaped.X * speed * dt;
 				e.Pitch += shaped.Y * speed * dt;
 			}
+			e.Yaw += assist.Pull.X;
+			e.Pitch += assist.Pull.Y;
 			e.Pitch = MathX.Clamp( e.Pitch, -PitchClamp, PitchClamp );
 			e.Roll = 0f;
 			EyeAngles = e;

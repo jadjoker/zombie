@@ -21,6 +21,8 @@ public static class GameSettings
 	/// <summary> Controller: right stick look speed (1 is the default), and whether the pad rumbles. </summary>
 	public static float StickSensitivity = 1f;
 	public static bool Vibration = true;
+	/// <summary> How strong the controller's aim assist is, 0 (off) to 1. </summary>
+	public static float AimAssist = 0.7f;
 	public const float MinStick = 0.3f, MaxStick = 3f;
 	/// <summary> How far out from the body the gun is held in first person, in inches from the usual spot (issue #31). </summary>
 	public static float GunDistance;
@@ -54,6 +56,7 @@ public static class GameSettings
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
 		StickSensitivity = MathX.Clamp( (float)file.GetValue( "controller", "stick_sensitivity", 1f ), MinStick, MaxStick );
 		Vibration = (bool)file.GetValue( "controller", "vibration", true );
+		AimAssist = MathX.Clamp( (float)file.GetValue( "controller", "aim_assist", 0.7f ), 0f, 1f );
 		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
 		GunHeight = MathX.Clamp( (float)file.GetValue( "video", "gun_height", 0f ), MinGunHeight, MaxGunHeight );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
@@ -69,6 +72,7 @@ public static class GameSettings
 		file.SetValue( "video", "fullscreen", Fullscreen );
 		file.SetValue( "controller", "stick_sensitivity", StickSensitivity );
 		file.SetValue( "controller", "vibration", Vibration );
+		file.SetValue( "controller", "aim_assist", AimAssist );
 		file.SetValue( "video", "gun_distance", GunDistance );
 		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );

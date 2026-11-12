@@ -394,7 +394,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		var onDock = Sea.SurfaceY is float surface && controller.GlobalPosition.Y > surface - 0.5f;
 		var volume = MathX.Clamp( speed / 470f, 0.35f, 0.8f );
 		if ( onDock ) Sfx.Play( Sfx.Pick( "footstep_dock" ), controller.GlobalPosition, volume, Rng.Float( 0.92f, 1.08f ) );
-		else Sfx.Play( Sfx.Pick( "footstep_floor" ), controller.GlobalPosition, volume * 0.9f, Rng.Float( 0.62f, 0.76f ) );
+		else Sfx.Play( Sfx.Pick( "footstep_floor" ), controller.GlobalPosition, volume * 1.2f, Rng.Float( 0.62f, 0.76f ), Sfx.UnderwaterBus );   // heard through the water
 	}
 
 	public void TestPressJump() => testJump = true;

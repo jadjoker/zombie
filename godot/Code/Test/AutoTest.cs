@@ -1931,18 +1931,42 @@ public partial class AutoTest : Node
 		await Wait( 1.2f );
 		Check( !director.FloatRound, "wave 5 was still a malfunction round" );
 
-		// The slide is a dive: capture it in third person, with the propellers.
+		// The slide: a comic head-first dive. It falls into it, ends up on its belly heading the way it moves, the gun
+		// still points where the player aims, and it springs back up afterwards.
+		var rig = player.GetChildren().OfType<PlayerRig>().First();
 		player.ThirdPerson = true;
 		player.GlobalPosition = Nav.Closest( player, new Vector3( -4f, 0f, 4f ) ) + Vector3.Up * 0.1f;
-		await Wait( 0.5f );
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		await Wait( 0.7f );
+		var standingAim = -player.EyeAngles.ToBasis().Z;
+		Check( rig.GunForward() is { } standing && standing.Dot( standingAim ) > 0.8f, "the gun does not point where the player aims, even standing" );
 		player.Velocity = -player.GlobalBasis.Z * 7f;
 		movement2.ForceCrouch = true;
+		await Wait( 0.12f );
+		var falling = rig.DiveAmount;
+		await Shot( "slide_fall" );
+		await Wait( 0.5f );
+		var heading = player.Velocity.Flat().Normalized();
+		var up = rig.BodyUp;
+		var forwardGun = rig.GunForward();
+		var aim = -player.EyeAngles.ToBasis().Z;
+		GD.Print( $"[autotest] slide: dive {falling:0.00} a moment in, {rig.DiveAmount:0.00} later; head level {MathF.Abs( up.Y ):0.00}, head along travel {up.Dot( heading ):0.00}, gun along aim {forwardGun?.Dot( aim ):0.00}" );
+		Check( falling > 0.02f && falling < 0.8f, "the slide does not lean and fall into the dive" );
+		Check( rig.DiveAmount > 0.85f && MathF.Abs( up.Y ) < 0.4f && up.Dot( heading ) > 0.75f, "the slide is not head first along the way it moves" );
+		Check( forwardGun is { } g && g.Dot( aim ) > 0.75f, "the gun does not point where the player is aiming while sliding" );
+		await Shot( "slide_headfirst" );
+		// The camera swings round to the side while the body keeps going: the gun follows the aim.
+		player.EyeAngles = new Angles( 4f, 65f, 0f );
 		await Wait( 0.35f );
-		await Shot( "slide_feet_first" );
-		player.EyeAngles = new Angles( 8f, player.EyeAngles.Yaw + 140f, 0f );   // from the front, to see the propellers
-		await Wait( 0.15f );
-		await Shot( "slide_feet_first_front" );
+		aim = -player.EyeAngles.ToBasis().Z;
+		forwardGun = rig.GunForward();
+		GD.Print( $"[autotest] slide: aiming 65 degrees off the way it slides, gun along aim {forwardGun?.Dot( aim ):0.00}" );
+		Check( forwardGun is { } g2 && g2.Dot( aim ) > 0.6f, "the gun does not follow the aim sideways while sliding" );
+		await Shot( "slide_headfirst_side" );
 		movement2.ForceCrouch = false;
+		await Wait( 0.9f );
+		GD.Print( $"[autotest] slide: back up, dive {rig.DiveAmount:0.00}" );
+		Check( rig.DiveAmount < 0.1f && !movement2.IsSliding, "the robot did not spring back up after the slide" );
 		player.ThirdPerson = false;
 
 		// The gun's own filter: open air, then underwater.

@@ -219,7 +219,7 @@ public partial class PlayerWeapon : Node
 	void Shoot()
 	{
 		TimeSinceShot = 0f;
-		Sfx.Play2D( $"{ModelName}_shoot", bus: Sfx.GunBus );
+		Sfx.Play2D( $"{ModelName}_shoot", 1.1f, bus: Sfx.GunBus );   // 10% louder (playtest 11/12)
 		Controls.Rumble( ModelName == "shotgun" ? 0.55f : 0.22f );
 		Ammo--;
 		var camera = controller.Camera;

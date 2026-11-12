@@ -52,7 +52,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   the buy stations. Dev menu (World, waves): Kraken next wave, Wave 7; (Enemies, Wave spawning): Kraken waves.
 - Playtest 11/11 (issue #41): the suit malfunction round (`WaveDirector.SuitMalfunctionEvery`, every 4 rounds, you
   float), the Kraken scales 1.2x per visit (health and dome), upgrades cap at 10 (health keeps healing past it),
-  slide is feet first on the back with the propellers pulling (`PlayerRig`, `FoldedSlide` is the old pose), dock waves and gulls (`DockHouse.DockAmbience`),
+  slide is a comic head-first dive (lean, fall, bounce, propellers after the landing; `PlayerRig`, `FoldedSlide` is the old pose) with the gun held on the real aim, dock waves and gulls (`DockHouse.DockAmbience`),
   the gun's own bus (`Sfx.GunBus`) filtered underwater. Test: `--round11` (needs a window).
 - Controller support (issue #33): `Core/Controls.cs` adds a pad binding to every action at start, tracks the device last
   used (a pad, or keys and mouse) and switches between them, names buttons for the prompts (`Controls.Label`, Xbox or

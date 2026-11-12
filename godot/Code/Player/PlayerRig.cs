@@ -40,9 +40,9 @@ public partial class PlayerRig : Node
 	RobotRagdoll ragdoll;
 	string appliedSkin;
 
-	float slidePropTime, slideHeading;
+	float slidePropTime, slideHeading, diveTime, diveAmount;
 	bool wasSliding;
-	/// <summary> The slide is feet first now (playtest 11/11): on your back, the propellers out in front spinning backwards to pull you along. The old folded-leg sit is switched off. </summary>
+	/// <summary> The slide is a comic head-first dive (playtest 11/12): it leans forward, falls into it, bounces and the foot propellers propel it. The old folded-leg sit is switched off. </summary>
 	const bool FoldedSlide = false;
 	float slideBlend, slideHold, swimBlend, swimPhase, chargeBlend, surgeBlend, jetBlend, propSpin, flyingCam;
 	float swimPitch, swimRoll;
@@ -169,6 +169,19 @@ public partial class PlayerRig : Node
 	// ---- every frame ----
 
 	public bool ShowsBody => controller.ThirdPerson;
+
+	/// <summary> For tests: how far into the slide's dive it is (0 upright, 1 flat on its belly). </summary>
+	public float DiveAmount => diveAmount;
+	/// <summary> For tests: which way the body's head points. </summary>
+	public Vector3 BodyUp => rigRoot.GlobalBasis.Orthonormalized().Y;
+	/// <summary> For tests: the way the gun in the robot's hands is pointing (its barrel), when it is shown. </summary>
+	public Vector3? GunForward()
+	{
+		foreach ( var (_, gun) in worldGuns )
+			if ( IsInstanceValid( gun.Root ) && gun.Root.Visible && gun.Root.FindChild( "Muzzle", true, false ) is Node3D muzzle )
+				return muzzle.GlobalBasis.Y.Normalized();
+		return null;
+	}
 	PlayerWeapon Held => inventory?.Current;
 
 	public override void _Process( double delta )
@@ -310,8 +323,17 @@ public partial class PlayerRig : Node
 
 		var sliding = (movement?.IsSliding ?? false) && !(movement?.IsFloating ?? false);
 		if ( sliding ) slideHold = 0.18f;
-		// The foot propellers are out for the whole slide and a moment after it.
-		if ( sliding ) slidePropTime = 0.12f;
+		// The fall: it leans forward slowly, then drops faster and faster, lands a touch past flat and bounces back;
+		// the propellers kick in as it lands. When the slide ends it springs back up.
+		const float fallTime = 0.3f;
+		if ( sliding ) diveTime += dt; else diveTime = 0f;
+		if ( sliding )
+		{
+			var t = diveTime / fallTime;
+			diveAmount = t < 1f ? MathF.Pow( t, 2.4f ) : 1f + 0.12f * MathF.Sin( (t - 1f) * fallTime * 15f ) * MathF.Exp( -(t - 1f) * fallTime * 9f );
+		}
+		else diveAmount = MathX.Approach( diveAmount, 0f, dt * 3.2f );
+		if ( sliding && diveTime > fallTime * 0.85f ) slidePropTime = 0.14f;
 		wasSliding = sliding;
 		slidePropTime = MathF.Max( 0f, slidePropTime - dt );
 		slideHold = MathF.Max( 0f, slideHold - dt );
@@ -347,7 +369,7 @@ public partial class PlayerRig : Node
 		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) || slidePropTime > 0f ? 1f : 0f, dt * ((jet?.Thrusting ?? false) || slidePropTime > 0f ? 6f : 3f) );
 		chargeBlend = MathX.Lerp( chargeBlend, jet?.Charging ?? false ? jet.Charge : 0f, 1f - MathF.Exp( -12f * dt ) );
 		surgeBlend = MathX.Approach( surgeBlend, jet?.Surging ?? false ? 1f : 0f, dt * ((jet?.Surging ?? false) ? 10f : 3f) );
-		propSpin = (propSpin + dt * 1800f * (slidePropTime > 0f ? -1f : 1f) * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
+		propSpin = (propSpin + dt * 1800f * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
 		if ( (chargeBlend > 0.01f || surgeBlend > 0.001f) && slideBlend <= 0.001f )
 		{
 			var q = rot.GetRotationQuaternion();
@@ -369,14 +391,17 @@ public partial class PlayerRig : Node
 		if ( slideBlend > 0.001f )
 		{
 			slideYaw = yawRot;
-			var ease = slideBlend * slideBlend * (3f - 2f * slideBlend);
-			// Feet first along the way it is travelling, on the back, the feet a little raised and the propellers
-			// in front pulling (they spin the other way).
+			var d = MathX.Clamp( diveAmount, 0f, 1f );
+			var ease = d * d * (3f - 2f * d);
+			// Head first along the way it is travelling, belly to the ground.
 			var heading = controller.Velocity.Flat();
 			if ( heading.Length() > 0.5f ) slideHeading = MathF.Atan2( heading.X, -heading.Z );
 			var along = new Vector3( MathF.Sin( slideHeading ), 0f, -MathF.Cos( slideHeading ) );
-			var dive = Basis.LookingAt( Vector3.Up, -(along + Vector3.Up * 0.16f).Normalized() );
-			rot = new Basis( rot.GetRotationQuaternion().SafeSlerp( dive.GetRotationQuaternion(), ease ) );
+			var dive = Basis.LookingAt( Vector3.Down, (along + Vector3.Up * 0.14f).Normalized() );
+			rot = new Basis( rot.GetRotationQuaternion().SafeSlerp( dive.GetRotationQuaternion(), d ) );
+			// Landing: the head dips a little past flat, then bounces back up.
+			if ( sliding && diveTime > fallTime )
+				rot = new Basis( Vector3.Up.Cross( along ).Normalized(), MathX.Rad( (diveAmount - 1f) * 60f ) ) * rot;
 			var pelvisRest = feet + Vector3.Up * hips;
 			var pelvisDive = feet + Vector3.Up * (11f * U.In);
 			var pelvis = pelvisRest.Lerp( pelvisDive, ease );
@@ -394,6 +419,16 @@ public partial class PlayerRig : Node
 	void Pose( float dt )
 	{
 		var aimPitch = MathX.Clamp( controller.EyeAngles.Pitch, -80f, 80f );
+		// Diving, the body is on its belly: the gun still points where the player is aiming, measured from the body.
+		var aimYawChar = 0f;
+		var diveBlend = MathX.Clamp( diveAmount, 0f, 1f );
+		if ( diveBlend > 0.001f )
+		{
+			var aimChar = CharDir( -controller.EyeAngles.ToBasis().Z );
+			var charPitch = -MathX.Deg( MathF.Asin( MathX.Clamp( aimChar.Z, -1f, 1f ) ) );
+			aimPitch = MathX.Lerp( aimPitch, MathX.Clamp( charPitch, -80f, 80f ), diveBlend );
+			aimYawChar = MathX.Clamp( MathX.Deg( MathF.Atan2( aimChar.Y, aimChar.X ) ), -70f, 70f ) * diveBlend;
+		}
 		var velS = CharDir( controller.Velocity ) / U.In;
 		var flat = new Vector2( velS.X, velS.Y );
 		var speed = flat.Length();
@@ -412,7 +447,7 @@ public partial class PlayerRig : Node
 		Put( "pelvis", pelvisPos, pelvisRot );
 
 		var spinePos = pelvisPos + pelvisRot * (restPos["spine"] - restPos["pelvis"]);
-		var spineRot = SAng( aimPitch * 0.45f + 6f * run, -MathF.Sin( gait ) * 5f * moving, 0f );
+		var spineRot = SAng( aimPitch * 0.45f + 6f * run, -MathF.Sin( gait ) * 5f * moving + aimYawChar * 0.35f, 0f );
 		var swinging = melee is not null && melee.IsSwinging;
 		(Vector3 Grip, Basis Rot, float Twist, float Weight) axePose = swinging ? SwingPose() : default;
 		if ( swinging ) spineRot = SAxis( SUp, axePose.Twist * axePose.Weight ) * spineRot;
@@ -428,7 +463,7 @@ public partial class PlayerRig : Node
 		else if ( worldAxe is not null ) worldAxe.Visible = false;
 
 		var headPos = spinePos + spineRot * (restPos["head"] - restPos["spine"]);
-		Put( "head", headPos, SAng( aimPitch * 0.9f, 0f, 0f ) );
+		Put( "head", headPos, SAng( aimPitch * 0.9f, aimYawChar * 0.5f, 0f ) );
 
 		// The gun in hand: held at the chest and pointing along the aim; the hands go where the gun's hands are.
 		var held = Held;
@@ -440,7 +475,7 @@ public partial class PlayerRig : Node
 			var on = gunShown && weapon == held;
 			gun.Root.Visible = on;
 			if ( !on ) continue;
-			var aimS = SAng( aimPitch * 0.85f, 0f, 0f );
+			var aimS = SAng( aimPitch * 0.85f, aimYawChar, 0f );
 			var pivot = spinePos + spineRot * new Vector3( 4f, -2f, 10f );    // upper chest, a touch right
 			var handAt = pivot + aimS * new Vector3( 10f, -4.5f, -7f );
 			// Turn the gun with the aim, then slide it so its right-hand bone lands at the hand spot.

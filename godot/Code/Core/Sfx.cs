@@ -49,12 +49,12 @@ public static class Sfx
 	}
 
 	/// <summary> A sound at a point in the world (volume 0-1, pitch 1 = normal). </summary>
-	public static void Play( string name, Vector3 at, float volume = 1f, float pitch = 1f )
+	public static void Play( string name, Vector3 at, float volume = 1f, float pitch = 1f, string bus = null )
 	{
 		var stream = Track( name );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( stream is null || root is null ) return;
-		var player = new AudioStreamPlayer3D { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch, UnitSize = 4f };
+		var player = new AudioStreamPlayer3D { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch, UnitSize = 4f, Bus = bus ?? "Master" };
 		root.AddChild( player );
 		player.GlobalPosition = at;
 		player.Finished += player.QueueFree;
@@ -87,6 +87,28 @@ public static class Sfx
 				AudioServer.SetBusEffectEnabled( bus, 2, false );
 			}
 			return "Gun";
+		}
+	}
+
+	/// <summary>
+	/// The bus for anything heard through the sea (the footsteps on the sea floor): the highs and the lows both cut
+	/// away, so it sounds muffled and thin, like sound carried by water (playtest 11/12).
+	/// </summary>
+	public static string UnderwaterBus
+	{
+		get
+		{
+			if ( AudioServer.GetBusIndex( "Underwater" ) < 0 )
+			{
+				AudioServer.AddBus();
+				var bus = AudioServer.BusCount - 1;
+				AudioServer.SetBusName( bus, "Underwater" );
+				AudioServer.SetBusSend( bus, "Master" );
+				AudioServer.AddBusEffect( bus, new AudioEffectHighPassFilter { CutoffHz = 260f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectLowPassFilter { CutoffHz = 1300f, Resonance = 0.85f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.8f, Wet = 0.2f, Dry = 0.9f } );
+			}
+			return "Underwater";
 		}
 	}
 

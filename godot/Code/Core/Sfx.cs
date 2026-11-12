@@ -31,6 +31,23 @@ public static class Sfx
 		return s;
 	}
 
+	static readonly Dictionary<string, int> variants = new();
+
+	/// <summary>
+	/// One of several recordings of the same sound: name_0, name_1, ... picked at random (footstep_dock_3). The plain
+	/// name is used when there are no numbered ones, so a sound can start as one file and grow variations later.
+	/// </summary>
+	public static string Pick( string name )
+	{
+		if ( !variants.TryGetValue( name, out var count ) )
+		{
+			count = 0;
+			while ( Find( $"{name}_{count}" ) is not null ) count++;
+			variants[name] = count;
+		}
+		return count == 0 ? name : $"{name}_{Rng.Int( 0, count - 1 )}";
+	}
+
 	/// <summary> A sound at a point in the world (volume 0-1, pitch 1 = normal). </summary>
 	public static void Play( string name, Vector3 at, float volume = 1f, float pitch = 1f )
 	{

@@ -1750,6 +1750,15 @@ public partial class AutoTest : Node
 		var damage = stations.FirstOrDefault( s => s.Kind == BuyStationKind.Damage );
 		Check( damage is not null, "no damage upgrade machine in the level" );
 
+		// #36: the real recordings are in and found.
+		foreach ( var name in new[] { "footstep_dock", "footstep_floor", "harpoon" } )
+		{
+			var picked = Sfx.Pick( name );
+			Check( picked != name && ResourceLoader.Exists( $"res://assets/sounds/{picked}.ogg" ), $"no recordings found for {name}" );
+		}
+		foreach ( var name in new[] { "rifle_shoot", "shotgun_shoot" } )
+			Check( ResourceLoader.Exists( $"res://assets/sounds/{name}.wav" ) && GD.Load<AudioStreamWav>( $"res://assets/sounds/{name}.wav" ) is { } wav && wav.GetLength() is > 0.8 and < 2.5, $"{name} is not the trimmed recording" );
+
 		// #32: the damage machine starts at 500.
 		GD.Print( $"[autotest] board: damage machine costs {damage?.Cost}, then +{damage?.CostIncrease} each ({string.Join( ", ", Enumerable.Range( 0, damage?.MaxPurchases ?? 0 ).Select( i => damage.Cost + damage.CostIncrease * i ) )})" );
 		Check( damage is { Cost: 500 }, "the damage machine does not start at 500" );

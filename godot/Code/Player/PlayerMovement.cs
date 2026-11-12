@@ -388,7 +388,11 @@ public partial class PlayerMovement : Node, ICameraModifier
 		var stride = speed > 400f ? 78f : 64f;
 		if ( stepDistance < stride ) return;
 		stepDistance = 0f;
-		Sfx.Play( "footstep", controller.GlobalPosition, MathX.Clamp( speed / 470f, 0.35f, 0.8f ), Rng.Float( 0.88f, 1.12f ) );
+		// Wood on the dock above the water, soft and lower on the sea floor (issue #36).
+		var onDock = Sea.SurfaceY is float surface && controller.GlobalPosition.Y > surface - 0.5f;
+		var volume = MathX.Clamp( speed / 470f, 0.35f, 0.8f );
+		if ( onDock ) Sfx.Play( Sfx.Pick( "footstep_dock" ), controller.GlobalPosition, volume, Rng.Float( 0.92f, 1.08f ) );
+		else Sfx.Play( Sfx.Pick( "footstep_floor" ), controller.GlobalPosition, volume * 0.9f, Rng.Float( 0.62f, 0.76f ) );
 	}
 
 	public void TestPressJump() => testJump = true;

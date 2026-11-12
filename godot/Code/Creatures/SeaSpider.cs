@@ -747,7 +747,7 @@ public partial class SeaSpider : PartCreature
 		if ( (to - from).Length() > HarpoonRange * U.In ) return;
 		var tr = Trace.Ray( this, from, to, Layers.World );
 		if ( tr.Hit && tr.Distance < (to - from).Length() - 40f * U.In ) return;
-		Sfx.Play( "harpoon", from, 0.7f, Rng.Float( 0.95f, 1.1f ) );
+		Sfx.Play( Sfx.Pick( "harpoon" ), from, 0.7f, Rng.Float( 0.92f, 1.08f ) );
 		timeSinceHarpoon = 0f;
 		SpiderStrand.Create( from, to, glowColor );
 		Strike( enemy, owner, HarpoonDamage );

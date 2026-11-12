@@ -18,6 +18,10 @@ public static class GameSettings
 	/// <summary> Horizontal field of view in degrees. </summary>
 	public static float Fov = 90f;
 	public static bool Fullscreen;
+	/// <summary> Controller: right stick look speed (1 is the default), and whether the pad rumbles. </summary>
+	public static float StickSensitivity = 1f;
+	public static bool Vibration = true;
+	public const float MinStick = 0.3f, MaxStick = 3f;
 	/// <summary> How far out from the body the gun is held in first person, in inches from the usual spot (issue #31). </summary>
 	public static float GunDistance;
 	public const float MinGunDistance = -4f, MaxGunDistance = 10f;
@@ -48,6 +52,8 @@ public static class GameSettings
 		Volume = MathX.Clamp( (float)file.GetValue( "audio", "volume", 1f ), 0f, 1f );
 		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
+		StickSensitivity = MathX.Clamp( (float)file.GetValue( "controller", "stick_sensitivity", 1f ), MinStick, MaxStick );
+		Vibration = (bool)file.GetValue( "controller", "vibration", true );
 		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
 		GunHeight = MathX.Clamp( (float)file.GetValue( "video", "gun_height", 0f ), MinGunHeight, MaxGunHeight );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
@@ -61,6 +67,8 @@ public static class GameSettings
 		file.SetValue( "audio", "volume", Volume );
 		file.SetValue( "video", "fov", Fov );
 		file.SetValue( "video", "fullscreen", Fullscreen );
+		file.SetValue( "controller", "stick_sensitivity", StickSensitivity );
+		file.SetValue( "controller", "vibration", Vibration );
 		file.SetValue( "video", "gun_distance", GunDistance );
 		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );

@@ -54,6 +54,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   float), the Kraken scales 1.2x per visit (health and dome), upgrades cap at 10 (health keeps healing past it),
   slide is feet first on the back with the propellers pulling (`PlayerRig`, `FoldedSlide` is the old pose), dock waves and gulls (`DockHouse.DockAmbience`),
   the gun's own bus (`Sfx.GunBus`) filtered underwater. Test: `--round11` (needs a window).
+- Controller support (issue #33): `Core/Controls.cs` adds a pad binding to every action at start, tracks the device last
+  used (a pad, or keys and mouse) and switches between them, names buttons for the prompts (`Controls.Label`, Xbox or
+  PlayStation style) and rumbles (`Controls.Rumble`, also driven by `CameraJuice.Shake`). Right-stick look is in
+  `PlayerController._Process`. Test: `--pad` (injects pad events; headless works).
 - A dead player has no gun, HUD or input: `PlayerSurvivor.LocalDead` gates them, and `PlayerRig.DeathCamera` (through
   `PlayerController.CameraOverride`) watches the ragdoll. Test for board items #31 to #40: `--board1` (needs a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`

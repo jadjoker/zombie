@@ -8,6 +8,7 @@ public partial class PauseMenu : CanvasLayer
 {
 	public static bool IsOpen { get; private set; }
 
+	Label hint;
 	Control window;
 	Button resume;
 	static readonly Color Accent = new( "5fffe0" );
@@ -18,6 +19,7 @@ public partial class PauseMenu : CanvasLayer
 		Layer = 60;
 		ProcessMode = ProcessModeEnum.Always;   // it has to work while everything else is stopped
 
+		Controls.Changed += OnSchemeChanged;
 		window = new Control { Visible = false };
 		window.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		AddChild( window );
@@ -51,6 +53,12 @@ public partial class PauseMenu : CanvasLayer
 		column.AddChild( new HSeparator() );
 
 		column.AddChild( Slider( "Mouse sensitivity", GameSettings.MinSensitivity, GameSettings.MaxSensitivity, 0.05f, () => GameSettings.Sensitivity, v => GameSettings.Sensitivity = v, v => $"{v:0.00}x" ) );
+		column.AddChild( Slider( "Stick sensitivity", GameSettings.MinStick, GameSettings.MaxStick, 0.05f, () => GameSettings.StickSensitivity, v => GameSettings.StickSensitivity = v, v => $"{v:0.00}x" ) );
+		var vibration = new Button { ToggleMode = true, ButtonPressed = GameSettings.Vibration, Name = "Vibration", CustomMinimumSize = new Vector2( 0, 40 ) };
+		vibration.AddThemeFontSizeOverride( "font_size", 20 );
+		vibration.Text = GameSettings.Vibration ? "Controller vibration: On" : "Controller vibration: Off";
+		vibration.Toggled += on => { GameSettings.Vibration = on; vibration.Text = on ? "Controller vibration: On" : "Controller vibration: Off"; if ( on ) Controls.Rumble( 0.5f ); };
+		column.AddChild( vibration );
 		column.AddChild( Slider( "Volume", 0f, 1f, 0.05f, () => GameSettings.Volume, v => GameSettings.Volume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Field of view", GameSettings.MinFov, GameSettings.MaxFov, 1f, () => GameSettings.Fov, v => GameSettings.Fov = v, v => $"{v:0}" ) );
 		column.AddChild( Slider( "Gun up and down", GameSettings.MinGunHeight, GameSettings.MaxGunHeight, 0.5f, () => GameSettings.GunHeight, v => GameSettings.GunHeight = v, v => v == 0f ? "Default" : $"{v:+0.0;-0.0}" ) );
@@ -66,13 +74,25 @@ public partial class PauseMenu : CanvasLayer
 		if ( DevMenu.Allowed ) column.AddChild( MenuButton( "Dev menu", OpenDevMenu ) );
 		column.AddChild( MenuButton( "Quit to desktop", () => { GameSettings.Save(); GetTree().Quit(); } ) );
 
-		var hint = new Label { Text = "Esc to resume", HorizontalAlignment = HorizontalAlignment.Center };
+		hint = new Label { Text = "Esc to resume", HorizontalAlignment = HorizontalAlignment.Center };
 		hint.AddThemeColorOverride( "font_color", new Color( 1, 1, 1, 0.45f ) );
 		column.AddChild( hint );
 	}
 
+	/// <summary> With a pad the cursor is hidden (the buttons are picked with the stick and A); with a mouse it shows. </summary>
+	static Input.MouseModeEnum MenuMouse() => Controls.IsController ? Input.MouseModeEnum.Hidden : Input.MouseModeEnum.Visible;
+
+	void UpdateHint() { if ( hint is not null ) hint.Text = $"{Controls.Label( "pause" )} to resume"; }
+
+	void OnSchemeChanged( Scheme scheme )
+	{
+		UpdateHint();
+		if ( IsOpen ) Input.MouseMode = MenuMouse();
+	}
+
 	public override void _ExitTree()
 	{
+		Controls.Changed -= OnSchemeChanged;
 		// Never leave the game stopped behind us (a level change while paused).
 		if ( IsOpen ) { IsOpen = false; GetTree().Paused = false; }
 	}
@@ -109,7 +129,8 @@ public partial class PauseMenu : CanvasLayer
 
 	public override void _Input( InputEvent e )
 	{
-		if ( e is not InputEventKey { Pressed: true, Echo: false, Keycode: Key.Escape } ) return;
+		// Esc or the pad's Start pauses and resumes; the pad's B (cancel) also closes it.
+		if ( !(e.IsActionPressed( "pause" ) || (IsOpen && e.IsActionPressed( "ui_cancel" ))) ) return;
 		GetViewport().SetInputAsHandled();
 		// Esc backs out of the dev menu first.
 		if ( DevMenu.IsOpen && !IsOpen ) { (GetTree().Root.FindChild( "DevMenu", true, false ) as DevMenu)?.SetOpen( false ); return; }
@@ -122,7 +143,8 @@ public partial class PauseMenu : CanvasLayer
 		IsOpen = open;
 		window.Visible = open;
 		GetTree().Paused = open;
-		Input.MouseMode = open ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
+		Input.MouseMode = open ? MenuMouse() : Input.MouseModeEnum.Captured;
+		UpdateHint();
 		if ( open ) resume.GrabFocus();
 		else GameSettings.Save();
 	}

@@ -29,6 +29,9 @@ public partial class WeaponInventory : Node
 	public override void _UnhandledInput( InputEvent e )
 	{
 		if ( weapons.Count < 2 ) return;
+		// The D-pad: left and right.
+		if ( e.IsActionPressed( "weapon_next" ) ) Cycle( 1 );
+		else if ( e.IsActionPressed( "weapon_prev" ) ) Cycle( -1 );
 		if ( e is InputEventKey { Pressed: true, Echo: false } key && key.PhysicalKeycode >= Key.Key1 && key.PhysicalKeycode <= Key.Key9 )
 		{
 			var slot = weapons.FirstOrDefault( w => w.Slot == (int)(key.PhysicalKeycode - Key.Key0) );

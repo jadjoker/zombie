@@ -19,6 +19,7 @@ public partial class Clock : Node
 		// lag and stutter, so it is off by default and those bodies opt in.
 		GetTree().Root.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off;
 		// The saved settings (volume, fullscreen, look speed, field of view).
+		AddChild( new Controls() );   // controller bindings and device switching (issue #33)
 		GameSettings.Load();
 		GameSettings.Apply();
 		// Tests on an exported build (which cannot take a scene path): -- --scene res://scenes/forest.tscn

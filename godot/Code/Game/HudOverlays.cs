@@ -153,6 +153,7 @@ public partial class HudOverlays : Control
 		var use = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" );
 		var station = use?.Hovered;
 		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false);
+		promptKey.Text = $" {Controls.Label( "use" )} ";   // E on a keyboard, Y or Triangle on a pad
 		if ( station is null && (use?.AtDivingBoard ?? false) )
 		{
 			promptTitle.Text = "Dive in";

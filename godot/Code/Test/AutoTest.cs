@@ -55,6 +55,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--bite" ) ) { await BiteTest(); return; }
 		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
 		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
+		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1954,6 +1955,192 @@ public partial class AutoTest : Node
 		Sfx.SetUnderwater( 0f );
 		foreach ( var name in new[] { "dock_wave", "gull", "stab_squish" } )
 			Check( Sfx.Pick( name ) != name, $"no sounds found for {name}" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Controller support (issue #33), driven with injected pad events: bindings, device switching, sticks, triggers, buttons, menus, rumble. </summary>
+	async Task PadTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var weapon = inventory.Weapons[0];
+		inventory.Select( weapon, force: true );
+		player.GlobalPosition = Nav.Closest( player, new Vector3( 3f, 0f, 3f ) ) + Vector3.Up * 0.1f;
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		await Wait( 0.6f );
+		void Axis( JoyAxis axis, float value ) => Input.ParseInputEvent( new InputEventJoypadMotion { Axis = axis, AxisValue = value } );
+		void Pad( JoyButton button, bool down ) => Input.ParseInputEvent( new InputEventJoypadButton { ButtonIndex = button, Pressed = down } );
+		float YawChange( float before ) => MathF.Abs( Mathf.Wrap( player.EyeAngles.Yaw - before, -180f, 180f ) );
+
+		// Every action has a pad binding, and the keyboard and mouse ones are still there.
+		var actions = new[] { "left", "right", "forward", "backward", "jump", "duck", "reload", "use", "run", "melee", "surge", "view", "command", "attack1", "attack2", "weapon_prev", "weapon_next", "pause", "look_left", "look_right", "look_up", "look_down" };
+		foreach ( var action in actions )
+			Check( InputMap.ActionGetEvents( action ).Any( e => e is InputEventJoypadButton or InputEventJoypadMotion ), $"the {action} action has no pad binding" );
+		Check( InputMap.ActionGetEvents( "jump" ).Any( e => e is InputEventKey ) && InputMap.ActionGetEvents( "attack1" ).Any( e => e is InputEventMouseButton ), "the keyboard and mouse bindings were lost" );
+
+		// Device switching and the names on screen.
+		Controls.Force( Scheme.KeyboardMouse );
+		var keys = Controls.Label( "use" );
+		Axis( JoyAxis.LeftX, 0.8f );
+		await Wait( 0.1f );
+		Axis( JoyAxis.LeftX, 0f );
+		GD.Print( $"[autotest] pad: after the stick moved the game is in {Controls.Current}; use is {Controls.Label( "use" )} (was {keys})" );
+		Check( Controls.IsController && Controls.Label( "use" ) == "Y" && keys == "E", "touching a stick did not switch to the controller" );
+		Controls.SimulatePlayStation = true;
+		Check( Controls.Label( "use" ) == "Triangle" && Controls.Label( "jump" ) == "Cross", "PlayStation names are wrong" );
+		Controls.SimulatePlayStation = false;
+		Input.ParseInputEvent( new InputEventKey { Keycode = Key.W, PhysicalKeycode = Key.W, Pressed = true } );
+		await Wait( 0.1f );
+		Input.ParseInputEvent( new InputEventKey { Keycode = Key.W, PhysicalKeycode = Key.W, Pressed = false } );
+		Check( !Controls.IsController && Controls.Label( "use" ) == "E", "pressing a key did not switch back to the keyboard" );
+		Pad( JoyButton.A, true ); await Wait( 0.05f ); Pad( JoyButton.A, false );
+		Check( Controls.IsController, "pressing a pad button did not switch to the controller" );
+		Input.ParseInputEvent( new InputEventMouseMotion { Relative = new Vector2( 9f, 3f ), Position = new Vector2( 50f, 50f ) } );
+		await Wait( 0.1f );
+		Check( !Controls.IsController, "moving the mouse did not switch back to the keyboard and mouse" );
+		Controls.Force( Scheme.Controller );
+
+		// Moving: the left stick, analogue, with a dead zone.
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		player.GlobalPosition = Nav.Closest( player, player.GlobalPosition ) + Vector3.Up * 0.1f;   // the A press above made it jump
+		player.Velocity = Vector3.Zero;
+		await Wait( 1.5f );
+		Axis( JoyAxis.LeftY, 0.1f );
+		await Wait( 0.7f );
+		var drift = player.Velocity.Flat().Length();
+		Axis( JoyAxis.LeftY, -1f );
+		await Wait( 1.0f );
+		var full = player.Velocity.Flat().Length();
+		Axis( JoyAxis.LeftY, 0f );
+		await Wait( 1.0f );
+		Axis( JoyAxis.LeftY, -0.5f );
+		await Wait( 1.0f );
+		var half = player.Velocity.Flat().Length();
+		Axis( JoyAxis.LeftY, 0f );
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] pad: left stick drift {drift:0.00} m/s, full {full:0.0}, half {half:0.0}" );
+		Check( drift < 0.2f, "a stick resting inside the dead zone moved the player" );
+		Check( full > 3f && half > 1f && half < full * 0.8f, "the left stick is not analogue (half tilt should be slower than full)" );
+
+		// Looking: the right stick, with the curve, and slower when aiming.
+		var yaw0 = player.EyeAngles.Yaw;
+		Axis( JoyAxis.RightX, 1f );
+		await Wait( 0.5f );
+		Axis( JoyAxis.RightX, 0f );
+		var fullTurn = YawChange( yaw0 );
+		await Wait( 0.2f );
+		yaw0 = player.EyeAngles.Yaw;
+		Axis( JoyAxis.RightX, 0.5f );
+		await Wait( 0.5f );
+		Axis( JoyAxis.RightX, 0f );
+		var halfTurn = YawChange( yaw0 );
+		await Wait( 0.2f );
+		var pitch0 = player.EyeAngles.Pitch;
+		Axis( JoyAxis.RightY, 1f );
+		await Wait( 0.3f );
+		Axis( JoyAxis.RightY, 0f );
+		var pitched = player.EyeAngles.Pitch - pitch0;
+		weapon.ForceAim = true;
+		await Wait( 0.8f );
+		yaw0 = player.EyeAngles.Yaw;
+		Axis( JoyAxis.RightX, 1f );
+		await Wait( 0.5f );
+		Axis( JoyAxis.RightX, 0f );
+		var aimedTurn = YawChange( yaw0 );
+		weapon.ForceAim = false;
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] pad: right stick turned {fullTurn:0} deg in 0.5 s at full tilt, {halfTurn:0} at half, {aimedTurn:0} while aiming; stick down looked {pitched:0} deg down" );
+		Check( fullTurn > 70f && fullTurn < 150f, "a full right stick turn is the wrong speed" );
+		Check( halfTurn > 3f && halfTurn < fullTurn * 0.5f, "half tilt of the right stick does not turn gently" );
+		Check( pitched > 20f, "the right stick does not look up and down" );
+		Check( aimedTurn < fullTurn - 5f, "aiming does not slow the right stick" );
+
+		// Triggers: a light pull does nothing, a full one fires; the left one aims.
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		var ammo = weapon.Ammo;
+		Axis( JoyAxis.TriggerRight, 0.2f );
+		await Wait( 0.5f );
+		Check( weapon.Ammo == ammo, "a light trigger pull fired" );
+		var rumbles = Controls.RumbleCount;
+		Axis( JoyAxis.TriggerRight, 1f );
+		await Wait( 0.4f );
+		Axis( JoyAxis.TriggerRight, 0f );
+		GD.Print( $"[autotest] pad: right trigger fired {ammo - weapon.Ammo} rounds and asked for {Controls.RumbleCount - rumbles} rumbles" );
+		Check( weapon.Ammo < ammo, "the right trigger does not fire" );
+		Check( Controls.RumbleCount > rumbles, "firing does not rumble" );
+		GameSettings.Vibration = false;
+		var off = Controls.RumbleCount;
+		Controls.Rumble( 0.8f );
+		Check( Controls.RumbleCount == off, "rumble ignored the vibration setting" );
+		GameSettings.Vibration = true;
+		Axis( JoyAxis.TriggerLeft, 1f );
+		await Wait( 0.8f );
+		var aiming = weapon.IsAiming;
+		Axis( JoyAxis.TriggerLeft, 0f );
+		await Wait( 0.5f );
+		Check( aiming, "the left trigger does not aim" );
+
+		// Every button reaches its action, and the real ones do their job.
+		foreach ( var (action, button) in new[] { ("reload", JoyButton.X), ("use", JoyButton.Y), ("duck", JoyButton.B), ("run", JoyButton.LeftShoulder), ("run", JoyButton.LeftStick), ("melee", JoyButton.RightShoulder), ("surge", JoyButton.RightStick), ("view", JoyButton.DpadUp), ("command", JoyButton.DpadDown), ("jump", JoyButton.A) } )
+		{
+			Pad( button, true );
+			await Wait( 0.15f );
+			var pressed = Input.IsActionPressed( action );
+			Pad( button, false );
+			Check( pressed, $"{button} does not press {action}" );
+			await Wait( 0.35f );
+		}
+		player.ThirdPerson = false;
+		await Wait( 0.2f );
+		Pad( JoyButton.DpadUp, true ); await Wait( 0.1f ); Pad( JoyButton.DpadUp, false ); await Wait( 0.2f );
+		Check( player.ThirdPerson, "D-pad up does not toggle third person" );
+		Pad( JoyButton.DpadUp, true ); await Wait( 0.1f ); Pad( JoyButton.DpadUp, false ); await Wait( 0.2f );
+		Check( !player.ThirdPerson, "D-pad up does not toggle third person back" );
+		player.GlobalPosition = Nav.Closest( player, player.GlobalPosition ) + Vector3.Up * 0.1f;
+		await Wait( 0.8f );
+		var floorY = player.GlobalPosition.Y;
+		var rise = 0f;
+		Pad( JoyButton.A, true );
+		for ( var t = 0f; t < 0.5f; t += 0.02f )
+		{
+			if ( t > 0.12f ) Pad( JoyButton.A, false );
+			rise = MathF.Max( rise, player.GlobalPosition.Y - floorY );
+			await ToSignal( GetTree(), SceneTree.SignalName.PhysicsFrame );
+		}
+		Pad( JoyButton.A, false );
+		GD.Print( $"[autotest] pad: A lifted the player {rise:0.00} m" );
+		Check( rise > 0.2f, "A does not jump" );
+		await Wait( 1.2f );
+
+		// Switching weapons on the D-pad.
+		var held = inventory.Current;
+		Pad( JoyButton.DpadRight, true ); await Wait( 0.1f ); Pad( JoyButton.DpadRight, false ); await Wait( 0.3f );
+		var next = inventory.Current;
+		Pad( JoyButton.DpadLeft, true ); await Wait( 0.1f ); Pad( JoyButton.DpadLeft, false ); await Wait( 0.3f );
+		GD.Print( $"[autotest] pad: D-pad right went from {held?.DisplayName} to {next?.DisplayName}, left came back to {inventory.Current?.DisplayName}" );
+		Check( next != held && inventory.Current == held, "the D-pad does not switch weapons" );
+
+		// Menus: Start pauses, B resumes, the cursor hides, the first button has focus, and the hint names the button.
+		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.4f );
+		var focus = GetViewport().GuiGetFocusOwner();
+		var menu = GetTree().Root.FindChild( "PauseMenu", true, false ) as PauseMenu;
+		var hint = menu.FindChildren( "*", "Label", true, false ).OfType<Label>().FirstOrDefault( l => l.Text.EndsWith( "to resume" ) );
+		GD.Print( $"[autotest] pad: Start opened the pause menu {PauseMenu.IsOpen}, mouse {Input.MouseMode}, focus on {focus?.Name}, hint {hint?.Text}" );
+		Check( PauseMenu.IsOpen && GetTree().Paused, "Start did not pause" );
+		Check( Input.MouseMode == Input.MouseModeEnum.Hidden || DisplayServer.GetName() == "headless", "the cursor shows while pausing with a pad" );
+		Check( focus is Button resumeButton && resumeButton.Name == "Resume", "the pause menu has no button focused for the pad" );
+		Check( hint?.Text == "Start to resume", "the pause hint does not name the Start button" );
+		GD.Print( $"[autotest] pad: ui_cancel is bound to {string.Join( ", ", InputMap.ActionGetEvents( "ui_cancel" ).Select( e => e.AsText() ) )}" );
+		Pad( JoyButton.B, true ); await Wait( 0.1f ); Pad( JoyButton.B, false ); await Wait( 0.4f );
+		GD.Print( $"[autotest] pad: after B the pause menu is open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}" );
+		Check( !PauseMenu.IsOpen && !GetTree().Paused, "B did not close the pause menu" );
+		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.3f );
+		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.3f );
+		Check( !PauseMenu.IsOpen, "Start did not resume" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

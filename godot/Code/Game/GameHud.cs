@@ -174,7 +174,7 @@ public partial class GameHud : Control
 		var gone = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;
 		SelfModulate = gone;
 		foreach ( var child in GetChildren().OfType<CanvasItem>() ) if ( child != gameOver ) child.Modulate = gone;
-		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress JUMP to try again";
+		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress {Controls.Label( "jump" ).ToUpperInvariant()} to try again";
 		UpdateGooPhysics( (float)delta );
 		QueueRedraw();
 	}

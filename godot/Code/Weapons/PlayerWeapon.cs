@@ -220,6 +220,7 @@ public partial class PlayerWeapon : Node
 	{
 		TimeSinceShot = 0f;
 		Sfx.Play2D( $"{ModelName}_shoot", bus: Sfx.GunBus );
+		Controls.Rumble( ModelName == "shotgun" ? 0.55f : 0.22f );
 		Ammo--;
 		var camera = controller.Camera;
 		var basis = camera.GlobalBasis;

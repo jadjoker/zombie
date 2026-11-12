@@ -179,6 +179,16 @@ public partial class PlayerController : CharacterBody3D
 			var e = EyeAngles;
 			e.Yaw -= lookDelta.X * LookSensitivity;
 			e.Pitch += lookDelta.Y * LookSensitivity;
+			// The right stick: a curve so small tilts are fine and a full tilt turns fast, slowed along with the mouse when aiming.
+			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down" );
+			if ( stick != Vector2.Zero )
+			{
+				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.8f );
+				var zoomScale = GameSettings.LookSensitivity > 0f ? LookSensitivity / GameSettings.LookSensitivity : 1f;
+				var speed = 210f * GameSettings.StickSensitivity * zoomScale;   // degrees a second at full tilt
+				e.Yaw -= shaped.X * speed * dt;
+				e.Pitch += shaped.Y * speed * dt;
+			}
 			e.Pitch = MathX.Clamp( e.Pitch, -PitchClamp, PitchClamp );
 			e.Roll = 0f;
 			EyeAngles = e;

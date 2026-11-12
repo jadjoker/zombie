@@ -16,7 +16,11 @@ public partial class CameraJuice : Node, ICameraModifier
 	public override void _Ready() => Name = "CameraJuice";
 
 	/// <summary> Add shake. 0.1 is a light bump, 0.5 is a big hit. Stacks up to 1. </summary>
-	public void Shake( float amount ) => trauma = MathF.Min( 1f, trauma + amount );
+	public void Shake( float amount )
+	{
+		trauma = MathF.Min( 1f, trauma + amount );
+		Controls.Rumble( amount * 0.9f );   // a pad rumbles with whatever shakes the camera
+	}
 
 	/// <summary> Briefly widens the view, e.g. on each shot. </summary>
 	public void KickFov( float degrees ) => fovKick = MathF.Max( fovKick, degrees );

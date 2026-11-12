@@ -24,5 +24,20 @@ CONTROLS
   Dev menu            Esc, then Dev menu (maps, skins, cheats)
   Pause and settings  Esc (sensitivity, volume, field of view, fullscreen, restart, quit)
 
+CONTROLLER (the game switches by itself to whichever you touched last: pad, or keyboard and mouse)
+  Move / look         Left stick / right stick
+  Jump / jetpack      A (hold in the air to thrust)
+  Crouch / slide      B
+  Sprint              Left bumper (or click the left stick)
+  Shoot / aim         Right trigger / left trigger
+  Reload / use, buy   X / Y
+  Melee (axe)         Right bumper
+  Surge               Click the right stick (hold to charge)
+  Switch weapon       D-pad left / right
+  Third person        D-pad up
+  Command ally        D-pad down
+  Pause               Start (B closes the menu); sticks and D-pad move through it, A picks
+  Settings            Stick sensitivity and vibration are in the pause menu
+
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

@@ -4,7 +4,7 @@ public enum WaveState { Intermission, Fighting, GameOver }
 
 /// <summary>
 /// Port of the s&box WaveDirector: the survival loop. A short break, then a wave of enemies, each wave bigger and
-/// tougher; boss waves every few; "anchor snapped" float rounds; an open-world mode where danger climbs with time or
+/// tougher; boss waves every few; "suit malfunction" float rounds; an open-world mode where danger climbs with time or
 /// exploration; dev tools (spawn a kind, jump waves, clear). Enemy kinds are spawned through <see cref="Spawners"/>,
 /// (a kind with no spawner, the zombie, just doesn't come). Numbers are the s&box ones. Enemies appear at the level's
 /// spawn points, or failing that on the ground in a ring around the player.
@@ -47,8 +47,10 @@ public partial class WaveDirector : Node3D
 	public float BossBaseHealth = 2000f;
 	public float BossHealthPerVisit = 800f;
 	public float BossSpawnHeight = 160f;
-	public float KrakenBaseHealth = 3500f;
-	public float KrakenHealthPerVisit = 1000f;
+	public float KrakenBaseHealth = 7000f;
+	/// <summary> Its dome (shield) at the first visit, and how much tougher each return is (playtest 11/11). </summary>
+	public float KrakenDomeHealth = 1200f, KrakenReturnScale = 1.2f;
+	float KrakenScale => MathF.Pow( KrakenReturnScale, Math.Max( 0, KrakenVisits - 1 ) );
 
 	// ---- The Kraken event (issue #30, stage 5): it turns up on waves of its own choosing ----
 	/// <summary> Dev menu: lets the Kraken event happen. </summary>
@@ -139,7 +141,8 @@ public partial class WaveDirector : Node3D
 		return best;
 	}
 
-	public int AnchorSnapEvery = 4;
+	/// <summary> Every this many rounds the suit malfunctions: no walking, you float (playtest 11/11, was the anchor snap). </summary>
+	public int SuitMalfunctionEvery = 4;
 	public bool FloatRound;
 
 	// Open world
@@ -218,6 +221,7 @@ public partial class WaveDirector : Node3D
 		[EnemyKind.Kraken] = ( d, at, health ) =>
 		{
 			var k = Kraken.Spawn( d.GetTree().CurrentScene, at, health );
+			k.HelmetHealth = d.KrakenDomeHealth * d.KrakenScale;
 			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
 			if ( !toPlayer.IsNearlyZero() ) k.GlobalBasis = Shapes.LookAt( toPlayer );
 			k.Killed += x => { d.alive.Remove( x ); d.Kills++; };
@@ -412,7 +416,7 @@ public partial class WaveDirector : Node3D
 		toSpawn = Math.Max( 0, BaseZombies + ZombiesPerWave * (Wave - 1) - credited );
 		credited = 0;
 		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
-		FloatRound = AnchorSnapEvery > 0 && Wave % AnchorSnapEvery == 0;
+		FloatRound = SuitMalfunctionEvery > 0 && Wave % SuitMalfunctionEvery == 0;
 		bossPending = BossWave;
 		RollKraken();
 		State = WaveState.Fighting;
@@ -433,7 +437,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
 			EnemyKind.Crab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
-			EnemyKind.Kraken => KrakenBaseHealth + KrakenHealthPerVisit * Math.Max( 0, KrakenVisits - 1 ),
+			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};

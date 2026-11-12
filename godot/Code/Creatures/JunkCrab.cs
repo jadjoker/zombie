@@ -10,6 +10,8 @@ public partial class JunkCrab : PartCreature
 {
 	public float MoveSpeed = 210f;
 	public float AttackRange = 70f;
+	/// <summary> Claws reach this high above the crab's feet (inches): standing over it is safe (playtest 11/11). </summary>
+	public float ReachHeight = 24f;
 	public float ClawDamage = 14f;
 	public float AttackCooldown = 1.1f;
 	public float BarrelHealth = 80f;
@@ -355,7 +357,8 @@ public partial class JunkCrab : PartCreature
 		{
 			var toTarget = (target.WorldPosition - GlobalPosition).Flat();
 			var distance = toTarget.Length() / U.In;
-			if ( distance <= AttackRange * Size && !Blind )
+			var rise = (target.WorldPosition.Y - GlobalPosition.Y) / U.In;   // how far above its feet the player's feet are
+			if ( distance <= AttackRange * Size && rise <= ReachHeight * Size && !Blind )
 			{
 				agent.Stop();
 				Face( toTarget, 10f, dt );
@@ -391,7 +394,7 @@ public partial class JunkCrab : PartCreature
 	{
 		Sfx.Play( "crab_snap", GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
 		var damage = ClawDamage * (ClawsLeft switch { 2 => 1f, 1 => 0.7f, _ => 0.4f });
-		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 20f * U.In, Origin = GlobalPosition } );
+		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 6f * U.In, Origin = GlobalPosition } );
 	}
 
 	// ---- Getting shot ----

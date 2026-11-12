@@ -61,13 +61,54 @@ public static class Sfx
 		player.Play();
 	}
 
+	/// <summary>
+	/// The bus the player's own gunfire plays on. Underwater it is filtered like being under the sea: the highs cut
+	/// hard, the lows kept and a short wash of reverb (WaterFeel sets how much, with <see cref="SetUnderwater"/>).
+	/// </summary>
+	public static string GunBus
+	{
+		get
+		{
+			if ( AudioServer.GetBusIndex( "Gun" ) < 0 )
+			{
+				AudioServer.AddBus();
+				var bus = AudioServer.BusCount - 1;
+				AudioServer.SetBusName( bus, "Gun" );
+				AudioServer.SetBusSend( bus, "Master" );
+				AudioServer.AddBusEffect( bus, new AudioEffectLowPassFilter { CutoffHz = 20000f, Resonance = 0.9f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectReverb { RoomSize = 0.35f, Damping = 0.7f, Wet = 0f, Dry = 1f } );
+				// A boom: the low end lifted a little, which is what water carries best.
+				var eq = new AudioEffectEQ6();
+				eq.SetBandGainDb( 0, 6f );
+				eq.SetBandGainDb( 1, 4f );
+				eq.SetBandGainDb( 4, -4f );
+				eq.SetBandGainDb( 5, -8f );
+				AudioServer.AddBusEffect( bus, eq );
+				AudioServer.SetBusEffectEnabled( bus, 2, false );
+			}
+			return "Gun";
+		}
+	}
+
+	/// <summary> How underwater the gun sounds (0 dry, 1 fully under). </summary>
+	public static float GunUnderwater { get; private set; }
+
+	public static void SetUnderwater( float amount )
+	{
+		GunUnderwater = amount;
+		var bus = AudioServer.GetBusIndex( GunBus );
+		if ( AudioServer.GetBusEffect( bus, 0 ) is AudioEffectLowPassFilter low ) low.CutoffHz = MathX.Lerp( 20000f, 520f, amount );
+		if ( AudioServer.GetBusEffect( bus, 1 ) is AudioEffectReverb wash ) wash.Wet = 0.32f * amount;
+		AudioServer.SetBusEffectEnabled( bus, 2, amount > 0.05f );
+	}
+
 	/// <summary> A sound for the local player only (UI, own gun, wave banners). </summary>
-	public static void Play2D( string name, float volume = 1f, float pitch = 1f )
+	public static void Play2D( string name, float volume = 1f, float pitch = 1f, string bus = null )
 	{
 		var stream = Track( name );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( stream is null || root is null ) return;
-		var player = new AudioStreamPlayer { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch };
+		var player = new AudioStreamPlayer { Stream = stream, VolumeDb = Mathf.LinearToDb( MathF.Max( volume, 0.0001f ) ), PitchScale = pitch, Bus = bus ?? "Master" };
 		root.AddChild( player );
 		player.Finished += player.QueueFree;
 		player.Play();

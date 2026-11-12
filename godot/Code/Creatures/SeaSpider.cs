@@ -14,6 +14,8 @@ public partial class SeaSpider : PartCreature
 	public float MoveSpeed = 230f;
 	public float AttackRange = 95f;
 	public float StabDamage = 12f;
+	/// <summary> Legs reach this high above the spider's feet (inches): a player above it is out of reach. </summary>
+	public float ReachHeight = 40f;
 	public float AttackCooldown = 0.9f;
 	public float ThighHealth = 22f;
 	public float ShinHealth = 16f;
@@ -668,7 +670,8 @@ public partial class SeaSpider : PartCreature
 		{
 			var toTarget = (target.WorldPosition - GlobalPosition).Flat();
 			var distance = toTarget.Length();
-			if ( distance <= AttackRange * S && !Blind )
+			var rise = (target.WorldPosition.Y - GlobalPosition.Y) / U.In;
+			if ( distance <= AttackRange * S && rise <= ReachHeight * S && !Blind )
 			{
 				agent.Stop();
 				Face( toTarget, 10f, dt );
@@ -683,7 +686,7 @@ public partial class SeaSpider : PartCreature
 					if ( wanderGoal == Vector3.Zero || GlobalPosition.DistanceTo( wanderGoal ) < 60f * U.In || Rng.Float() < 0.15f )
 						wanderGoal = target.WorldPosition + Rng.OnSphere().Flat().SafeNormal() * 350f * U.In;
 					agent.MoveTo( wanderGoal );
-					if ( distance <= AttackRange * S && timeSinceAttack > AttackCooldown * 2f ) { timeSinceAttack = 0f; timeSinceStab = 0f; Stab( target ); }
+					if ( distance <= AttackRange * S && rise <= ReachHeight * S && timeSinceAttack > AttackCooldown * 2f ) { timeSinceAttack = 0f; timeSinceStab = 0f; Stab( target ); }
 				}
 				else agent.MoveTo( target.WorldPosition );
 			}
@@ -743,11 +746,11 @@ public partial class SeaSpider : PartCreature
 	{
 		if ( timeSinceHarpoon < HarpoonCooldown || enemy is null ) return;
 		var from = LureTip;
-		var to = enemy.GlobalPosition + Vector3.Up * 20f * U.In;
+		var to = enemy.GlobalPosition + Vector3.Up * 6f * U.In;   // low: close to the floor (playtest 11/11)
 		if ( (to - from).Length() > HarpoonRange * U.In ) return;
 		var tr = Trace.Ray( this, from, to, Layers.World );
 		if ( tr.Hit && tr.Distance < (to - from).Length() - 40f * U.In ) return;
-		Sfx.Play( Sfx.Pick( "harpoon" ), from, 0.7f, Rng.Float( 0.92f, 1.08f ) );
+		Sfx.Play( Sfx.Pick( "stab_squish" ), enemy.GlobalPosition + Vector3.Up * 0.3f, 0.9f, Rng.Float( 0.92f, 1.08f ) );
 		timeSinceHarpoon = 0f;
 		SpiderStrand.Create( from, to, glowColor );
 		Strike( enemy, owner, HarpoonDamage );
@@ -985,7 +988,7 @@ public partial class SeaSpider : PartCreature
 		var direction = (enemy.GlobalPosition - GlobalPosition).Flat().SafeNormal();
 		var hitParts = CreaturePart.All.Where( p => IsInstanceValid( p ) && p.Creature == enemy ).ToList();
 		if ( hitParts.Count == 0 ) return;
-		var part = hitParts[Rng.Int( 0, hitParts.Count - 1 )];
+		var part = hitParts.OrderBy( p => p.GlobalPosition.Y ).First();   // the lowest part, nearest the floor
 		part.ReceiveShot( damage, part, direction, part.GlobalPosition, GlobalPosition + Vector3.Up * 40f * U.In, owner?.Controller, true );
 	}
 
@@ -1001,10 +1004,10 @@ public partial class SeaSpider : PartCreature
 
 	void Stab( PlayerSurvivor target )
 	{
-		Sfx.Play( "creature_attack", GlobalPosition, 0.8f, Rng.Float( 0.8f, 0.95f ) );
+		Sfx.Play( Sfx.Pick( "stab_squish" ), GlobalPosition, 0.8f, Rng.Float( 0.9f, 1.05f ) );
 		var frontLegs = (Has( FirstThigh ) ? 1 : 0) + (Has( FirstThigh + 3 ) ? 1 : 0);
 		var damage = StabDamage * (frontLegs switch { 2 => 1f, 1 => 0.7f, _ => 0.4f });
-		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 20f * U.In, Origin = GlobalPosition } );
+		target.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = this, Position = target.WorldPosition + Vector3.Up * 6f * U.In, Origin = GlobalPosition } );
 	}
 
 	// ---- Getting shot ----

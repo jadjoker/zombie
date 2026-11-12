@@ -219,7 +219,7 @@ public partial class PlayerWeapon : Node
 	void Shoot()
 	{
 		TimeSinceShot = 0f;
-		Sfx.Play2D( $"{ModelName}_shoot" );
+		Sfx.Play2D( $"{ModelName}_shoot", bus: Sfx.GunBus );
 		Ammo--;
 		var camera = controller.Camera;
 		var basis = camera.GlobalBasis;

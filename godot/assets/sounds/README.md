@@ -4,8 +4,9 @@ Most are placeholder sounds made from code by `Tools/godot/make_sounds.py` (noth
 are real CC0 recordings (no credit needed, licence text in `CC0_LICENSE.txt`), set up by `Tools/godot/import_sounds.py`
 (issue #36), so do not rerun the generator for them: `rifle_shoot` (AR-15) and `shotgun_shoot` (Benelli Nova), from
 the Free Firearm Sound Library by Ben Jaszczak; `footstep_dock_0..4` (wood) and `footstep_floor_0..4` (soft, played
-lower on the sea floor), from Kenney's Impact Sounds; `harpoon_0..4` (the ally spider's laser), from Kenney's Sci-fi
-Sounds. Numbered files are picked at random (`Sfx.Pick`). Rerun it after
+lower on the sea floor), from Kenney's Impact Sounds. The generated ones that are numbered (`dock_wave_0..2`, `gull_0..2`,
+`stab_squish_0..2`, the ally spider's flesh stab) are picked at random (`Sfx.Pick`). The player's own gunfire plays on
+the `Gun` bus, which filters it to sound underwater. Rerun it after
 tweaking a recipe. To use a real recording instead, drop a file here with the same name (`.ogg`, `.wav` or `.mp3`;
 remove the generated `.wav` of that name). Missing names are silent.
 

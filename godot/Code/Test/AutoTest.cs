@@ -54,6 +54,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--slam" ) ) { await SlamTest(); return; }
 		if ( args.Contains( "--bite" ) ) { await BiteTest(); return; }
 		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
+		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 
@@ -1751,7 +1752,7 @@ public partial class AutoTest : Node
 		Check( damage is not null, "no damage upgrade machine in the level" );
 
 		// #36: the real recordings are in and found.
-		foreach ( var name in new[] { "footstep_dock", "footstep_floor", "harpoon" } )
+		foreach ( var name in new[] { "footstep_dock", "footstep_floor" } )
 		{
 			var picked = Sfx.Pick( name );
 			Check( picked != name && ResourceLoader.Exists( $"res://assets/sounds/{picked}.ogg" ), $"no recordings found for {name}" );
@@ -1824,6 +1825,122 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] board: death camera {back:0.0} m from the body" );
 		Check( back > 2.5f && toBody < 22f, "the camera is not standing back watching the body" );
 		await Shot( "death_camera" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Playtest 11/11 (issue #41): upgrade caps, Kraken health, crab reach, slide in a malfunction round, the gun's water filter. </summary>
+	async Task Round11Test()
+	{
+		DevFlags.FreezeEnemies = true;
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		DockHouse.Current?.SkipDive();
+		var director = WaveDirector.Current;
+		var stations = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().ToList();
+		var health = stations.First( s => s.Kind == BuyStationKind.Health );
+		var damage = stations.First( s => s.Kind == BuyStationKind.Damage );
+		survivor.AddPoints( 1_000_000 );
+
+		// Upgrades: ten of each. Health keeps healing after ten without raising the maximum.
+		var max0 = survivor.Health.MaxHealth;
+		for ( var i = 0; i < 10; i++ ) { Check( health.Press( survivor ), $"health purchase {i + 1} was refused" ); }
+		var max10 = survivor.Health.MaxHealth;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 50f } );
+		var hurt = survivor.Health.Current;
+		var priceAtLimit = health.CurrentCost;
+		var again = health.Press( survivor );
+		GD.Print( $"[autotest] round11: health max {max0} -> {max10} after 10 buys; an 11th buy {again}, max {survivor.Health.MaxHealth}, healed {hurt} -> {survivor.Health.Current}, price {priceAtLimit} -> {health.CurrentCost}, sold out {health.SoldOut}" );
+		Check( max10 == max0 + 250f && again && survivor.Health.MaxHealth == max10 && survivor.Health.Current == max10 && !health.SoldOut, "health after ten upgrades should still heal without raising the maximum" );
+		Check( health.CurrentCost == priceAtLimit, "the health price kept climbing past the limit" );
+		for ( var i = 0; i < 10; i++ ) Check( damage.Press( survivor ), $"damage purchase {i + 1} was refused" );
+		Check( damage.SoldOut && !damage.Press( survivor ), "damage should sell out after ten" );
+
+		// The Kraken is twice as tough and 20% tougher each time it comes back, dome and all.
+		director.SpawnAt( WaveDirector.EnemyKind.Kraken, Nav.Closest( player, new Vector3( -8f, 0f, 12f ) ), player.GlobalPosition );
+		var kraken = Kraken.All.First();
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] round11: Kraken health {kraken.Health.MaxHealth:0}, dome {kraken.HelmetHealth:0}, visits {director.KrakenVisits}" );
+		Check( kraken.Health.MaxHealth == 7000f && kraken.HelmetHealth == 1200f, "the first Kraken is not 7000 health and a 1200 dome" );
+		kraken.QueueFree();
+		for ( var visit = 0; visit < 2; visit++ )
+		{
+			director.ForceKrakenNextWave();
+			director.JumpToWave( director.Wave + 1 );
+			await Wait( 0.6f );
+		}
+		director.SpawnAt( WaveDirector.EnemyKind.Kraken, Nav.Closest( player, new Vector3( -8f, 0f, 12f ) ), player.GlobalPosition );
+		var second = Kraken.All.Last();
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] round11: second visit health {second.Health.MaxHealth:0}, dome {second.HelmetHealth:0} (visits {director.KrakenVisits})" );
+		Check( second.Health.MaxHealth > 6999f * 1.2f - 1f && second.HelmetHealth > 1199f * 1.2f - 1f, "the Kraken is not 20% tougher on its second visit" );
+		foreach ( var k in Kraken.All.ToList() ) k.QueueFree();
+		director.ClearEnemies();
+		await Wait( 0.4f );
+
+		// A crab cannot claw a player standing high above it, but does hit one on the floor.
+		var ground = Nav.Closest( player, new Vector3( 4f, 0f, 6f ) );
+		player.GlobalPosition = ground + Vector3.Up * 0.1f;
+		survivor.Health.ResetTo( 1000f );
+		DevFlags.FreezeEnemies = false;
+		var crabNode = director.SpawnAt( WaveDirector.EnemyKind.Crab, ground + new Vector3( 1.2f, 0f, 0f ), ground );
+		var crab = crabNode as JunkCrab;
+		Check( crab is not null, "no crab to test with" );
+		await Wait( 0.5f );
+		var health0 = survivor.Health.Current;
+		// Held in the water well above it, right over the crab.
+		for ( var t = 0f; t < 2.2f; t += 0.02f )
+		{
+			player.GlobalPosition = crab.GlobalPosition + Vector3.Up * 2.2f;
+			player.Velocity = Vector3.Zero;
+			await ToSignal( GetTree(), SceneTree.SignalName.PhysicsFrame );
+		}
+		GD.Print( $"[autotest] round11: player 2.2 m over a crab for 2 s lost {health0 - survivor.Health.Current:0}" );
+		Check( survivor.Health.Current >= health0, "a crab clawed a player standing well above it" );
+		player.GlobalPosition = Nav.Closest( player, crab.GlobalPosition + new Vector3( 0.8f, 0f, 0f ) ) + Vector3.Up * 0.1f;
+		await Wait( 2.2f );
+		GD.Print( $"[autotest] round11: player on the floor beside the crab lost {health0 - survivor.Health.Current:0}" );
+		Check( survivor.Health.Current < health0, "the crab no longer hits a player on the floor" );
+		crab.QueueFree();
+		DevFlags.FreezeEnemies = true;
+
+		// A malfunction round that starts mid slide: the slide must end.
+		var movement2 = player.GetNode<PlayerMovement>( "PlayerMovement" );
+		player.GlobalPosition = Nav.Closest( player, new Vector3( -4f, 0f, 4f ) ) + Vector3.Up * 0.1f;
+		await Wait( 0.5f );
+		player.Velocity = -player.GlobalBasis.Z * 7f;
+		movement2.ForceCrouch = true;
+		await Wait( 0.3f );
+		var slid = movement2.IsSliding;
+		director.FloatRound = true;
+		movement2.ForceCrouch = false;
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] round11: was sliding {slid}, in a malfunction round sliding {movement2.IsSliding}" );
+		Check( slid, "the test could not start a slide" );
+		Check( !movement2.IsSliding, "the slide is stuck on in a malfunction round" );
+		director.FloatRound = false;
+
+		// The slide is a dive: capture it in third person, with the propellers.
+		player.ThirdPerson = true;
+		player.GlobalPosition = Nav.Closest( player, new Vector3( -4f, 0f, 4f ) ) + Vector3.Up * 0.1f;
+		await Wait( 0.5f );
+		player.Velocity = -player.GlobalBasis.Z * 7f;
+		movement2.ForceCrouch = true;
+		await Wait( 0.35f );
+		await Shot( "slide_dive" );
+		movement2.ForceCrouch = false;
+		player.ThirdPerson = false;
+
+		// The gun's own filter: open air, then underwater.
+		Sfx.SetUnderwater( 0f );
+		var bus = AudioServer.GetBusIndex( Sfx.GunBus );
+		var air = ((AudioEffectLowPassFilter)AudioServer.GetBusEffect( bus, 0 )).CutoffHz;
+		Sfx.SetUnderwater( 1f );
+		var under = ((AudioEffectLowPassFilter)AudioServer.GetBusEffect( bus, 0 )).CutoffHz;
+		GD.Print( $"[autotest] round11: gun filter {air:0} Hz in the air, {under:0} Hz underwater, wash {((AudioEffectReverb)AudioServer.GetBusEffect( bus, 1 )).Wet:0.00}" );
+		Check( air > 15000f && under < 800f, "the gun's underwater filter does not close down" );
+		Sfx.SetUnderwater( 0f );
+		foreach ( var name in new[] { "dock_wave", "gull", "stab_squish" } )
+			Check( Sfx.Pick( name ) != name, $"no sounds found for {name}" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

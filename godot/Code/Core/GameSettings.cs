@@ -21,6 +21,9 @@ public static class GameSettings
 	/// <summary> How far out from the body the gun is held in first person, in inches from the usual spot (issue #31). </summary>
 	public static float GunDistance;
 	public const float MinGunDistance = -4f, MaxGunDistance = 10f;
+	/// <summary> How high the gun sits in first person, in inches from the usual spot: down takes it out of view. </summary>
+	public static float GunHeight;
+	public const float MinGunHeight = -16f, MaxGunHeight = 4f;
 	/// <summary> Which rifle design is in hand (RifleModels). </summary>
 	public static string Rifle = RifleArgument() ?? "Blaster";
 
@@ -46,6 +49,7 @@ public static class GameSettings
 		Fov = MathX.Clamp( (float)file.GetValue( "video", "fov", 90f ), MinFov, MaxFov );
 		Fullscreen = (bool)file.GetValue( "video", "fullscreen", false );
 		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
+		GunHeight = MathX.Clamp( (float)file.GetValue( "video", "gun_height", 0f ), MinGunHeight, MaxGunHeight );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
 	}
 
@@ -58,6 +62,7 @@ public static class GameSettings
 		file.SetValue( "video", "fov", Fov );
 		file.SetValue( "video", "fullscreen", Fullscreen );
 		file.SetValue( "video", "gun_distance", GunDistance );
+		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );
 		file.Save( Path );
 	}

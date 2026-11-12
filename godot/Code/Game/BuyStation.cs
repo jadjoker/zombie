@@ -16,13 +16,15 @@ public partial class BuyStation : Node
 	public float HealthPerPurchase = 25f;
 
 	public int Purchases { get; private set; }
-	public int CurrentCost => Cost + CostIncrease * Purchases;
-	public bool SoldOut => MaxPurchases > 0 && Purchases >= MaxPurchases;
+	/// <summary> Health upgrades past the limit stop adding to your maximum (and keep the last price): it just heals. </summary>
+	public bool AtLimit => MaxPurchases > 0 && Purchases >= MaxPurchases;
+	public int CurrentCost => Cost + CostIncrease * (Kind == BuyStationKind.Health && MaxPurchases > 0 ? Math.Min( Purchases, MaxPurchases - 1 ) : Purchases);
+	public bool SoldOut => AtLimit && Kind != BuyStationKind.Health;
 
 	public string Description => Kind switch
 	{
 		BuyStationKind.Ammo => "Refill magazine and reserve",
-		BuyStationKind.Health => $"+{HealthPerPurchase:0} max health, full heal",
+		BuyStationKind.Health => AtLimit ? "Full heal (max health is at its limit)" : $"+{HealthPerPurchase:0} max health, full heal",
 		BuyStationKind.Damage => $"Damage level {Purchases + 1}",
 		_ => "",
 	};
@@ -125,7 +127,8 @@ public partial class BuyStation : Node
 				foreach ( var w in Weapons( buyer ) ) w.RefillAmmo();
 				break;
 			case BuyStationKind.Health:
-				buyer.Health.IncreaseMax( HealthPerPurchase );
+				if ( AtLimit ) buyer.Health.Heal( buyer.Health.MaxHealth );   // the cap is reached: it still heals
+				else buyer.Health.IncreaseMax( HealthPerPurchase );
 				break;
 			case BuyStationKind.Damage:
 				foreach ( var w in Weapons( buyer ) ) w.DamageLevel++;

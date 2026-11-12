@@ -130,6 +130,7 @@ public partial class WaterFeel : Node, ICameraModifier
 		var bus = AudioServer.GetBusIndex( "Master" );
 		var index = AudioServer.GetBusEffectCount( bus ) - 1;
 		muffle.CutoffHz = MathX.Lerp( 20000f, MuffleFrequency, Blend * 0.85f );
+		Sfx.SetUnderwater( MathX.Clamp( Blend * 1.1f, 0f, 1f ) );
 		AudioServer.SetBusEffectEnabled( bus, index, Blend > 0.01f );
 	}
 

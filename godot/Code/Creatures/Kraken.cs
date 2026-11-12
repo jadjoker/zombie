@@ -23,7 +23,7 @@ public partial class Kraken : PartCreature
 
 	public static readonly List<Kraken> All = new();
 
-	public float HelmetHealth = 600f;
+	public float HelmetHealth = 1200f;
 	/// <summary> Health of a tentacle's thickest segment; the tip has TipHealthScale of it. </summary>
 	public float SegmentHealth = 220f, TipHealthScale = 0.3f;
 	/// <summary> Damage to the whole Kraken per point of damage on: the brain, the head, a tentacle. </summary>
@@ -95,7 +95,7 @@ public partial class Kraken : PartCreature
 
 	protected override void Setup()
 	{
-		BeginSetup( 3500f );
+		BeginSetup( 7000f );
 		sinceSpawned = 0f;
 		sinceDust = 99f;
 		Build();

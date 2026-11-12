@@ -40,6 +40,10 @@ public partial class PlayerRig : Node
 	RobotRagdoll ragdoll;
 	string appliedSkin;
 
+	float slidePropTime, slideHeading;
+	bool wasSliding;
+	/// <summary> The slide is a head-first dive now (playtest 11/11); the old folded-leg sit is switched off. </summary>
+	const bool FoldedSlide = false;
 	float slideBlend, slideHold, swimBlend, swimPhase, chargeBlend, surgeBlend, jetBlend, propSpin, flyingCam;
 	float swimPitch, swimRoll;
 	Vector3 swimMove, swimAccel, lastSwimLocal;
@@ -304,9 +308,14 @@ public partial class PlayerRig : Node
 		var rot = yawRot;
 		var pos = feet;
 
-		if ( movement?.IsSliding ?? false ) slideHold = 0.18f;
+		var sliding = (movement?.IsSliding ?? false) && !(movement?.IsFloating ?? false);
+		if ( sliding ) slideHold = 0.18f;
+		// The foot propellers kick in for a moment as the dive starts.
+		if ( sliding && !wasSliding ) slidePropTime = 0.5f;
+		wasSliding = sliding;
+		slidePropTime = MathF.Max( 0f, slidePropTime - dt );
 		slideHold = MathF.Max( 0f, slideHold - dt );
-		var wantSlide = slideHold > 0f && (survivor?.IsAlive ?? true) ? 1f : 0f;
+		var wantSlide = slideHold > 0f && (survivor?.IsAlive ?? true) && !(movement?.IsFloating ?? false) ? 1f : 0f;
 		slideBlend = MathX.Approach( slideBlend, wantSlide, dt * (wantSlide > slideBlend ? 8f : 3.2f) );
 		swimBlend = MathX.Approach( swimBlend, slideBlend > 0.001f ? 0f : (water?.Swimming ?? 0f), dt * 4f );
 
@@ -335,7 +344,7 @@ public partial class PlayerRig : Node
 			pos = feet + Vector3.Up * hips + bob - rot * (Vector3.Up * hips);
 		}
 
-		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) ? 1f : 0f, dt * ((jet?.Thrusting ?? false) ? 6f : 3f) );
+		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) || slidePropTime > 0f ? 1f : 0f, dt * ((jet?.Thrusting ?? false) || slidePropTime > 0f ? 6f : 3f) );
 		chargeBlend = MathX.Lerp( chargeBlend, jet?.Charging ?? false ? jet.Charge : 0f, 1f - MathF.Exp( -12f * dt ) );
 		surgeBlend = MathX.Approach( surgeBlend, jet?.Surging ?? false ? 1f : 0f, dt * ((jet?.Surging ?? false) ? 10f : 3f) );
 		propSpin = (propSpin + dt * 1800f * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
@@ -361,10 +370,15 @@ public partial class PlayerRig : Node
 		{
 			slideYaw = yawRot;
 			var ease = slideBlend * slideBlend * (3f - 2f * slideBlend);
-			rot = yawRot * new Angles( -SlideLean * ease, 0f, 0f ).ToBasis();
+			// Head first along the way it is travelling, belly to the ground, a hand's width off it.
+			var heading = controller.Velocity.Flat();
+			if ( heading.Length() > 0.5f ) slideHeading = MathF.Atan2( heading.X, -heading.Z );
+			var along = new Vector3( MathF.Sin( slideHeading ), 0f, -MathF.Cos( slideHeading ) );
+			var dive = Basis.LookingAt( Vector3.Down, (along + Vector3.Up * 0.14f).Normalized() );
+			rot = new Basis( rot.GetRotationQuaternion().SafeSlerp( dive.GetRotationQuaternion(), ease ) );
 			var pelvisRest = feet + Vector3.Up * hips;
-			var pelvisSlide = feet + yawRot * U.Sbox( SlideHips.X, 0f, SlideHips.Y );
-			var pelvis = pelvisRest.Lerp( pelvisSlide, ease );
+			var pelvisDive = feet + Vector3.Up * (13f * U.In);
+			var pelvis = pelvisRest.Lerp( pelvisDive, ease );
 			pos = pelvis - rot * (Vector3.Up * hips);
 		}
 		rigRoot.GlobalTransform = new Transform3D( rot, pos );
@@ -479,7 +493,7 @@ public partial class PlayerRig : Node
 			ankleTarget = ankleTarget.Lerp( hip + new Vector3( s == "L" ? 4f : -3f, side * 1.5f, -(thighLen + shinLen) * 0.78f ), air );
 			var kneePole = new Vector3( 20f, side * 2f, 0f );
 			var footLift = 0f;
-			if ( slideBlend > 0.001f )
+			if ( FoldedSlide && slideBlend > 0.001f )
 			{
 				var ease = slideBlend * slideBlend * (3f - 2f * slideBlend);
 				var lead = s == "R";
@@ -522,7 +536,7 @@ public partial class PlayerRig : Node
 			// Foot: toes along the facing (tipping up with the step), flat for the slide's folded foot.
 			var toeTip = MathF.Max( 0f, -MathF.Cos( phase ) ) * 15f * moving;
 			var footRot = SAng( -toeTip * 0.5f, 0f, 0f );
-			if ( slideBlend > 0.001f )
+			if ( FoldedSlide && slideBlend > 0.001f )
 			{
 				var slideForward = CharDir( slideYaw * ToG( SAng( -footLift, 0f, 0f ) ) * U.Sbox( SFwd ) ) / U.In;
 				var up = CharDir( Vector3.Up );

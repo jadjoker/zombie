@@ -326,6 +326,32 @@ def build():
     # The Kraken spitting ink: a wet cough and three globs going.
     s["kraken_spit"] = reverb(mix((squelch(0.35, 300, 1500, 1.2), 0, 1.2), (whoosh(0.5, 900, 250, 0.2, 0.6), 0.02, 1.0),
                                   (thump(0.3, 150, 60, 0.12), 0, 0.9), *[(blub(260 + 70 * i, 700, 0.09), 0.08 + 0.1 * i, 0.5) for i in range(3)]), room=0.5, wet=0.25)
+    # The dock before the dive (playtest 11/11): waves lapping at the pier, and gulls.
+    for i in range(3):
+        n = int(SR * 3.4)
+        lap = spectral(noise(3.4), lo=180, hi=1700) * bell(n, 0.4 + 0.05 * i) * (0.7 + 0.3 * tone(3.4, 0.6 + 0.2 * i))
+        hiss = spectral(noise(3.4), lo=2500, hi=7500) * bell(n, 0.5 + 0.05 * i) ** 2 * 0.25
+        slosh = squelch(0.5, 150, 700, 0.8) * 0.35
+        s[f"dock_wave_{i}"] = reverb(mix((lap, 0, 1.0), (hiss, 0.05, 1.0), (slosh, 1.2 + 0.2 * i, 1.0)), room=0.5, wet=0.25)
+    for i in range(3):
+        parts = []
+        t0 = 0.0
+        for k in range(3 + i % 2):
+            f0 = 2300 + 260 * k - 140 * i
+            dur = 0.28 + 0.1 * (k == 1)
+            nn = int(SR * dur)
+            call = tone(dur, f0 * 1.08, f0 * 0.78) * (1 + 0.25 * tone(dur, 38)) + 0.35 * tone(dur, f0 * 2.16, f0 * 1.56)
+            call = call * env(nn, 0.012, dur * 0.7) + spectral(noise(dur), lo=1800, hi=5200) * env(nn, 0.01, dur * 0.5) * 0.18
+            parts.append((call, t0, 0.8))
+            t0 += dur + 0.07
+        s[f"gull_{i}"] = reverb(mix(*parts), room=0.9, wet=0.3)
+    # The ally spider's stab: a thin sharp pierce, a wet punch, and the squelch of flesh.
+    for i in range(3):
+        pierce = spectral(noise(0.06), lo=2200, hi=9000) * env(int(SR * 0.06), 0.0004, 0.025)
+        punch = thump(0.14, 230 - 25 * i, 85, 0.05)
+        wet = squelch(0.38, 200, 950, 1.7)
+        pop = blub(420 + 60 * i, 1300, 0.06)
+        s[f"stab_squish_{i}"] = reverb(mix((pierce, 0, 0.9), (punch, 0.0, 0.8), (wet, 0.025, 1.0), (pop, 0.2, 0.5)), room=0.14, wet=0.12)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

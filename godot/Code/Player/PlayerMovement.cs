@@ -169,6 +169,8 @@ public partial class PlayerMovement : Node, ICameraModifier
 	public override void _Process( double delta )
 	{
 		var controller = Controller;
+		// A suit malfunction round starts while sliding: the slide must end (it used to hold for the whole round).
+		if ( IsFloating && Ground != GroundMode.None ) EndGroundMode();
 		var onGround = controller.IsOnGround;
 		RegenStamina( (float)delta );
 		Footsteps( controller, onGround, (float)delta );

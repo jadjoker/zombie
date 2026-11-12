@@ -2,11 +2,11 @@
 Turns the CC0 recordings the game uses (issue #36) into game sounds. Run with a folder holding the raw downloads:
     python Tools/godot/import_sounds.py <folder>
 Needs numpy. Writes godot/assets/sounds/{rifle_shoot,shotgun_shoot}.wav (trimmed to one shot, mono, 44.1 kHz) and
-copies the Kenney .ogg files under the names the game looks for (footstep_dock_N, footstep_floor_N, harpoon_N).
+copies the Kenney .ogg files under the names the game looks for (footstep_dock_N, footstep_floor_N).
 
 Sources (all CC0, no credit needed; see assets/sounds/README.md):
   AR-15 and Benelli Nova shots: Free Firearm Sound Library (Ben Jaszczak), D_32P.wav and O_21P.wav.
-  Footsteps and lasers: Kenney Impact Sounds (footstep_wood, footstep_snow) and Sci-fi Sounds (laser_small).
+  Footsteps: Kenney Impact Sounds (footstep_wood, footstep_snow).
 """
 import os
 import shutil
@@ -65,10 +65,9 @@ def main(src):
         x, sr = read24(os.path.join(src, raw))
         write16(name, first_shot(x, sr, tail))
     for i in range(5):
-        for kenney, game in ((f"footstep_wood_00{i}.ogg", f"footstep_dock_{i}.ogg"), (f"footstep_snow_00{i}.ogg", f"footstep_floor_{i}.ogg"),
-                             (f"laser_small_00{i}.ogg", f"harpoon_{i}.ogg")):
+        for kenney, game in ((f"footstep_wood_00{i}.ogg", f"footstep_dock_{i}.ogg"), (f"footstep_snow_00{i}.ogg", f"footstep_floor_{i}.ogg")):
             shutil.copyfile(os.path.join(src, kenney), os.path.join(OUT, game))
-    print("copied 15 Kenney files")
+    print("copied 10 Kenney files")
 
 
 if __name__ == "__main__":

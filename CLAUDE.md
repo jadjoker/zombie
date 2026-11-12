@@ -50,6 +50,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Stage 5 is in (`WaveDirector.RollKraken`, `KrakenSpot`): 10% on wave 7, then odds that climb with the rounds
   since it last came (0, 5, 15, 25, 45, 75, 100%), never on an MC61 wave, coming up near the map centre clear of
   the buy stations. Dev menu (World, waves): Kraken next wave, Wave 7; (Enemies, Wave spawning): Kraken waves.
+- Playtest 11/11 (issue #41): the suit malfunction round (`WaveDirector.SuitMalfunctionEvery`, every 4 rounds, you
+  float), the Kraken scales 1.2x per visit (health and dome), upgrades cap at 10 (health keeps healing past it),
+  slide is a head-first dive (`PlayerRig`, `FoldedSlide` is the old pose), dock waves and gulls (`DockHouse.DockAmbience`),
+  the gun's own bus (`Sfx.GunBus`) filtered underwater. Test: `--round11` (needs a window).
 - A dead player has no gun, HUD or input: `PlayerSurvivor.LocalDead` gates them, and `PlayerRig.DeathCamera` (through
   `PlayerController.CameraOverride`) watches the ragdoll. Test for board items #31 to #40: `--board1` (needs a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`

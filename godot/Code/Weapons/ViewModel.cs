@@ -138,7 +138,7 @@ public partial class ViewModel : Node3D
 		var tuck = new Vector3( 0f, 0f, -40f ) * MathX.Clamp( (scope - 0.6f) / 0.4f, 0f, 1f );
 		var settle = new Vector3( 1f, 0f, 0f ) * MathF.Sin( aim * MathF.PI ) * -1.2f;
 		// The player's own choice of how far out the gun sits (pause menu); the aimed pose is left alone so the sights line up.
-		var reach = new Vector3( GameSettings.GunDistance, 0f, 0f ) * (1f - aim);
+		var reach = new Vector3( GameSettings.GunDistance, 0f, GameSettings.GunHeight ) * (1f - aim);
 		var offset = Vector3.Zero.Lerp( aimOffset, aim ) + settle + tuck + bob + lag + reach;
 
 		Position = U.Sbox( offset );

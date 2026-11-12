@@ -350,6 +350,7 @@ public partial class DockHouse : Node3D
 			controller.Velocity = Vector3.Zero;
 		}
 
+		if ( phase == Phase.None ) DockAmbience( controller, (float)delta );
 		if ( phase != Phase.None ) { UpdateDive( player, controller, (float)delta ); return; }
 		if ( !dived && player.IsAlive && controller.GlobalPosition.Y < (SurfaceHeight - 6f) * U.In )
 		{
@@ -361,6 +362,43 @@ public partial class DockHouse : Node3D
 	/// <summary> Testing aid: dive from just past the board. </summary>
 	/// <summary> Testing aid: count the dive as done, so going below the surface doesn't start one. </summary>
 	public void SkipDive() => dived = true;
+
+	TimeUntil nextLap = 1.5f, nextGull = 12f, secondGull = 99999f;
+
+	/// <summary>
+	/// The sounds of the dock before the dive (playtest 11/11): waves lapping against the pier every few seconds
+	/// from all round, and a seagull once or twice a minute, sometimes calling twice.
+	/// </summary>
+	void DockAmbience( PlayerController controller, float dt )
+	{
+		if ( dived || controller is null ) return;
+		var at = controller.GlobalPosition;
+		if ( nextLap <= 0f )
+		{
+			nextLap = Rng.Float( 2.2f, 4.8f );
+			var angle = Rng.Float( 0f, MathF.Tau );
+			var spot = at + new Vector3( MathF.Cos( angle ), 0f, MathF.Sin( angle ) ) * Rng.Float( 5f, 16f );
+			Sfx.Play( Sfx.Pick( "dock_wave" ), new Vector3( spot.X, SurfaceHeight * U.In, spot.Z ), Rng.Float( 0.45f, 0.8f ), Rng.Float( 0.9f, 1.1f ) );
+		}
+		if ( nextGull <= 0f )
+		{
+			nextGull = Rng.Float( 28f, 48f );
+			Gull( at );
+			if ( Rng.Float() < 0.45f ) secondGull = Rng.Float( 1.6f, 3.2f );
+		}
+		if ( secondGull < 90000f )
+		{
+			secondGull -= dt;
+			if ( secondGull <= 0f ) { secondGull = 99999f; Gull( at ); }
+		}
+	}
+
+	void Gull( Vector3 near )
+	{
+		var angle = Rng.Float( 0f, MathF.Tau );
+		var spot = near + new Vector3( MathF.Cos( angle ) * Rng.Float( 12f, 30f ), Rng.Float( 6f, 14f ), MathF.Sin( angle ) * Rng.Float( 12f, 30f ) );
+		Sfx.Play( Sfx.Pick( "gull" ), spot, Rng.Float( 0.6f, 0.9f ), Rng.Float( 0.9f, 1.12f ) );
+	}
 
 	public void TestDive()
 	{

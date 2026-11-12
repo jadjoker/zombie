@@ -1926,7 +1926,10 @@ public partial class AutoTest : Node
 		player.Velocity = -player.GlobalBasis.Z * 7f;
 		movement2.ForceCrouch = true;
 		await Wait( 0.35f );
-		await Shot( "slide_dive" );
+		await Shot( "slide_feet_first" );
+		player.EyeAngles = new Angles( 8f, player.EyeAngles.Yaw + 140f, 0f );   // from the front, to see the propellers
+		await Wait( 0.15f );
+		await Shot( "slide_feet_first_front" );
 		movement2.ForceCrouch = false;
 		player.ThirdPerson = false;
 

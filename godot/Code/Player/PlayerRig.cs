@@ -42,7 +42,7 @@ public partial class PlayerRig : Node
 
 	float slidePropTime, slideHeading;
 	bool wasSliding;
-	/// <summary> The slide is a head-first dive now (playtest 11/11); the old folded-leg sit is switched off. </summary>
+	/// <summary> The slide is feet first now (playtest 11/11): on your back, the propellers out in front spinning backwards to pull you along. The old folded-leg sit is switched off. </summary>
 	const bool FoldedSlide = false;
 	float slideBlend, slideHold, swimBlend, swimPhase, chargeBlend, surgeBlend, jetBlend, propSpin, flyingCam;
 	float swimPitch, swimRoll;
@@ -310,8 +310,8 @@ public partial class PlayerRig : Node
 
 		var sliding = (movement?.IsSliding ?? false) && !(movement?.IsFloating ?? false);
 		if ( sliding ) slideHold = 0.18f;
-		// The foot propellers kick in for a moment as the dive starts.
-		if ( sliding && !wasSliding ) slidePropTime = 0.5f;
+		// The foot propellers are out for the whole slide and a moment after it.
+		if ( sliding ) slidePropTime = 0.12f;
 		wasSliding = sliding;
 		slidePropTime = MathF.Max( 0f, slidePropTime - dt );
 		slideHold = MathF.Max( 0f, slideHold - dt );
@@ -347,7 +347,7 @@ public partial class PlayerRig : Node
 		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) || slidePropTime > 0f ? 1f : 0f, dt * ((jet?.Thrusting ?? false) || slidePropTime > 0f ? 6f : 3f) );
 		chargeBlend = MathX.Lerp( chargeBlend, jet?.Charging ?? false ? jet.Charge : 0f, 1f - MathF.Exp( -12f * dt ) );
 		surgeBlend = MathX.Approach( surgeBlend, jet?.Surging ?? false ? 1f : 0f, dt * ((jet?.Surging ?? false) ? 10f : 3f) );
-		propSpin = (propSpin + dt * 1800f * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
+		propSpin = (propSpin + dt * 1800f * (slidePropTime > 0f ? -1f : 1f) * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
 		if ( (chargeBlend > 0.01f || surgeBlend > 0.001f) && slideBlend <= 0.001f )
 		{
 			var q = rot.GetRotationQuaternion();
@@ -370,14 +370,15 @@ public partial class PlayerRig : Node
 		{
 			slideYaw = yawRot;
 			var ease = slideBlend * slideBlend * (3f - 2f * slideBlend);
-			// Head first along the way it is travelling, belly to the ground, a hand's width off it.
+			// Feet first along the way it is travelling, on the back, the feet a little raised and the propellers
+			// in front pulling (they spin the other way).
 			var heading = controller.Velocity.Flat();
 			if ( heading.Length() > 0.5f ) slideHeading = MathF.Atan2( heading.X, -heading.Z );
 			var along = new Vector3( MathF.Sin( slideHeading ), 0f, -MathF.Cos( slideHeading ) );
-			var dive = Basis.LookingAt( Vector3.Down, (along + Vector3.Up * 0.14f).Normalized() );
+			var dive = Basis.LookingAt( Vector3.Up, -(along + Vector3.Up * 0.16f).Normalized() );
 			rot = new Basis( rot.GetRotationQuaternion().SafeSlerp( dive.GetRotationQuaternion(), ease ) );
 			var pelvisRest = feet + Vector3.Up * hips;
-			var pelvisDive = feet + Vector3.Up * (13f * U.In);
+			var pelvisDive = feet + Vector3.Up * (11f * U.In);
 			var pelvis = pelvisRest.Lerp( pelvisDive, ease );
 			pos = pelvis - rot * (Vector3.Up * hips);
 		}

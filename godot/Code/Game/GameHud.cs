@@ -132,11 +132,11 @@ public partial class GameHud : Control
 		banner.Scale = Vector2.One * scale;
 		if ( d is not null )
 		{
-			bannerBig.Text = d.OpenWorld ? (isStart ? $"DANGER {d.Wave}" : "") : floatStart ? "SUIT MALFUNCTION" : isStart ? $"WAVE {d.Wave}" : "WAVE CLEARED";
-			bannerBig.AddThemeColorOverride( "font_color", isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
+			bannerBig.Text = d.OpenWorld ? (isStart ? $"DANGER {d.Wave}" : "") : floatStart ? "SUIT MALFUNCTION" : isStart ? $"WAVE {d.Wave}" : d.MalfunctionJustEnded ? "SUIT BACK ONLINE" : "WAVE CLEARED";
+			bannerBig.AddThemeColorOverride( "font_color", floatStart ? new Color( "ffb020" ) : isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
 			bannerSmall.Text = d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
-				: floatStart ? $"Wave {d.Wave}: ballast error. Your suit cannot grip the ground: jump to rise, crouch to sink"
-				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC61 has entered the arena" : "They're coming") : "Catch your breath";
+				: floatStart ? $"BALLAST ERROR: the suit cannot grip the ground. Jump to rise, crouch to sink"
+				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC61 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath";
 		}
 
 		var k = d?.Kills ?? 0;

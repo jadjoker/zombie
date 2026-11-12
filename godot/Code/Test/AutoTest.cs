@@ -1919,6 +1919,16 @@ public partial class AutoTest : Node
 		Check( !movement2.IsSliding, "the slide is stuck on in a malfunction round" );
 		director.FloatRound = false;
 
+		// The malfunction round has its own sounds, banner words and warning light.
+		foreach ( var name in new[] { "suit_alarm", "suit_restore" } ) Check( ResourceLoader.Exists( $"res://assets/sounds/{name}.wav" ), $"no {name} sound" );
+		director.JumpToWave( 4 );
+		await Wait( 1.2f );
+		Check( director.FloatRound && director.State == WaveState.Fighting, "wave 4 was not a suit malfunction round" );
+		await Shot( "malfunction_hud" );
+		director.JumpToWave( 5 );
+		await Wait( 1.2f );
+		Check( !director.FloatRound, "wave 5 was still a malfunction round" );
+
 		// The slide is a dive: capture it in third person, with the propellers.
 		player.ThirdPerson = true;
 		player.GlobalPosition = Nav.Closest( player, new Vector3( -4f, 0f, 4f ) ) + Vector3.Up * 0.1f;

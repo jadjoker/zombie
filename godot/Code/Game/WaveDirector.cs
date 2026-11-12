@@ -144,6 +144,8 @@ public partial class WaveDirector : Node3D
 	/// <summary> Every this many rounds the suit malfunctions: no walking, you float (playtest 11/11, was the anchor snap). </summary>
 	public int SuitMalfunctionEvery = 4;
 	public bool FloatRound;
+	/// <summary> The round that just ended was a suit malfunction (the banner then says the suit is back). </summary>
+	public bool MalfunctionJustEnded { get; private set; }
 
 	// Open world
 	public bool OpenWorld;
@@ -314,11 +316,13 @@ public partial class WaveDirector : Node3D
 
 		if ( toSpawn <= 0 && !bossPending && !krakenPending && alive.Count == 0 )
 		{
+			var wasMalfunction = FloatRound;
 			State = WaveState.Intermission;
 			nextWaveAt = IntermissionSeconds;
 			FloatRound = false;
 			TimeSinceWaveCleared = 0f;
-			Sfx.Play2D( "wave_cleared" );
+			MalfunctionJustEnded = wasMalfunction;
+			Sfx.Play2D( wasMalfunction ? "suit_restore" : "wave_cleared" );
 			var index = 0;
 			foreach ( var survivor in PlayerSurvivor.All.ToList() )
 			{
@@ -422,7 +426,8 @@ public partial class WaveDirector : Node3D
 		State = WaveState.Fighting;
 		timeSinceSpawn = SpawnInterval;
 		TimeSinceWaveStarted = 0f;
-		Sfx.Play2D( "wave_start" );
+		MalfunctionJustEnded = false;
+		Sfx.Play2D( FloatRound ? "suit_alarm" : "wave_start" );
 	}
 
 	// ---- Dev tools ----

@@ -8,7 +8,7 @@ using Godot;
 public partial class HudOverlays : Control
 {
 	PlayerSurvivor player;
-	ColorRect hurt, venom, radiation, burn, slow, slam;
+	ColorRect hurt, venom, radiation, malfunction, burn, slow, slam;
 	Control boss, prompt;
 	Label speech, promptKey, promptTitle, promptDesc;
 	float jetShown, staminaShown;
@@ -51,6 +51,7 @@ public partial class HudOverlays : Control
 		hurt = Glow( new Color( "b00000" ) with { A = 0.9f }, 0.4f );
 		venom = Glow( new Color( "3cff20" ) with { A = 0.75f }, 0.45f );
 		radiation = Glow( new Color( "9dff1a" ) with { A = 0.7f }, 0.52f );
+		malfunction = Glow( new Color( "ffb020" ) with { A = 0.7f }, 0.5f );
 		burn = Glow( new Color( "ff3c00" ) with { A = 0.8f }, 0.45f );
 		slow = Glow( new Color( "a8e6ff" ) with { A = 0.8f }, 0.5f );
 		slam = Glow( new Color( "0a3040" ) with { A = 0f }, 0f, new Color( 1f, 1f, 1f, 0.9f ), 0.8f );
@@ -115,6 +116,10 @@ public partial class HudOverlays : Control
 		}
 		Show( venom, venomOpacity );
 		Show( burn, a is not null && a.BurnLeft > 0f ? (0.3f + 0.15f * MathF.Sin( now * 11f )) * MathX.Clamp( a.BurnLeft / 0.6f, 0f, 1f ) : 0f );
+		// A suit malfunction round: amber warning light round the edge of the view, pulsing, with the odd glitch flicker.
+		var failing = WaveDirector.Current is { FloatRound: true, State: WaveState.Fighting };
+		var glitch = MathF.Sin( now * 23f ) * MathF.Sin( now * 7.3f ) > 0.93f ? 0.3f : 0f;
+		Show( malfunction, failing ? 0.22f + 0.1f * MathF.Sin( now * 3.2f ) + glitch : 0f );
 		Show( radiation, a is not null && a.RadiationLeft > 0f ? (0.34f + 0.14f * MathF.Sin( now * 5f )) * MathX.Clamp( a.RadiationLeft / 0.6f, 0f, 1f ) : 0f );
 		Show( slow, a is not null && a.SlowLeft > 0f ? 0.45f * MathX.Clamp( a.SlowLeft / 0.6f, 0f, 1f ) : 0f );
 
@@ -259,6 +264,20 @@ public partial class HudOverlays : Control
 				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width * kraken.HelmetFraction, 5f ) ), new Color( "bfeaff" ) );
 			}
 			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
+		}
+
+		// The robot's own readout while the suit is failing.
+		var suitFailing = WaveDirector.Current is { FloatRound: true, State: WaveState.Fighting };
+		if ( suitFailing && !PlayerSurvivor.LocalDead )
+		{
+			var blink = MathF.Sin( now * 5f ) > -0.2f ? 1f : 0.35f;
+			var amber = new Color( "ffb020" );
+			var at = new Vector2( 28f, Size.Y * 0.2f );
+			DrawRect( new Rect2( at - new Vector2( 10f, 26f ), new Vector2( 330f, 86f ) ), new Color( 0, 0, 0, 0.45f ) );
+			DrawRect( new Rect2( at - new Vector2( 10f, 26f ), new Vector2( 4f, 86f ) ), amber with { A = blink } );
+			DrawString( ThemeDB.FallbackFont, at, "SUIT MALFUNCTION", HorizontalAlignment.Left, -1f, 22, amber with { A = blink } );
+			DrawString( ThemeDB.FallbackFont, at + new Vector2( 0f, 24f ), "BALLAST OFFLINE", HorizontalAlignment.Left, -1f, 16, new Color( 1f, 0.45f, 0.3f ) );
+			DrawString( ThemeDB.FallbackFont, at + new Vector2( 0f, 44f ), "boots cannot grip: you float", HorizontalAlignment.Left, -1f, 14, new Color( 1, 1, 1, 0.7f ) );
 		}
 
 		// Irradiated by the Kraken: how long is left, and what it is doing to you.

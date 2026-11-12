@@ -352,6 +352,10 @@ def build():
         wet = squelch(0.38, 200, 950, 1.7)
         pop = blub(420 + 60 * i, 1300, 0.06)
         s[f"stab_squish_{i}"] = reverb(mix((pierce, 0, 0.9), (punch, 0.0, 0.8), (wet, 0.025, 1.0), (pop, 0.2, 0.5)), room=0.14, wet=0.12)
+    # The suit failing: a klaxon, and the suit coming back.
+    siren = mix(*[(tone(0.24, 880 if i % 2 == 0 else 640, shape="square") * env(int(SR * 0.24), 0.004, 0.14), i * 0.26, 0.35) for i in range(6)], (tone(1.6, 55, 38) * bell(int(SR * 1.6), 0.3) * 0.5, 0, 1.0))
+    s["suit_alarm"] = reverb(spectral(siren, lo=60, hi=3500), room=0.5, wet=0.25)
+    s["suit_restore"] = reverb(mix((chime((392, 523, 659, 784), 0.1, 0.45, "tri"), 0, 1.0), (zap(0.5, 200, 1400, 0.2) * 0.4, 0, 1.0), (thump(0.3, 110, 50, 0.1), 0, 0.7)), room=0.4, wet=0.2)
     # Game and UI.
     s["wave_start"] = reverb(mix((spectral(tone(1.3, 73.4, shape="saw") + tone(1.3, 110, shape="saw") * 0.7, hi=900) * env(int(SR * 1.3), 0.08, 0.9, 0.3), 0, 1.0),
                                  (thump(0.6, 90, 35, 0.4), 0, 0.8)), room=1.0, wet=0.35)

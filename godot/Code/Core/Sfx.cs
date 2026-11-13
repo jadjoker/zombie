@@ -104,11 +104,30 @@ public static class Sfx
 				var bus = AudioServer.BusCount - 1;
 				AudioServer.SetBusName( bus, "Underwater" );
 				AudioServer.SetBusSend( bus, "Master" );
-				AudioServer.AddBusEffect( bus, new AudioEffectHighPassFilter { CutoffHz = 260f } );
-				AudioServer.AddBusEffect( bus, new AudioEffectLowPassFilter { CutoffHz = 1300f, Resonance = 0.85f } );
-				AudioServer.AddBusEffect( bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.8f, Wet = 0.2f, Dry = 0.9f } );
+				// Soft and dull: a gentle low-pass with no resonant peak (the old one rang and grated).
+				AudioServer.AddBusEffect( bus, new AudioEffectHighPassFilter { CutoffHz = 120f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectLowPassFilter { CutoffHz = 850f, Resonance = 0.4f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectReverb { RoomSize = 0.3f, Damping = 0.9f, Wet = 0.15f, Dry = 0.9f } );
 			}
 			return "Underwater";
+		}
+	}
+
+	/// <summary> The bus for dock footsteps: the harsh highs of the wood recordings rolled off so they thud softly. </summary>
+	public static string SoftStepBus
+	{
+		get
+		{
+			if ( AudioServer.GetBusIndex( "SoftSteps" ) < 0 )
+			{
+				AudioServer.AddBus();
+				var bus = AudioServer.BusCount - 1;
+				AudioServer.SetBusName( bus, "SoftSteps" );
+				AudioServer.SetBusSend( bus, "Master" );
+				AudioServer.AddBusEffect( bus, new AudioEffectHighPassFilter { CutoffHz = 90f } );
+				AudioServer.AddBusEffect( bus, new AudioEffectLowPassFilter { CutoffHz = 1900f, Resonance = 0.3f } );
+			}
+			return "SoftSteps";
 		}
 	}
 

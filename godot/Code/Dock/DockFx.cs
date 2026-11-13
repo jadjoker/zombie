@@ -31,6 +31,13 @@ public partial class WaterWaves : MeshInstance3D
 	}
 
 	public override void _Process( double delta ) => material?.SetShaderParameter( "wave_time", (float)Clock.Now );
+
+	/// <summary> Darkens a circle of the sea into a blue hole (centre in s&box inches on the surface, radius in inches). </summary>
+	public void SetBlueHole( Vector2 centre, float radius )
+	{
+		material.SetShaderParameter( "hole_center", centre );
+		material.SetShaderParameter( "hole_radius", radius );
+	}
 }
 
 /// <summary> Port of s&box WaveFloater: buoyancy against the moving wave surface, and a drift with the swell. </summary>

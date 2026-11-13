@@ -74,6 +74,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   moves the cliffs to the rim and spreads copies of the sea life over the hills, and moves the spawn points out to
   44-58 m. Place anything new with `SeaTerrain.HeightAt(x, z)`. Test: `--terrain` (shots need a window);
   `--flat-floor` loads the old flat arena for comparison. Slides survive a moment of air over a crest.
+  `AlienReef.cs` adds a coral reef ring round the basin (radius 23-33 m) and patches inside it, recolours about 45% of the
+  kelp and coral alien (neon green, black, purple, violet), and 230 glowing floating alien plants (`AlienFloaters`). The
+  sea surface has a dark blue hole off the end of the diving board (`water.gdshader` hole uniforms,
+  `DockHouse.BlueHoleRadius`). Converted props keep their s&box name in `Level.Kind(node)` (Godot renames duplicates).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

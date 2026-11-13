@@ -6,6 +6,10 @@ shader_type spatial;
 render_mode cull_disabled, specular_schlick_ggx;
 
 uniform float wave_time = 0.0;
+// The blue hole (issue #35, after the Great Blue Hole of Belize): a circle of near-black deep blue where the diving
+// board points, ringed by pale reef water, with the rest of the lagoon a lighter turquoise. s&box inches; radius 0 = off.
+uniform vec2 hole_center = vec2(0.0);
+uniform float hole_radius = 0.0;
 // Step 8: the scene depth behind the water, for foam where it meets the stilts, the dock and anything floating.
 uniform sampler2D depth_tex : hint_depth_texture, filter_nearest, repeat_disable;
 const float IN = 0.0254;
@@ -82,6 +86,20 @@ void fragment() {
 		float crest = clamp(h0 * 0.35 + 0.45, 0.0, 1.0);
 		vec3 deep = vec3(0.006, 0.035, 0.05);
 		vec3 shallow = vec3(0.02, 0.16, 0.17);
+		if (hole_radius > 0.0) {
+			float d = length(p - hole_center) / hole_radius + (vnoise2(p * 0.004) - 0.5) * 0.12;
+			float inside = 1.0 - smoothstep(0.82, 1.0, d);
+			float rim = smoothstep(0.8, 0.98, d) * (1.0 - smoothstep(1.02, 1.35, d));
+			float lagoon = smoothstep(1.0, 1.6, d);
+			// Lagoon: light turquoise over the reef. Rim: pale aqua where the reef nearly breaks the surface.
+			deep = mix(deep, vec3(0.012, 0.11, 0.12), lagoon);
+			shallow = mix(shallow, vec3(0.06, 0.34, 0.33), lagoon);
+			deep = mix(deep, vec3(0.08, 0.36, 0.36), rim * 0.8);
+			shallow = mix(shallow, vec3(0.22, 0.6, 0.55), rim * 0.8);
+			// The hole: deep, nearly black blue.
+			deep = mix(deep, vec3(0.001, 0.008, 0.045), inside);
+			shallow = mix(shallow, vec3(0.006, 0.03, 0.12), inside);
+		}
 		vec3 body = mix(deep, shallow, crest * 0.6);
 		// Crest foam: sparse streaks on the tallest waves only.
 		float foam_noise = vnoise2(p * 0.12 + t * 0.3) * 0.6 + vnoise2(p * 0.35 - t * 0.4) * 0.4;

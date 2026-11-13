@@ -162,8 +162,8 @@ public static class SeaTerrain
 	{
 		var all = level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>().ToList();
 		// Only the converted arena's own floor, sand and walls (the dock and others have parts with the same names).
-		bool OldGround( Node3D n ) => (n.GetParent()?.Name.ToString() == "Arena" && (n.Name.ToString() == "Floor" || n.Name.ToString().StartsWith( "Wall " )))
-			|| (n.GetParent()?.Name.ToString() == "Dressing" && n.Name.ToString() == "Sand");
+		bool OldGround( Node3D n ) => (n.GetParent()?.Name.ToString() == "Arena" && (n.Name.ToString() == "Floor" || Level.Kind( n ).StartsWith( "Wall " )))
+			|| (Level.Kind( n.GetParent() ) == "Dressing" && Level.Kind( n ) == "Sand");
 		foreach ( var n in all.Where( OldGround ).ToList() )
 			if ( IsInstanceValid( n ) ) { n.GetParent().RemoveChild( n ); n.Free(); }
 
@@ -172,8 +172,8 @@ public static class SeaTerrain
 		bool IsInstanceValid( GodotObject o ) => GodotObject.IsInstanceValid( o );
 
 		// Props and spawn points straight under the level's dressing: set down on the ground where they stand.
-		var dressing = all.Where( n => IsInstanceValid( n ) && n.GetParent()?.Name.ToString() is "Dressing" or "Zombie Spawns" ).ToList();
-		var cliffs = dressing.Where( n => n.Name.ToString().StartsWith( "Cliff" ) ).ToList();
+		var dressing = all.Where( n => IsInstanceValid( n ) && n.GetParent() is { } par && Level.Kind( par ) is "Dressing" or "Zombie Spawns" ).ToList();
+		var cliffs = dressing.Where( n => Level.Kind( n ).StartsWith( "Cliff" ) ).ToList();
 		foreach ( var n in dressing.Except( cliffs ) )
 			n.GlobalPosition = n.GlobalPosition with { Y = n.GlobalPosition.Y + HeightAt( n.GlobalPosition ) };
 
@@ -210,7 +210,7 @@ public static class SeaTerrain
 		// More life over the new ground: copies of the kelp, coral, pebbles and boulders, out past the basin.
 		foreach ( var (prefix, count) in new[] { ("Kelp", 150), ("Coral", 80), ("Pebbles", 70), ("Boulder", 45) } )
 		{
-			var sources = dressing.Where( n => n.Name.ToString().StartsWith( prefix ) ).ToList();
+			var sources = dressing.Where( n => Level.Kind( n ).StartsWith( prefix ) ).ToList();
 			if ( sources.Count == 0 ) continue;
 			for ( var k = 0; k < count; k++ )
 			{

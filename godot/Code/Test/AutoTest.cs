@@ -2602,6 +2602,24 @@ public partial class AutoTest : Node
 	async Task TerrainTest()
 	{
 		DevFlags.FreezeEnemies = true;
+		// Up on the dock first: the blue hole off the end of the diving board.
+		if ( DockHouse.Current is { } dockHouse && shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+			var hole = dockHouse.BlueHoleCentre;
+			var tip = dockHouse.BoardTip;
+			var dockShot = new Transform3D( Basis.LookingAt( (hole - (tip + new Vector3( 0f, 9f, 0f ) - (hole - tip).Normalized() * 14f)).Normalized(), Vector3.Up ), tip + new Vector3( 0f, 9f, 0f ) - (hole - tip).Normalized() * 14f );
+			player.CameraOverride = _ => dockShot;
+			await Wait( 0.6f );
+			await Shot( "blue_hole_dock" );
+			dockShot = new Transform3D( Basis.LookingAt( Vector3.Down + Vector3.Forward * 0.01f, Vector3.Forward ), hole + Vector3.Up * 60f );
+			await Wait( 0.4f );
+			await Shot( "blue_hole_above" );
+			player.CameraOverride = null;
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = true;
+		}
 		DockHouse.Current?.SkipDive();
 		await Wait( 0.5f );
 		Check( SeaTerrain.Active, "the water level did not build its terrain" );
@@ -2647,6 +2665,9 @@ public partial class AutoTest : Node
 		player.CameraOverride = _ => shotAt;
 		foreach ( var (name, at, look) in new[] {
 			("terrain_overview", new Vector3( 0f, 70f, 95f ), new Vector3( 0f, 0f, -10f )),
+			("reef_basin", new Vector3( -3f, 2.4f, 3f ), new Vector3( -30f, 1.5f, 18f )),
+			("reef_ring", new Vector3( 0f, 9f, 44f ), new Vector3( 0f, 0f, 20f )),
+			("reef_close", new Vector3( 22f, 2.2f, 8f ), new Vector3( 30f, 1f, 16f )),
 			("terrain_basin", new Vector3( 4f, 2.2f, 6f ), new Vector3( 40f, 2f, -40f )),
 			("terrain_hills", new Vector3( 55f, SeaTerrain.HeightAt( 55f, 30f ) + 3f, 30f ), new Vector3( 80f, SeaTerrain.HeightAt( 80f, -20f ), -20f )),
 			("terrain_rim", new Vector3( -60f, SeaTerrain.HeightAt( -60f, -60f ) + 4f, -60f ), new Vector3( -105f, 8f, -100f )) } )

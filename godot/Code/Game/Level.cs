@@ -57,6 +57,8 @@ public partial class Level : Node3D
 		if ( water && !OS.GetCmdlineUserArgs().Contains( "--flat-floor" ) ) { SeaTerrain.Build( this ); SeaTerrain.Fit( this ); }
 		// Sea life and landmarks go in before the navmesh (the anchor and the wreck are solid).
 		if ( water ) { SeaDressing.Add( this, taken ); SeaTerrain.Settle( FindChild( "Sea Dressing", false, false ) as Node3D ); }
+		// The coral reef round the starting basin and the floating alien plants (issue #35).
+		if ( water && SeaTerrain.Active ) AlienReef.Add( this, taken );
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
 
@@ -168,6 +170,8 @@ public partial class Level : Node3D
 	void Build( JsonElement o )
 	{
 		var node = new Node3D { Name = o.GetProperty( "name" ).GetString() };
+		// Godot renames siblings that share a name (a dozen "Kelp" become @Node3D@...): keep the kind to find them by.
+		node.SetMeta( "kind", o.GetProperty( "name" ).GetString() );
 		var parentPath = o.TryGetProperty( "parent", out var pp ) ? pp.GetString() : "";
 		( byPath.TryGetValue( parentPath, out var parent ) ? parent : this ).AddChild( node );
 		byPath[o.GetProperty( "path" ).GetString()] = node;
@@ -290,6 +294,9 @@ public partial class Level : Node3D
 			} );
 		}
 	}
+
+	/// <summary> What a converted object was called in the s&box scene ("Kelp", "Cliff"...), even after Godot renamed it. </summary>
+	public static string Kind( Node n ) => n.HasMeta( "kind" ) ? (string)n.GetMeta( "kind" ) : n.Name.ToString();
 
 	/// <summary> Sets public fields of a node from an s&box component's saved properties (matching names). </summary>
 	static void ApplySettings( object target, JsonElement values )

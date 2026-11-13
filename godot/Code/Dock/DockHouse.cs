@@ -22,6 +22,12 @@ public partial class DockHouse : Node3D
 	public bool DiveSequence = false;
 	/// <summary> How close (s&box units) you must be to the end of the diving board to use it. </summary>
 	public float BoardReach = 110f;
+	/// <summary> Radius (s&box units) of the dark blue hole in the sea off the end of the diving board. </summary>
+	public float BlueHoleRadius = 560f;
+	/// <summary> The middle of the blue hole on the sea's surface (world, metres). </summary>
+	public Vector3 BlueHoleCentre => U.Sbox( BoardEnd.X + BlueHoleRadius * 0.62f, BoardEnd.Y, SurfaceHeight );
+	/// <summary> The end of the diving board (world, metres). </summary>
+	public Vector3 BoardTip => U.Sbox( BoardEnd );
 	public float BlooberDelay = 3.5f;
 
 	public static int DiveCrushed { get; private set; }
@@ -167,6 +173,8 @@ public partial class DockHouse : Node3D
 		waves.Surface = SurfaceHeight * U.In;
 		root.AddChild( waves );
 		waves.GlobalPosition = U.Sbox( o.X, o.Y, SurfaceHeight );
+		// The blue hole you dive into: a dark circle just off the end of the diving board, the board reaching over its edge.
+		waves.SetBlueHole( new Vector2( BoardEnd.X + BlueHoleRadius * 0.62f, BoardEnd.Y ), BlueHoleRadius );
 		// The level's murk is underwater fog; above the surface it glowed green in the air and filled the hut.
 		// A big negative-density volume clears it from the surface up.
 		var air = new FogVolume

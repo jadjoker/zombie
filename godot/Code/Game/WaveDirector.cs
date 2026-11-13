@@ -172,6 +172,20 @@ public partial class WaveDirector : Node3D
 
 	public bool BossWave;
 	public WaveState State = WaveState.Intermission;
+	/// <summary> After this wave the teleporter zaps in, and the next wave waits until the player takes it (issue #35). </summary>
+	public int TeleportAfterWave = 10;
+	/// <summary> The player has gone through the teleporter to the wreck site. </summary>
+	public bool Teleported;
+	/// <summary> Waiting for the player to take the teleporter (the HUD says so instead of counting down). </summary>
+	public bool WaitingForTeleport { get; private set; }
+
+	/// <summary> Called on the far side of the teleporter: the next wave starts shortly. </summary>
+	public void TeleportDone()
+	{
+		Teleported = true;
+		WaitingForTeleport = false;
+		if ( State == WaveState.Intermission ) nextWaveAt = 5f;
+	}
 	public int Wave;
 	public int Kills;
 	public int ZombiesRemaining;
@@ -307,6 +321,16 @@ public partial class WaveDirector : Node3D
 		if ( State == WaveState.Intermission )
 		{
 			if ( DockHouse.HoldWaves && Wave == 0 ) { nextWaveAt = MathF.Max( (float)nextWaveAt, FirstWaveDelay ); return; }
+			// After wave 10 the teleporter zaps in near the landing spot, and wave 11 waits for the player to take it.
+			if ( TeleportAfterWave > 0 && Wave == TeleportAfterWave && !Teleported && SeaTerrain.Active )
+			{
+				WaitingForTeleport = true;
+				if ( Teleporter.Current is null && TimeSinceWaveCleared > 2.5f && GetTree().CurrentScene is Node3D level )
+					Teleporter.Spawn( level, DockHouse.Current?.BoardTip is { } tip ? tip with { Y = SeaTerrain.HeightAt( tip ) } : Vector3.Zero );
+				nextWaveAt = MathF.Max( (float)nextWaveAt, 1f );
+				return;
+			}
+			WaitingForTeleport = false;
 			if ( nextWaveAt <= 0f ) StartWave();
 			return;
 		}
@@ -512,6 +536,8 @@ public partial class WaveDirector : Node3D
 	public void Restart()
 	{
 		if ( State != WaveState.GameOver ) return;
+		// Back from the wreck site: a new game starts from the first area (the level is built afresh).
+		if ( SeaTerrain.Area == 2 ) { GetTree().ReloadCurrentScene(); return; }
 		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
 		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
 		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();

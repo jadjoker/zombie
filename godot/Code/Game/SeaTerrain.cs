@@ -37,8 +37,30 @@ public static class SeaTerrain
 		return t * t * (3f - 2f * t);
 	}
 
+	/// <summary> Which side of the teleporter (issue #35): 1 is the first area, 2 the wreck site from wave 11. </summary>
+	public static int Area { get; set; } = 1;
+	/// <summary> The wreck site's flat sand plain (area 2): its middle and half sizes (metres). </summary>
+	public static readonly Vector2 PlainCentre = new( 0f, -70f );
+	public static readonly Vector2 PlainHalf = new( 64f, 18f );
+	const float PlainFeather = 12f;
+
 	/// <summary> The height of the sea floor (metres) at a point. 0 in the middle, as the old arena floor was. </summary>
-	public static float HeightAt( float x, float z )
+	public static float HeightAt( float x, float z ) => Area == 2 ? WreckSiteHeight( x, z ) : BaseHeight( x, z );
+
+	/// <summary> Area 2: the same sea floor with a solid flat plain for the wreck, the sand heaped against its high side
+	/// and scooped out under its hull. </summary>
+	static float WreckSiteHeight( float x, float z )
+	{
+		var h = BaseHeight( x, z );
+		var dx = MathF.Max( 0f, MathF.Abs( x - PlainCentre.X ) - PlainHalf.X );
+		var dz = MathF.Max( 0f, MathF.Abs( z - PlainCentre.Y ) - PlainHalf.Y );
+		var plain = 1f - Smooth( 0f, PlainFeather, MathF.Sqrt( dx * dx + dz * dz ) );
+		h = MathX.Lerp( h, detail.GetNoise2D( x, z ) * 0.08f, plain );
+		if ( ShipWreck.Placed ) h = ShipWreck.ShapeGround( x, z, h );
+		return h;
+	}
+
+	static float BaseHeight( float x, float z )
 	{
 		Init();
 		// A little domain warp so the hills meander instead of sitting on a grid.
@@ -70,6 +92,8 @@ public static class SeaTerrain
 	{
 		Init();
 		Active = true;
+		// Built again on the far side of the teleporter: the old ground goes first (now, so the navmesh skips it).
+		if ( level.GetNodeOrNull( "Sea Terrain" ) is Node old ) { level.RemoveChild( old ); old.Free(); }
 		var root = new Node3D { Name = "Sea Terrain" };
 		level.AddChild( root );
 

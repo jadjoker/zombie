@@ -152,13 +152,19 @@ public partial class HudOverlays : Control
 
 		var use = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" );
 		var station = use?.Hovered;
-		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false);
+		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false) || (use?.AtTeleporter ?? false);
 		promptKey.Text = $" {Controls.Label( "use" )} ";   // E on a keyboard, Y or Triangle on a pad
 		if ( station is null && (use?.AtDivingBoard ?? false) )
 		{
 			promptTitle.Text = "Dive in";
 			promptDesc.Text = "Head down to the sea floor";
 			promptTitle.AddThemeColorOverride( "font_color", Colors.White );
+		}
+		if ( station is null && (use?.AtTeleporter ?? false) )
+		{
+			promptTitle.Text = "Teleport";
+			promptDesc.Text = "To the wreck site. Wave 11 starts there";
+			promptTitle.AddThemeColorOverride( "font_color", new Color( 0.5f, 1f, 0.55f ) );
 		}
 		if ( station is not null )
 		{

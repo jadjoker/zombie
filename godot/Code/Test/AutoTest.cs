@@ -59,6 +59,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
 		if ( args.Contains( "--radio" ) ) { await RadioTest(); return; }
 		if ( args.Contains( "--terrain" ) ) { await TerrainTest(); return; }
+		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2677,6 +2678,112 @@ public partial class AutoTest : Node
 			await Shot( name );
 		}
 		player.CameraOverride = null;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary>
+	/// The teleporter and the wreck site (issue #35): after wave 10 the station zaps in clear of everything, wave 11
+	/// waits for it, using it builds the wreck site (flat plain, sunken liner) and starts wave 11; the ship's rooms are
+	/// reachable on the navmesh and you can stand in them. Views for review with --shots (needs a window).
+	/// </summary>
+	async Task TeleportTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var director = WaveDirector.Current;
+		var use = player.GetNode<PlayerUse>( "PlayerUse" );
+		director.JumpToWave( 10 );
+		await Wait( 0.5f );
+		Check( director.Wave == 10 && director.State == WaveState.Fighting, $"did not get to wave 10 (wave {director.Wave}, {director.State})" );
+		director.SkipWave();
+		await Wait( 4f );
+		var tp = Teleporter.Current;
+		Check( tp is not null, "no teleporter after wave 10" );
+		if ( tp is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		var level = GetTree().CurrentScene as Node3D;
+		var nearest = Teleporter.Obstacles( level ).Min( o => o.Flat().DistanceTo( tp.GlobalPosition.Flat() ) );
+		var landing = DockHouse.Current.BoardTip.Flat().DistanceTo( tp.GlobalPosition.Flat() );
+		GD.Print( $"[autotest] teleporter: at {tp.GlobalPosition}, {landing:0.0} m from the landing spot, nearest prop or station {nearest:0.0} m" );
+		Check( nearest >= Teleporter.Clearance && landing < 16f, "the teleporter is not near the landing spot on clear ground" );
+		await Wait( 12f );
+		GD.Print( $"[autotest] teleporter: 12 s later wave {director.Wave}, {director.State}, waiting {director.WaitingForTeleport}" );
+		Check( director.Wave == 10 && director.State == WaveState.Intermission && director.WaitingForTeleport, "wave 11 did not wait for the teleporter" );
+		if ( shots is not null )
+		{
+			var look = tp.GlobalPosition + Vector3.Up * 1.4f;
+			var camAt = tp.GlobalPosition + new Vector3( 5f, 2.2f, 5f );
+			var shotTp = new Transform3D( Basis.LookingAt( (look - camAt).Normalized(), Vector3.Up ), camAt );
+			player.CameraOverride = _ => shotTp;
+			await Wait( 0.3f );
+			await Shot( "teleporter" );
+			player.CameraOverride = null;
+		}
+
+		player.GlobalPosition = Nav.Closest( player, tp.GlobalPosition + new Vector3( 0.6f, 0f, 0.3f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		Check( use.AtTeleporter, "standing on the teleporter does not offer it" );
+		use.PressUse();
+		await Wait( 2.5f );
+		Check( SeaTerrain.Area == 2 && ShipWreck.Placed, "the teleporter did not take the player to the wreck site" );
+		var arrival = AreaTwo.ArrivalFlat;
+		GD.Print( $"[autotest] wreck site: player at {player.GlobalPosition}, {player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ):0.0} m from the arrival pad" );
+		Check( player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ) < 5f, "the player did not arrive at the arrival pad" );
+		await Wait( 6f );
+		GD.Print( $"[autotest] wreck site: wave {director.Wave}, {director.State}" );
+		Check( director.Wave == 11 && director.State == WaveState.Fighting, "wave 11 did not begin on the far side" );
+		director.SkipWave();
+		director.SpawningPaused = true;
+
+		// The ship: every room reachable on foot, in a chain from the arrival pad (the breach, the hallway, a cabin,
+		// up the stairs to the dining saloon, the kitchen, up again to the deck), and you can stand in each.
+		var from = player.GlobalPosition;
+		foreach ( var (name, local) in ShipWreck.Rooms )
+		{
+			var want = ShipWreck.World( local );
+			var got = Nav.Closest( player, want );
+			var path = NavigationServer3D.MapGetPath( Nav.Map( player ), from, got, true );
+			var reached = got.DistanceTo( want ) < 1.5f && path.Length > 1 && path[^1].DistanceTo( got ) < 1f;
+			player.GlobalPosition = want + Vector3.Up * 0.3f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 1f );
+			var stood = player.IsOnGround && player.GlobalPosition.DistanceTo( want ) < 1.6f;
+			GD.Print( $"[autotest] ship {name}: navmesh {(reached ? "reaches it" : $"stops {got.DistanceTo( want ):0.0} m off, path ends {(path.Length > 0 ? path[^1].DistanceTo( want ) : -1):0.0} m off")}, player stands there {stood} (at {player.GlobalPosition.DistanceTo( want ):0.0} m)" );
+			Check( stood, $"the player cannot stand in the ship's {name}" );
+			Check( reached, $"the ship's {name} is not reachable on foot" );
+			if ( reached ) from = got;
+		}
+
+		if ( shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+			var shotAt = Transform3D.Identity;
+			player.CameraOverride = _ => shotAt;
+			var f = ShipWreck.Frame;
+			var views = new (string, Vector3, Vector3)[]
+			{
+				("ship_arrival", new Vector3( 4f, 3.5f, -30f ), f.Origin + new Vector3( 0f, 4f, 0f )),
+				("ship_bow", f * new Vector3( 70f, 8f, 30f ), f * new Vector3( 20f, 6f, 0f )),
+				("ship_stern_high", f * new Vector3( -75f, 10f, -35f ), f * new Vector3( -10f, 6f, 0f )),
+				("ship_breach", f * new Vector3( 0f, 5.5f, 18f ), f * new Vector3( 0f, 5f, 0f )),
+				("ship_hallway", f * new Vector3( -30f, 5.8f, 0f ), f * new Vector3( 10f, 5.8f, 0f )),
+				("ship_cabin", f * new Vector3( -9f, 5.9f, -1.6f ), f * new Vector3( -6.5f, 5.0f, -6.5f )),
+				("ship_dining", f * new Vector3( 24f, 10.6f, -4f ), f * new Vector3( -6f, 10f, 3f )),
+				("ship_dining_tables", f * new Vector3( 0f, 10.8f, -6f ), f * new Vector3( 8f, 9.4f, 5f )),
+				("ship_kitchen", f * new Vector3( -13f, 10.8f, -3f ), f * new Vector3( -25f, 9.8f, 3f )),
+				("ship_deck", f * new Vector3( 38f, 16f, 6f ), f * new Vector3( -10f, 15f, -2f )),
+			};
+			foreach ( var (name, at, look) in views )
+			{
+				shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+				await Wait( 0.35f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

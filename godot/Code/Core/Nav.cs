@@ -11,6 +11,8 @@ public static class Nav
 	public static void Bake( Node3D level )
 	{
 		level.AddToGroup( "navmesh_source" );
+		// Baked again when the level changes (the teleporter): the old region goes.
+		if ( Region is not null && GodotObject.IsInstanceValid( Region ) ) { Region.GetParent()?.RemoveChild( Region ); Region.Free(); }
 		var mesh = new NavigationMesh
 		{
 			// s&box 64 / 16 / 18 inches, snapped to whole cells the way Godot snaps them anyway (it warned on every bake).

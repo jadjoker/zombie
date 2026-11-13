@@ -565,6 +565,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { NextBossWave: > 0 } ) Action( $"Boss wave ({d.NextBossWave})", () => d.JumpToWave( d.NextBossWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Kraken next wave (now {d.KrakenChanceNext * 100f:0}%)", () => d.ForceKrakenNextWave() );
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
+			if ( d is { OpenWorld: false, Teleported: false } && SeaTerrain.Active ) Action( "Clear wave 10 (teleporter)", () => { d.JumpToWave( d.TeleportAfterWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
 			Info( $"Wave {wave}    Kills {d?.Kills ?? 0}    Enemies left {d?.ZombiesRemaining ?? 0}    Phase {d?.State.ToString() ?? "-"}" );
 		}
 

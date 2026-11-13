@@ -27,6 +27,8 @@ public static class Caustics
 	static void Add( BaseMaterial3D material, System.Collections.Generic.HashSet<Material> done )
 	{
 		// Opaque, lit surfaces only (not glass, glows or effects), each shared material once.
+		// Indoors (the wreck's rooms) there is no sunlight rippling through the water.
+		if ( material.HasMeta( "no_caustics" ) ) return;
 		if ( !done.Add( material ) || material.Transparency != BaseMaterial3D.TransparencyEnum.Disabled || material.ShadingMode == BaseMaterial3D.ShadingModeEnum.Unshaded ) return;
 		if ( material.NextPass is null ) material.NextPass = pass;
 	}

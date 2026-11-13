@@ -237,6 +237,7 @@ public partial class GameHud : Control
 			return d.State switch
 			{
 				WaveState.Intermission when d.Wave == 0 => $"Enemies incoming in {MathF.Ceiling( d.SecondsUntilNextWave )}",
+				WaveState.Intermission when d.WaitingForTeleport => "Find the teleporter",
 				WaveState.Intermission => $"Next wave in {MathF.Ceiling( d.SecondsUntilNextWave )}",
 				WaveState.Fighting => $"{d.ZombiesRemaining} enemies left",
 				_ => "",

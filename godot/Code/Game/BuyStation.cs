@@ -144,6 +144,8 @@ public partial class PlayerUse : Node
 	public BuyStation Hovered { get; private set; }
 	/// <summary> Standing at the diving board (the prompt shows "Dive in"). </summary>
 	public bool AtDivingBoard { get; private set; }
+	/// <summary> Standing on the teleporter (the prompt shows "Teleport"). </summary>
+	public bool AtTeleporter { get; private set; }
 	PlayerController controller;
 	PlayerSurvivor survivor;
 
@@ -166,11 +168,8 @@ public partial class PlayerUse : Node
 		Hovered = tr.Hit && tr.HitPosition.DistanceTo( eye ) <= ReachLength * U.In * 1.25f ? BuyStation.On( tr.Node ) : null;
 		if ( PlayerSurvivor.LocalDead ) Hovered = null;
 		AtDivingBoard = Hovered is null && DockHouse.Current is { } dock && dock.BoardInReach( controller );
-		if ( Input.IsActionJustPressed( "use" ) )
-		{
-			if ( Hovered is not null ) TryPress();
-			else if ( AtDivingBoard ) DockHouse.Current.EnterSea();
-		}
+		AtTeleporter = Hovered is null && !PlayerSurvivor.LocalDead && Teleporter.Current is { } tp && tp.InReach( controller );
+		if ( Input.IsActionJustPressed( "use" ) ) PressUse();
 	}
 
 	/// <summary> What pressing E does now (tests call it directly; a simulated key press can miss the frame). </summary>
@@ -178,6 +177,7 @@ public partial class PlayerUse : Node
 	{
 		if ( Hovered is not null ) TryPress();
 		else if ( AtDivingBoard ) DockHouse.Current.EnterSea();
+		else if ( AtTeleporter ) Teleporter.Current?.Take( controller );
 	}
 
 	/// <summary> Presses what you're looking at (also used by tests). False if refused. </summary>

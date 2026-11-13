@@ -141,7 +141,7 @@ public partial class AlienFloaters : Node3D
 	{
 		public Node3D Node;
 		public Vector3 Home;
-		public float Phase, Bob, Drift, Rate, Spin;
+		public float Phase, Bob, Drift, Rate, Spin, Lift;
 	}
 
 	readonly List<Floater> all = new();
@@ -213,7 +213,18 @@ public partial class AlienFloaters : Node3D
 				break;
 			}
 		}
-		all.Add( new Floater { Node = node, Home = at, Phase = R( 0f, MathF.Tau ), Bob = R( 0.25f, 0.7f ), Drift = R( 0.4f, 1.6f ), Rate = R( 0.12f, 0.3f ), Spin = R( -0.25f, 0.25f ) } );
+		all.Add( new Floater { Node = node, Home = at, Lift = at.Y - (SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f), Phase = R( 0f, MathF.Tau ), Bob = R( 0.25f, 0.7f ), Drift = R( 0.4f, 1.6f ), Rate = R( 0.12f, 0.3f ), Spin = R( -0.25f, 0.25f ) } );
+	}
+
+	/// <summary> After the ground changes (the wreck site): drops the ones where `remove` says, sets the rest at the
+	/// same height above the new ground. </summary>
+	public void Resettle( Func<Vector3, bool> remove )
+	{
+		foreach ( var f in all.ToList() )
+		{
+			if ( remove( f.Home ) ) { f.Node.QueueFree(); all.Remove( f ); continue; }
+			f.Home = f.Home with { Y = SeaTerrain.HeightAt( f.Home ) + f.Lift };
+		}
 	}
 
 	public override void _Process( double delta )

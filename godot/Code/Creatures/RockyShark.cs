@@ -226,7 +226,7 @@ public partial class RockyShark : PartCreature
 					mesh.AddChild( hole.Light );
 				}
 			}
-			else if ( name.StartsWith( "Pore" ) )
+			else if ( name.StartsWith( "Pore" ) || name.StartsWith( "Tongue" ) )
 			{
 				// The porous skin: small neon pits that glow like the holes but are not weak points.
 				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
@@ -245,8 +245,9 @@ public partial class RockyShark : PartCreature
 			}
 			else
 			{
-				var tint = name.StartsWith( "Teeth" ) ? new Color( 0.92f, 0.88f, 0.76f )
+				var tint = name.StartsWith( "Teeth" ) ? new Color( 1f, 0.98f, 0.92f )
 					: name == "Mouth" ? new Color( 0.10f, 0.01f, 0.02f )
+					: name.StartsWith( "FinLines" ) ? finColor.Darkened( 0.6f )   // the cartoon lines on the tail fin
 					: name.StartsWith( "Fin" ) ? finColor
 					: name == "Jaw" ? rockColor.Lightened( 0.08f )
 					: name == "Head" ? rockColor.Lightened( 0.06f )

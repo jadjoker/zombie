@@ -1771,6 +1771,29 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] shark: {shark.HoleCount} radiation holes, {shark.SegmentCount} body sections, health {shark.Health.Current:0}" );
 		LookAt( shark.GlobalPosition + shark.GlobalBasis.Z * 3f + Vector3.Up * 0.2f );
 		await Shot( "shark_swim" );
+		// A close look at the head, three-quarters on, for reviewing the model: walk up to it, then step back.
+		var headPart = CreaturePart.All.FirstOrDefault( p => p.Creature == shark && p.Name.ToString().EndsWith( "Head" ) );
+		if ( headPart is not null )
+		{
+			var standAt = player.GlobalPosition;
+			var face = headPart.GlobalPosition;
+			var nose = -headPart.GlobalBasis.Z.Flat().Normalized();
+			var side = headPart.GlobalBasis.X.Flat().Normalized();
+			player.GlobalPosition = Nav.Closest( player, face + nose * 2.6f + side * 1.6f ) + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.3f );
+			LookAt( face + nose * 0.4f );
+			await Wait( 0.2f );
+			await Shot( "shark_head" );
+			player.GlobalPosition = Nav.Closest( player, face + side * 3.2f - nose * 1.2f ) + Vector3.Up * 0.1f;
+			await Wait( 0.3f );
+			LookAt( face - nose * 1.4f );
+			await Wait( 0.2f );
+			await Shot( "shark_side" );
+			player.GlobalPosition = standAt;
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.3f );
+		}
 
 		// Eyes: each is a weak point, and with both gone the shark is blind.
 		var eyeL = CreaturePart.All.FirstOrDefault( p => p.Creature == shark && p.Name.ToString().EndsWith( "Eye L" ) );

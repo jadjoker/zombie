@@ -29,7 +29,7 @@ public partial class RockyShark : PartCreature
 	public float BiteRadiationChance = 0.6f;
 	public float BiteRadiationTime = 8f;
 
-	public float HeadRadius = 14f;
+	public float HeadRadius = 16f;   // a big boulder head
 	public float SegmentHealth = 45f;
 	public float EyeHealth = 25f;
 	public float ArmorMultiplier = 0.55f;
@@ -103,6 +103,7 @@ public partial class RockyShark : PartCreature
 	Node3D jaw;
 	Color rockColor = new( 0.32f, 0.31f, 0.30f );
 	Color finColor = new( 0.20f, 0.48f, 0.30f );
+	Color bellyColor = new( 0.93f, 0.91f, 0.86f );
 	Color gooColor = new( 0.35f, 1f, 0.28f );
 	Vector3 heading;
 	Vector3 lastForward;
@@ -131,8 +132,10 @@ public partial class RockyShark : PartCreature
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
 		// Wet basalt: a little warm from the sand, with a paler belly and green-black fins.
-		rockColor = Shapes.Hsv( 0.07f + hue * 0.05f, 0.18f, 0.55f );
-		finColor = Shapes.Hsv( 0.33f + hue * 0.04f, 0.55f, 0.42f );
+		// Sandstone like the painted rock shark: a tan top, a white painted belly and lip, fins a shade darker.
+		rockColor = Shapes.Hsv( 0.09f + hue * 0.02f, 0.40f, 0.88f + hue * 0.08f );
+		finColor = rockColor.Darkened( 0.12f );
+		bellyColor = new Color( 1f, 0.99f, 0.96f );
 		gooColor = Shapes.Hsv( 0.30f + hue * 0.05f, 1f, 1f );
 		heading = -GlobalBasis.Z;
 		lastForward = heading;
@@ -157,7 +160,7 @@ public partial class RockyShark : PartCreature
 		// Eyes: small, precise parts on the head. Their own health, and the best damage in the game.
 		foreach ( var (index, side, name) in new[] { (EyeL, 1f, "Eye L"), (EyeR, -1f, "Eye R") } )
 		{
-			var eye = AddPart( index, Head, head.Go, name, new Vector3( 0.86f * HeadRadius, side * 0.62f * HeadRadius, 0.30f * HeadRadius ), Basis.Identity, EyeHealth );
+			var eye = AddPart( index, Head, head.Go, name, new Vector3( 0.78f * HeadRadius, side * 0.64f * HeadRadius, 0.47f * HeadRadius ), Basis.Identity, EyeHealth );
 			Trigger( eye, Vector3.Zero, new Vector3( 0.14f * HeadRadius, 0, 0 ), 0.22f * HeadRadius );
 		}
 
@@ -222,7 +225,7 @@ public partial class RockyShark : PartCreature
 				if ( holes.Count <= 2 )
 				{
 					// Two holes carry the light; every hole carries the glow and the drips.
-					hole.Light = new OmniLight3D { LightColor = gooColor, LightEnergy = 1.1f, OmniRange = 2.2f, ShadowEnabled = false };
+					hole.Light = new OmniLight3D { LightColor = gooColor, LightEnergy = 0.45f, OmniRange = 1.6f, ShadowEnabled = false };
 					mesh.AddChild( hole.Light );
 				}
 			}
@@ -249,8 +252,8 @@ public partial class RockyShark : PartCreature
 					: name == "Mouth" ? new Color( 0.10f, 0.01f, 0.02f )
 					: name.StartsWith( "FinLines" ) ? finColor.Darkened( 0.6f )   // the cartoon lines on the tail fin
 					: name.StartsWith( "Fin" ) ? finColor
-					: name == "Jaw" ? rockColor.Lightened( 0.08f )
-					: name == "Head" ? rockColor.Lightened( 0.06f )
+					: name == "Jaw" || name.Contains( "Belly" ) ? bellyColor
+					: name == "Head" ? rockColor.Lightened( 0.04f )
 					: rockColor;
 				mesh.MaterialOverride = Shapes.Material( tint );
 				part.Renderers.Add( (mesh, tint) );
@@ -287,9 +290,9 @@ public partial class RockyShark : PartCreature
 	}
 
 	float HeadLength => 3.1f * HeadRadius;
-	float TailRadius => 7f;
+	float TailRadius => 8f;
 	float TailLength => 3.1f * TailRadius;
-	float SegmentRadius( int index ) => MathX.Lerp( 12f, 8f, index / (float)Math.Max( 1, SegmentCount - 1 ) );
+	float SegmentRadius( int index ) => MathX.Lerp( 13f, 9f, index / (float)Math.Max( 1, SegmentCount - 1 ) );
 	float SegmentLength( int index ) => 3f * SegmentRadius( index );
 
 	// ---- Brain and body ----

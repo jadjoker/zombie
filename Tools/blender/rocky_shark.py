@@ -24,7 +24,7 @@ exec(open(r"C:/Users/smitt/Documents/zombie_survival/Tools/blender/creature_help
 
 OUT = r"C:/Users/smitt/Documents/zombie_survival/godot/assets/models/creatures/rockyshark"
 R = 32.0
-GREEN = (0.12, 0.85, 0.25)
+GREEN = (0.22, 1.0, 0.08)   # neon green, the glow on every hole, pore and eye
 
 
 def mat(name, color, rough=0.5, metal=0.0, emit=0.0):
@@ -102,6 +102,41 @@ def hole(name, at, side, size=1.0):
     return o
 
 
+def pores(body, count, seed, avoid=(), zmin=-0.12 * R, xlim=None, tag="p"):
+    """Scatter small glowing neon pits over the rock (porous skin). Each is a flat glowing disc sunk into the surface,
+    skipping the belly, the weak-point holes and anything in `avoid` (points in s&box units)."""
+    import bmesh
+    import random
+    from mathutils.bvhtree import BVHTree
+    rnd = random.Random(seed)
+    bm = bmesh.new()
+    bm.from_mesh(body.data)
+    bvh = BVHTree.FromBMesh(bm)
+    xs = [v.co.x for v in bm.verts]
+    lo, hi = (min(xs), max(xs)) if xlim is None else xlim
+    glow = mat("Glow", GREEN, 0.35, emit=2.5)
+    placed = []
+    tries = 0
+    while len(placed) < count and tries < 1500:
+        tries += 1
+        x = rnd.uniform(lo, hi)
+        a = rnd.uniform(0, math.tau)
+        origin = Vector((x, 4 * R * math.cos(a), 4 * R * math.sin(a)))
+        hit, nrm, _, _ = bvh.ray_cast(origin, Vector((0, -math.cos(a), -math.sin(a))))
+        if hit is None or hit.z < zmin:
+            continue
+        if any((hit - Vector(p)).length < 0.30 * R for p in avoid) or any((hit - q).length < 0.26 * R for q in placed):
+            continue
+        r = rnd.uniform(0.045, 0.085) * R
+        o = ellipsoid(f"Pore{tag}{len(placed)}", tuple(hit - nrm * 0.012 * R), (r, r * rnd.uniform(0.7, 1.0), 0.035 * R), segs=10)
+        o.rotation_euler = nrm.to_track_quat("Z", "Y").to_euler()
+        o.data.materials.append(glow)
+        o.parent = body
+        o.matrix_parent_inverse = body.matrix_world.inverted()
+        placed.append(hit)
+    return placed
+
+
 def head():
     clear()
     rock = mat("Rock", (0.30, 0.29, 0.28), 0.85)
@@ -157,11 +192,21 @@ def head():
     jaw.matrix_parent_inverse = body.matrix_world.inverted()
 
     # Eyes in the sockets under the brows: bright green, the weak point the game watches.
+    # Classic alien eyes like the Kraken's and the Squilien's: a big slanted almond that tilts down toward the snout,
+    # glowing neon green with a thin dark slit, standing proud of the brow.
+    pupil = mat("Pupil", (0.01, 0.01, 0.015), 0.1)
     for side, name in ((1, "EyeL"), (-1, "EyeR")):
-        e = ellipsoid(name, (0.92 * R, side * 0.46 * R, 0.22 * R), (0.15 * R, 0.15 * R, 0.15 * R), segs=20)
+        at = (0.86 * R, side * 0.62 * R, 0.30 * R)
+        e = ellipsoid(name, at, (0.36 * R, 0.12 * R, 0.19 * R), segs=24)
+        e.rotation_euler = (0.0, math.radians(30), side * math.radians(-8))
         e.data.materials.append(eye)
         e.parent = body
         e.matrix_parent_inverse = body.matrix_world.inverted()
+        slit = ellipsoid("Pupil" + name[-1], (at[0], side * 0.72 * R, at[2]), (0.06 * R, 0.035 * R, 0.15 * R), segs=14)
+        slit.rotation_euler = e.rotation_euler.copy()
+        slit.data.materials.append(pupil)
+        slit.parent = e
+        slit.matrix_parent_inverse = e.matrix_world.inverted()
 
     # Radiation holes: three per flank behind the eyes, glowing green.
     for side, tag in ((1, "L"), (-1, "R")):
@@ -170,10 +215,13 @@ def head():
             h.data.materials.append(glow)
             h.parent = body
             h.matrix_parent_inverse = body.matrix_world.inverted()
+    eyes = [(0.86 * R, s * 0.62 * R, 0.30 * R) for s in (1, -1)]
+    holes_at = [(x * R, s * 0.66 * R, 0.10 * R) for s in (1, -1) for x in (0.40, 0.02, -0.34)]
+    pores(body, 22, 7, avoid=eyes + holes_at, xlim=(-0.5 * R, 1.75 * R), tag="H")
     return body
 
 
-def segment(variant):
+def segment(variant, fin=False):
     clear()
     rock = mat("Rock", (0.30, 0.29, 0.28), 0.85)
     glow = mat("Glow", GREEN, 0.35, emit=2.5)
@@ -186,8 +234,18 @@ def segment(variant):
     ]
     if variant == 1:
         p.append(plate("ridgeD", (-1.30 * R, 0, 0.34 * R), (0.22 * R, 0.20 * R, 0.08 * R), 0.0))
-    body = skin_fuse(p, f"Segment{variant}", voxel=0.5, noise=0.22, target=2200)
+    body = skin_fuse(p, f"Segment{variant}" if not fin else "SegmentFin", voxel=0.5, noise=0.22, target=2200)
     body.data.materials.append(rock)
+    if fin:
+        # The sharp dorsal fin on the back of the first section: tall, swept back, a hooked trailing edge.
+        dfin = mat("Fin", (0.16, 0.42, 0.24), 0.55)
+        outline = [(0.80 * R, 0.52 * R), (0.45 * R, 1.05 * R), (-0.05 * R, 1.75 * R), (-0.42 * R, 2.35 * R),
+                   (-0.52 * R, 1.55 * R), (-0.72 * R, 1.05 * R), (-1.10 * R, 0.52 * R)]
+        f = profile_fin("FinDorsal", outline, 0.07 * R)
+        f.data.materials.append(dfin)
+        f.parent = body
+        f.matrix_parent_inverse = body.matrix_world.inverted()
+    pores(body, 14, 11 + variant + (3 if fin else 0), avoid=[(0, s * 0.64 * R, 0.08 * R) for s in (1, -1)], zmin=-0.2 * R, tag="S")
     for side, tag in ((1, "L"), (-1, "R")):
         h = hole(f"Hole{tag}{variant}", (0.0, side * 0.64 * R, 0.08 * R), side, 1.15)
         h.data.materials.append(glow)
@@ -218,6 +276,7 @@ def tail():
     f.parent = body
     f.matrix_parent_inverse = body.matrix_world.inverted()
 
+    pores(body, 6, 5, avoid=[(-0.20 * R, s * 0.44 * R, 0.06 * R) for s in (1, -1)], xlim=(-0.6 * R, 0.8 * R), tag="T")
     for side, tag in ((1, "L"), (-1, "R")):
         h = hole(f"Hole{tag}t", (-0.20 * R, side * 0.44 * R, 0.06 * R), side, 0.8)
         h.data.materials.append(glow)
@@ -264,7 +323,7 @@ def export(root, file):
 
 def build():
     made = {}
-    for name, fn in (("head.glb", head), ("segment0.glb", lambda: segment(0)), ("segment1.glb", lambda: segment(1)),
+    for name, fn in (("head.glb", head), ("segment0.glb", lambda: segment(0)), ("segment1.glb", lambda: segment(1)), ("segment_fin.glb", lambda: segment(0, fin=True)),
                      ("tail.glb", tail), ("fin_l.glb", lambda: side_fin(1)), ("fin_r.glb", lambda: side_fin(-1))):
         o = fn()
         export(o, name)

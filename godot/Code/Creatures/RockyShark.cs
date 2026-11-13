@@ -157,8 +157,8 @@ public partial class RockyShark : PartCreature
 		// Eyes: small, precise parts on the head. Their own health, and the best damage in the game.
 		foreach ( var (index, side, name) in new[] { (EyeL, 1f, "Eye L"), (EyeR, -1f, "Eye R") } )
 		{
-			var eye = AddPart( index, Head, head.Go, name, new Vector3( 0.92f * HeadRadius, side * 0.46f * HeadRadius, 0.22f * HeadRadius ), Basis.Identity, EyeHealth );
-			Trigger( eye, Vector3.Zero, new Vector3( 0.14f * HeadRadius, 0, 0 ), 0.17f * HeadRadius );
+			var eye = AddPart( index, Head, head.Go, name, new Vector3( 0.86f * HeadRadius, side * 0.62f * HeadRadius, 0.30f * HeadRadius ), Basis.Identity, EyeHealth );
+			Trigger( eye, Vector3.Zero, new Vector3( 0.14f * HeadRadius, 0, 0 ), 0.22f * HeadRadius );
 		}
 
 		// Body: a chain of armoured sections. Each hangs off the one in front, overlapping so the body reads as one.
@@ -170,7 +170,7 @@ public partial class RockyShark : PartCreature
 			var frontLength = i == 0 ? HeadLength : SegmentLength( i - 1 );
 			var gap = (frontLength * 0.5f + length * 0.5f) * 0.64f;
 			var segment = AddPart( FirstSegment + i, parent.Index, parent.Go, $"Section {i + 1}", new Vector3( -gap, 0, 0 ), Basis.Identity, SegmentHealth );
-			Sculpt( segment, i % 2 == 0 ? "segment0" : "segment1", radius );
+			Sculpt( segment, i == 0 ? "segment_fin" : i % 2 == 0 ? "segment0" : "segment1", radius );   // the first section carries the dorsal fin
 			Trigger( segment, new Vector3( -1.35f * radius, 0, 0 ), new Vector3( 1.35f * radius, 0, 0 ), radius * 0.70f );
 			parent = segment;
 		}
@@ -226,9 +226,20 @@ public partial class RockyShark : PartCreature
 					mesh.AddChild( hole.Light );
 				}
 			}
+			else if ( name.StartsWith( "Pore" ) )
+			{
+				// The porous skin: small neon pits that glow like the holes but are not weak points.
+				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
+				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+			}
+			else if ( name.StartsWith( "Pupil" ) )
+			{
+				mesh.MaterialOverride = Shapes.Material( new Color( 0.01f, 0.01f, 0.015f ) );
+				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+			}
 			else if ( name is "EyeL" or "EyeR" )
 			{
-				mesh.MaterialOverride = Shapes.Material( gooColor.Lerp( Colors.White, 0.35f ), glow: true );
+				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
 				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 				if ( name == "EyeL" ) eyeMeshL = mesh; else eyeMeshR = mesh;
 			}

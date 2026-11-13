@@ -51,7 +51,7 @@ def mats():
     return dict(rock=mat("Rock", TAN, 0.9), belly=mat("Belly", WHITE, 0.85), glow=mat("Glow", GREEN, 0.35, emit=2.5),
                 fin=mat("Fin", (0.55, 0.42, 0.28), 0.9), line=mat("FinLine", (0.30, 0.21, 0.13), 0.9),
                 teeth=mat("Teeth", (1.0, 0.98, 0.92), 0.3), mouth=mat("Mouth", (0.07, 0.02, 0.02), 0.8),
-                eye=mat("Eye", GREEN, 0.2, emit=3.0), pupil=mat("Pupil", (0.01, 0.01, 0.015), 0.1))
+                eye=mat("Eye", (0.01, 0.01, 0.015), 0.1), pupil=mat("Pupil", GREEN, 0.2, emit=3.0))
 
 
 def adopt(child, parent):
@@ -275,22 +275,54 @@ def teeth_along(name, bvh, x0, x1, count, up, length, seed, inset=0.86, probe_z=
     return out
 
 
-def alien_eye(name, bvh, x, side, z, m, length=0.32, height=0.17, slant=24):
-    """The big slanted almond eye of the Kraken and the Squilien, laid on the skin and glowing neon green, with a
-    thin dark slit. Tilted down toward the snout."""
+def lens(name, L, H, T, bottom=0.72, n=40, rings=10, back=0.25):
+    """A pointed almond (a cat's or lizard's eye shape): along X, sharp tips at both ends, the top arc fuller than the
+    bottom, domed out along +Z with a shallow back. Built in its own frame around the origin."""
+    bm = bmesh.new()
+    grid = {}
+    for face, sign in (("f", 1.0), ("b", -back)):
+        for i in range(n + 1):
+            u = -1 + 2 * i / n
+            w = (1 - u * u) ** 1.35           # cusps at the ends: sharp tips
+            for j in range(rings + 1):
+                v = -1 + 2 * j / rings
+                y = (H if v > 0 else H * bottom) * w * v
+                z = sign * T * w * math.sqrt(max(0.0, 1 - v * v))
+                grid[face, i, j] = bm.verts.new((L * u, y, z))
+    for face in ("f", "b"):
+        for i in range(n):
+            for j in range(rings):
+                q = (grid[face, i, j], grid[face, i + 1, j], grid[face, i + 1, j + 1], grid[face, i, j + 1])
+                bm.faces.new(q if face == "f" else q[::-1])
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-4)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = bpy.data.meshes.new(name)
+    bm.to_mesh(me)
+    bm.free()
+    o = bpy.data.objects.new(name, me)
+    bpy.context.collection.objects.link(o)
+    for poly in me.polygons:
+        poly.use_smooth = True
+    return o
+
+
+def alien_eye(name, bvh, x, side, z, m, length=0.30, height=0.15, slant=22):
+    """A big pointed alien eye like the sketch: a black almond with sharp tips, tilted down toward the snout, and a
+    thin glowing neon green slit pupil standing up across it."""
     hit, nrm = snap(bvh, x, side, z)
     fwd = Vector((1, 0, 0))
     fwd = (fwd - nrm * fwd.dot(nrm)).normalized()
     up = nrm.cross(fwd).normalized() * side
     rot = Matrix.Rotation(math.radians(-slant * side), 3, nrm)
     fwd, up = rot @ fwd, rot @ up
-    basis = Matrix((fwd, up, nrm)).transposed()
-    centre = hit + nrm * 0.02 * R
-    e = ellipsoid(name, tuple(centre), (length * R, height * R, 0.08 * R), segs=24)
-    e.rotation_euler = basis.to_euler()
+    basis = Matrix((fwd, up, nrm)).transposed().to_4x4()
+    centre = hit + nrm * 0.01 * R
+    e = lens(name, length * R, height * R, 0.07 * R)
+    e.matrix_world = Matrix.Translation(centre) @ basis
     e.data.materials.append(m["eye"])
-    p = ellipsoid("Pupil" + name[-1], tuple(centre + nrm * 0.06 * R), (0.035 * R, 0.13 * R, 0.03 * R), segs=14)
-    p.rotation_euler = basis.to_euler()
+    # The slit: a thin upright almond of its own, tilted a little, sat on the dome of the eye.
+    p = lens("Pupil" + name[-1], 0.115 * R, 0.022 * R, 0.012 * R, bottom=1.0, n=20, rings=4)
+    p.matrix_world = Matrix.Translation(centre + nrm * 0.066 * R) @ basis @ Matrix.Rotation(math.radians(80 * side), 4, "Z")
     p.data.materials.append(m["pupil"])
     adopt(p, e)
     return e, centre

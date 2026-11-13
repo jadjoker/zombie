@@ -237,12 +237,13 @@ public partial class RockyShark : PartCreature
 			}
 			else if ( name.StartsWith( "Pupil" ) )
 			{
-				mesh.MaterialOverride = Shapes.Material( new Color( 0.01f, 0.01f, 0.015f ) );
+				// The eyes are black almonds with a glowing neon green slit.
+				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
 				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 			}
 			else if ( name is "EyeL" or "EyeR" )
 			{
-				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
+				mesh.MaterialOverride = Shapes.Material( new Color( 0.02f, 0.02f, 0.025f ) );
 				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 				if ( name == "EyeL" ) eyeMeshL = mesh; else eyeMeshR = mesh;
 			}
@@ -255,11 +256,23 @@ public partial class RockyShark : PartCreature
 					: name == "Jaw" || name.Contains( "Belly" ) ? bellyColor
 					: name == "Head" ? rockColor.Lightened( 0.04f )
 					: rockColor;
-				mesh.MaterialOverride = Shapes.Material( tint );
+				// The brown skin is beach pebbles (the texture carries the colours); the crater rims, the white paint,
+				// the teeth and the mouth keep their flat colours.
+				var pebbly = name is "Head" or "Tail" or "TailFin" or "FinDorsal" || name.StartsWith( "Segment" );
+				if ( pebbly ) tint = Colors.White;
+				mesh.MaterialOverride = pebbly ? PebbleSkin() : Shapes.Material( tint );
 				part.Renderers.Add( (mesh, tint) );
 				if ( name == "Jaw" ) jaw = mesh;
 			}
 		}
+	}
+
+	/// <summary> Packed beach pebbles (Tools/blender/pebble_texture.py), mapped in the part's own space. </summary>
+	static StandardMaterial3D PebbleSkin()
+	{
+		var m = Shapes.Material( Colors.White, "pebbles" );
+		m.Uv1Scale = Vector3.One * 0.02f;   // the meshes are in s&box units (a part radius is 32): a tile spans most of a part
+		return m;
 	}
 
 	/// <summary> A plain shape when the Blender parts are missing (a fresh clone before Godot imports them). </summary>
@@ -285,6 +298,8 @@ public partial class RockyShark : PartCreature
 			segment.Go.AddChild( fin );
 			fin.Scale = Vector3.One * (radius * 2f * U.In);
 			fin.Position = U.Sbox( new Vector3( 0.30f * radius, side * 0.60f * radius, -0.05f * radius ) );
+			foreach ( var mesh in fin.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				mesh.MaterialOverride = PebbleSkin();
 			fins.Add( (fin, side) );
 		}
 	}

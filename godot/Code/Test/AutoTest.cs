@@ -1771,25 +1771,51 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] shark: {shark.HoleCount} radiation holes, {shark.SegmentCount} body sections, health {shark.Health.Current:0}" );
 		LookAt( shark.GlobalPosition + shark.GlobalBasis.Z * 3f + Vector3.Up * 0.2f );
 		await Shot( "shark_swim" );
-		// A close look at the head, three-quarters on, for reviewing the model: walk up to it, then step back.
+		// Clean review shots of the model in the game: a free camera walked round it, kelp and coral, the gun and the HUD
+		// hidden. The sea, its light and the shark's own paint are as they are in play.
 		var headPart = CreaturePart.All.FirstOrDefault( p => p.Creature == shark && p.Name.ToString().EndsWith( "Head" ) );
 		if ( headPart is not null )
 		{
 			var standAt = player.GlobalPosition;
+			var hidden = new List<Node>();
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+			{
+				var nm = n.Name.ToString();
+				if ( n is Node3D { Visible: true } n3 && (nm.StartsWith( "Kelp" ) || nm.StartsWith( "Coral" ) || nm == "Sea Dressing" || n is ViewModel || n is ViewModelAxe) ) { n3.Visible = false; hidden.Add( n ); }
+				else if ( n is CanvasLayer { Visible: true } cl ) { cl.Visible = false; hidden.Add( n ); }
+			}
+			// The player's own camera (with the game's look) driven through the override; props near the shark hidden.
+			var shotAt = Transform3D.Identity;
+			player.CameraOverride = _ => shotAt;
+			var rigNode = headPart.GetParent();
+			while ( rigNode.GetParent() is Node p && p != GetTree().CurrentScene ) rigNode = p;
+			foreach ( var n in GetTree().Root.FindChildren( "*", "GeometryInstance3D", true, false ).OfType<GeometryInstance3D>() )
+			{
+				if ( !n.Visible || rigNode.IsAncestorOf( n ) || shark.IsAncestorOf( n ) || player.IsAncestorOf( n ) ) continue;
+				var box = n.GetAabb();
+				var size = (n.GlobalTransform.Basis * box.Size).Abs();
+				var centre = n.GlobalTransform * box.GetCenter();
+				if ( size.X > 14f || size.Z > 14f ) continue;   // the sea bed and the big rocks stay
+				if ( (centre - headPart.GlobalPosition).Flat().Length() < 9f ) { n.Visible = false; hidden.Add( n ); }
+			}
 			var face = headPart.GlobalPosition;
-			var nose = -headPart.GlobalBasis.Z.Flat().Normalized();
-			var side = headPart.GlobalBasis.X.Flat().Normalized();
-			player.GlobalPosition = Nav.Closest( player, face + nose * 2.6f + side * 1.6f ) + Vector3.Up * 0.1f;
-			player.Velocity = Vector3.Zero;
-			await Wait( 0.3f );
-			LookAt( face + nose * 0.4f );
-			await Wait( 0.2f );
-			await Shot( "shark_head" );
-			player.GlobalPosition = Nav.Closest( player, face + side * 3.2f - nose * 1.2f ) + Vector3.Up * 0.1f;
-			await Wait( 0.3f );
-			LookAt( face - nose * 1.4f );
-			await Wait( 0.2f );
-			await Shot( "shark_side" );
+			var nose = -headPart.GlobalBasis.Z.Normalized();
+			var side = headPart.GlobalBasis.X.Normalized();
+			var up = headPart.GlobalBasis.Y.Normalized();
+			var mid = face - nose * 2.0f;
+			foreach ( var (name, at, look) in new[] {
+				("shark_front", face + nose * 2.6f + side * 1.6f + up * 0.6f, face + nose * 0.2f),
+				("shark_head", face + nose * 0.6f + side * 2.2f + up * 0.3f, face + nose * 0.3f),
+				("shark_side", mid + side * 5.2f + up * 0.8f, mid),
+				("shark_back", mid - nose * 4.2f + side * 2.8f + up * 2.2f, mid + nose * 0.6f) } )
+			{
+				shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+				await Wait( 0.25f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+			foreach ( var n in hidden.Where( IsInstanceValid ) )
+				if ( n is Node3D n3 ) n3.Visible = true; else if ( n is CanvasLayer cl ) cl.Visible = true;
 			player.GlobalPosition = standAt;
 			player.Velocity = Vector3.Zero;
 			await Wait( 0.3f );

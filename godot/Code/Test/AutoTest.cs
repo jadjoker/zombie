@@ -53,6 +53,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--whirlpool" ) ) { await WhirlpoolTest(); return; }
 		if ( args.Contains( "--slam" ) ) { await SlamTest(); return; }
 		if ( args.Contains( "--bite" ) ) { await BiteTest(); return; }
+		if ( args.Contains( "--shark" ) ) { await SharkTest(); return; }
 		if ( args.Contains( "--board1" ) ) { await Board1Test(); return; }
 		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
 		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
@@ -1742,6 +1743,110 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary> Board items #31, #32, #34, #37, #38, #40: gun distance, damage machine price, the death screen, the aim dot, third-person buying. </summary>
+	/// <summary>
+	/// The Rocky Shark (issue #29): the model's radiation holes and eyes are weak points, the rock plates turn
+	/// shots, a section comes off with the tail behind it, and a bite irradiates.
+	/// </summary>
+	async Task SharkTest()
+	{
+		DevFlags.FreezeEnemies = true;   // it holds still for the aimed shots
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		var director = WaveDirector.Current;
+		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
+		var stand = Nav.Closest( player, ground + new Vector3( 13f, 0f, 14f ) );
+		player.GlobalPosition = stand + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
+
+		var shark = director.SpawnAt( WaveDirector.EnemyKind.RockyShark, ground, player.GlobalPosition ) as RockyShark;
+		Check( shark is not null, "the Rocky Shark did not spawn" );
+		if ( shark is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		// Put it in open water in front of the player, broadside, for the screenshots.
+		shark.GlobalPosition = player.GlobalPosition + (-player.GlobalBasis.Z) * 9f + Vector3.Up * 0.5f;
+		shark.GlobalBasis = Shapes.LookAt( -player.GlobalBasis.X );
+		await Wait( 0.5f );
+		Check( shark.HoleCount >= 8, "the model has too few radiation holes" );
+		GD.Print( $"[autotest] shark: {shark.HoleCount} radiation holes, {shark.SegmentCount} body sections, health {shark.Health.Current:0}" );
+		LookAt( shark.GlobalPosition + shark.GlobalBasis.Z * 3f + Vector3.Up * 0.2f );
+		await Shot( "shark_swim" );
+
+		// Eyes: each is a weak point, and with both gone the shark is blind.
+		var eyeL = CreaturePart.All.FirstOrDefault( p => p.Creature == shark && p.Name.ToString().EndsWith( "Eye L" ) );
+		var eyeR = CreaturePart.All.FirstOrDefault( p => p.Creature == shark && p.Name.ToString().EndsWith( "Eye R" ) );
+		Check( eyeL is not null && eyeR is not null, "the shark has no eye hitboxes" );
+		if ( eyeL is not null && eyeR is not null )
+		{
+			var before = shark.Health.Current;
+			var dir = (eyeL.GlobalPosition - player.GlobalPosition).SafeNormal();
+			shark.ReceiveShot( eyeL.Index, 30f, dir, eyeL.GlobalPosition, player.GlobalPosition, survivor, true );
+			var eyeDamage = before - shark.Health.Current;
+			shark.ReceiveShot( eyeR.Index, 30f, dir, eyeR.GlobalPosition, player.GlobalPosition, survivor, true );
+			GD.Print( $"[autotest] shark: an eye shot did {eyeDamage:0} damage, blind now {shark.Blind}" );
+			Check( eyeDamage > 30f * shark.ArmorMultiplier * 2f, "an eye is not a weak point" );
+			Check( shark.Blind, "shooting both eyes did not blind it" );
+			shark.Health.ResetTo( shark.Health.MaxHealth );   // the bite test needs it alive
+		}
+
+		// The radiation holes: much more damage than the armoured body.
+		var hole = shark.FirstHole;
+		Check( hole is not null, "the shark has no live radiation holes" );
+		if ( hole is { } h )
+		{
+			var before = shark.Health.Current;
+			shark.ReceiveShot( h.Segment, 10f, Vector3.Forward, h.Position, player.GlobalPosition, survivor, true );
+			var holeDamage = before - shark.Health.Current;
+			before = shark.Health.Current;
+			var bodyPoint = shark.SectionPosition( 1 ) + Vector3.Up * 1f;
+			shark.ReceiveShot( shark.SectionIndex( 1 ), 10f, Vector3.Forward, bodyPoint, player.GlobalPosition, survivor, true );
+			var bodyDamage = before - shark.Health.Current;
+			GD.Print( $"[autotest] shark: a hole did {holeDamage:0} damage, the armoured body {bodyDamage:0}" );
+			Check( holeDamage > bodyDamage * 1.6f, "the radiation holes are not weak points" );
+			shark.Health.ResetTo( shark.Health.MaxHealth );
+		}
+
+		// Cutting a section drops everything behind it, tail and all.
+		var lostBefore = shark.LostSegments;
+		for ( var i = 0; i < shark.SegmentCount && shark.LostSegments < 2; i++ )
+		{
+			if ( !shark.SectionAlive( i ) ) continue;
+			shark.ReceiveShot( shark.SectionIndex( i ), 100f, Vector3.Forward, shark.SectionPosition( i ) + Vector3.Up, player.GlobalPosition, survivor, true );
+		}
+		GD.Print( $"[autotest] shark: {shark.LostSegments} sections shot off (was {lostBefore})" );
+		Check( shark.LostSegments >= 2, "shooting a section did not cut the shark short" );
+		shark.Health.ResetTo( shark.Health.MaxHealth );   // keep it alive for the bite and death checks
+		await Shot( "shark_cut" );
+
+		// Bite: radiation sickness, and it shoves the player back.
+		DevFlags.FreezeEnemies = false;
+		shark.MoveSpeed = 10f;
+		shark.BiteCooldown = 0.2f;
+		shark.BiteRadiationChance = 1f;
+		shark.BiteRange = 400f;
+		shark.GlobalPosition = player.GlobalPosition + (-player.GlobalBasis.Z) * 0.7f;
+		shark.GlobalBasis = Shapes.LookAt( (player.GlobalPosition - shark.GlobalPosition).SafeNormal() );
+		await Wait( 0.3f );
+		var afflictions = survivor.Afflictions;
+		afflictions.Clear();
+		var bitesBefore = shark.Bites;
+		var healthBefore = survivor.Health.Current;
+		LookAt( shark.MouthWorld );
+		await Wait( 0.6f );
+		GD.Print( $"[autotest] shark: bites {bitesBefore} to {shark.Bites}, damage {healthBefore - survivor.Health.Current:0}, radiation {afflictions.RadiationLeft:0.0} s (poison {afflictions.RadiationPoisonLeft:0.0} s)" );
+		Check( shark.Bites > bitesBefore, "the shark did not bite a player at its mouth" );
+		Check( afflictions.RadiationLeft > 0f && afflictions.RadiationPoisonLeft > 0f, "the bite did not irradiate" );
+		await Shot( "shark_bite" );
+
+		shark.Health.OnDamage( new DamageInfo { Damage = 100000f, Attacker = survivor, Position = shark.GlobalPosition, Origin = player.GlobalPosition } );
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] shark: dead {shark.IsDead}, sections left {shark.SegmentCount - shark.LostSegments}" );
+		Check( shark.IsDead, "the shark did not die" );
+		await Shot( "shark_dead" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task Board1Test()
 	{
 		DevFlags.FreezeEnemies = true;

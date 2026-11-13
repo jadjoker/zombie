@@ -385,7 +385,7 @@ public partial class DevMenu : CanvasLayer
 		var d = Director;
 
 		// ======== ENEMIES
-		if ( Sec( "Enemies", "Wave spawning", "spawning pause zombies bloobers squiliens junk crabs sea spiders boss waves kill all enemies skip wave" ) )
+		if ( Sec( "Enemies", "Wave spawning", "spawning pause zombies bloobers squiliens junk crabs sea spiders rocky sharks boss waves kill all enemies skip wave" ) )
 		{
 			Section( "Wave spawning" );
 			Row();
@@ -395,6 +395,7 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Wave spawning", "squiliens" ) ) Chip( "Squiliens", d is null || d.SpawnSquiliens, () => { if ( d is not null ) d.SpawnSquiliens = !d.SpawnSquiliens; } );
 			if ( Show( "Wave spawning", "junk crabs" ) ) Chip( "Junk Crabs", d is null || d.SpawnCrabs, () => { if ( d is not null ) d.SpawnCrabs = !d.SpawnCrabs; } );
 			if ( Show( "Wave spawning", "sea spiders" ) ) Chip( "Sea Spiders", d is null || d.SpawnSpiders, () => { if ( d is not null ) d.SpawnSpiders = !d.SpawnSpiders; } );
+			if ( Show( "Wave spawning", "rocky sharks" ) ) Chip( "Rocky Sharks", d is null || d.SpawnSharks, () => { if ( d is not null ) d.SpawnSharks = !d.SpawnSharks; } );
 			if ( Show( "Wave spawning", "boss waves mc61" ) ) Chip( "Boss waves", d is null || d.SpawnBossWaves, () => { if ( d is not null ) d.SpawnBossWaves = !d.SpawnBossWaves; } );
 			if ( Show( "Wave spawning", "kraken waves event" ) ) Chip( "Kraken waves", d is null || d.SpawnKrakenWaves, () => { if ( d is not null ) d.SpawnKrakenWaves = !d.SpawnKrakenWaves; } );
 			Row();
@@ -617,6 +618,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Squilien", WaveDirector.EnemyKind.Squilien ),
 		new( "Junk Crab", WaveDirector.EnemyKind.Crab ),
 		new( "Sea Spider", WaveDirector.EnemyKind.Spider ),
+		new( "Rocky Shark", WaveDirector.EnemyKind.RockyShark ),
 		new( "MC61 boss", WaveDirector.EnemyKind.Boss ),
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
 	};

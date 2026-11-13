@@ -63,6 +63,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   dock builds the radio model (`Tools/blender/dock_props.py`, `DOCK_ONLY=radio`) on the hut table and starts it. Test: `--radio`.
 - A dead player has no gun, HUD or input: `PlayerSurvivor.LocalDead` gates them, and `PlayerRig.DeathCamera` (through
   `PlayerController.CameraOverride`) watches the ragdoll. Test for board items #31 to #40: `--board1` (needs a window).
+- Rocky Shark (issue #29): a stone-plated serpent in `Code/Creatures/RockyShark.cs`, model from
+  `Tools/blender/rocky_shark.py` (parts in `godot/assets/models/creatures/rockyshark`). It swims like the Bloober
+  serpent with a livelier tail; the green radiation holes and eyes are weak points, the rock plates turn most shots,
+  a section shot off drops the tail behind it, and a bite can irradiate. Spawns from wave 2 (18% of the mix); dev menu
+  Enemies, Spawn an enemy, Rocky Shark. Test: `--shark`.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

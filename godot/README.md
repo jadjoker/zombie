@@ -66,4 +66,5 @@ Godot 4.7.2 .NET (C#) port of the s&box game. Plan and progress: `../docs/godot-
 - Zombies are not ported: they need the s&box citizen model (Facepunch's, not ours) and are off in the s&box game too.
   The `Zombie` kind has no spawner, so the dev menu's Zombie row does nothing.
 - Autotest flags: `--creatures` (test range: Squilien, crab, MC61; add `--boss`, `--rest-hands`, `--devmenu`),
-  `--stations` (water level: buy stations and HUD overlays).
+  `--stations` (water level: buy stations and HUD overlays), `--shark` (water level: the Rocky Shark, its holes and
+  eyes as weak points, cutting a section off and the bite's radiation; add `--shots <dir>` for pictures).

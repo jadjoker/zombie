@@ -43,6 +43,12 @@ public partial class WaveDirector : Node3D
 	public float SpiderBaseHealth = 110f;
 	public float SpiderHealthPerWave = 12f;
 
+	public float SharkChance = 0.18f;
+	public int SharkFromWave = 2;
+	public float SharkBaseHealth = 240f;
+	public float SharkHealthPerWave = 35f;
+	public float SharkSpawnHeight = 120f;
+
 	public int BossEvery = 5;
 	public float BossBaseHealth = 2000f;
 	public float BossHealthPerVisit = 800f;
@@ -181,9 +187,10 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSquiliens = true;
 	public bool SpawnCrabs = true;
 	public bool SpawnSpiders;
+	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark }
 
 	/// <summary> How each kind is made, given a spot on the ground, its health and a facing. Null: not ported yet. </summary>
 	public static readonly Dictionary<EnemyKind, Func<WaveDirector, Vector3, float, Node3D>> Spawners = new()
@@ -234,6 +241,15 @@ public partial class WaveDirector : Node3D
 			var s = SeaSpider.Spawn( d.GetTree().CurrentScene, at, health );
 			s.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
 			s.Size = Rng.Float( 0.9f, 1.1f );
+			s.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return s;
+		},
+		[EnemyKind.RockyShark] = ( d, at, health ) =>
+		{
+			var s = RockyShark.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * d.SharkSpawnHeight * U.In, health );
+			s.Hue = Rng.Float();
+			s.Size = Rng.Float( 0.9f, 1.12f );
+			s.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
 			s.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return s;
 		},
@@ -442,6 +458,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
 			EnemyKind.Crab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
+			EnemyKind.RockyShark => SharkBaseHealth + SharkHealthPerWave * (Wave - 1),
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
@@ -499,6 +516,7 @@ public partial class WaveDirector : Node3D
 		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
 		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
 		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
+		foreach ( var s in RockyShark.All.ToList() ) s.QueueFree();
 		foreach ( var m in MC61.All.ToList() ) m.QueueFree();
 		foreach ( var k in Kraken.All.ToList() ) k.QueueFree();
 		KrakenWave = krakenPending = krakenForced = false;
@@ -532,32 +550,36 @@ public partial class WaveDirector : Node3D
 		var has = ( EnemyKind k ) => Spawners.TryGetValue( k, out var f ) && f is not null;
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;
+		var shark = SpawnSharks && has( EnemyKind.RockyShark ) && Wave >= SharkFromWave ? SharkChance : 0f;
 		if ( FloatRound )
 		{
-			var total = MathF.Max( 0.01f, squilien + bloober );
-			if ( squilien + bloober <= 0.01f ) return false;
+			var total = MathF.Max( 0.01f, squilien + bloober + shark );
+			if ( squilien + bloober + shark <= 0.01f ) return false;
 			squilien /= total;
 			bloober /= total;
+			shark /= total;
 		}
 		var crab = SpawnCrabs && has( EnemyKind.Crab ) && Wave >= CrabFromWave && !FloatRound ? CrabChance : 0f;
 		var spider = SpawnSpiders && has( EnemyKind.Spider ) && Wave >= SpiderFromWave && !FloatRound ? SpiderChance : 0f;
 		if ( !SpawnZombies || !has( EnemyKind.Zombie ) )
 		{
-			if ( squilien + bloober + crab + spider <= 0.01f )
+			if ( squilien + bloober + shark + crab + spider <= 0.01f )
 			{
 				squilien = SpawnSquiliens && has( EnemyKind.Squilien ) ? 1f : 0f;
 				bloober = SpawnBloobers && has( EnemyKind.Bloober ) ? 1f : 0f;
+				shark = SpawnSharks && has( EnemyKind.RockyShark ) ? 1f : 0f;
 				crab = SpawnCrabs && has( EnemyKind.Crab ) && !FloatRound ? 1f : 0f;
 				spider = SpawnSpiders && has( EnemyKind.Spider ) && !FloatRound ? 1f : 0f;
 			}
-			var sum = squilien + bloober + crab + spider;
+			var sum = squilien + bloober + shark + crab + spider;
 			if ( sum <= 0.01f ) return false;
-			squilien /= sum; bloober /= sum; crab /= sum; spider /= sum;
+			squilien /= sum; bloober /= sum; shark /= sum; crab /= sum; spider /= sum;
 		}
 		if ( roll < squilien ) return Spawn( EnemyKind.Squilien );
 		if ( roll < squilien + bloober ) return Spawn( EnemyKind.Bloober );
-		if ( roll < squilien + bloober + crab ) return Spawn( EnemyKind.Crab );
-		if ( roll < squilien + bloober + crab + spider ) return Spawn( EnemyKind.Spider );
+		if ( roll < squilien + bloober + shark ) return Spawn( EnemyKind.RockyShark );
+		if ( roll < squilien + bloober + shark + crab ) return Spawn( EnemyKind.Crab );
+		if ( roll < squilien + bloober + shark + crab + spider ) return Spawn( EnemyKind.Spider );
 		return SpawnZombies && Spawn( EnemyKind.Zombie );
 	}
 

@@ -52,8 +52,11 @@ public partial class Level : Node3D
 		// The forest builds its procedural world in place of the hand-made arena (before the navmesh).
 		proceduralMap?.Build( this, path => byPath.TryGetValue( path, out var n ) && IsInstanceValid( n ) ? n : null );
 		var water = LevelName.Contains( "water", StringComparison.OrdinalIgnoreCase );
+		// The water level's sea floor is rolling terrain (issue #35): built, and the level fitted to it, before the
+		// dressing and the navmesh.
+		if ( water && !OS.GetCmdlineUserArgs().Contains( "--flat-floor" ) ) { SeaTerrain.Build( this ); SeaTerrain.Fit( this ); }
 		// Sea life and landmarks go in before the navmesh (the anchor and the wreck are solid).
-		if ( water ) SeaDressing.Add( this, taken );
+		if ( water ) { SeaDressing.Add( this, taken ); SeaTerrain.Settle( FindChild( "Sea Dressing", false, false ) as Node3D ); }
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
 

@@ -58,6 +58,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--round11" ) ) { await Round11Test(); return; }
 		if ( args.Contains( "--pad" ) ) { await PadTest(); return; }
 		if ( args.Contains( "--radio" ) ) { await RadioTest(); return; }
+		if ( args.Contains( "--terrain" ) ) { await TerrainTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2593,6 +2594,68 @@ public partial class AutoTest : Node
 		await Wait( 0.4f );
 		Check( radio.Playing, "the radio stopped while paused" );
 		GetTree().Paused = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> The sea floor terrain (issue #35): bigger, hills and valleys, the basin flat, the navmesh across it; views for review. </summary>
+	async Task TerrainTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		Check( SeaTerrain.Active, "the water level did not build its terrain" );
+		var hi = float.MinValue; var lo = float.MaxValue;
+		for ( var x = -SeaTerrain.HalfSize + 25f; x <= SeaTerrain.HalfSize - 25f; x += 4f )
+			for ( var z = -SeaTerrain.HalfSize + 25f; z <= SeaTerrain.HalfSize - 25f; z += 4f )
+			{
+				var h = SeaTerrain.HeightAt( x, z );
+				hi = MathF.Max( hi, h ); lo = MathF.Min( lo, h );
+			}
+		var basin = 0f;
+		for ( var a = 0f; a < MathF.Tau; a += 0.3f ) basin = MathF.Max( basin, MathF.Abs( SeaTerrain.HeightAt( MathF.Cos( a ) * 26f, MathF.Sin( a ) * 26f ) ) );
+		GD.Print( $"[autotest] terrain: {2 * SeaTerrain.HalfSize:0} m across, hills up to {hi:0.0} m, valleys down to {lo:0.0} m, basin within {basin:0.00} m" );
+		Check( hi > 6f && lo < -4f, "the terrain has no real hills and valleys" );
+		Check( basin < 0.6f, "the middle is not flat enough for the stations and the Kraken ring" );
+		// The navmesh reaches far out over the hills.
+		var far = 0;
+		foreach ( var a in new[] { 0f, 1.6f, 3.1f, 4.7f } )
+		{
+			var want = new Vector3( MathF.Cos( a ) * 75f, 0f, MathF.Sin( a ) * 75f );
+			want.Y = SeaTerrain.HeightAt( want );
+			var got = Nav.Closest( player, want );
+			var path = NavigationServer3D.MapGetPath( Nav.Map( player ), Vector3.Zero, got, true );
+			if ( got.DistanceTo( want ) < 2f && path.Length > 1 && path[^1].DistanceTo( got ) < 1f ) far++;
+			else GD.Print( $"[autotest] terrain: spot {want} -> navmesh {got} ({got.DistanceTo( want ):0.0} m off), path ends {(path.Length > 0 ? path[^1] : Vector3.Zero)}" );
+		}
+		var steep = 0; var total = 0;
+		for ( var x = -80f; x <= 80f; x += 1f )
+			for ( var z = -80f; z <= 80f; z += 1f )
+			{
+				var dx = SeaTerrain.HeightAt( x + 0.5f, z ) - SeaTerrain.HeightAt( x - 0.5f, z );
+				var dz = SeaTerrain.HeightAt( x, z + 0.5f ) - SeaTerrain.HeightAt( x, z - 0.5f );
+				total++; if ( MathF.Sqrt( dx * dx + dz * dz ) > MathF.Tan( MathX.Rad( 38f ) ) ) steep++;
+			}
+		GD.Print( $"[autotest] terrain: {100f * steep / total:0.0}% of the ground is steeper than 38 degrees" );
+		GD.Print( $"[autotest] terrain: {far} of 4 far spots on the hills are reachable on the navmesh" );
+		Check( far >= 3, "the navmesh does not reach out over the hills" );
+		Check( steep * 100 < total * 15, "too much of the ground is too steep to walk" );
+
+		foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+			if ( n is CanvasLayer cl ) cl.Visible = false;
+		var shotAt = Transform3D.Identity;
+		player.CameraOverride = _ => shotAt;
+		foreach ( var (name, at, look) in new[] {
+			("terrain_overview", new Vector3( 0f, 70f, 95f ), new Vector3( 0f, 0f, -10f )),
+			("terrain_basin", new Vector3( 4f, 2.2f, 6f ), new Vector3( 40f, 2f, -40f )),
+			("terrain_hills", new Vector3( 55f, SeaTerrain.HeightAt( 55f, 30f ) + 3f, 30f ), new Vector3( 80f, SeaTerrain.HeightAt( 80f, -20f ), -20f )),
+			("terrain_rim", new Vector3( -60f, SeaTerrain.HeightAt( -60f, -60f ) + 4f, -60f ), new Vector3( -105f, 8f, -100f )) } )
+		{
+			shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+			await Wait( 0.4f );
+			await Shot( name );
+		}
+		player.CameraOverride = null;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

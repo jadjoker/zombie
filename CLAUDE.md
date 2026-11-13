@@ -68,6 +68,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   serpent with a livelier tail; the green radiation holes and eyes are weak points, the rock plates turn most shots,
   a section shot off drops the tail behind it, and a bite can irradiate. Spawns from wave 2 (18% of the mix); dev menu
   Enemies, Spawn an enemy, Rocky Shark. Test: `--shark`.
+- The sea floor is terrain (issue #35): `Code/Game/SeaTerrain.cs` builds a 224 m height map (the old arena was 76 m) with
+  hills, valleys and shelves, a flat basin in the middle (radius `FlatRadius` 30 m: stations, dive crater, Kraken ring)
+  and a cliff rim at the edge. `SeaTerrain.Fit` removes the old floor and walls, sets the level's props on the ground,
+  moves the cliffs to the rim and spreads copies of the sea life over the hills, and moves the spawn points out to
+  44-58 m. Place anything new with `SeaTerrain.HeightAt(x, z)`. Test: `--terrain` (shots need a window);
+  `--flat-floor` loads the old flat arena for comparison. Slides survive a moment of air over a crest.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

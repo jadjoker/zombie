@@ -216,10 +216,12 @@ public partial class PlayerMovement : Node, ICameraModifier
 		if ( Ground != GroundMode.Slide && onGround && (Input.IsActionJustPressed( "duck" ) || ForceCrouchPressed() || (justLanded && CrouchHeld)) )
 			TryStartSlide();
 
-		if ( IsSliding && (!CrouchHeld || !onGround || timeSinceGroundMode > SlideMaxTime || GroundVelocity.Length() < SlideEndSpeed) )
+		// Over a crest on rolling ground the slide can leave the floor for a moment: only a real fall ends it.
+		var slideAirborne = !onGround && controller.TimeSinceGrounded > 0.2f;
+		if ( IsSliding && (!CrouchHeld || slideAirborne || timeSinceGroundMode > SlideMaxTime || GroundVelocity.Length() < SlideEndSpeed) )
 			EndGroundMode();
 
-		if ( OverridesGround && !onGround ) EndGroundMode();
+		if ( OverridesGround && slideAirborne ) EndGroundMode();
 
 		if ( justLanded && Ground == GroundMode.None && HorizontalSpeed > TopSpeed + 40f * U.In )
 			StartCarry( controller.Velocity.Flat() );

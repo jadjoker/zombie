@@ -2702,6 +2702,9 @@ public partial class AutoTest : Node
 		var scene = GetTree().CurrentScene;
 		var director = WaveDirector.Current;
 		director.SpawningPaused = true;
+		// No ally spider: it hunts enemies, and would chew on the seahorses and on Poseidon while the test looks at them.
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
 		// Open sea floor (the run can start on the dock, where the hut stands in the way of a thrown trident).
 		player.GlobalPosition = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) ) + Vector3.Up * 0.1f;
 		player.Velocity = Vector3.Zero;
@@ -2784,6 +2787,10 @@ public partial class AutoTest : Node
 		Check( !player.Scripted, "the player was left held after Poseidon's stab" );
 		survivor.Health.Heal( 999f );
 
+		// Settled again first (the stab throws the player back), then he vanishes and comes up near them.
+		player.GlobalPosition = home;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.6f );
 		p.ForceAttack( "vanish" );
 		await Wait( 2.2f );
 		var apart = p.GlobalPosition.Flat().DistanceTo( player.GlobalPosition.Flat() );

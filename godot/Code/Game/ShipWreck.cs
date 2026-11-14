@@ -93,64 +93,11 @@ public static class ShipWreck
 
 	// ---- Building ----
 
-	sealed class Kit
+	/// <summary> The ship's builder: the shared MeshKit with the ship's materials. </summary>
+	sealed class Kit : MeshKit
 	{
-		readonly Dictionary<string, (SurfaceTool Tool, Material Material)> batches = new();
-		public readonly Node3D Node;
-		readonly StaticBody3D body;
-		public int Pieces, Solids;
-
-		public Kit( Node3D node )
-		{
-			Node = node;
-			body = new StaticBody3D { Name = "Ship Body", CollisionLayer = Layers.World, CollisionMask = 0 };
-			node.AddChild( body );
-		}
-
-		SurfaceTool Batch( string key )
-		{
-			if ( batches.TryGetValue( key, out var b ) ) return b.Tool;
-			var st = new SurfaceTool();
-			st.Begin( Mesh.PrimitiveType.Triangles );
-			batches[key] = (st, Materials[key]);
-			return st;
-		}
-
-		public void Add( string key, Godot.Mesh mesh, Transform3D at )
-		{
-			Batch( key ).AppendFrom( mesh, 0, at );
-			Pieces++;
-		}
-
-		public void Box( string key, Vector3 centre, Vector3 size, Basis? turn = null, bool solid = true )
-		{
-			var at = new Transform3D( turn ?? Basis.Identity, centre );
-			Add( key, new BoxMesh { Size = size }, at );
-			if ( solid ) Solid( at, size );
-		}
-
-		public void Solid( Transform3D at, Vector3 size )
-		{
-			body.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = size }, Transform = at } );
-			Solids++;
-		}
-
-		public void Cylinder( string key, Vector3 centre, float radius, float height, Basis? turn = null, int sides = 14, float topRadius = -1f ) =>
-			Add( key, new CylinderMesh { TopRadius = topRadius < 0f ? radius : topRadius, BottomRadius = radius, Height = height, RadialSegments = sides, Rings = 1 }, new Transform3D( turn ?? Basis.Identity, centre ) );
-
-		public void Sphere( string key, Vector3 centre, float radius, int sides = 10 ) =>
-			Add( key, new SphereMesh { Radius = radius, Height = radius * 2f, RadialSegments = sides, Rings = sides / 2 }, new Transform3D( Basis.Identity, centre ) );
-
-		public void Commit()
-		{
-			foreach ( var (key, (tool, material)) in batches )
-			{
-				tool.GenerateNormals();
-				var mi = new MeshInstance3D { Name = key, Mesh = tool.Commit(), MaterialOverride = material };
-				if ( key is "glass" or "glow_warm" or "glow_green" or "glow_purple" or "vine" or "kudzu_green" or "kudzu_dark" or "kudzu_purple" ) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
-				Node.AddChild( mi );
-			}
-		}
+		public Kit( Node3D node ) : base( node, Materials, "Ship Body",
+			new[] { "glass", "glow_warm", "glow_green", "glow_purple", "vine", "kudzu_green", "kudzu_dark", "kudzu_purple" } ) { }
 	}
 
 	static StandardMaterial3D Mat( Color c, float rough = 0.75f, float metal = 0f ) => new() { AlbedoColor = c, Roughness = rough, Metallic = metal };

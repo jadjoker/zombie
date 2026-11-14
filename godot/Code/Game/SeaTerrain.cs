@@ -45,7 +45,15 @@ public static class SeaTerrain
 	const float PlainFeather = 12f;
 
 	/// <summary> The height of the sea floor (metres) at a point. 0 in the middle, as the old arena floor was. </summary>
-	public static float HeightAt( float x, float z ) => Area == 2 ? WreckSiteHeight( x, z ) : BaseHeight( x, z );
+	public static float HeightAt( float x, float z ) => Area switch { 2 => WreckSiteHeight( x, z ), 3 => GlobeSiteHeight( x, z ), _ => BaseHeight( x, z ) };
+
+	/// <summary> Area 3: flat under the globe (Atlantis builds its own levels on it), rising back into the hills outside its base. </summary>
+	static float GlobeSiteHeight( float x, float z )
+	{
+		var r = MathF.Sqrt( x * x + z * z );
+		var outside = Smooth( Atlantis.BaseOuter, Atlantis.BaseOuter + 10f, r );
+		return MathX.Lerp( 0f, BaseHeight( x, z ), outside );
+	}
 
 	/// <summary> Area 2: the same sea floor with a solid flat plain for the wreck, the sand heaped against its high side
 	/// and scooped out under its hull. </summary>

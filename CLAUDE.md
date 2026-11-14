@@ -92,6 +92,13 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
   the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
+- Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
+  `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe
+  (`Atlantis.cs`: island temple of Poseidon with a gold statue holding a giant trident, glowing canals, bridges, 8
+  avenues, 116 marble/obsidian/crystal buildings, a turning green crystal heart, the globe on a black and gold base).
+  Buildings use `MeshKit` (shared with `ShipWreck`). Stations stand behind the arrival pad, spawns on the ring street
+  at 65 m, the Kraken comes up in the west plaza (`Atlantis.KrakenCentre`). Test: `--atlantis` (shots need a window).
+  The wreck is built at `ShipWreck.Scale` (1.2) through its frame.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

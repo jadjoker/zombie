@@ -60,6 +60,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--radio" ) ) { await RadioTest(); return; }
 		if ( args.Contains( "--terrain" ) ) { await TerrainTest(); return; }
 		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
+		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2687,6 +2688,99 @@ public partial class AutoTest : Node
 	/// waits for it, using it builds the wreck site (flat plain, sunken liner) and starts wave 11; the ship's rooms are
 	/// reachable on the navmesh and you can stand in them. Views for review with --shots (needs a window).
 	/// </summary>
+	/// <summary>
+	/// Area 3 (Atlantis): straight to the wreck site, clear wave 20, the teleporter must come and wave 21 wait for it;
+	/// through it to Atlantis, wave 21 starts, the buy stations stand by the arrival, the spawn points are inside the
+	/// globe, and every place in Atlantis.Places can be stood on and reached on foot from the arrival.
+	/// </summary>
+	async Task AtlantisTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var director = WaveDirector.Current;
+		var use = player.GetNode<PlayerUse>( "PlayerUse" );
+		var level = GetTree().CurrentScene as Node3D;
+		AreaTwo.Go( level, player );   // the --teleport test covers the first trip
+		await Wait( 1f );
+		Check( SeaTerrain.Area == 2, "did not get to the wreck site" );
+		director.JumpToWave( 20 );
+		await Wait( 0.5f );
+		Check( director.Wave == 20 && director.State == WaveState.Fighting, $"did not get to wave 20 (wave {director.Wave}, {director.State})" );
+		director.SkipWave();
+		await Wait( 4f );
+		var tp = Teleporter.Current;
+		Check( tp is not null && director.WaitingForTeleport, "no teleporter after wave 20, or wave 21 did not wait for it" );
+		if ( tp is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		GD.Print( $"[autotest] atlantis: teleporter at {tp.GlobalPosition}" );
+		player.GlobalPosition = Nav.Closest( player, tp.GlobalPosition + new Vector3( 0.6f, 0f, 0.3f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		Check( use.AtTeleporter, "standing on the wreck site's teleporter does not offer it" );
+		use.PressUse();
+		await Wait( 3f );
+		Check( SeaTerrain.Area == 3 && Atlantis.Root is not null && IsInstanceValid( Atlantis.Root ) && !ShipWreck.Placed, "the teleporter did not take the player to Atlantis" );
+		var arrival = Atlantis.Arrival;
+		GD.Print( $"[autotest] atlantis: player at {player.GlobalPosition}, {player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ):0.0} m from the arrival" );
+		Check( player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ) < 5f, "the player did not arrive at Atlantis's arrival pad" );
+		await Wait( 6f );
+		Check( director.Wave == 21 && director.State == WaveState.Fighting, $"wave 21 did not begin in Atlantis (wave {director.Wave}, {director.State})" );
+		director.SkipWave();
+		director.SpawningPaused = true;
+
+		foreach ( var station in GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>() )
+		{
+			var d = station.GlobalPosition.Flat().DistanceTo( arrival.Flat() );
+			GD.Print( $"[autotest] atlantis: station {station.GetNode<BuyStation>( "BuyStation" ).Title} {d:0.0} m from the arrival" );
+			Check( d < 16f, $"a buy station is not by Atlantis's arrival ({d:0.0} m)" );
+		}
+		foreach ( var spawn in GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>() )
+			Check( spawn.GlobalPosition.Flat().Length() < Atlantis.BaseInner - 3f, $"a spawn point is outside the city ({spawn.GlobalPosition})" );
+
+		var from = player.GlobalPosition;
+		foreach ( var (name, want) in Atlantis.Places )
+		{
+			var got = Nav.Closest( player, want );
+			var path = NavigationServer3D.MapGetPath( Nav.Map( player ), from, got, true );
+			var reached = got.DistanceTo( want ) < 1.5f && path.Length > 1 && path[^1].DistanceTo( got ) < 1f;
+			player.GlobalPosition = want + Vector3.Up * 0.3f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 1f );
+			var stood = player.IsOnGround && player.GlobalPosition.DistanceTo( want ) < 1.6f;
+			GD.Print( $"[autotest] atlantis {name}: navmesh {(reached ? "reaches it" : $"stops {got.DistanceTo( want ):0.0} m off")}, player stands there {stood} (at {player.GlobalPosition.DistanceTo( want ):0.0} m)" );
+			Check( stood, $"the player cannot stand at Atlantis's {name}" );
+			Check( reached, $"Atlantis's {name} is not reachable on foot" );
+			if ( reached ) from = got;
+		}
+
+		if ( shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+			var shotAt = Transform3D.Identity;
+			player.CameraOverride = _ => shotAt;
+			var views = new (string, Vector3, Vector3)[]
+			{
+				("atlantis_arrival", arrival + new Vector3( 5f, 3f, -6f ), new Vector3( 0f, 10f, 0f )),
+				("atlantis_temple", new Vector3( 0f, 7f, -30f ), new Vector3( 0f, 10f, 0f )),
+				("atlantis_statue", new Vector3( 6f, 6f, -19f ), new Vector3( 0f, 10f, -11.5f )),
+				("atlantis_above", new Vector3( 55f, 45f, -55f ), new Vector3( 0f, 5f, 0f )),
+				("atlantis_canal", Atlantis.Polar( 50f, 30f, 2f ), Atlantis.Polar( 50f, 75f, 0.5f )),
+				("atlantis_kraken_plaza", Atlantis.KrakenCentre + new Vector3( 14f, 5f, 8f ), Atlantis.KrakenCentre),
+				("atlantis_globe_outside", new Vector3( 0f, 25f, -108f ), new Vector3( 0f, 25f, 0f )),
+			};
+			foreach ( var (name, at, look) in views )
+			{
+				shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+				await Wait( 0.35f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task TeleportTest()
 	{
 		DevFlags.FreezeEnemies = true;

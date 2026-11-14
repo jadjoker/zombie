@@ -217,7 +217,8 @@ public partial class Teleporter : Node3D
 		{
 			if ( !IsInstanceValid( this ) ) return;   // freed meanwhile (a restart): stay in this area
 			var level = GetTree().CurrentScene as Node3D;
-			AreaTwo.Go( level, controller );
+			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, controller );
+			else AreaThree.Go( level, controller );   // from the wreck site to Atlantis
 			fade.Color = new Color( 0.02f, 0.06f, 0.1f, 1f );
 			QueueFree();
 		} ) );

@@ -11,6 +11,8 @@ public static class AreaTwo
 {
 	/// <summary> Where the player arrives: the basin's edge on the wreck's side, facing it. </summary>
 	public static readonly Vector3 ArrivalFlat = new( 0f, 0f, -36f );
+	/// <summary> Near where the next teleporter (to Atlantis, after wave 20) zaps in: the old basin, past the stations. </summary>
+	public static readonly Vector3 TeleporterNear = new( 0f, 0f, -14f );
 
 	public static bool Active => SeaTerrain.Area == 2;
 
@@ -66,7 +68,13 @@ public static class AreaTwo
 					inside.Spawn( random, ShipWreck.World( local + new Vector3( (float)random.NextDouble() * 4f - 2f, 1.8f, (float)random.NextDouble() * 3f - 1.5f ) ) );
 		}
 		Caustics.AddTo( level );
-		PlaceStations( level );
+		PlaceStations( level, new Dictionary<BuyStationKind, Vector3>
+		{
+			[BuyStationKind.Ammo] = new( -6f, 0f, -27f ),
+			[BuyStationKind.Health] = new( -2.2f, 0f, -25f ),
+			[BuyStationKind.Damage] = new( 2.2f, 0f, -25f ),
+			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
+		}, ArrivalFlat, p => SeaTerrain.HeightAt( p ) );
 		Nav.Bake( level );
 
 		// The arrival pad, and the player on it looking at the wreck.
@@ -90,21 +98,14 @@ public static class AreaTwo
 	public const int TridentCost = 1500;
 
 	/// <summary>
-	/// The buy stations on the wreck site (playtest): the level's own three (with everything bought at them, so the
-	/// upgrades and their prices carry on) move from the old basin's middle to an arc just behind the arrival pad,
-	/// all facing it, and the trident shooter's station joins the arc. Plants and props in the way are cleared.
+	/// Moves the buy stations to a new area (playtest): the level's own three (with everything bought at them, so the
+	/// upgrades and their prices carry on) and the trident shooter's station (made here the first time) stand at the
+	/// given spots, set on the ground and facing `lookAt` (the arrival pad). Plants and props in the way are cleared.
 	/// </summary>
-	static void PlaceStations( Node3D level )
+	public static void PlaceStations( Node3D level, Dictionary<BuyStationKind, Vector3> spots, Vector3 lookAt, Func<Vector3, float> ground )
 	{
-		var spots = new Dictionary<BuyStationKind, Vector3>
-		{
-			[BuyStationKind.Ammo] = new( -6f, 0f, -27f ),
-			[BuyStationKind.Health] = new( -2.2f, 0f, -25f ),
-			[BuyStationKind.Damage] = new( 2.2f, 0f, -25f ),
-			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
-		};
-		Vector3 Ground( Vector3 p ) => p with { Y = SeaTerrain.HeightAt( p ) };
-		Vector3 Facing( Vector3 p ) => (ArrivalFlat - p).Flat();
+		Vector3 Ground( Vector3 p ) => p with { Y = ground( p ) };
+		Vector3 Facing( Vector3 p ) => (lookAt - p).Flat();
 
 		var used = new List<Vector3>();
 		foreach ( var body in level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().ToList() )

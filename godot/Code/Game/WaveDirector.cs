@@ -129,18 +129,20 @@ public partial class WaveDirector : Node3D
 		var players = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.WorldPosition ).ToList();
 		var height = players.Count > 0 ? players[0].Y : GlobalPosition.Y;
 		var avoid = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().Select( s => s.GetParent() ).OfType<Node3D>().Select( n => n.GlobalPosition ).ToList();
-		var best = Nav.Closest( this, new Vector3( 0f, height, 0f ) );
+		// Atlantis (area 3) keeps an open plaza for it on the west avenue; elsewhere it is the map's middle.
+		var centre = SeaTerrain.Area == 3 ? Atlantis.KrakenCentre.Flat() : Vector3.Zero;
+		var best = Nav.Closest( this, centre with { Y = height } );
 		var bestScore = float.MinValue;
 		foreach ( var radius in new[] { 0f, 5f, 9f, 13f } )
 		{
 			for ( var i = 0; i < (radius == 0f ? 1 : 10); i++ )
 			{
 				var angle = i / 10f * MathF.Tau;
-				var spot = Nav.Closest( this, new Vector3( MathF.Cos( angle ) * radius, height, MathF.Sin( angle ) * radius ) );
+				var spot = Nav.Closest( this, centre + new Vector3( MathF.Cos( angle ) * radius, height, MathF.Sin( angle ) * radius ) );
 				var clear = avoid.Count > 0 ? avoid.Min( a => a.DistanceTo( spot ) ) : 20f;
 				var room = players.Count > 0 ? players.Min( a => a.DistanceTo( spot ) ) : 20f;
 				// Clear of the stations matters most, then not under a player, then nearer the middle.
-				var score = MathF.Min( clear, 10f ) * 2f + MathF.Min( room, 12f ) - spot.Flat().Length() * 0.4f;
+				var score = MathF.Min( clear, 10f ) * 2f + MathF.Min( room, 12f ) - (spot - centre).Flat().Length() * 0.4f;
 				if ( score > bestScore ) { bestScore = score; best = spot; }
 			}
 		}
@@ -174,6 +176,10 @@ public partial class WaveDirector : Node3D
 	public WaveState State = WaveState.Intermission;
 	/// <summary> After this wave the teleporter zaps in, and the next wave waits until the player takes it (issue #35). </summary>
 	public int TeleportAfterWave = 10;
+	/// <summary> After this wave, on the wreck site, the teleporter to Atlantis (area 3) zaps in the same way. </summary>
+	public int SecondTeleportAfterWave = 20;
+	/// <summary> The wave after which the teleporter out of the current area comes (0: none, Atlantis is the last). </summary>
+	public int NextTeleportWave => SeaTerrain.Area switch { 1 => TeleportAfterWave, 2 => SecondTeleportAfterWave, _ => 0 };
 	/// <summary> The player has gone through the teleporter to the wreck site. </summary>
 	public bool Teleported;
 	/// <summary> Waiting for the player to take the teleporter (the HUD says so instead of counting down). </summary>
@@ -321,12 +327,13 @@ public partial class WaveDirector : Node3D
 		if ( State == WaveState.Intermission )
 		{
 			if ( DockHouse.HoldWaves && Wave == 0 ) { nextWaveAt = MathF.Max( (float)nextWaveAt, FirstWaveDelay ); return; }
-			// After wave 10 the teleporter zaps in near the landing spot, and wave 11 waits for the player to take it.
-			if ( TeleportAfterWave > 0 && Wave == TeleportAfterWave && !Teleported && SeaTerrain.Active )
+			// After wave 10 the teleporter zaps in near the landing spot, and wave 11 waits for the player to take it;
+			// after wave 20 on the wreck site, the same for Atlantis.
+			if ( NextTeleportWave > 0 && Wave == NextTeleportWave && SeaTerrain.Active )
 			{
 				WaitingForTeleport = true;
 				if ( Teleporter.Current is null && TimeSinceWaveCleared > 2.5f && GetTree().CurrentScene is Node3D level )
-					Teleporter.Spawn( level, DockHouse.Current?.BoardTip is { } tip ? tip with { Y = SeaTerrain.HeightAt( tip ) } : Vector3.Zero );
+					Teleporter.Spawn( level, TeleporterNear() );
 				nextWaveAt = MathF.Max( (float)nextWaveAt, 1f );
 				return;
 			}
@@ -552,7 +559,7 @@ public partial class WaveDirector : Node3D
 	{
 		if ( State != WaveState.GameOver ) return;
 		// Back from the wreck site: a new game starts from the first area (the level is built afresh).
-		if ( SeaTerrain.Area == 2 ) { GetTree().ReloadCurrentScene(); return; }
+		if ( SeaTerrain.Area >= 2 ) { GetTree().ReloadCurrentScene(); return; }
 		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
 		// Every enemy of every kind (spiders too); an ally spider stays.
 		foreach ( var enemy in Creature.Everyone.Where( x => x.IsEnemy ).ToList() ) enemy.QueueFree();
@@ -584,7 +591,15 @@ public partial class WaveDirector : Node3D
 	}
 
 	/// <summary> Where the Nth survivor comes back: around the director's spot, 90 units apart. </summary>
-	Vector3 RespawnPosition( int index ) => GlobalPosition + new Vector3( (index % 4) * 90f, 0f, (index / 4) * 90f ) * U.In;
+	Vector3 RespawnPosition( int index ) =>
+		(SeaTerrain.Area == 3 ? Atlantis.Arrival : GlobalPosition) + new Vector3( (index % 4) * 90f, 0f, (index / 4) * 90f ) * U.In;   // the map's middle is the temple there
+
+	/// <summary> Where the teleporter out of this area zaps in: by the dive's landing spot, or on the wreck site's old basin. </summary>
+	Vector3 TeleporterNear()
+	{
+		if ( SeaTerrain.Area == 2 ) return AreaTwo.TeleporterNear with { Y = SeaTerrain.HeightAt( AreaTwo.TeleporterNear ) };
+		return DockHouse.Current?.BoardTip is { } tip ? tip with { Y = SeaTerrain.HeightAt( tip ) } : Vector3.Zero;
+	}
 
 	bool TrySpawnEnemy()
 	{

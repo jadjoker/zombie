@@ -81,7 +81,11 @@ jobs:
           if [ -z "$BUTLER_API_KEY" ]; then echo "::warning::No BUTLER_API_KEY secret: built and tested, not uploaded."; exit 0; fi
           target="${ITCH_TARGET:-$(tr -d ' \r\n' < Tools/godot/itch_target.txt)}"
           version="$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
-          curl -fsSL -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          # butler's download host (itch has used both names): the first one that answers.
+          for host in broth.itch.zone broth.itch.ovh; do
+            curl -fsSL --retry 3 -o butler.zip "https://$host/butler/linux-amd64/LATEST/archive/default" && break
+          done
+          [ -s butler.zip ] || { echo "could not download butler"; exit 1; }
           unzip -q butler.zip -d butler && chmod +x butler/butler
           ./butler/butler push build/windows "$target:windows" --userversion "$version"
           ./butler/butler status "$target:windows"

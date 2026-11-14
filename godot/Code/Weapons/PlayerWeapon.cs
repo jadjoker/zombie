@@ -22,6 +22,10 @@ public partial class PlayerWeapon : Node
 	public bool Automatic = true;
 	public bool ShellReload;
 	public float ShellTime = 0.5f;
+	/// <summary> Fires a flying trident (TridentBolt) instead of hitscan rays. </summary>
+	public bool Projectile;
+	/// <summary> The firing sound (null: "{ModelName}_shoot"). </summary>
+	public string ShootSound;
 
 	public string DisplayName = "Rifle";
 	public int Slot = 1;
@@ -52,7 +56,7 @@ public partial class PlayerWeapon : Node
 
 	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.ThirdPerson ?? false);
 
-	Color? FlashTint => ModelName == "rifle" ? RifleModels.Get().Flash : null;
+	Color? FlashTint => ModelName switch { "rifle" => RifleModels.Get().Flash, "trident" => TridentModel.Green, _ => null };
 
 	/// <summary> The model folder to show: the rifle's is whichever design is picked (RifleModels). </summary>
 	public string ViewModelName => ModelName == "rifle" ? RifleModels.Get().Model : ModelName;
@@ -95,6 +99,20 @@ public partial class PlayerWeapon : Node
 	readonly HashSet<Node> hitThisShot = new();
 
 	public static PlayerWeapon Rifle() => new() { Name = "Rifle" };
+
+	/// <summary>
+	/// The trident shooter (bought on the wreck site): slot 3, a few heavy tridents per load that fly to the crosshair
+	/// with a slight drop, one at a time.
+	/// </summary>
+	public static PlayerWeapon Trident() => new()
+	{
+		Name = "Trident", DisplayName = "Trident Shooter", Slot = 3, ModelName = "trident",
+		Damage = 140f, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
+		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
+		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
+		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,
+		Projectile = true, ShootSound = "harpoon",
+	};
 
 	public static PlayerWeapon Shotgun() => new()
 	{
@@ -170,6 +188,7 @@ public partial class PlayerWeapon : Node
 
 		var melee = MeleeActive?.Invoke() ?? false;
 		if ( ViewModel is not null ) ViewModel.Visible = !controller.ThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && !melee;
+		ShowLoaded();
 
 		if ( InfiniteAmmo ) { Ammo = MagazineSize; Reserve = Math.Max( Reserve, StartingReserve ); }
 
@@ -193,6 +212,16 @@ public partial class PlayerWeapon : Node
 			else if ( Reserve > 0 ) StartReload();
 			else Sfx.Play2D( "dry_fire" );
 		}
+	}
+
+	Node3D loaded;
+
+	/// <summary> The trident shooter shows its next trident in the mouth: gone just after a shot, back once one is loaded. </summary>
+	void ShowLoaded()
+	{
+		if ( !Projectile || ViewModel is null ) return;
+		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
+		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f;
 	}
 
 	void UpdateAiming( float dt )
@@ -228,7 +257,7 @@ public partial class PlayerWeapon : Node
 		var interval = 1f / FireRate;
 		var over = TimeSinceShot - interval;
 		TimeSinceShot = over > 0f && over < frameStep && over < interval ? over : 0f;
-		Sfx.Play2D( $"{ModelName}_shoot", 1.1f, bus: Sfx.GunBus );   // 10% louder (playtest 11/12)
+		Sfx.Play2D( ShootSound ?? $"{ModelName}_shoot", 1.1f, bus: Sfx.GunBus );   // 10% louder (playtest 11/12)
 		Controls.Rumble( ModelName == "shotgun" ? 0.55f : 0.22f );
 		Ammo--;
 		var camera = controller.Camera;
@@ -249,7 +278,15 @@ public partial class PlayerWeapon : Node
 
 		hitThisShot.Clear();
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
-		for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
+		if ( Projectile )
+		{
+			// The trident flies from the muzzle to whatever is under the crosshair (or as far as it reaches).
+			var aimDirection = (forward + Rng.InSphere( 1f ) * spread).Normalized();
+			var aim = Trace.Ray( controller, start, start + aimDirection * Range, Layers.World | Layers.Creature | Layers.Gib, exclude );
+			var target = aim.Hit ? aim.HitPosition : start + aimDirection * Range;
+			TridentBolt.Launch( GetTree().CurrentScene, trailStart, target, start, CurrentDamage, controller, this );
+		}
+		else for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
 		{
 			var direction = (forward + Rng.InSphere( 1f ) * spread).Normalized();
 			// World and creatures in one ray: creature parts are areas/bodies on their own layer.

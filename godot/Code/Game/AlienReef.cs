@@ -45,7 +45,7 @@ public static class AlienReef
 		var reef = new List<Node3D>();
 		if ( corals.Count > 0 )
 		{
-			for ( var clump = 0; clump < 46; clump++ )
+			for ( var clump = 0; clump < 34; clump++ )
 			{
 				var angle = Range( 0f, MathF.Tau );
 				var radius = Range( ReefInner + 1f, ReefOuter );
@@ -60,8 +60,9 @@ public static class AlienReef
 				if ( kelps.Count > 0 && random.NextDouble() < 0.55 ) reef.Add( Copy( kelps[random.Next( kelps.Count )], centre + new Vector3( Range( -1.5f, 1.5f ), 0f, Range( -1.5f, 1.5f ) ), Range( 0.9f, 1.5f ) ) );
 				if ( pebbles.Count > 0 && random.NextDouble() < 0.5 ) Copy( pebbles[random.Next( pebbles.Count )], centre, Range( 0.8f, 1.4f ) );
 			}
-			// Patches inside the basin, kept off the stations, the dive spot and the barricades.
-			for ( var patch = 0; patch < 16; patch++ )
+			// A few patches inside the basin, kept off the stations, the dive spot and the barricades (fewer than before:
+			// the middle was crowded).
+			for ( var patch = 0; patch < 7; patch++ )
 			{
 				var at0 = new Vector3( Range( -ReefInner, ReefInner ), 0f, Range( -ReefInner, ReefInner ) );
 				if ( at0.Length() < 6f || at0.Length() > ReefInner || !Clear( at0, 2f ) ) continue;
@@ -107,7 +108,7 @@ public static class AlienReef
 			}
 			else at = new Vector3( Range( -SeaTerrain.HalfSize + 14f, SeaTerrain.HalfSize - 14f ), 0f, Range( -SeaTerrain.HalfSize + 14f, SeaTerrain.HalfSize - 14f ) );
 			at.Y = SeaTerrain.HeightAt( at ) + Range( 1.6f, 6.5f );
-			floaters.Spawn( random, at );
+			floaters.Spawn( random, at, SeaTerrain.HeightAt( at ) );
 		}
 		GD.Print( $"[reef] {reef.Count} reef pieces, {recoloured} plants recoloured alien, {floaters.Count} floating plants" );
 	}
@@ -142,6 +143,8 @@ public partial class AlienFloaters : Node3D
 		public Node3D Node;
 		public Vector3 Home;
 		public float Phase, Bob, Drift, Rate, Spin, Lift;
+		/// <summary> A star fern sitting near the sand: it only bobs a little and keeps its blades up. </summary>
+		public bool Low;
 	}
 
 	readonly List<Floater> all = new();
@@ -153,14 +156,21 @@ public partial class AlienFloaters : Node3D
 	static readonly StandardMaterial3D[] Bulbs = { Glow( new Color( 0.35f, 1f, 0.25f ), 2.4f ), Glow( new Color( 0.7f, 0.25f, 1f ), 2.2f ), Glow( new Color( 0.2f, 1f, 0.7f ), 2f ) };
 	static readonly StandardMaterial3D[] Fronds = { Frond( new Color( 0.03f, 0.03f, 0.05f ) ), Frond( new Color( 0.22f, 0.05f, 0.34f ) ), Frond( new Color( 0.05f, 0.14f, 0.05f ) ) };
 
-	public void Spawn( Random random, Vector3 at )
+	/// <summary>
+	/// A floating plant at a spot. Given the ground's height there, the spiky star ferns sit just above the sand
+	/// instead (playtest: they hung too high), blades fanned upward, barely moving so they never dip into it.
+	/// </summary>
+	public void Spawn( Random random, Vector3 at, float? ground = null )
 	{
 		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+		var bulb = Bulbs[random.Next( Bulbs.Length )];
+		var frond = Fronds[random.Next( Fronds.Length )];
+		var shape = random.Next( 3 );
+		var low = shape == 2 && ground is not null;
+		if ( low ) at.Y = ground.Value + R( 0.3f, 0.6f );
 		var node = new Node3D { Name = "Floater" };
 		AddChild( node );
 		node.GlobalPosition = at;
-		var bulb = Bulbs[random.Next( Bulbs.Length )];
-		var frond = Fronds[random.Next( Fronds.Length )];
 		MeshInstance3D Part( Mesh mesh, Material material, Vector3 position, Basis basis )
 		{
 			var m = new MeshInstance3D { Mesh = mesh, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
@@ -169,7 +179,7 @@ public partial class AlienFloaters : Node3D
 			return m;
 		}
 
-		switch ( random.Next( 3 ) )
+		switch ( shape )
 		{
 			case 0:
 			{
@@ -204,7 +214,7 @@ public partial class AlienFloaters : Node3D
 				// Star fern: spiky black and purple blades with glowing tips, splayed from a centre.
 				for ( var i = random.Next( 5, 9 ); i > 0; i-- )
 				{
-					var dir = new Vector3( R( -1f, 1f ), R( -0.4f, 1f ), R( -1f, 1f ) ).Normalized();
+					var dir = new Vector3( R( -1f, 1f ), low ? R( 0.25f, 1f ) : R( -0.4f, 1f ), R( -1f, 1f ) ).Normalized();
 					var len = R( 0.5f, 1.3f );
 					var basis = new Basis( new Quaternion( Vector3.Up, dir ) );
 					Part( new BoxMesh { Size = new Vector3( 0.16f, len, 0.02f ) }, frond, dir * len * 0.5f, basis );
@@ -213,7 +223,12 @@ public partial class AlienFloaters : Node3D
 				break;
 			}
 		}
-		all.Add( new Floater { Node = node, Home = at, Lift = at.Y - (SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f), Phase = R( 0f, MathF.Tau ), Bob = R( 0.25f, 0.7f ), Drift = R( 0.4f, 1.6f ), Rate = R( 0.12f, 0.3f ), Spin = R( -0.25f, 0.25f ) } );
+		all.Add( new Floater
+		{
+			Node = node, Home = at, Lift = at.Y - (SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f), Phase = R( 0f, MathF.Tau ),
+			Bob = low ? R( 0.03f, 0.08f ) : R( 0.25f, 0.7f ), Drift = low ? R( 0.03f, 0.1f ) : R( 0.4f, 1.6f ), Rate = R( 0.12f, 0.3f ), Spin = R( -0.25f, 0.25f ),
+			Low = low,
+		} );
 	}
 
 	/// <summary> After the ground changes (the wreck site): drops the ones where `remove` says, sets the rest at the
@@ -234,7 +249,8 @@ public partial class AlienFloaters : Node3D
 		{
 			var a = t * f.Rate + f.Phase;
 			var offset = new Vector3( MathF.Cos( a ) * f.Drift, MathF.Sin( a * 2.3f ) * f.Bob, MathF.Sin( a * 0.8f ) * f.Drift );
-			var sway = new Basis( Vector3.Right, MathF.Sin( a * 1.7f ) * 0.18f ) * new Basis( Vector3.Forward, MathF.Cos( a * 1.3f ) * 0.15f );
+			var tilt = f.Low ? 0.3f : 1f;
+			var sway = new Basis( Vector3.Right, MathF.Sin( a * 1.7f ) * 0.18f * tilt ) * new Basis( Vector3.Forward, MathF.Cos( a * 1.3f ) * 0.15f * tilt );
 			f.Node.GlobalTransform = new Transform3D( new Basis( Vector3.Up, t * f.Spin + f.Phase ) * sway, f.Home + offset );
 		}
 	}

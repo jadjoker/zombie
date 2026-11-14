@@ -231,8 +231,22 @@ public static class SeaTerrain
 			}
 		}
 
+		// Thin out the basin (playtest: the middle was crowded and the hills bare): most of the plants and stones the
+		// old arena had in the middle move out over the land, keeping their height off the ground.
+		bool Life( Node3D n ) => Level.Kind( n ) is var k && (k.StartsWith( "Kelp" ) || k.StartsWith( "Coral" ) || k.StartsWith( "Pebbles" ) || k.StartsWith( "Boulder" ));
+		var moved = 0;
+		foreach ( var n in dressing.Where( n => Life( n ) && n.GlobalPosition.Flat().Length() < FlatRadius + 6f ).ToList() )
+		{
+			if ( random.NextDouble() > 0.6 ) continue;
+			var lift = n.GlobalPosition.Y - HeightAt( n.GlobalPosition );
+			var at = OuterSpot( Range, 10f );
+			n.GlobalPosition = at with { Y = HeightAt( at ) + lift };
+			moved++;
+		}
+		GD.Print( $"[terrain] moved {moved} plants and stones out of the basin" );
+
 		// More life over the new ground: copies of the kelp, coral, pebbles and boulders, out past the basin.
-		foreach ( var (prefix, count) in new[] { ("Kelp", 150), ("Coral", 80), ("Pebbles", 70), ("Boulder", 45) } )
+		foreach ( var (prefix, count) in new[] { ("Kelp", 190), ("Coral", 110), ("Pebbles", 80), ("Boulder", 50) } )
 		{
 			var sources = dressing.Where( n => Level.Kind( n ).StartsWith( prefix ) ).ToList();
 			if ( sources.Count == 0 ) continue;

@@ -30,7 +30,10 @@ public static class WeaponModels
 	/// </summary>
 	public static (Node3D Root, AnimationPlayer Player, Skeleton3D Skeleton) Create( string name )
 	{
-		var scene = GD.Load<PackedScene>( $"res://assets/models/weapons/{name}/{name}.fbx" );
+		// The trident shooter has no file of its own: it is the Blaster's rig with its own gun (TridentModel).
+		var trident = name == "trident";
+		var file = trident ? TridentModel.Rig : name;
+		var scene = GD.Load<PackedScene>( $"res://assets/models/weapons/{file}/{file}.fbx" );
 		var model = scene.Instantiate<Node3D>();
 		model.Name = "Model";
 		model.Scale = Vector3.One * 2.54f;                 // 0.01 m per exported inch -> 0.0254 m per inch
@@ -40,10 +43,15 @@ public static class WeaponModels
 		holder.AddChild( model );
 
 		var skeleton = model.FindChildren( "*", "Skeleton3D", true, false ).OfType<Skeleton3D>().FirstOrDefault();
+		if ( trident )
+		{
+			TridentModel.StripGun( model );
+			if ( skeleton is not null ) TridentModel.Attach( skeleton );   // brings its own Muzzle node
+		}
 		var player = new AnimationPlayer { Name = "AnimationPlayer" };
 		model.AddChild( player );
 		player.RootNode = player.GetPathTo( model );
-		player.AddAnimationLibrary( "", Library( name ) );
+		player.AddAnimationLibrary( "", Library( file ) );
 
 		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 			mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;

@@ -98,6 +98,7 @@ public partial class ViewModel : Node3D
 		// Rifles: the sight (scope eyepiece, reflex window or carry handle) 10 units out, at eye height.
 		if ( RifleModels.ByModel( ModelName ) is { } rifle ) return (new Vector3( -11.5f, 12.25f, 9.55f - rifle.SightHeight ), -8f);
 		if ( ModelName == "shotgun" ) return (new Vector3( -6f, 12.4f, 3.3f ), -8f);      // rear of the rib 17 out, bead on it
+		if ( ModelName == "trident" ) return (new Vector3( -11.5f, 12.25f, 9.55f - TridentModel.SightHeight ), -8f);   // the Blaster's rig and sight height
 		return (AimOffset, 0f);
 	}
 

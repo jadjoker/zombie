@@ -44,6 +44,27 @@ public partial class WeaponInventory : Node
 		}
 	}
 
+	/// <summary>
+	/// Gives the player a new weapon (the trident shooter from its station) and puts it in their hands. It joins at
+	/// its slot, keeps the damage upgrades already bought (they apply to every weapon), and the melee swing hides it
+	/// like the others.
+	/// </summary>
+	public void Add( PlayerWeapon weapon )
+	{
+		if ( weapon is null || weapons.Contains( weapon ) ) return;
+		var controller = GetParent<PlayerController>();
+		weapon.DamageLevel = weapons.Count > 0 ? weapons.Max( w => w.DamageLevel ) : 0;
+		if ( controller.GetChildren().OfType<PlayerMelee>().FirstOrDefault() is { } melee ) weapon.MeleeActive = () => melee.IsSwinging;
+		controller.AddChild( weapon );
+		weapons.Add( weapon );
+		weapons.Sort( ( a, b ) => a.Slot.CompareTo( b.Slot ) );
+		Select( weapon, force: true );
+		Sfx.Play2D( "weapon_switch", 0.7f );
+	}
+
+	/// <summary> Has the player got a weapon in this slot. </summary>
+	public bool HasSlot( int slot ) => weapons.Any( w => w.Slot == slot );
+
 	public void Cycle( int step )
 	{
 		if ( weapons.Count == 0 ) return;

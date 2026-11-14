@@ -66,6 +66,7 @@ public static class AreaTwo
 					inside.Spawn( random, ShipWreck.World( local + new Vector3( (float)random.NextDouble() * 4f - 2f, 1.8f, (float)random.NextDouble() * 3f - 1.5f ) ) );
 		}
 		Caustics.AddTo( level );
+		PlaceStations( level );
 		Nav.Bake( level );
 
 		// The arrival pad, and the player on it looking at the wreck.
@@ -83,6 +84,56 @@ public static class AreaTwo
 		}
 		WaveDirector.Current?.TeleportDone();
 		GD.Print( $"[area2] the wreck site in {watch.ElapsedMilliseconds} ms, {cleared} props cleared off the plain" );
+	}
+
+	/// <summary> The trident shooter's price. </summary>
+	public const int TridentCost = 1500;
+
+	/// <summary>
+	/// The buy stations on the wreck site (playtest): the level's own three (with everything bought at them, so the
+	/// upgrades and their prices carry on) move from the old basin's middle to an arc just behind the arrival pad,
+	/// all facing it, and the trident shooter's station joins the arc. Plants and props in the way are cleared.
+	/// </summary>
+	static void PlaceStations( Node3D level )
+	{
+		var spots = new Dictionary<BuyStationKind, Vector3>
+		{
+			[BuyStationKind.Ammo] = new( -6f, 0f, -27f ),
+			[BuyStationKind.Health] = new( -2.2f, 0f, -25f ),
+			[BuyStationKind.Damage] = new( 2.2f, 0f, -25f ),
+			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
+		};
+		Vector3 Ground( Vector3 p ) => p with { Y = SeaTerrain.HeightAt( p ) };
+		Vector3 Facing( Vector3 p ) => (ArrivalFlat - p).Flat();
+
+		var used = new List<Vector3>();
+		foreach ( var body in level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().ToList() )
+		{
+			if ( body.GetNodeOrNull<BuyStation>( "BuyStation" ) is not { } station || !spots.TryGetValue( station.Kind, out var spot ) ) continue;
+			if ( body.GetParent() is not Node3D node ) continue;
+			var at = Ground( spot );
+			node.GlobalTransform = new Transform3D( Shapes.LookAt( Facing( at ) ), at );
+			used.Add( at );
+		}
+		if ( !level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Any( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind == BuyStationKind.Trident ) )
+		{
+			var at = Ground( spots[BuyStationKind.Trident] );
+			BuyStation.CreateTridentStation( level, at, Facing( at ), TridentCost );
+			used.Add( at );
+		}
+
+		// Clear what grows or lies where they now stand (plants, their solid shapes, rocks and the sea props).
+		var cleared = 0;
+		foreach ( var n in level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>().ToList() )
+		{
+			if ( !GodotObject.IsInstanceValid( n ) || n.GetParent() is not { } parent ) continue;
+			if ( !(Level.Kind( parent ) == "Dressing" || parent.Name.ToString() == "Sea Dressing") ) continue;
+			if ( !used.Any( u => u.Flat().DistanceTo( n.GlobalPosition.Flat() ) < 2.8f ) ) continue;
+			parent.RemoveChild( n );
+			n.Free();
+			cleared++;
+		}
+		GD.Print( $"[area2] {used.Count} buy stations by the arrival pad, {cleared} props cleared round them" );
 	}
 
 	/// <summary> On the wreck site's plain (with a margin). </summary>

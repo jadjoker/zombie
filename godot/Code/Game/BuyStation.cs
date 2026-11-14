@@ -1,6 +1,6 @@
 using Godot;
 
-public enum BuyStationKind { Ammo, Health, Damage }
+public enum BuyStationKind { Ammo, Health, Damage, Trident }
 
 /// <summary>
 /// Port of s&box BuyStation: something in the world you press Use on to spend points. Lives under a level object
@@ -26,6 +26,7 @@ public partial class BuyStation : Node
 		BuyStationKind.Ammo => "Refill magazine and reserve",
 		BuyStationKind.Health => AtLimit ? "Full heal (max health is at its limit)" : $"+{HealthPerPurchase:0} max health, full heal",
 		BuyStationKind.Damage => $"Damage level {Purchases + 1}",
+		BuyStationKind.Trident => "Trident shooter: weapon slot 3",
 		_ => "",
 	};
 
@@ -74,6 +75,48 @@ public partial class BuyStation : Node
 		light.Position = new Vector3( 0f, 0.9f, 0f );
 	}
 
+	/// <summary> The trident shooter station's colour (the weapon's neon green). </summary>
+	public static readonly Color TridentTint = new( 0.35f, 1f, 0.3f );
+
+	/// <summary>
+	/// The trident shooter's station on the wreck site (built like the level's stations: a station node with a Body
+	/// that holds the box, its collider and the BuyStation, and a label over it), with a trident turning in the
+	/// hologram's place. `facing` is the way its front looks.
+	/// </summary>
+	public static Node3D CreateTridentStation( Node parent, Vector3 at, Vector3 facing, int cost )
+	{
+		var station = new Node3D { Name = "Trident Station" };
+		parent.AddChild( station );
+		station.GlobalTransform = new Transform3D( Shapes.LookAt( facing.Flat().SafeNormal() is var f && f != Vector3.Zero ? f : Vector3.Forward ), at );
+		var body = new Node3D { Name = "Body" };
+		station.AddChild( body );
+		body.Transform = new Transform3D( Basis.FromScale( new Vector3( 1.2f, 1.2f, 0.8f ) ), new Vector3( 0f, 0.762f, 0f ) );
+		var cube = Vector3.One * 50f * U.In;
+		body.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = cube }, MaterialOverride = new StandardMaterial3D { AlbedoColor = TridentTint.Darkened( 0.3f ) } } );
+		var solid = new StaticBody3D { CollisionLayer = Layers.World, CollisionMask = 0 };
+		body.AddChild( solid );
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = cube } } );
+		body.AddChild( new BuyStation { Name = "BuyStation", Kind = BuyStationKind.Trident, Title = "Trident Shooter", Cost = cost, MaxPurchases = 1 } );
+		body.AddToGroup( "buy_station" );
+		Dress( body, BuyStationKind.Trident, TridentTint );
+		// The hologram: a trident standing on its butt, turning and bobbing over the terminal.
+		var holo = new Node3D { Name = "Trident Hologram" };
+		station.AddChild( holo );
+		holo.Position = new Vector3( 0f, 1.95f, 0f );   // the terminal stands 1.52 m; the trident's butt clears it
+		var trident = new Node3D { Name = "Trident" };
+		holo.AddChild( trident );
+		trident.Transform = new Transform3D( new Basis( Vector3.Right, MathF.PI * 0.5f ).Scaled( Vector3.One * 0.75f ), Vector3.Zero );   // -Z (its points) up
+		TridentModel.BuildTrident( trident );
+		holo.AddChild( new Spin { Name = "Spin" } );
+		station.AddChild( new Label3D
+		{
+			Name = "Label", Text = "TRIDENT", Modulate = TridentTint, FontSize = 32, PixelSize = 0.12f * U.In,
+			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, OutlineSize = 6, OutlineModulate = new Color( 0, 0, 0, 0.6f ),
+			Position = new Vector3( 0f, 2.6f, 0f ),
+		} );
+		return station;
+	}
+
 	/// <summary> Turns and bobs the hologram icon it sits under. </summary>
 	partial class Spin : Node
 	{
@@ -105,7 +148,7 @@ public partial class BuyStation : Node
 		Apply( buyer );
 		Sfx.Play( "buy", buyer.Controller.GlobalPosition );
 		if ( Kind == BuyStationKind.Health ) Sfx.Play2D( "heal", 0.6f );
-		else if ( Kind == BuyStationKind.Ammo ) Sfx.Play2D( "mag_in", 0.7f );
+		else if ( Kind == BuyStationKind.Ammo || Kind == BuyStationKind.Trident ) Sfx.Play2D( "mag_in", 0.7f );
 		Purchases++;
 		return true;
 	}
@@ -114,10 +157,12 @@ public partial class BuyStation : Node
 	bool CanUse( PlayerSurvivor buyer ) => Kind switch
 	{
 		BuyStationKind.Ammo => Weapons( buyer ).Any( w => w.Ammo < w.MagazineSize || w.Reserve < w.StartingReserve ),
+		BuyStationKind.Trident => Inventory( buyer ) is { } inventory && !inventory.HasSlot( 3 ),
 		_ => true,
 	};
 
 	static IEnumerable<PlayerWeapon> Weapons( PlayerSurvivor buyer ) => buyer.Controller.GetChildren().OfType<PlayerWeapon>();
+	static WeaponInventory Inventory( PlayerSurvivor buyer ) => buyer.Controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" );
 
 	void Apply( PlayerSurvivor buyer )
 	{
@@ -132,6 +177,9 @@ public partial class BuyStation : Node
 				break;
 			case BuyStationKind.Damage:
 				foreach ( var w in Weapons( buyer ) ) w.DamageLevel++;
+				break;
+			case BuyStationKind.Trident:
+				Inventory( buyer )?.Add( PlayerWeapon.Trident() );
 				break;
 		}
 	}

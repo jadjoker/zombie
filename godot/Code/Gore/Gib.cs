@@ -24,6 +24,15 @@ public partial class Gib : RigidBody3D
 	Node3D piece;
 
 	/// <summary>
+	/// Under water a piece floats up toward the surface (playtest): it rises at about this many m/s once the water's
+	/// drag has caught it, tumbling slowly, and rides at the surface if it gets there. Out of the water it falls.
+	/// </summary>
+	public const float RiseSpeed = 1.6f;
+	const float WaterDrag = 1.1f;
+	/// <summary> Is it under water right now (set each physics tick). </summary>
+	public bool Floating { get; private set; }
+
+	/// <summary>
 	/// Makes an existing piece loose: puts it in a physics body where it is, with a sphere collider (radius in inches),
 	/// health, mass and a starting velocity (m/s). Returns the gib.
 	/// </summary>
@@ -59,6 +68,7 @@ public partial class Gib : RigidBody3D
 		}
 		gib.LinearVelocity = velocity;
 		gib.AngularVelocity = Rng.InSphere( 12f );
+		gib.Buoyancy();
 		gib.Begin();
 		return gib;
 	}
@@ -115,8 +125,38 @@ public partial class Gib : RigidBody3D
 		}
 	}
 
+	/// <summary>
+	/// Sets how the water carries it: under water, gravity turned around and drag (so it drifts up at RiseSpeed); at
+	/// the surface, held there bobbing; above it (or on a dry level), ordinary falling.
+	/// </summary>
+	void Buoyancy()
+	{
+		var water = WaterFeel.IsOn();
+		var surface = Sea.SurfaceY;
+		Floating = water && (surface is not float top || GlobalPosition.Y < top);
+		if ( !Floating )
+		{
+			GravityScale = 1f;
+			LinearDamp = 0.1f;
+			AngularDamp = 0.1f;
+			return;
+		}
+		var gravity = (float)ProjectSettings.GetSetting( "physics/3d/default_gravity", 9.8f );
+		LinearDamp = WaterDrag;
+		AngularDamp = 1.4f;
+		// Terminal speed under a constant push with linear drag is push / drag.
+		GravityScale = -RiseSpeed * WaterDrag / MathF.Max( 0.1f, gravity );
+		if ( surface is float y && GlobalPosition.Y > y - 0.3f )
+		{
+			// At the surface: no more lift, and the climb dies away, so it rides there.
+			GravityScale = 0f;
+			if ( LinearVelocity.Y > 0f ) LinearVelocity = LinearVelocity with { Y = LinearVelocity.Y * 0.8f };
+		}
+	}
+
 	public override void _PhysicsProcess( double delta )
 	{
+		if ( !IsFading ) Buoyancy();
 		if ( gore is null || IsFading ) return;
 		var speed = LinearVelocity.Length() / U.In;
 
@@ -137,8 +177,8 @@ public partial class Gib : RigidBody3D
 			if ( piece is not null ) CreatureGore.Jiggle( piece, MathX.Clamp( lastSpeed / 400f, 0.4f, 1.6f ) );
 		}
 
-		// Come to rest: a puddle of its goo underneath.
-		if ( goo is Color pool && !pooled && age > 0.5f && speed < 15f )
+		// Come to rest: a puddle of its goo underneath (not when it floats: it isn't resting on anything).
+		if ( goo is Color pool && !pooled && !Floating && age > 0.5f && speed < 15f )
 		{
 			pooled = true;
 			if ( gore.TraceWorld( GlobalPosition + Vector3.Up * 20f * U.In, GlobalPosition + Vector3.Down * 120f * U.In ) is { } hit )

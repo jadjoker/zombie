@@ -85,6 +85,13 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   broken windows and a breach; boxes merged into a few meshes with box colliders), rebakes the navmesh and starts
   wave 11. A game over there reloads the level. Dev menu: World, Waves, Clear wave 10. Test: `--teleport` (shots
   need a window).
+- Playtest batch (wreck site and combat): `VegetationColliders.cs` makes kelp (a stem cylinder), coral, boulders, reef and
+  cliffs solid from their own meshes after placement (before the navmesh); `SeaTerrain.Fit` moves most of the basin's
+  plants out over the hills; star ferns sit near the sand. Severed pieces (`Gib`) float up under water. `EnemyBars.cs`
+  draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
+  `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
+  the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). `ShipWreck.Kudzu` grows alien
+  vines over the hull, deck and deckhouse.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

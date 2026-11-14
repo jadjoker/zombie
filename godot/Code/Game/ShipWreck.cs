@@ -137,7 +137,7 @@ public static class ShipWreck
 			{
 				tool.GenerateNormals();
 				var mi = new MeshInstance3D { Name = key, Mesh = tool.Commit(), MaterialOverride = material };
-				if ( key is "glass" or "glow_warm" or "glow_green" or "glow_purple" ) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+				if ( key is "glass" or "glow_warm" or "glow_green" or "glow_purple" or "vine" or "kudzu_green" or "kudzu_dark" or "kudzu_purple" ) mi.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 				Node.AddChild( mi );
 			}
 		}
@@ -168,6 +168,11 @@ public static class ShipWreck
 		["glow_warm"] = Glow( new Color( 1f, 0.82f, 0.5f ), 2.4f ),
 		["glow_green"] = Glow( new Color( 0.3f, 1f, 0.28f ), 2.6f ),
 		["glow_purple"] = Glow( new Color( 0.66f, 0.22f, 1f ), 2.2f ),
+		// Alien kudzu: near-black vines, leaves in neon green, deep green and purple (the reef's alien colours).
+		["vine"] = Mat( new Color( 0.05f, 0.09f, 0.04f ), 0.7f ),
+		["kudzu_green"] = new StandardMaterial3D { AlbedoColor = new Color( 0.3f, 0.85f, 0.22f ), Roughness = 0.55f, EmissionEnabled = true, Emission = new Color( 0.3f, 0.9f, 0.2f ), EmissionEnergyMultiplier = 0.25f, CullMode = BaseMaterial3D.CullModeEnum.Disabled },
+		["kudzu_dark"] = new StandardMaterial3D { AlbedoColor = new Color( 0.07f, 0.2f, 0.06f ), Roughness = 0.6f, CullMode = BaseMaterial3D.CullModeEnum.Disabled },
+		["kudzu_purple"] = new StandardMaterial3D { AlbedoColor = new Color( 0.36f, 0.09f, 0.52f ), Roughness = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled },
 	};
 
 	public static Node3D Build( Node3D level )
@@ -198,6 +203,7 @@ public static class ShipWreck
 			var y = R( 0.5f, 12.5f );
 			kit.Sphere( random.NextDouble() < 0.7 ? "glow_green" : "glow_purple", new Vector3( x, y, s * (HalfBeam( x ) + 0.12f) ), R( 0.06f, 0.18f ), 8 );
 		}
+		Kudzu( kit, down );
 		kit.Commit();
 		Lights();
 		GD.Print( $"[ship] {kit.Pieces} pieces in {Root.GetChildCount() - 1} meshes, {kit.Solids} colliders" );
@@ -280,6 +286,142 @@ public static class ShipWreck
 			kit.Box( "rust", new Vector3( x, R( 1f, 8f ), 8.4f ), new Vector3( R( 1f, 2.2f ), R( 0.8f, 1.8f ), 0.08f ), new Basis( Vector3.Up, R( -0.9f, 0.9f ) ) * new Basis( Vector3.Right, R( -0.5f, 0.5f ) ), solid: false );
 		}
 	}
+
+	// ---- Alien kudzu over the outside of the ship ----
+
+	/// <summary>
+	/// A flat face of the ship the kudzu can creep over: its normal, the two directions across it, and whether a
+	/// point (on it) is still on the face. Snap moves a point onto the face (the hull's sides follow its curve).
+	/// </summary>
+	sealed record Face( Vector3 Normal, Vector3 U, Vector3 V, Func<Vector3, bool> Inside, Func<Vector3, Vector3> Snap );
+
+	/// <summary>
+	/// Alien kudzu (playtest): creeping vines with three-lobed leaves smothering the outside of the wreck. It blankets
+	/// the exposed high side of the hull (draping down from the deck rail), creeps over the main deck, the deckhouse
+	/// walls and roof, climbs the low side up from the sand (the breach left open), and hangs in curtains off the
+	/// low side's deck edge, straight down with the world's gravity. Leaves in neon green, deep green and purple,
+	/// with glowing seed pods here and there. Only for show: no colliders. Its own seed, so the rest of the wreck
+	/// is unchanged.
+	/// </summary>
+	static void Kudzu( Kit kit, Vector3 down )
+	{
+		var random = new Random( 2077 );
+		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+		var deck = DeckMain + Slab * 0.5f;
+		const float hx0 = -24f, hx1 = 22f, hz = 5.5f, hh = 3.4f;
+		var roofTop = deck + hh + 0.3f;
+		float Side( float x ) => HalfBeam( x ) + Wall * 0.5f + 0.03f;
+		bool OffFunnels( Vector3 p ) => new[] { 16f, 5f, -6f, -17f }.All( fx => new Vector2( p.X - fx, p.Z ).Length() > 2.1f );
+
+		var faces = new List<(Face Face, int Patches, Func<Vector3> Start, float Drift)>
+		{
+			// The high side's hull (-Z), the most exposed: thick, draping down from the rail.
+			(new Face( Vector3.Forward, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 34f && p.Y > 0.8f && p.Y < 12.95f, p => p with { Z = -Side( p.X ) } ),
+				26, () => new Vector3( R( -33f, 33f ), random.NextDouble() < 0.6 ? 12.8f : R( 3f, 12.5f ), 0f ), -0.35f),
+			// The low side (+Z): climbing up from the sand (which reaches about the lower window row), not over the breach.
+			(new Face( Vector3.Back, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 34f && MathF.Abs( p.X ) > 7f && p.Y > 5.4f && p.Y < 12.95f, p => p with { Z = Side( p.X ) } ),
+				12, () => new Vector3( random.NextDouble() < 0.5 ? R( -33f, -7.5f ) : R( 7.5f, 33f ), 5.6f, 0f ), 0.35f),
+			// The main deck, round the deckhouse, clear of the rail and the aft stair's opening.
+			(new Face( Vector3.Up, Vector3.Right, Vector3.Back, p => MathF.Abs( p.X ) < HalfLength - 3f && MathF.Abs( p.Z ) < HalfBeam( p.X ) - 0.5f
+					&& !(p.X > hx0 - 0.2f && p.X < hx1 + 0.2f && MathF.Abs( p.Z ) < hz + 0.2f) && !(p.X > -38.7f && p.X < -24.8f && MathF.Abs( p.Z ) < 3.2f), p => p with { Y = deck + 0.02f } ),
+				10, () => new Vector3( R( -42f, 40f ), 0f, R( -7f, 7f ) ), 0f),
+			// The deckhouse roof, round the funnels.
+			(new Face( Vector3.Up, Vector3.Right, Vector3.Back, p => p.X > hx0 && p.X < hx1 && MathF.Abs( p.Z ) < hz + 0.2f && OffFunnels( p ), p => p with { Y = roofTop + 0.02f } ),
+				6, () => new Vector3( R( hx0 + 1f, hx1 - 1f ), 0f, R( -hz, hz ) ), 0f),
+			// The deckhouse's two long walls, outside.
+			(new Face( Vector3.Forward, Vector3.Right, Vector3.Up, p => p.X > hx0 && p.X < hx1 && p.Y > deck + 0.05f && p.Y < deck + hh, p => p with { Z = -(hz + 0.15f) } ),
+				6, () => new Vector3( R( hx0 + 1f, hx1 - 1f ), deck + 0.1f, 0f ), 0.3f),
+			(new Face( Vector3.Back, Vector3.Right, Vector3.Up, p => p.X > hx0 && p.X < hx1 && p.Y > deck + 0.05f && p.Y < deck + hh, p => p with { Z = hz + 0.15f } ),
+				6, () => new Vector3( R( hx0 + 1f, hx1 - 1f ), deck + 0.1f, 0f ), 0.3f),
+		};
+
+		var leaves = 0;
+		foreach ( var (face, patches, start, drift) in faces )
+			for ( var patch = 0; patch < patches; patch++ )
+			{
+				var origin = face.Snap( start() );
+				if ( !face.Inside( origin ) ) continue;
+				// A patch: several vines spreading from one root, each a wandering walk over the face.
+				for ( var vine = random.Next( 3, 7 ); vine > 0; vine-- )
+				{
+					var angle = R( 0f, MathF.Tau );
+					var p = origin;
+					var steps = random.Next( 8, 21 );
+					for ( var step = 0; step < steps; step++ )
+					{
+						angle += R( -0.55f, 0.55f );
+						var heading = face.U * MathF.Cos( angle ) + face.V * (MathF.Sin( angle ) + drift);
+						var next = face.Snap( p + heading.Normalized() * 0.32f );
+						if ( !face.Inside( next ) ) break;
+						Stem( kit, p + face.Normal * 0.04f, next + face.Normal * 0.04f, 0.035f );
+						if ( step % 2 == 1 ) leaves += Leaf( kit, random, next + face.Normal * 0.05f, face.Normal, (next - p).Normalized() );
+						if ( random.NextDouble() < 0.035 ) kit.Sphere( random.NextDouble() < 0.6 ? "glow_green" : "glow_purple", next + face.Normal * 0.1f, R( 0.05f, 0.1f ), 6 );
+						p = next;
+					}
+				}
+			}
+
+		// Curtains off the low side's deck edge: they hang straight down with the world's gravity, out from the
+		// heeled hull, until they reach the sand.
+		var hang = down.Normalized();
+		for ( var i = 0; i < 40; i++ )
+		{
+			var x = R( -33f, 33f );
+			if ( MathF.Abs( x ) < 6.5f ) continue;   // the breach stays open to walk in
+			var p = new Vector3( x, deck - 0.1f, Side( x ) + 0.05f );
+			var length = R( 1.5f, 6f );
+			var sway = R( 0f, MathF.Tau );
+			for ( var travelled = 0f; travelled < length; travelled += 0.3f )
+			{
+				var next = p + hang * 0.3f + Vector3.Right * MathF.Sin( sway + travelled * 1.3f ) * 0.05f;
+				var world = Frame * next;
+				if ( world.Y < SeaTerrain.HeightAt( world ) + 0.1f ) break;
+				Stem( kit, p, next, 0.03f );
+				var outward = Vector3.Back.Slide( hang ).Normalized();
+				if ( random.NextDouble() < 0.6 ) leaves += Leaf( kit, random, next + outward * 0.04f, outward, hang );
+				p = next;
+			}
+			if ( random.NextDouble() < 0.4 ) kit.Sphere( random.NextDouble() < 0.6 ? "glow_green" : "glow_purple", p, R( 0.06f, 0.11f ), 6 );
+		}
+		GD.Print( $"[ship] kudzu: {leaves} leaves" );
+	}
+
+	/// <summary> A length of vine between two points. </summary>
+	static void Stem( Kit kit, Vector3 from, Vector3 to, float radius )
+	{
+		var axis = to - from;
+		var length = axis.Length();
+		if ( length < 1e-4f ) return;
+		kit.Cylinder( "vine", (from + to) * 0.5f, radius, length + radius, new Basis( new Quaternion( Vector3.Up, axis / length ) ), 5 );
+	}
+
+	/// <summary> A kudzu leaf of three lobes on a face (lying on it, along the vine, fanned a little). Returns the lobes added. </summary>
+	static int Leaf( Kit kit, Random random, Vector3 at, Vector3 normal, Vector3 along )
+	{
+		var roll = random.NextDouble();
+		var key = roll < 0.5 ? "kudzu_green" : roll < 0.82 ? "kudzu_dark" : "kudzu_purple";
+		var size = 0.7f + (float)random.NextDouble() * 0.6f;
+		var side = (float)random.NextDouble() < 0.5f ? -1f : 1f;
+		// The leaf stands off the vine to one side, its lobes spread from there.
+		var across = normal.Cross( along ).Normalized() * side;
+		var stalk = at + across * 0.12f * size;
+		var lift = (float)random.NextDouble() * 0.35f;   // some leaves lift off the surface a little
+		foreach ( var fan in new[] { -0.75f, 0f, 0.75f } )
+		{
+			var dir = (across * MathF.Cos( fan ) + along * MathF.Sin( fan )).Normalized();
+			// The lobe's width stays flat on the face; its tip tilts up off it by `lift`. Square axes (width, up, tip).
+			var width = normal.Cross( dir ).Normalized();
+			var tip = (dir * MathF.Cos( lift ) + normal * MathF.Sin( lift )).Normalized();
+			var up = tip.Cross( width );
+			var length = (fan == 0f ? 0.2f : 0.16f) * size;
+			var basis = new Basis( width * length * 0.65f, up * 0.02f, tip * length );
+			kit.Add( key, LeafMesh, new Transform3D( basis, stalk + tip * length * 0.9f + up * 0.01f ) );
+		}
+		return 3;
+	}
+
+	/// <summary> One lobe: a low-poly unit sphere, flattened by its transform. </summary>
+	static readonly SphereMesh LeafMesh = new() { Radius = 1f, Height = 2f, RadialSegments = 7, Rings = 3 };
 
 	// ---- Floors and ramps ----
 

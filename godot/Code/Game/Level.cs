@@ -62,6 +62,8 @@ public partial class Level : Node3D
 		if ( water ) { SeaDressing.Add( this, taken ); SeaTerrain.Settle( FindChild( "Sea Dressing", false, false ) as Node3D ); }
 		// The coral reef round the starting basin and the floating alien plants (issue #35).
 		if ( water && SeaTerrain.Active ) AlienReef.Add( this, taken );
+		// Plants and rocks made solid once they are all in place (so the navmesh goes round them too).
+		if ( water ) VegetationColliders.Add( this );
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
 
@@ -205,6 +207,7 @@ public partial class Level : Node3D
 		if ( o.TryGetProperty( "model", out var model ) && model.ValueKind == JsonValueKind.String )
 		{
 			var path = model.GetString();
+			node.SetMeta( "model", path );   // which model it is (VegetationColliders shapes plants by it)
 			if ( !models.TryGetValue( path, out var scene ) ) models[path] = scene = ResourceLoader.Exists( path ) ? GD.Load<PackedScene>( path ) : null;
 			if ( scene is not null )
 			{
@@ -422,16 +425,19 @@ public partial class Sway : Node
 	public float Period = 5f;
 	Basis rest;
 	float phase;
+	bool started;
 
 	public override void _Ready()
 	{
-		rest = GetParent<Node3D>().Basis;
 		phase = Rng.Float( 0f, MathF.PI * 2f );
 		Period *= Rng.Float( 0.8f, 1.25f );
 	}
 
 	public override void _Process( double delta )
 	{
+		// The rest pose is taken on the first frame, not on entering the tree: copies of a plant get their own turn
+		// and size after they are added, which _Ready would miss (they all snapped back to the original's).
+		if ( !started ) { rest = GetParent<Node3D>().Basis; started = true; }
 		var t = (float)Clock.Now * MathF.PI * 2f / MathF.Max( 0.5f, Period ) + phase;
 		var pitch = MathF.Sin( t ) * Amount;
 		var roll = MathF.Sin( t * 0.63f + 1.7f ) * Amount * 0.6f;

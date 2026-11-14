@@ -68,6 +68,14 @@ public static class Atlantis
 
 	static StandardMaterial3D Mat( Color c, float rough = 0.6f, float metal = 0f ) =>
 		new() { AlbedoColor = c, Roughness = rough, Metallic = metal, RimEnabled = true, Rim = 0.2f, RimTint = 0.5f };
+	static StandardMaterial3D Shine( Color c, float glow )
+	{
+		var m = Mat( c, 0.25f, 0.8f );
+		m.EmissionEnabled = true;
+		m.Emission = c;
+		m.EmissionEnergyMultiplier = glow;
+		return m;
+	}
 	static StandardMaterial3D Glow( Color c, float energy )
 	{
 		var m = new StandardMaterial3D { AlbedoColor = c, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = energy, Roughness = 0.3f };
@@ -93,7 +101,19 @@ public static class Atlantis
 	{
 		["marble"] = Mat( new Color( 0.94f, 0.86f, 0.72f ), 0.5f ),       // warm, honey-veined
 		["marble_dark"] = Mat( new Color( 0.56f, 0.45f, 0.38f ), 0.6f ),
-		["gold"] = Mat( new Color( 0.92f, 0.66f, 0.24f ), 0.3f, 0.85f ),   // orichalcum
+		["gold"] = Shine( new Color( 0.98f, 0.74f, 0.3f ), 0.12f ),   // orichalcum, a little lit so it reads in the murk
+		["gold_bright"] = Shine( new Color( 1f, 0.8f, 0.36f ), 0.4f ),   // the temple's
+		["roof_coral"] = Mat( new Color( 0.86f, 0.4f, 0.34f ), 0.5f ),
+		["roof_jade"] = Mat( new Color( 0.22f, 0.62f, 0.42f ), 0.4f, 0.2f ),
+		["terracotta"] = Mat( new Color( 0.72f, 0.36f, 0.2f ), 0.7f ),
+		["vine"] = Mat( new Color( 0.1f, 0.3f, 0.1f ), 0.8f ),
+		["vine_purple"] = Mat( new Color( 0.28f, 0.08f, 0.38f ), 0.8f ),
+		["leaf"] = Mat( new Color( 0.24f, 0.62f, 0.16f ), 0.7f ),
+		["coral_pink"] = Mat( new Color( 0.95f, 0.42f, 0.6f ), 0.6f ),
+		["coral_orange"] = Mat( new Color( 1f, 0.55f, 0.22f ), 0.6f ),
+		["banner_purple"] = Glow( new Color( 0.5f, 0.14f, 0.78f ), 0.45f ),
+		["banner_green"] = Glow( new Color( 0.2f, 0.7f, 0.22f ), 0.45f ),
+		["water"] = Glow( new Color( 0.3f, 0.95f, 0.9f ), 1.2f ),
 		["teal"] = Mat( new Color( 0.16f, 0.55f, 0.56f ), 0.3f, 0.3f ),    // sea-glass domes
 		["obsidian"] = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.25f, 0.2f ),
 		["purple"] = Mat( new Color( 0.34f, 0.1f, 0.52f ), 0.4f ),
@@ -103,7 +123,11 @@ public static class Atlantis
 		["crystal"] = Crystal( GreenGlow ),
 		["crystal_purple"] = Crystal( PurpleGlow ),
 	};
-	static readonly string[] NoShadow = { "glow_green", "glow_purple", "glow_teal", "crystal", "crystal_purple" };
+	static readonly string[] NoShadow = { "glow_green", "glow_purple", "glow_teal", "crystal", "crystal_purple", "water" };
+
+	/// <summary> Each district's roof colour (domes and tower cones), going round the eight sectors. </summary>
+	static readonly string[] DistrictRoofs = { "teal", "roof_coral", "purple", "roof_jade", "teal", "gold", "roof_coral", "roof_jade" };
+	static string roof = "teal";
 
 	// Materials for the rings (their own meshes, not the kit's).
 	static readonly StandardMaterial3D Paving = Mat( new Color( 0.36f, 0.3f, 0.27f ), 0.75f );   // dark warm stone
@@ -167,6 +191,8 @@ void fragment() {
 		Crossings( kit );
 		AvenueLamps( kit );
 		Districts( kit, random, R );
+		Arches( kit );
+		StairStatues( kit );
 		GlobeBase( kit );
 		kit.Commit();
 
@@ -183,6 +209,12 @@ void fragment() {
 		var heart = new AtlantisHeart { Name = "Heart of Atlantis" };
 		Root.AddChild( heart );
 		heart.Position = new Vector3( 0f, IslandHeight + 21f, 2f );
+		// Schools of glowing fish circling through the streets and over the roofs.
+		for ( var i = 0; i < 10; i++ )
+		{
+			var school = new AtlantisFish( i ) { Name = $"Fish School {i}" };
+			Root.AddChild( school );
+		}
 		Lights();
 		GD.Print( $"[atlantis] {kit.Pieces} pieces, {kit.Solids} colliders" );
 		return Root;
@@ -266,14 +298,15 @@ void fragment() {
 		// The cella: dark stone with a glowing purple portal on its front.
 		kit.Box( "marble_dark", new Vector3( at.X, floor + columns * 0.5f, at.Z + 0.8f ), new Vector3( 13f, columns, 6.5f ) );
 		kit.Box( "glow_purple", new Vector3( at.X, floor + 2.3f, at.Z + 0.8f - 3.27f ), new Vector3( 2.6f, 4.6f, 0.1f ), solid: false );
-		kit.Box( "gold", new Vector3( at.X, floor + 4.75f, at.Z + 0.8f - 3.28f ), new Vector3( 3.2f, 0.35f, 0.1f ), solid: false );
+		kit.Box( "gold_bright", new Vector3( at.X, floor + 4.75f, at.Z + 0.8f - 3.28f ), new Vector3( 3.2f, 0.35f, 0.1f ), solid: false );
 		// The peristyle.
 		void Column( float x, float z )
 		{
 			var c = new Vector3( at.X + x, floor, at.Z + z );
 			kit.Box( "marble_dark", c + new Vector3( 0f, 0.2f, 0f ), new Vector3( 1.1f, 0.4f, 1.1f ), solid: false );
 			kit.Cylinder( "marble", c + new Vector3( 0f, columns * 0.5f, 0f ), 0.45f, columns - 0.6f, sides: 12, topRadius: 0.38f );
-			kit.Box( "gold", c + new Vector3( 0f, columns - 0.15f, 0f ), new Vector3( 1.2f, 0.3f, 1.2f ), solid: false );
+			kit.Box( "gold_bright", c + new Vector3( 0f, columns - 0.15f, 0f ), new Vector3( 1.2f, 0.3f, 1.2f ), solid: false );
+			kit.Cylinder( "glow_purple", c + new Vector3( 0f, 1.1f, 0f ), 0.47f, 0.12f, sides: 12 );
 			kit.Solid( new Transform3D( Basis.Identity, c + new Vector3( 0f, columns * 0.5f, 0f ) ), new Vector3( 0.8f, columns, 0.8f ) );
 		}
 		for ( var i = 0; i < 8; i++ )
@@ -290,15 +323,29 @@ void fragment() {
 		}
 		// Entablature and a gold gable roof, a glowing green frieze between.
 		var top = floor + columns;
-		kit.Box( "gold", new Vector3( at.X, top + 0.5f, at.Z ), new Vector3( w + 0.4f, 1f, d + 0.4f ) );
+		kit.Box( "gold_bright", new Vector3( at.X, top + 0.5f, at.Z ), new Vector3( w + 0.4f, 1f, d + 0.4f ) );
 		kit.Box( "glow_green", new Vector3( at.X, top + 0.5f, at.Z - d * 0.5f - 0.22f ), new Vector3( w - 1f, 0.25f, 0.05f ), solid: false );
 		kit.Box( "glow_green", new Vector3( at.X, top + 0.5f, at.Z + d * 0.5f + 0.22f ), new Vector3( w - 1f, 0.25f, 0.05f ), solid: false );
 		var pitch = MathF.Atan2( 2.4f, d * 0.5f );
 		var slope = (d * 0.5f + 0.4f) / MathF.Cos( pitch );
 		foreach ( var s in new[] { -1f, 1f } )
-			kit.Box( "gold", new Vector3( at.X, top + 1f + 1.2f, at.Z + s * d * 0.25f ), new Vector3( w + 0.8f, 0.4f, slope ), new Basis( Vector3.Right, s * pitch ) );
+			kit.Box( "gold_bright", new Vector3( at.X, top + 1f + 1.2f, at.Z + s * d * 0.25f ), new Vector3( w + 0.8f, 0.4f, slope ), new Basis( Vector3.Right, s * pitch ) );
 		foreach ( var s in new[] { -1f, 1f } )   // the gable ends, filled
 			kit.Box( "marble", new Vector3( at.X + s * (w * 0.5f + 0.05f), top + 1.9f, at.Z ), new Vector3( 0.3f, 1.6f, d * 0.6f ), solid: false );
+		// Glowing trim: purple along the eaves and the ridge, green round the platform's edge, purple column bands.
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			kit.Box( "glow_purple", new Vector3( at.X, top + 1.02f, at.Z + s * (d * 0.5f + 0.42f) ), new Vector3( w + 0.8f, 0.14f, 0.12f ), solid: false );
+			kit.Box( "glow_green", new Vector3( at.X, at.Y + 0.42f, at.Z + s * (d * 0.5f + 0.02f) ), new Vector3( w, 0.08f, 0.06f ), solid: false );
+			kit.Box( "glow_green", new Vector3( at.X + s * (w * 0.5f + 0.02f), at.Y + 0.42f, at.Z ), new Vector3( 0.06f, 0.08f, d ), solid: false );
+		}
+		kit.Box( "glow_purple", new Vector3( at.X, top + 3.45f, at.Z ), new Vector3( w + 0.9f, 0.16f, 0.16f ), solid: false );
+		foreach ( var x in new[] { -6f, 0f, 6f } )   // three gold tridents on the ridge
+		{
+			kit.Cylinder( "gold_bright", new Vector3( at.X + x, top + 4.4f, at.Z ), 0.08f, 2f, sides: 6 );
+			foreach ( var o in new[] { -0.35f, 0f, 0.35f } )
+				kit.Cylinder( "gold_bright", new Vector3( at.X + x + o, top + 5.6f - MathF.Abs( o ), at.Z ), 0.06f, 0.8f, sides: 6, topRadius: 0f );
+		}
 	}
 
 	/// <summary> A colossal gold Poseidon on a black plinth, facing the arrival. </summary>
@@ -427,6 +474,7 @@ void fragment() {
 			var margin = (AvenueWidth * 0.5f + 1f) / radius;
 			for ( var k = 0; k < Avenues; k++ )
 			{
+				roof = DistrictRoofs[k];
 				var start = MathX.Rad( 45f * k ) + margin;
 				var end = MathX.Rad( 45f * (k + 1) ) - margin;
 				var angle = start;
@@ -446,22 +494,28 @@ void fragment() {
 					// Local X across the plot, Y up, Z out of the front (toward the street it faces).
 					var basis = new Basis( tangent * -facing, Vector3.Up, radial * facing );
 					var roll = random.NextDouble();
+					var built = true;
 					if ( ring == 1 )
 					{
-						if ( roll < 0.45 ) Villa( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.7 ) Shrine( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.85 ) Tower( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.95 ) Ziggurat( kit, random, R, centre, basis, w, depth );
-						else Crystals( kit, random, R, centre, w, depth );
+						if ( roll < 0.4 ) Villa( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.6 ) Shrine( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.73 ) Tower( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.82 ) Ziggurat( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.87 ) Crystals( kit, random, R, centre, w, depth );
+						else if ( roll < 0.94 ) { CoralGarden( kit, random, R, centre, basis, w, depth ); built = false; }
+						else { Plaza( kit, random, R, centre, basis, w, depth ); built = false; }
 					}
 					else
 					{
-						if ( roll < 0.38 ) Villa( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.63 ) Tower( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.78 ) Ziggurat( kit, random, R, centre, basis, w, depth );
-						else if ( roll < 0.9 ) Shrine( kit, random, R, centre, basis, w, depth );
-						else Crystals( kit, random, R, centre, w, depth );
+						if ( roll < 0.33 ) Villa( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.55 ) Tower( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.68 ) Ziggurat( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.77 ) Shrine( kit, random, R, centre, basis, w, depth );
+						else if ( roll < 0.83 ) Crystals( kit, random, R, centre, w, depth );
+						else if ( roll < 0.92 ) { CoralGarden( kit, random, R, centre, basis, w, depth ); built = false; }
+						else { Plaza( kit, random, R, centre, basis, w, depth ); built = false; }
 					}
+					if ( built && random.NextDouble() < 0.4 ) Amphorae( kit, random, R, centre + basis * new Vector3( R( -1f, 1f ) * w * 0.42f, 0f, depth * 0.5f - 0.45f ) );
 					count++;
 				}
 			}
@@ -479,7 +533,7 @@ void fragment() {
 		kit.Box( "marble", L( 0f, h * 0.5f, back ), new Vector3( w, h, d ), b );
 		kit.Box( "gold", L( 0f, h - 0.4f, back ), new Vector3( w + 0.12f, 0.3f, d + 0.12f ), b, solid: false );
 		kit.Box( "marble_dark", L( 0f, h + 0.15f, back ), new Vector3( w + 0.4f, 0.3f, d + 0.4f ), b, solid: false );
-		kit.Sphere( random.NextDouble() < 0.6 ? "teal" : "gold", L( 0f, h + 0.3f, back ), MathF.Min( w, d ) * 0.32f, 14 );
+		kit.Sphere( random.NextDouble() < 0.7 ? roof : "gold", L( 0f, h + 0.3f, back ), MathF.Min( w, d ) * 0.32f, 14 );
 		if ( random.NextDouble() < 0.4 )
 			kit.Cylinder( "crystal", L( 0f, h + 0.3f + MathF.Min( w, d ) * 0.32f + 0.6f, back ), 0.18f, 1.4f, sides: 6, topRadius: 0f );
 		// The door and two lit windows on the front.
@@ -498,6 +552,21 @@ void fragment() {
 		}
 		kit.Box( "marble", L( 0f, ph + 0.18f, porch ), new Vector3( w * 0.92f, 0.35f, 2.6f ), b, solid: false );
 		kit.Box( "gold", L( 0f, ph + 0.42f, porch ), new Vector3( w * 0.92f, 0.14f, 2.6f ), b, solid: false );
+		// Alien vines creeping down the walls, and banners either side of the door.
+		var vines = random.Next( 0, 4 );
+		for ( var i = 0; i < vines; i++ )
+		{
+			var side = random.Next( 3 );   // front, left, right
+			var top = side == 0 ? L( R( -0.45f, 0.45f ) * w, h, front ) : L( (side == 1 ? -1f : 1f) * (w * 0.5f + 0.03f), h, back + R( -0.4f, 0.4f ) * d );
+			var normal = side == 0 ? b.Z : b.X * (side == 1 ? -1f : 1f);
+			Vine( kit, random, R, top, normal, R( h * 0.4f, h * 0.95f ) );
+		}
+		if ( random.NextDouble() < 0.55 )
+		{
+			var banner = random.NextDouble() < 0.5 ? "banner_purple" : "banner_green";
+			foreach ( var sx in new[] { -1f, 1f } )
+				Banner( kit, L( sx * w * 0.3f, h - 0.7f, front + 0.06f ), b, MathF.Min( 3f, h * 0.5f ), banner );
+		}
 	}
 
 	/// <summary> A round tower: marble with glowing green window bands, a gold cone and a crystal spire. </summary>
@@ -511,8 +580,21 @@ void fragment() {
 		for ( var y = 3f; y < h - 1.5f; y += R( 2.6f, 3.4f ) )
 			kit.Cylinder( "glow_green", at + Vector3.Up * y, r * (1f - 0.12f * y / h) + 0.04f, 0.28f, sides: 16 );
 		kit.Cylinder( "gold", at + Vector3.Up * (h + 0.15f), r * 0.98f, 0.3f, sides: 16 );
-		kit.Cylinder( random.NextDouble() < 0.5 ? "gold" : "teal", at + Vector3.Up * (h + 0.3f + r * 0.9f), r * 0.95f, r * 1.8f, sides: 16, topRadius: 0f );
+		kit.Cylinder( random.NextDouble() < 0.35 ? "gold" : roof, at + Vector3.Up * (h + 0.3f + r * 0.9f), r * 0.95f, r * 1.8f, sides: 16, topRadius: 0f );
 		kit.Cylinder( "crystal", at + Vector3.Up * (h + 0.3f + r * 1.8f + 0.9f), 0.25f, 1.8f, sides: 6, topRadius: 0f );
+		var vines = random.Next( 0, 4 );
+		for ( var i = 0; i < vines; i++ )
+		{
+			var a = R( 0f, MathF.Tau );
+			var dir = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
+			var top = R( h * 0.45f, h * 0.95f );
+			Vine( kit, random, R, at + dir * (r * (1f - 0.12f * top / h) + 0.05f) + Vector3.Up * top, dir, R( top * 0.5f, top - 0.3f ) );
+		}
+		if ( random.NextDouble() < 0.5 )
+		{
+			var front = b.Z;
+			Banner( kit, at + front * (r + 0.08f) + Vector3.Up * (h - 1.2f), b, MathF.Min( 5f, h * 0.35f ), random.NextDouble() < 0.5 ? "banner_purple" : "banner_green" );
+		}
 	}
 
 	/// <summary> An open shrine: a low platform, a ring of columns, a gold roof, and a purple crystal on the altar. </summary>
@@ -557,6 +639,9 @@ void fragment() {
 			kit.Add( "crystal", new CylinderMesh { BottomRadius = 0.32f, TopRadius = 0f, Height = tall, RadialSegments = 6, Rings = 1 },
 				new Transform3D( b * tilt, at + b * new Vector3( R( -0.6f, 0.6f ), y + tall * 0.45f, R( -0.6f, 0.6f ) ) ) );
 		}
+		if ( random.NextDouble() < 0.6 )   // purple vines down the front of the bottom tier
+			for ( var i = 0; i < 3; i++ )
+				Vine( kit, random, R, at + b * new Vector3( R( -0.4f, 0.4f ) * w, 2.1f, (depth - 0.4f) * 0.5f + 0.03f ), b.Z, R( 1.2f, 2f ), purple: true );
 	}
 
 	/// <summary> A grove of alien crystals growing out of the paving (instead of a building), each one solid. </summary>
@@ -572,6 +657,191 @@ void fragment() {
 			var centre = foot + tilt * (Vector3.Up * tall * 0.5f);
 			kit.Add( random.NextDouble() < 0.65 ? "crystal" : "crystal_purple", new CylinderMesh { BottomRadius = r, TopRadius = 0f, Height = tall, RadialSegments = 6, Rings = 1 }, new Transform3D( tilt, centre ) );
 			kit.Solid( new Transform3D( tilt, centre - tilt * (Vector3.Up * tall * 0.15f) ), new Vector3( r * 1.2f, tall * 0.7f, r * 1.2f ) );
+		}
+	}
+
+
+	/// <summary> A vine hanging down a wall from `top`: a wandering stem of short pieces with leaves, the wall's normal out. </summary>
+	static void Vine( MeshKit kit, Random random, Func<float, float, float> R, Vector3 top, Vector3 normal, float length, bool purple = false )
+	{
+		var across = Vector3.Up.Cross( normal ).SafeNormal();
+		if ( across == Vector3.Zero ) return;
+		var p = top + normal * 0.05f;
+		var drift = R( -0.4f, 0.4f );
+		var hang = 0f;
+		while ( hang < length )
+		{
+			var step = R( 0.45f, 0.7f );
+			drift = MathX.Clamp( drift + R( -0.35f, 0.35f ), -0.7f, 0.7f );
+			var next = p + Vector3.Down * step + across * drift * step;
+			var mid = (p + next) * 0.5f;
+			var dir = (next - p).Normalized();
+			kit.Box( purple ? "vine_purple" : "vine", mid, new Vector3( 0.09f, step + 0.04f, 0.09f ), new Basis( new Quaternion( Vector3.Up, dir ) ), solid: false );
+			if ( random.NextDouble() < 0.7 )
+			{
+				var leaf = random.NextDouble() < 0.18 ? (purple ? "glow_green" : "glow_purple") : purple ? "vine_purple" : "leaf";   // a few glowing buds
+				var side = random.NextDouble() < 0.5 ? -1f : 1f;
+				kit.Box( leaf, mid + across * side * 0.14f + normal * 0.05f, new Vector3( 0.22f, 0.14f, 0.04f ),
+					new Basis( normal.Cross( Vector3.Up ).SafeNormal() * -1f, Vector3.Up, normal ) * new Basis( Vector3.Back, side * R( 0.3f, 0.9f ) ), solid: false );
+			}
+			p = next;
+			hang += step;
+		}
+	}
+
+	/// <summary> A hanging banner against a wall: a gold rod, the cloth (a little glow), a gold tassel at the point. </summary>
+	static void Banner( MeshKit kit, Vector3 top, Basis b, float length, string cloth )
+	{
+		kit.Cylinder( "gold", top, 0.05f, 1.2f, b * new Basis( Vector3.Back, MathF.PI * 0.5f ), 6 );
+		kit.Box( cloth, top + Vector3.Down * length * 0.5f + b.Z * 0.02f, new Vector3( 1f, length, 0.03f ), b, solid: false );
+		kit.Box( "gold", top + Vector3.Down * length * 0.08f + b.Z * 0.04f, new Vector3( 0.5f, 0.08f, 0.02f ), b, solid: false );
+		kit.Cylinder( "gold", top + Vector3.Down * (length + 0.15f) + b.Z * 0.02f, 0.12f, 0.3f, sides: 6, topRadius: 0f );
+	}
+
+	/// <summary> A few clay and gold amphorae: round bellies, necks and lips, some fallen over. </summary>
+	static void Amphorae( MeshKit kit, Random random, Func<float, float, float> R, Vector3 at )
+	{
+		var n = random.Next( 1, 4 );
+		for ( var i = 0; i < n; i++ )
+		{
+			var key = random.NextDouble() < 0.75 ? "terracotta" : "gold";
+			var p = at + new Vector3( R( -0.6f, 0.6f ), 0f, R( -0.4f, 0.4f ) );
+			var size = R( 0.75f, 1.15f );
+			var fallen = random.NextDouble() < 0.3;
+			var turn = fallen ? new Basis( Vector3.Up, R( 0f, MathF.Tau ) ) * new Basis( Vector3.Right, MathF.PI * 0.5f ) : Basis.Identity;
+			var centre = p + Vector3.Up * (fallen ? 0.3f : 0.45f) * size;
+			kit.Add( key, new SphereMesh { Radius = 0.3f * size, Height = 0.8f * size, RadialSegments = 10, Rings = 6 }, new Transform3D( turn, centre ) );
+			kit.Cylinder( key, centre + turn * (Vector3.Up * 0.48f * size), 0.09f * size, 0.3f * size, turn, 8 );
+			kit.Cylinder( key, centre + turn * (Vector3.Up * 0.64f * size), 0.14f * size, 0.06f * size, turn, 8 );
+			if ( !fallen ) kit.Box( "purple", centre, new Vector3( 0.62f * size, 0.08f * size, 0.62f * size ), solid: false );   // a painted band
+			kit.Solid( new Transform3D( turn, centre ), new Vector3( 0.5f, 0.8f, 0.5f ) * size );
+		}
+	}
+
+	/// <summary> A coral garden in a plot: a low marble kerb round sand, branching coral in pink, orange and alien glow. </summary>
+	static void CoralGarden( MeshKit kit, Random random, Func<float, float, float> R, Vector3 at, Basis b, float w, float depth )
+	{
+		Vector3 L( float x, float y, float z ) => at + b * new Vector3( x, y, z );
+		var gw = w - 1f;
+		var gd = depth - 1f;
+		kit.Box( "marble_dark", L( 0f, 0.05f, 0f ), new Vector3( gw, 0.1f, gd ), b, solid: false );
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			kit.Box( "marble", L( 0f, 0.25f, s * gd * 0.5f ), new Vector3( gw, 0.5f, 0.3f ), b );
+			kit.Box( "marble", L( s * gw * 0.5f, 0.25f, 0f ), new Vector3( 0.3f, 0.5f, gd ), b );
+		}
+		var n = random.Next( 5, 9 );
+		for ( var i = 0; i < n; i++ )
+		{
+			var key = random.NextDouble() switch { < 0.35 => "coral_pink", < 0.6 => "coral_orange", < 0.8 => "purple", _ => "roof_jade" };
+			var tip = random.NextDouble() < 0.5 ? "glow_purple" : "glow_green";
+			var foot = L( R( -0.4f, 0.4f ) * gw, 0.1f, R( -0.38f, 0.38f ) * gd );
+			Branch( foot, Vector3.Up, R( 0.9f, 1.6f ), 0.13f, 0 );
+			kit.Solid( new Transform3D( Basis.Identity, foot + Vector3.Up * 0.6f ), new Vector3( 0.35f, 1.2f, 0.35f ) );
+
+			void Branch( Vector3 from, Vector3 dir, float length, float r, int depthLevel )
+			{
+				var to = from + dir * length;
+				kit.Cylinder( key, (from + to) * 0.5f, r, length, new Basis( new Quaternion( Vector3.Up, dir ) ), 6, r * 0.7f );
+				if ( depthLevel == 2 ) { kit.Sphere( tip, to, r * 1.4f, 6 ); return; }
+				var forks = random.Next( 2, 4 );
+				for ( var f = 0; f < forks; f++ )
+				{
+					var a = R( 0f, MathF.Tau );
+					var bent = (dir + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * R( 0.4f, 0.9f )).Normalized();
+					Branch( to, bent, length * R( 0.5f, 0.75f ), r * 0.7f, depthLevel + 1 );
+				}
+			}
+		}
+	}
+
+	/// <summary> A little square in place of a building: a fountain, or the broken columns of a fallen shrine. </summary>
+	static void Plaza( MeshKit kit, Random random, Func<float, float, float> R, Vector3 at, Basis b, float w, float depth )
+	{
+		Vector3 L( float x, float y, float z ) => at + b * new Vector3( x, y, z );
+		kit.Box( "marble", L( 0f, 0.04f, 0f ), new Vector3( w - 0.4f, 0.08f, depth - 0.4f ), b, solid: false );
+		kit.Box( "gold", L( 0f, 0.085f, 0f ), new Vector3( w - 1.2f, 0.02f, depth - 1.2f ), b, solid: false );
+		kit.Box( "marble", L( 0f, 0.09f, 0f ), new Vector3( w - 1.5f, 0.02f, depth - 1.5f ), b, solid: false );
+		var r = MathF.Min( w, depth ) * 0.32f;
+		if ( random.NextDouble() < 0.6 )
+		{
+			// The fountain: a round marble basin of glowing water, a gold bowl on a column, water falling from it.
+			kit.Cylinder( "marble", at + Vector3.Up * 0.35f, r, 0.7f, sides: 24 );
+			kit.Solid( new CylinderShape3D { Radius = r, Height = 0.7f }, new Transform3D( Basis.Identity, at + Vector3.Up * 0.35f ) );
+			kit.Cylinder( "gold", at + Vector3.Up * 0.72f, r + 0.05f, 0.08f, sides: 24 );
+			kit.Cylinder( "water", at + Vector3.Up * 0.62f, r - 0.2f, 0.06f, sides: 24 );
+			kit.Cylinder( "marble", at + Vector3.Up * 1.4f, 0.25f, 1.6f, sides: 12 );
+			kit.Cylinder( "gold", at + Vector3.Up * 2.25f, 0.3f, 0.35f, sides: 16, topRadius: 1f );
+			kit.Cylinder( "water", at + Vector3.Up * 1.45f, 1.02f, 1.3f, sides: 16, topRadius: 0.98f );   // the falling sheet
+			kit.Cylinder( "water", at + Vector3.Up * 2.75f, 0.08f, 0.7f, sides: 8, topRadius: 0.02f );   // the jet
+			kit.Sphere( "glow_teal", at + Vector3.Up * 3.15f, 0.16f, 8 );
+		}
+		else
+		{
+			// Broken columns: stumps of different heights, drums lying where they fell.
+			for ( var i = 0; i < 4; i++ )
+			{
+				var p = L( (i % 2 == 0 ? -1f : 1f) * r, 0f, (i < 2 ? -1f : 1f) * r * 0.7f );
+				var h = R( 0.6f, 3.4f );
+				kit.Cylinder( "marble", p + Vector3.Up * h * 0.5f, 0.32f, h, sides: 12 );
+				kit.Solid( new Transform3D( Basis.Identity, p + Vector3.Up * h * 0.5f ), new Vector3( 0.6f, h, 0.6f ) );
+				if ( random.NextDouble() < 0.6 )
+				{
+					var a = R( 0f, MathF.Tau );
+					var turn = new Basis( Vector3.Up, a ) * new Basis( Vector3.Back, MathF.PI * 0.5f );
+					var drum = p + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * R( 0.9f, 1.5f ) + Vector3.Up * 0.32f;
+					kit.Cylinder( "marble", drum, 0.32f, 0.9f, turn, 12 );
+					kit.Solid( new Transform3D( turn, drum ), new Vector3( 0.6f, 0.9f, 0.6f ) );
+				}
+			}
+			kit.Box( "marble_dark", L( 0f, 0.3f, 0f ), new Vector3( 2.4f, 0.6f, 0.9f ), b * new Basis( Vector3.Up, 0.3f ) * new Basis( Vector3.Back, 0.12f ) );   // the fallen lintel
+			if ( random.NextDouble() < 0.5 ) Vine( kit, random, R, L( r, 2.5f, -r * 0.7f + 0.33f ), b.Z, 1.8f );
+		}
+	}
+
+	/// <summary> Arches across the avenues where they enter the rings: obsidian piers, a marble lintel with gold, a glowing keystone and banners. </summary>
+	static void Arches( MeshKit kit )
+	{
+		for ( var k = 0; k < Avenues; k++ )
+		{
+			var a = 45f * k;
+			foreach ( var r in new[] { 31.5f, 58.5f } )
+			{
+				var at = Polar( r, a, Land );
+				if ( at.Flat().DistanceTo( KrakenCentre.Flat() ) < KrakenPlaza + 2f ) continue;
+				var dir = Polar( 1f, a, 0f );
+				var across = Vector3.Up.Cross( dir ).Normalized();
+				var b = new Basis( across, Vector3.Up, dir );   // X across the avenue
+				const float half = 4.7f, h = 7f;
+				foreach ( var s in new[] { -1f, 1f } )
+				{
+					var pier = at + across * s * half;
+					kit.Box( "obsidian", pier + Vector3.Up * h * 0.5f, new Vector3( 1f, h, 1.2f ), b );
+					kit.Box( "gold", pier + Vector3.Up * 0.3f, new Vector3( 1.2f, 0.6f, 1.4f ), b, solid: false );
+					kit.Box( "gold", pier + Vector3.Up * (h - 0.2f), new Vector3( 1.2f, 0.4f, 1.4f ), b, solid: false );
+					kit.Box( "glow_green", pier + Vector3.Up * h * 0.5f + across * -s * 0.51f, new Vector3( 0.04f, h * 0.6f, 0.2f ), b, solid: false );
+					foreach ( var face in new[] { -1f, 1f } )
+						Banner( kit, pier + Vector3.Up * (h - 0.8f) + dir * face * 0.62f, face > 0 ? b : b * new Basis( Vector3.Up, MathF.PI ), 3.2f, k % 2 == 0 ? "banner_purple" : "banner_green" );
+				}
+				kit.Box( "marble", at + Vector3.Up * (h + 0.5f), new Vector3( half * 2f + 2f, 1f, 1.4f ), b );
+				kit.Box( "gold", at + Vector3.Up * (h + 1.1f), new Vector3( half * 2f + 2.3f, 0.25f, 1.6f ), b, solid: false );
+				kit.Box( "glow_purple", at + Vector3.Up * (h + 0.05f), new Vector3( half * 2f - 1f, 0.1f, 1.2f ), b, solid: false );
+				kit.Box( "glow_green", at + Vector3.Up * (h + 0.5f), new Vector3( 0.9f, 1.3f, 1.5f ), b * new Basis( Vector3.Back, MathF.PI * 0.25f ), solid: false );
+				kit.Cylinder( "crystal_purple", at + Vector3.Up * (h + 2.1f), 0.3f, 1.8f, sides: 6, topRadius: 0f );
+			}
+		}
+	}
+
+	/// <summary> Two marble Poseidons flanking the south stairway up to the island, facing the arrival. </summary>
+	static void StairStatues( MeshKit kit )
+	{
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			var at = new Vector3( s * 4.3f, Land, -27.4f );
+			kit.Box( "marble_dark", at + Vector3.Up * 0.6f, new Vector3( 1.6f, 1.2f, 1.6f ) );
+			kit.Box( "gold", at + Vector3.Up * 1.25f, new Vector3( 1.7f, 0.1f, 1.7f ), solid: false );
+			Poseidon.BuildStatue( kit.Node, at + Vector3.Up * 1.3f, 0.55f, (Arrival - at).Flat(), marble: true );
+			kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * 2.5f ), new Vector3( 1.2f, 2.5f, 1f ) );
 		}
 	}
 
@@ -665,6 +935,10 @@ void fragment() {
 		for ( var k = 0; k < Avenues; k++ ) Light( Polar( 50f, 45f * k, Land + 3f ), TealGlow, 1.1f, 13f );
 		Light( new Vector3( 0f, IslandHeight + 6f, -9f ), new Color( 1f, 0.85f, 0.55f ), 1.4f, 18f );   // the statue and the temple front
 		Light( new Vector3( 0f, IslandHeight + 9f, -20f ), new Color( 1f, 0.8f, 0.45f ), 2.2f, 22f );   // the statue, lit from the arrival side
+		// The temple: lit from inside its colonnade, purple and green, and washed in warm light from the front.
+		Light( new Vector3( -6f, IslandHeight + 4f, 2f ), PurpleGlow, 2.2f, 14f );
+		Light( new Vector3( 6f, IslandHeight + 4f, 2f ), GreenGlow, 2.2f, 14f );
+		Light( new Vector3( 0f, IslandHeight + 13f, -6f ), new Color( 1f, 0.85f, 0.55f ), 2.5f, 20f );
 		// Each district its own colour: pools of purple, green and warm gold light over the streets.
 		Color[] pools = { PurpleGlow, GreenGlow, new Color( 1f, 0.7f, 0.35f ), TealGlow };
 		for ( var k = 0; k < Avenues; k++ )
@@ -702,5 +976,51 @@ public partial class AtlantisHeart : Node3D
 		time += (float)delta;
 		Rotation = new Vector3( 0f, time * 0.35f, MathF.Sin( time * 0.4f ) * 0.06f );
 		Position = Position with { Y = Atlantis.IslandHeight + 21f + MathF.Sin( time * 0.7f ) * 0.6f };
+	}
+}
+
+/// <summary> A school of small glowing fish swimming a slow loop through Atlantis, weaving as they go. </summary>
+public partial class AtlantisFish : MultiMeshInstance3D
+{
+	const int Count = 14;
+	readonly float radius, height, speed, phase, wobble;
+	readonly Vector3[] offsets = new Vector3[Count];
+	float time;
+
+	public AtlantisFish() : this( 0 ) { }
+
+	public AtlantisFish( int seed )
+	{
+		var random = new Random( 900 + seed );
+		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+		radius = R( 24f, 82f );
+		height = R( 3f, 16f );
+		speed = R( 1.8f, 3.2f ) / radius * (seed % 2 == 0 ? 1f : -1f);
+		phase = R( 0f, MathF.Tau );
+		wobble = R( 2f, 6f );
+		for ( var i = 0; i < Count; i++ ) offsets[i] = new Vector3( R( -1.6f, 1.6f ), R( -0.8f, 0.8f ), R( -2.2f, 2.2f ) );
+		var colours = new[] { new Color( 0.35f, 1f, 0.3f ), new Color( 0.66f, 0.22f, 1f ), new Color( 0.2f, 1f, 0.85f ), new Color( 1f, 0.75f, 0.25f ) };
+		var c = colours[seed % colours.Length];
+		var material = new StandardMaterial3D { AlbedoColor = c, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = 2.2f, Roughness = 0.4f };
+		material.SetMeta( "no_caustics", true );
+		var body = new PrismMesh { Size = new Vector3( 0.12f, 0.18f, 0.5f ), LeftToRight = 0.5f, Material = material };
+		Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = body, InstanceCount = Count };
+		CastShadow = ShadowCastingSetting.Off;
+	}
+
+	public override void _Process( double delta )
+	{
+		time += (float)delta;
+		var a = phase + time * speed;
+		var centre = new Vector3( MathF.Cos( a ) * radius, height + MathF.Sin( time * 0.3f + phase ) * wobble * 0.4f, MathF.Sin( a ) * radius );
+		var heading = new Vector3( -MathF.Sin( a ), 0f, MathF.Cos( a ) ) * MathF.Sign( speed );
+		var turn = Basis.LookingAt( heading, Vector3.Up );
+		for ( var i = 0; i < Count; i++ )
+		{
+			var o = offsets[i];
+			var weave = new Vector3( MathF.Sin( time * 2.3f + i ) * 0.3f, MathF.Sin( time * 1.7f + i * 1.3f ) * 0.2f, 0f );
+			var wag = new Basis( Vector3.Up, MathF.Sin( time * 9f + i * 0.7f ) * 0.25f );
+			Multimesh.SetInstanceTransform( i, new Transform3D( turn * wag, centre + turn * (o + weave) ) );
+		}
 	}
 }

@@ -329,12 +329,15 @@ void fragment() {
 	/// <summary>
 	/// The statue of him that stands on Atlantis's island: his own body all in gold (the jewels still glowing), standing
 	/// on the tip of his tail with the trident upright like a staff and his fist out, facing `facing`. `feet` is where
-	/// the tail's tip rests; `size` scales the whole statue (1 is the boss's model before his own Size).
+	/// the tail's tip rests; `size` scales the whole statue (1 is the boss's model before his own Size). `marble` carves him in
+	/// white stone instead.
 	/// </summary>
-	public static Node3D BuildStatue( Node3D parent, Vector3 feet, float size, Vector3 facing )
+	public static Node3D BuildStatue( Node3D parent, Vector3 feet, float size, Vector3 facing, bool marble = false )
 	{
-		var gold = Sculpt.Paint( new Color( 0.96f, 0.74f, 0.3f ), 0.22f, 0.9f );
-		var darkGold = Sculpt.Paint( new Color( 0.72f, 0.48f, 0.14f ), 0.3f, 0.9f );
+		var gold = marble ? Sculpt.Paint( new Color( 0.93f, 0.88f, 0.78f ), 0.5f ) : Sculpt.Paint( new Color( 1f, 0.78f, 0.32f ), 0.22f, 0.85f );
+		var darkGold = marble ? Sculpt.Paint( new Color( 0.7f, 0.62f, 0.55f ), 0.6f ) : Sculpt.Paint( new Color( 0.78f, 0.52f, 0.16f ), 0.3f, 0.85f );
+		if ( !marble )   // a little lit, so the gold shines in the murk
+			foreach ( var m in new[] { gold, darkGold } ) { m.EmissionEnabled = true; m.Emission = m.AlbedoColor; m.EmissionEnergyMultiplier = 0.25f; }
 		var look = new Look
 		{
 			Skin = gold, Scales = gold, Hair = gold, Armour = darkGold, Fins = darkGold, EyeBlack = darkGold, Dark = darkGold,

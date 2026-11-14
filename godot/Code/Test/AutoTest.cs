@@ -2756,6 +2756,7 @@ public partial class AutoTest : Node
 		}
 
 		before = survivor.Health.Current;
+		GD.Print( $"[autotest] poseidon at {p.GlobalPosition}, player at {player.GlobalPosition}" );
 		p.ForceAttack( "trident" );
 		await Wait( 2.5f );
 		GD.Print( $"[autotest] poseidon trident: health {before:0} to {survivor.Health.Current:0}" );
@@ -2765,8 +2766,8 @@ public partial class AutoTest : Node
 		p.ForceAttack( "seahorses" );
 		await Wait( 1.8f );
 		var horses = Seahorse.All.Count( h => !h.IsDead );
-		GD.Print( $"[autotest] poseidon summoned {horses} seahorses, {director.AliveCount} enemies in the wave" );
-		Check( horses >= 3 && director.AliveCount >= horses, "Poseidon did not summon seahorses into the wave" );
+		GD.Print( $"[autotest] poseidon summoned {p.Summoned} seahorses ({horses} still alive), {director.AliveCount} enemies in the wave" );
+		Check( p.Summoned >= 3 && director.AliveCount >= horses, "Poseidon did not summon seahorses into the wave" );
 		foreach ( var h in Seahorse.All.ToList() ) h.Health.OnDamage( new DamageInfo { Damage = 1000f } );
 		await Wait( 0.3f );
 		survivor.Health.Heal( 999f );

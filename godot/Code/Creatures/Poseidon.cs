@@ -31,6 +31,8 @@ public partial class Poseidon : Creature
 	public bool OnlyWhenTold;
 	/// <summary> How many times his whirlpool has brought someone to him and he stabbed them. </summary>
 	public int Stabs { get; private set; }
+	/// <summary> How many seahorses he has called up. </summary>
+	public int Summoned { get; private set; }
 
 	static readonly Color Skin = new( 0.86f, 0.68f, 0.5f );
 	static readonly Color Hair = new( 0.94f, 0.94f, 0.92f );
@@ -355,6 +357,7 @@ public partial class Poseidon : Creature
 		var flight = from.DistanceTo( aim ) / TridentSpeed;
 		aim += prey.Controller.Velocity * flight * 0.6f;
 		PoseidonTrident.Throw( this, from, (aim - from).SafeNormal() * TridentSpeed, TridentDamage );
+		if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon throws a trident from {from} at {aim}" );
 		heldTrident.Visible = false;
 		GetTree().CreateTimer( 1.0 ).Timeout += () => { if ( IsInstanceValid( heldTrident ) ) heldTrident.Visible = true; };
 		Sfx.Play( "harpoon", from, 1f, 0.7f );
@@ -382,6 +385,7 @@ public partial class Poseidon : Creature
 			at.Y = Sculpt.FloorBelow( this, at, 80f ) + 1.6f;
 			PoseidonVortex.Burst( this, at + Vector3.Down * 1.2f, 0.4f );
 			var horse = Seahorse.Spawn( GetTree().CurrentScene, at, SeahorseHealth );
+			Summoned++;
 			if ( director is not null ) director.Adopt( horse );
 		}
 	}
@@ -574,6 +578,7 @@ public partial class PoseidonTrident : Node3D
 			player.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( thrower ) ? thrower : this, Position = closest, Origin = from } );
 			player.Controller.Velocity += velocity.SafeNormal() * 4f;
 			Sfx.Play( "hit_flesh", closest, 0.9f, 0.8f );
+			if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon trident hit a player at {closest}" );
 			QueueFree();
 			return;
 		}
@@ -584,13 +589,18 @@ public partial class PoseidonTrident : Node3D
 			sinceStuck = 0f;
 			GlobalPosition = hit.HitPosition - velocity.SafeNormal() * 0.5f;
 			Fx.ImpactWorld( hit.HitPosition, hit.Normal );
+			if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon trident stuck in {hit.Node?.Name} at {hit.HitPosition} (flying from {from})" );
 			return;
 		}
 		GlobalPosition = to;
 		roll += 5f * dt;
 		Face();
 		if ( TridentBolt.UnderWater( to ) ) TridentBolt.Bubbles( from, to );
-		if ( age > 4f ) QueueFree();
+		if ( age > 4f )
+		{
+			if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon trident flew out at {GlobalPosition}" );
+			QueueFree();
+		}
 	}
 }
 

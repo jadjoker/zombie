@@ -13,7 +13,8 @@ import zlib
 
 import numpy as np
 
-OUT = r"C:/Users/smitt/Documents/zombie_survival/godot/assets/materials/creature"
+# The repo's own folder, wherever it is checked out.
+OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "godot", "assets", "materials", "creature")
 N = 1024
 SEED = 29
 
@@ -58,7 +59,7 @@ def value_noise(rng, cells, n=N):
 def build():
     rng = np.random.default_rng(SEED)
     # Stones: a jittered grid on a torus, with uneven sizes from a per-stone weight (power diagram).
-    k = 13
+    k = 8   # stones across a tile: fewer and bigger than the first version's 13 (playtest: they didn't stand out)
     pts, wts = [], []
     for gy in range(k):
         for gx in range(k):
@@ -139,8 +140,9 @@ def build():
 
     # Normal map from the domes (tileable gradients).
     h = height * 1.0 + (k_own == 0) * fine * 0.04
-    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * N / 64
-    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * N / 64
+    # Steep: the stones should read as standing proud of the hide (was N / 64).
+    gx = (np.roll(h, -1, 1) - np.roll(h, 1, 1)) * N / 36
+    gy = (np.roll(h, -1, 0) - np.roll(h, 1, 0)) * N / 36
     nz = np.ones_like(h)
     norm = np.sqrt(gx * gx + gy * gy + nz * nz)
     normal = np.stack([-gx / norm, gy / norm, nz / norm], -1) * 0.5 + 0.5

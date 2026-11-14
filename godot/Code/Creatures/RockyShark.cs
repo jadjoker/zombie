@@ -213,6 +213,8 @@ public partial class RockyShark : PartCreature
 		}
 		part.Go.AddChild( node );
 		node.Scale = Vector3.One * (radius * 2f * U.In);
+		var stony = new List<(MeshInstance3D Mesh, int Stones)>();
+		var keepClear = new List<MeshInstance3D>();
 		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
 			var name = mesh.Name.ToString();
@@ -263,7 +265,116 @@ public partial class RockyShark : PartCreature
 				mesh.MaterialOverride = pebbly ? PebbleSkin() : Shapes.Material( tint );
 				part.Renderers.Add( (mesh, tint) );
 				if ( name == "Jaw" ) jaw = mesh;
+				var stones = name == "Head" ? 14 : name.StartsWith( "Segment" ) ? 9 : name == "Tail" ? 6 : 0;
+				if ( stones > 0 ) stony.Add( (mesh, stones) );
+				else if ( !pebbly ) keepClear.Add( mesh );
+				continue;
 			}
+		}
+		// Holes, pores, eyes and pupils (every mesh that is not skin) stay uncovered.
+		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			var name = mesh.Name.ToString();
+			if ( name.StartsWith( "Hole" ) || name.StartsWith( "Pore" ) || name.StartsWith( "Tongue" ) || name.StartsWith( "Pupil" ) || name is "EyeL" or "EyeR" )
+				keepClear.Add( mesh );
+		}
+		foreach ( var (mesh, stones) in stony ) AddStones( part, mesh, stones, keepClear );
+	}
+
+	// ---- Stones standing out of the hide (playtest: the pebble skin alone read flat) ----
+
+	/// <summary> Pebble colours, as in the skin texture: the shark's tan, greys, slate blue, rust and cream. </summary>
+	static readonly Color[] StoneColours =
+	{
+		new( 0.66f, 0.52f, 0.35f ), new( 0.58f, 0.44f, 0.30f ), new( 0.60f, 0.60f, 0.58f ), new( 0.44f, 0.53f, 0.60f ),
+		new( 0.24f, 0.27f, 0.31f ), new( 0.72f, 0.42f, 0.18f ), new( 0.84f, 0.79f, 0.67f ), new( 0.45f, 0.30f, 0.21f ),
+	};
+	static readonly SphereMesh StoneMesh = new() { Radius = 1f, Height = 2f, RadialSegments = 10, Rings = 5 };
+	/// <summary> Each skin mesh's triangles (three points each, in its own space) and their running area, read once. </summary>
+	static readonly Dictionary<Mesh, (Vector3[] Faces, float[] Area)> skinFaces = new();
+	static readonly Dictionary<Mesh, Vector3[]> clearPoints = new();
+
+	/// <summary> Up to a few hundred of a mesh's vertices, spread through it (enough to keep stones off it), read once. </summary>
+	static Vector3[] ClearPoints( Mesh mesh )
+	{
+		if ( clearPoints.TryGetValue( mesh, out var points ) ) return points;
+		var faces = mesh.GetFaces();
+		var step = Math.Max( 1, faces.Length / 400 );
+		points = Enumerable.Range( 0, (faces.Length + step - 1) / step ).Select( i => faces[i * step] ).ToArray();
+		clearPoints[mesh] = points;
+		return points;
+	}
+
+	/// <summary>
+	/// A few big rounded stones set into a skin mesh, well apart, a third sunk so they bulge out: on the top and
+	/// sides (not the white belly), clear of the radiation holes, pores and eyes. They tint and flash with the part
+	/// and come off with it.
+	/// </summary>
+	void AddStones( Part part, MeshInstance3D skin, int count, List<MeshInstance3D> keepClear )
+	{
+		if ( skin.Mesh is null ) return;
+		if ( !skinFaces.TryGetValue( skin.Mesh, out var surface ) )
+		{
+			var faces = skin.Mesh.GetFaces();
+			var area = new float[faces.Length / 3];
+			var total = 0f;
+			for ( var i = 0; i < area.Length; i++ )
+			{
+				total += 0.5f * (faces[i * 3 + 1] - faces[i * 3]).Cross( faces[i * 3 + 2] - faces[i * 3] ).Length();
+				area[i] = total;
+			}
+			skinFaces[skin.Mesh] = surface = (faces, area);
+		}
+		if ( surface.Area.Length == 0 || surface.Area[^1] <= 0f ) return;
+		var box = skin.Mesh.GetAabb();
+		var thickness = MathF.Min( box.Size.X, MathF.Min( box.Size.Y, box.Size.Z ) );
+		// What must stay visible, as points in the skin's own space: their vertices, not their boxes, since the
+		// pores of a section are one mesh spread all over it.
+		var toSkin = skin.GlobalTransform.AffineInverse();
+		var clear = new List<Vector3>();
+		foreach ( var m in keepClear )
+		{
+			if ( !IsInstanceValid( m ) || m.Mesh is null ) continue;
+			var into = toSkin * m.GlobalTransform;
+			foreach ( var point in ClearPoints( m.Mesh ) ) clear.Add( into * point );
+		}
+		var placed = new List<(Vector3 At, float Radius)>();
+		var materials = new Dictionary<int, StandardMaterial3D>();
+		for ( var attempt = 0; attempt < count * 12 && placed.Count < count; attempt++ )
+		{
+			// A random point on the skin, every bit of area equally likely.
+			var pick = Rng.Float( 0f, surface.Area[^1] );
+			var index = Array.BinarySearch( surface.Area, pick );
+			if ( index < 0 ) index = Math.Min( ~index, surface.Area.Length - 1 );
+			var a = surface.Faces[index * 3];
+			var b = surface.Faces[index * 3 + 1];
+			var c = surface.Faces[index * 3 + 2];
+			var normal = (b - a).Cross( c - a );
+			if ( normal.LengthSquared() < 1e-12f ) continue;
+			normal = normal.Normalized();
+			// Whichever way the triangle winds, point the normal out of the body.
+			if ( normal.Dot( (a + b + c) / 3f - box.GetCenter() ) < 0f ) normal = -normal;
+			if ( normal.Y < -0.2f ) continue;   // not underneath: the belly is white paint
+			float u = Rng.Float(), v = Rng.Float();
+			if ( u + v > 1f ) { u = 1f - u; v = 1f - v; }
+			var at = a + (b - a) * u + (c - a) * v;
+			var size = thickness * Rng.Float( 0.1f, 0.16f );
+			var reach = size * 1.3f;
+			if ( clear.Any( k => k.DistanceSquaredTo( at ) < reach * reach ) ) continue;
+			if ( placed.Any( q => q.At.DistanceTo( at ) < (q.Radius + size) * 1.9f ) ) continue;   // well apart
+			placed.Add( (at, size) );
+			// A rounded, slightly flattened stone, turned at random about the normal, two thirds of it standing out.
+			var side = normal.Cross( MathF.Abs( normal.Y ) < 0.9f ? Vector3.Up : Vector3.Right ).Normalized().Rotated( normal, Rng.Float( 0f, MathF.Tau ) );
+			var across = normal.Cross( side );
+			var height = size * 0.62f;
+			var basis = new Basis( side * size * Rng.Float( 0.9f, 1.25f ), normal * height, across * size );
+			var colour = Rng.Int( 0, StoneColours.Length - 1 );
+			if ( !materials.TryGetValue( colour, out var material ) )
+				materials[colour] = material = Shapes.Material( StoneColours[colour] );
+			var stone = new MeshInstance3D { Name = "Stone", Mesh = StoneMesh, MaterialOverride = material };
+			skin.AddChild( stone );
+			stone.Transform = new Transform3D( basis, at + normal * height * 0.35f );
+			part.Renderers.Add( (stone, StoneColours[colour]) );
 		}
 	}
 

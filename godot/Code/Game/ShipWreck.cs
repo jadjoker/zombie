@@ -15,12 +15,20 @@ public static class ShipWreck
 	public const float Roll = 27f;
 	public const float Pitch = -2.5f;
 	public const float HalfLength = 48f;
+	/// <summary>
+	/// How much bigger than its design the ship is built (playtest: 20%, so it is easier to move about in). Ship space
+	/// stays in design units: the scale is in <see cref="Frame"/>, so the hull, rooms, furniture, colliders and lights
+	/// all grow together.
+	/// </summary>
+	public const float Scale = 1.2f;
 	const float FloorB = 4f, FloorA = 8.5f, DeckMain = 13f, Wall = 0.35f, Slab = 0.35f;
 
 	/// <summary> True on the wreck site once the ship has been placed (the ground then shapes itself round it). </summary>
 	public static bool Placed { get; private set; }
-	/// <summary> Ship space to world. </summary>
+	/// <summary> Ship space to world (turned, scaled by <see cref="Scale"/>, placed). </summary>
 	public static Transform3D Frame { get; private set; }
+	/// <summary> The ship's turn alone (Frame without the scale). </summary>
+	static Basis turn = Basis.Identity;
 	public static Node3D Root { get; private set; }
 
 	/// <summary> Half the beam at a point along the ship: a long straight middle, a fine bow, a rounded stern. </summary>
@@ -36,9 +44,10 @@ public static class ShipWreck
 	{
 		var basis = new Basis( Vector3.Right, MathX.Rad( Roll ) ) * new Basis( Vector3.Back, MathX.Rad( Pitch ) );
 		// The low side's lower window row sits just at the sand, so its broken windows are doorways in.
-		var low = basis * new Vector3( 0f, 5.2f, 8f );
+		var low = basis * new Vector3( 0f, 5.2f, 8f ) * Scale;
 		var origin = new Vector3( SeaTerrain.PlainCentre.X, 0.3f - low.Y, SeaTerrain.PlainCentre.Y );
-		Frame = new Transform3D( basis, origin );
+		turn = basis;
+		Frame = new Transform3D( basis * Basis.FromScale( Vector3.One * Scale ), origin );
 		Placed = true;
 	}
 
@@ -55,24 +64,25 @@ public static class ShipWreck
 	/// </summary>
 	public static float ShapeGround( float x, float z, float h )
 	{
-		var b = Frame.Basis;
+		// Worked in metres along the ship's own (unscaled) axes; ship-space sizes are multiplied by Scale.
+		var b = turn;
 		var o = Frame.Origin;
 		var up = b * Vector3.Up;
 		var dx0 = x - o.X; var dz0 = z - o.Z;
 		// Where a vertical line here meets the plane of the hull's bottom.
 		var t = o.Y - (up.X * dx0 + up.Z * dz0) / up.Y;
 		var p = new Vector3( x, t, z ) - o;
-		var lx = p.Dot( b * Vector3.Right );
-		var lz = p.Dot( b * Vector3.Back );
+		var lx = p.Dot( b * Vector3.Right ) / Scale;   // ship space (design units)
+		var lz = p.Dot( b * Vector3.Back ) / Scale;
 		var ox = MathF.Max( 0f, MathF.Abs( lx ) - (HalfLength - 0.5f) );
 		var oz = MathF.Max( 0f, MathF.Abs( lz ) - HalfBeam( MathX.Clamp( lx, -HalfLength, HalfLength ) ) );
-		var outside = MathF.Sqrt( ox * ox + oz * oz );
+		var outside = MathF.Sqrt( ox * ox + oz * oz ) * Scale;   // metres
 		if ( outside < 0.6f )
 		{
 			// In the breach the sand runs in to the deck B floor, so you can walk in off the sea bed.
 			if ( MathF.Abs( lx ) < 5.5f && lz > 2f )
 			{
-				var floorB = o.Y - (up.X * dx0 + up.Z * dz0 - (FloorB + Slab * 0.5f)) / up.Y;
+				var floorB = o.Y - (up.X * dx0 + up.Z * dz0 - (FloorB + Slab * 0.5f) * Scale) / up.Y;
 				return MathF.Min( h, floorB - 0.05f );
 			}
 			return MathF.Min( h, t - 0.8f );
@@ -186,7 +196,7 @@ public static class ShipWreck
 		level.AddChild( Root );
 		var kit = new Kit( Root );
 		// "Down" in ship space: the way a hanging thing or a sliding plate goes (the ship is heeled, gravity is not).
-		var down = Frame.Basis.Inverse() * Vector3.Down;
+		var down = (Frame.Basis.Inverse() * Vector3.Down).Normalized();   // the frame is scaled: a unit direction
 		var hang = new Basis( new Quaternion( Vector3.Down, down ) );
 
 		Hull( kit, random, R );
@@ -874,7 +884,7 @@ public static class ShipWreck
 	{
 		void Light( Vector3 at, Color c, float energy, float range )
 		{
-			var l = new OmniLight3D { LightColor = c, LightEnergy = energy, OmniRange = range, ShadowEnabled = false };
+			var l = new OmniLight3D { LightColor = c, LightEnergy = energy, OmniRange = range * Scale, ShadowEnabled = false };   // a light's reach ignores the node's scale
 			Root.AddChild( l );
 			l.Position = at;
 		}

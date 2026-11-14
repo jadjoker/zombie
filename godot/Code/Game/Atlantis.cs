@@ -149,7 +149,7 @@ public static class Atlantis
 		Ground( kit );
 		Island( kit );
 		Crossings( kit );
-		Avenues( kit );
+		AvenueLamps( kit );
 		Districts( kit, random, R );
 		GlobeBase( kit );
 		kit.Commit();
@@ -384,7 +384,7 @@ public static class Atlantis
 
 	// ---- Avenues: lamps along the eight streets out from the middle ----
 
-	static void Avenues( MeshKit kit )
+	static void AvenueLamps( MeshKit kit )
 	{
 		for ( var k = 0; k < Avenues; k++ )
 		{

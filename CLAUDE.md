@@ -102,6 +102,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
+  Every push to `main` or a `claude/**` branch also publishes: `.github/workflows/itch.yml` builds, exports, runs the
+  headless wave-flow smoke test and `butler push`es the Windows build (needs the `BUTLER_API_KEY` repo secret; the
+  page is `Tools/godot/itch_target.txt` unless the `ITCH_TARGET` repo variable is set).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).
 - Commits reference the migration (#26) or playtest (#27) issue. Chat-only tasks need no issue.

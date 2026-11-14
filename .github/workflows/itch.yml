@@ -1,0 +1,87 @@
+# Publishes the Godot game to itch.io on every push (what Tools/godot/release.sh does on the Windows PC):
+# builds, exports for Windows, smoke-tests a Linux export of the same commit (the headless wave flow: dive in,
+# enemies must come), then pushes the Windows build with butler. Players with the itch app update automatically.
+#
+# Needs the BUTLER_API_KEY repo secret (an itch.io API key: itch.io > Settings > API keys). Without it the build and
+# the test still run and the upload is skipped. The page is Tools/godot/itch_target.txt ("user/game"), unless the
+# ITCH_TARGET repo variable is set.
+name: Publish to itch.io
+
+on:
+  push:
+    branches: [main, "claude/**"]
+    paths: ["godot/**", "Tools/godot/**", ".github/workflows/itch.yml"]
+  workflow_dispatch:
+
+concurrency:
+  group: itch-publish
+  cancel-in-progress: true
+
+env:
+  GODOT_VERSION: 4.7.2
+  GODOT_DIR: Godot_v4.7.2-stable_mono_linux_x86_64
+  GODOT_BIN: Godot_v4.7.2-stable_mono_linux.x86_64
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: true
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Get Godot and its export templates
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}-stable"
+          curl -fsSL -o godot.zip "$base/${GODOT_DIR}.zip"
+          unzip -q godot.zip -d "$HOME/godot"
+          echo "GODOT=$HOME/godot/${GODOT_DIR}/${GODOT_BIN}" >> "$GITHUB_ENV"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}-stable_mono_export_templates.tpz"
+          dir="$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable.mono"
+          mkdir -p "$dir"
+          unzip -q templates.tpz -d /tmp/templates
+          mv /tmp/templates/templates/* "$dir/"
+
+      - name: Build
+        working-directory: godot
+        run: |
+          dotnet build RiskOfCopyright.csproj -nologo -v q
+          "$GODOT" --headless --path . --import > ../import.log 2>&1 || true
+
+      - name: Export
+        working-directory: godot
+        run: |
+          mkdir -p ../build/windows ../build/linux
+          "$GODOT" --headless --path . --export-release "Windows Desktop" ../build/windows/RiskOfCopyright.exe > ../export.log 2>&1 || true
+          "$GODOT" --headless --path . --export-release "Linux" ../build/linux/RiskOfCopyright.x86_64 >> ../export.log 2>&1 || true
+          if grep -qiE "^ERROR" ../export.log || [ ! -f ../build/windows/RiskOfCopyright.pck ] || [ ! -f ../build/linux/RiskOfCopyright.pck ]; then
+            grep -iE "^ERROR" ../export.log | head -20; echo "export failed"; exit 1
+          fi
+          cp Tools/PLAYTEST_README.txt ../build/windows/README.txt
+          printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.exe"\n' > ../build/windows/.itch.toml
+
+      - name: Smoke test (dive in, enemies must come)
+        run: |
+          chmod +x build/linux/RiskOfCopyright.x86_64
+          timeout 180 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$PWD/build/smoke.log" -- --autotest --waves --waveflow > /dev/null 2>&1 || true
+          if ! grep -q "\[autotest\] done" build/smoke.log || grep -qE "ERROR|\[autotest\] FAIL" build/smoke.log; then
+            grep -E "ERROR|FAIL|waveflow" build/smoke.log | head -20; echo "smoke test failed"; exit 1
+          fi
+
+      - name: Push to itch.io
+        env:
+          BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
+          ITCH_TARGET: ${{ vars.ITCH_TARGET }}
+        run: |
+          if [ -z "$BUTLER_API_KEY" ]; then echo "::warning::No BUTLER_API_KEY secret: built and tested, not uploaded."; exit 0; fi
+          target="${ITCH_TARGET:-$(tr -d ' \r\n' < Tools/godot/itch_target.txt)}"
+          version="$(date +%Y.%m.%d)-$(git rev-parse --short HEAD)"
+          curl -fsSL -o butler.zip https://broth.itch.ovh/butler/linux-amd64/LATEST/archive/default
+          unzip -q butler.zip -d butler && chmod +x butler/butler
+          ./butler/butler push build/windows "$target:windows" --userversion "$version"
+          ./butler/butler status "$target:windows"

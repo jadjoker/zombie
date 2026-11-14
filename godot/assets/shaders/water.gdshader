@@ -51,6 +51,21 @@ float height(vec2 p, float t) {
 	return h;
 }
 
+// The alien sea (playtest): the water drifts between deep purple, blue and green in broad slow patches.
+vec3 alien_mix(vec2 p, float t, vec3 purple, vec3 blue, vec3 green) {
+	float u = vnoise2(p * 0.0016 + vec2(t * 0.020, -t * 0.015));
+	float v = vnoise2(p * 0.0011 - vec2(t * 0.013, t * 0.018) + vec2(7.3, 2.1));
+	vec3 col = mix(purple, blue, smoothstep(0.25, 0.75, u));
+	return mix(col, green, smoothstep(0.4, 0.82, v));
+}
+
+// Thin glowing veins drifting through it (bioluminescence): bright where a noise field crosses its middle.
+float veins(vec2 p, float t) {
+	float a = 1.0 - abs(vnoise2(p * 0.010 + vec2(t * 0.05, -t * 0.03)) * 2.0 - 1.0);
+	float b = 1.0 - abs(vnoise2(p * 0.023 - vec2(t * 0.07, t * 0.04) + vec2(3.7, 9.1)) * 2.0 - 1.0);
+	return pow(a, 14.0) * 0.8 + pow(b, 18.0) * 0.5;
+}
+
 varying vec3 world_pos;
 
 void vertex() {
@@ -84,21 +99,23 @@ void fragment() {
 		float ndv = clamp(dot(n, view), 0.0, 1.0);
 		// The body: dark deep water, a touch lighter and greener where crests thin out and light passes through.
 		float crest = clamp(h0 * 0.35 + 0.45, 0.0, 1.0);
-		vec3 deep = vec3(0.006, 0.035, 0.05);
-		vec3 shallow = vec3(0.02, 0.16, 0.17);
+		vec3 deep = alien_mix(p, t, vec3(0.035, 0.008, 0.07), vec3(0.006, 0.02, 0.075), vec3(0.004, 0.05, 0.035));
+		vec3 shallow = alien_mix(p, t, vec3(0.24, 0.07, 0.4), vec3(0.05, 0.17, 0.44), vec3(0.06, 0.42, 0.22));
+		vec3 glow = alien_mix(p * 1.7, t, vec3(0.62, 0.22, 1.0), vec3(0.2, 0.5, 1.0), vec3(0.3, 1.0, 0.45));
+		float inside = 0.0;
 		if (hole_radius > 0.0) {
 			float d = length(p - hole_center) / hole_radius + (vnoise2(p * 0.004) - 0.5) * 0.12;
-			float inside = 1.0 - smoothstep(0.82, 1.0, d);
+			inside = 1.0 - smoothstep(0.82, 1.0, d);
 			float rim = smoothstep(0.8, 0.98, d) * (1.0 - smoothstep(1.02, 1.35, d));
 			float lagoon = smoothstep(1.0, 1.6, d);
-			// Lagoon: light turquoise over the reef. Rim: pale aqua where the reef nearly breaks the surface.
-			deep = mix(deep, vec3(0.012, 0.11, 0.12), lagoon);
-			shallow = mix(shallow, vec3(0.06, 0.34, 0.33), lagoon);
-			deep = mix(deep, vec3(0.08, 0.36, 0.36), rim * 0.8);
-			shallow = mix(shallow, vec3(0.22, 0.6, 0.55), rim * 0.8);
-			// The hole: deep, nearly black blue.
-			deep = mix(deep, vec3(0.001, 0.008, 0.045), inside);
-			shallow = mix(shallow, vec3(0.006, 0.03, 0.12), inside);
+			// Lagoon: the same colours a little brighter over the reef. Rim: a glowing ring where the reef nearly breaks the surface.
+			deep = mix(deep, deep * 1.8 + vec3(0.01), lagoon);
+			shallow = mix(shallow, shallow * 1.35, lagoon);
+			deep = mix(deep, glow * 0.3, rim * 0.7);
+			shallow = mix(shallow, glow * 0.6, rim * 0.7);
+			// The hole: a much darker version of the colours round it, still faintly glowing.
+			deep = mix(deep, deep * 0.22, inside);
+			shallow = mix(shallow, shallow * 0.2, inside);
 		}
 		vec3 body = mix(deep, shallow, crest * 0.6);
 		// Crest foam: sparse streaks on the tallest waves only.
@@ -115,8 +132,10 @@ void fragment() {
 		ROUGHNESS = mix(0.04 + (1.0 - near) * 0.06, 0.8, foam);
 		METALLIC = 0.0;
 		SPECULAR = mix(0.5, 0.2, foam);
-		// A little light scattered up through the wave faces facing away from us.
-		EMISSION = shallow * crest * (1.0 - ndv) * 0.25 * (1.0 - foam);
+		// A little light scattered up through the wave faces facing away from us, a soft glow of the water's own
+		// colour, and the drifting veins (dimmer down the hole).
+		float lit = (1.0 - foam) * (1.0 - inside * 0.75);
+		EMISSION = shallow * crest * (1.0 - ndv) * 0.35 * lit + shallow * 0.18 * lit + glow * veins(p, t) * 0.7 * lit;
 		NORMAL = normalize((VIEW_MATRIX * vec4(gd3(n), 0.0)).xyz);
 	} else {
 		vec3 sun_dir = normalize(vec3(0.45, 0.25, 0.85));
@@ -124,13 +143,14 @@ void fragment() {
 		float cosi = clamp(dot(vec3(-n.xy, -n.z), -view), 0.0, 1.0);
 		float window = smoothstep(0.60, 0.72, cosi);
 		float shimmer = height(p * 1.6, t * 1.5) * 0.5 + 0.5;
-		vec3 sky_through = mix(vec3(0.18, 0.62, 0.78), vec3(0.55, 0.92, 1.0), clamp(shimmer * 0.9, 0.0, 1.0));
+		vec3 tint = alien_mix(p, t, vec3(0.5, 0.3, 0.95), vec3(0.25, 0.55, 0.95), vec3(0.3, 0.9, 0.6));
+		vec3 sky_through = mix(tint * 0.55, mix(tint, vec3(0.9), 0.35), clamp(shimmer * 0.9, 0.0, 1.0));
 		float sun_glow = pow(clamp(dot(refract(-view, -n, 0.75), sun_dir), 0.0, 1.0), 18.0);
 		sky_through += sun_col * sun_glow * 1.6;
-		vec3 mirror = vec3(0.008, 0.055, 0.10) + vec3(0.0, 0.05, 0.05) * shimmer;
+		vec3 mirror = tint * 0.09 + tint * 0.06 * shimmer;
 		vec3 col = mix(mirror, sky_through, window);
 		float rim = 1.0 - abs(cosi - 0.66) * 14.0;
-		col += vec3(0.25, 0.6, 0.7) * max(rim, 0.0) * 0.5;
+		col += tint * max(rim, 0.0) * 0.55 + tint * veins(p, t) * 0.35;
 		// From below it glows on its own (unlit look): no albedo or reflections, just the emission.
 		ALBEDO = vec3(0.0);
 		ROUGHNESS = 1.0;

@@ -453,6 +453,8 @@ public partial class DevMenu : CanvasLayer
 			Action( "Ink now", () => { foreach ( var k in Kraken.All ) k.ForceInk(); } );
 			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
 			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 18f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
+			foreach ( var attack in new[] { "trident", "whirlpool", "seahorses", "vanish" } )
+				Action( $"Poseidon: {attack}", () => { foreach ( var p in Poseidon.All ) p.ForceAttack( attack ); } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
 			Row( "Fight radius" );
 			foreach ( var r in new[] { 18f, 26f, 34f } ) { var radius = r; Pick( $"{r:0} m", Kraken.FightRadius == radius, () => Kraken.FightRadius = radius ); }
@@ -565,6 +567,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { NextBossWave: > 0 } ) Action( $"Boss wave ({d.NextBossWave})", () => d.JumpToWave( d.NextBossWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Kraken next wave (now {d.KrakenChanceNext * 100f:0}%)", () => d.ForceKrakenNextWave() );
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
+			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
 			Info( $"Wave {wave}    Kills {d?.Kills ?? 0}    Enemies left {d?.ZombiesRemaining ?? 0}    Phase {d?.State.ToString() ?? "-"}" );
 		}
@@ -622,6 +625,8 @@ public partial class DevMenu : CanvasLayer
 		new( "Rocky Shark", WaveDirector.EnemyKind.RockyShark ),
 		new( "MC61 boss", WaveDirector.EnemyKind.Boss ),
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
+		new( "Seahorse", WaveDirector.EnemyKind.Seahorse ),
+		new( "Poseidon", WaveDirector.EnemyKind.Poseidon ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
 	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };

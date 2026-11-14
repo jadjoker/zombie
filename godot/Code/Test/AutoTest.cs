@@ -61,6 +61,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--terrain" ) ) { await TerrainTest(); return; }
 		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
 		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
+		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2688,6 +2689,97 @@ public partial class AutoTest : Node
 	/// waits for it, using it builds the wreck site (flat plain, sunken liner) and starts wave 11; the ship's rooms are
 	/// reachable on the navmesh and you can stand in them. Views for review with --shots (needs a window).
 	/// </summary>
+	/// <summary>
+	/// The seahorse and Poseidon: a seahorse must close 10 m fast, bite, and die to one rifle hit; Poseidon must come up
+	/// out of his whirlpool, throw a trident that hurts, summon seahorses into the wave, catch the player in a thrown
+	/// whirlpool and stab them, vanish to a spot near the player inside the map, and die.
+	/// </summary>
+	async Task PoseidonTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var scene = GetTree().CurrentScene;
+		var director = WaveDirector.Current;
+		director.SpawningPaused = true;
+		player.Velocity = Vector3.Zero;
+		var home = player.GlobalPosition;
+
+		// The seahorse.
+		var horse = Seahorse.Spawn( scene, home + new Vector3( 10f, 1.4f, 0f ), 30f );
+		var bitten = false;
+		var before = survivor.Health.Current;
+		var took = 0f;
+		for ( var t = 0f; t < 4f && !bitten; t += 0.1f )
+		{
+			await Wait( 0.1f );
+			took = t;
+			bitten = survivor.Health.Current < before;
+		}
+		GD.Print( $"[autotest] seahorse: bit after {took:0.0} s" );
+		Check( bitten && took < 3f, "a seahorse did not close 10 m and bite within 3 s" );
+		survivor.Health.Heal( 999f );
+		if ( IsInstanceValid( horse ) ) horse.ReceiveShot( 1, 34f, Vector3.Forward, horse.GlobalPosition, home, survivor, true );
+		await Wait( 0.2f );
+		Check( !IsInstanceValid( horse ) || horse.IsDead, "a seahorse did not die to one rifle hit" );
+
+		// Poseidon.
+		var p = Poseidon.Spawn( scene, home + new Vector3( 0f, 4.5f, -14f ), 18000f );
+		await Wait( 1.5f );
+		p.OnlyWhenTold = true;
+		Check( !p.IsDead && p.Health.Current >= 18000f, "Poseidon did not come up" );
+		if ( shots is not null )
+		{
+			var look = p.GlobalPosition + Vector3.Up * 1f;
+			var camAt = p.GlobalPosition + new Vector3( 6f, 1f, 10f );
+			var shotAt = new Transform3D( Basis.LookingAt( (look - camAt).Normalized(), Vector3.Up ), camAt );
+			player.CameraOverride = _ => shotAt;
+			await Wait( 0.3f );
+			await Shot( "poseidon" );
+			player.CameraOverride = null;
+		}
+
+		before = survivor.Health.Current;
+		p.ForceAttack( "trident" );
+		await Wait( 2.5f );
+		GD.Print( $"[autotest] poseidon trident: health {before:0} to {survivor.Health.Current:0}" );
+		Check( survivor.Health.Current < before, "Poseidon's trident did not hit a player standing still" );
+		survivor.Health.Heal( 999f );
+
+		p.ForceAttack( "seahorses" );
+		await Wait( 1.8f );
+		var horses = Seahorse.All.Count( h => !h.IsDead );
+		GD.Print( $"[autotest] poseidon summoned {horses} seahorses, {director.AliveCount} enemies in the wave" );
+		Check( horses >= 3 && director.AliveCount >= horses, "Poseidon did not summon seahorses into the wave" );
+		foreach ( var h in Seahorse.All.ToList() ) h.Health.OnDamage( new DamageInfo { Damage = 1000f } );
+		await Wait( 0.3f );
+		survivor.Health.Heal( 999f );
+
+		player.GlobalPosition = home;
+		player.Velocity = Vector3.Zero;
+		p.ForceAttack( "whirlpool" );
+		for ( var t = 0f; t < 9f && p.Stabs == 0; t += 0.2f ) await Wait( 0.2f );
+		GD.Print( $"[autotest] poseidon whirlpool: stabs {p.Stabs}, player scripted {player.Scripted}" );
+		Check( p.Stabs > 0, "Poseidon's whirlpool did not bring the player to him for a stab" );
+		Check( !player.Scripted, "the player was left held after Poseidon's stab" );
+		survivor.Health.Heal( 999f );
+
+		p.ForceAttack( "vanish" );
+		await Wait( 2.2f );
+		var apart = p.GlobalPosition.Flat().DistanceTo( player.GlobalPosition.Flat() );
+		var inside = Sculpt.InBounds( p.GlobalPosition ).Flat().DistanceTo( p.GlobalPosition.Flat() ) < 0.01f;
+		GD.Print( $"[autotest] poseidon vanished and came up {apart:0.0} m from the player, inside the map {inside}" );
+		Check( inside && apart < 22f, "Poseidon did not come back up near the player inside the map" );
+
+		var killed = false;
+		p.Killed += _ => killed = true;
+		p.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+		await Wait( 3.6f );
+		Check( killed && !IsInstanceValid( p ), "Poseidon did not die and sink away" );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	/// <summary>
 	/// Area 3 (Atlantis): straight to the wreck site, clear wave 20, the teleporter must come and wave 21 wait for it;
 	/// through it to Atlantis, wave 21 starts, the buy stations stand by the arrival, the spawn points are inside the

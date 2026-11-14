@@ -210,7 +210,14 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon }
+
+	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
+	public int PoseidonWave = 30;
+	public float PoseidonHealth = 18000f;
+	/// <summary> Seahorses (Poseidon's summons): weak, so a hit or two kills one. </summary>
+	public float SeahorseBaseHealth = 20f;
+	public float SeahorseHealthPerWave = 0.5f;
 
 	/// <summary> How each kind is made, given a spot on the ground, its health and a facing. Null: not ported yet. </summary>
 	public static readonly Dictionary<EnemyKind, Func<WaveDirector, Vector3, float, Node3D>> Spawners = new()
@@ -255,6 +262,20 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) k.GlobalBasis = Shapes.LookAt( toPlayer );
 			k.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return k;
+		},
+		[EnemyKind.Seahorse] = ( d, at, health ) =>
+		{
+			var s = Seahorse.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.4f, health );
+			s.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return s;
+		},
+		[EnemyKind.Poseidon] = ( d, at, health ) =>
+		{
+			var p = Poseidon.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 4.5f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) p.GlobalBasis = Shapes.LookAt( toPlayer );
+			p.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return p;
 		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
@@ -345,7 +366,8 @@ public partial class WaveDirector : Node3D
 		if ( bossPending )
 		{
 			if ( !SpawnBossWaves ) bossPending = false;
-			else if ( !SpawningPaused && Spawn( EnemyKind.Boss ) ) bossPending = false;
+			// Wave 30 is Poseidon's instead of MC61's.
+			else if ( !SpawningPaused && Spawn( Wave == PoseidonWave ? EnemyKind.Poseidon : EnemyKind.Boss ) ) bossPending = false;
 		}
 
 		if ( krakenPending && !SpawningPaused )
@@ -462,6 +484,14 @@ public partial class WaveDirector : Node3D
 		}
 	}
 
+	/// <summary> An enemy that joined the wave on its own (a summoned seahorse): it counts toward clearing the wave. </summary>
+	public void Adopt( Creature creature )
+	{
+		if ( creature is null || alive.Contains( creature ) ) return;
+		alive.Add( creature );
+		creature.Killed += x => { alive.Remove( x ); Kills++; };
+	}
+
 	int credited;
 	/// <summary> Spawn tries in a row that failed; after <see cref="MaxFailedSpawns"/> the wave stops spawning. </summary>
 	int failedSpawns;
@@ -506,6 +536,8 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
 			EnemyKind.RockyShark => SharkBaseHealth + SharkHealthPerWave * (Wave - 1),
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
+			EnemyKind.Seahorse => SeahorseBaseHealth + SeahorseHealthPerWave * Wave,
+			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};

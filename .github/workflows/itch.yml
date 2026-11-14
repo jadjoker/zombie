@@ -65,13 +65,22 @@ jobs:
           cp Tools/PLAYTEST_README.txt ../build/windows/README.txt
           printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.exe"\n' > ../build/windows/.itch.toml
 
-      - name: Smoke test (dive in, enemies must come)
+      - name: Tests (the dive and first waves, the teleporters, Atlantis, Poseidon)
         run: |
           chmod +x build/linux/RiskOfCopyright.x86_64
-          timeout 180 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$PWD/build/smoke.log" -- --autotest --waves --waveflow > /dev/null 2>&1 || true
-          if ! grep -q "\[autotest\] done" build/smoke.log || grep -qE "ERROR|\[autotest\] FAIL" build/smoke.log; then
-            grep -E "ERROR|FAIL|waveflow" build/smoke.log | head -20; echo "smoke test failed"; exit 1
-          fi
+          failed=0
+          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon"; do
+            name=$(echo "$flags" | tr -d '-' | tr ' ' '_')
+            log="$PWD/build/test_$name.log"
+            timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > /dev/null 2>&1 || true
+            if ! grep -q "\[autotest\] done" "$log" || grep -qE "ERROR|\[autotest\] FAIL" "$log"; then
+              echo "::error::test $flags failed"; grep -E "ERROR|FAIL" "$log" | head -20; failed=1
+            else
+              echo "test $flags passed"
+            fi
+            grep "\[autotest\]" "$log" | grep -vE "FAIL" | tail -12 || true
+          done
+          exit $failed
 
       - name: Push to itch.io
         env:

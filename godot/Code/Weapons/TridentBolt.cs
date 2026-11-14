@@ -95,10 +95,10 @@ public partial class TridentBolt : Node3D
 		if ( age > MaxFlight ) QueueFree();
 	}
 
-	static bool UnderWater( Vector3 at ) => WaterFeel.IsOn() && (Sea.SurfaceY is not float top || at.Y < top);
+	public static bool UnderWater( Vector3 at ) => WaterFeel.IsOn() && (Sea.SurfaceY is not float top || at.Y < top);
 
 	/// <summary> A thin stream of tiny bubbles along this frame's path, rising and fading quickly. </summary>
-	static void Bubbles( Vector3 from, Vector3 to )
+	public static void Bubbles( Vector3 from, Vector3 to )
 	{
 		var length = from.DistanceTo( to );
 		var count = Math.Clamp( (int)(length / 0.18f), 1, 8 );

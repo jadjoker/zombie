@@ -99,6 +99,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Buildings use `MeshKit` (shared with `ShipWreck`). Stations stand behind the arrival pad, spawns on the ring street
   at 65 m, the Kraken comes up in the west plaza (`Atlantis.KrakenCentre`). Test: `--atlantis` (shots need a window).
   The wreck is built at `ShipWreck.Scale` (1.2) through its frame.
+- Poseidon (wave 30 boss, `WaveDirector.PoseidonWave`, takes MC61's place that wave) and the seahorse: built in code
+  with `Sculpt` helpers (`Code/Creatures/Poseidon.cs`, `Seahorse.cs`). Poseidon floats and swims (tail wave), vanishes
+  and reappears through whirlpools near the player inside the map (`Sculpt.InBounds`), throws tridents with the
+  player trident's bubbles, throws a whirlpool that carries the player to him for a stab, and summons seahorses
+  (`WaveDirector.Adopt` puts them in the wave). Dev menu: Enemies (spawn both, Poseidon attacks), World (Poseidon
+  wave). Test: `--poseidon`. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

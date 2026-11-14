@@ -350,7 +350,18 @@ public partial class WaveDirector : Node3D
 
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
-			if ( !SpawningPaused && TrySpawnEnemy() ) toSpawn--;
+			if ( !SpawningPaused )
+			{
+				if ( TrySpawnEnemy() ) { toSpawn--; failedSpawns = 0; }
+				else if ( ++failedSpawns >= MaxFailedSpawns )
+				{
+					// Nothing can spawn (every kind that fits this round is off, or no spot was found): end the
+					// wave's spawning instead of waiting forever.
+					GD.PushWarning( $"WaveDirector: wave {Wave} gave up on {toSpawn} spawns after {failedSpawns} failed tries" );
+					toSpawn = 0;
+					failedSpawns = 0;
+				}
+			}
 			timeSinceSpawn = 0f;
 		}
 
@@ -445,6 +456,9 @@ public partial class WaveDirector : Node3D
 	}
 
 	int credited;
+	/// <summary> Spawn tries in a row that failed; after <see cref="MaxFailedSpawns"/> the wave stops spawning. </summary>
+	int failedSpawns;
+	const int MaxFailedSpawns = 10;
 
 	/// <summary> A kill outside the wave's own spawns (the dive's Bloobers): counts toward the current or first wave. </summary>
 	public void CreditKill()
@@ -459,6 +473,7 @@ public partial class WaveDirector : Node3D
 		Wave++;
 		toSpawn = Math.Max( 0, BaseZombies + ZombiesPerWave * (Wave - 1) - credited );
 		credited = 0;
+		failedSpawns = 0;
 		BossWave = BossEvery > 0 && Wave % BossEvery == 0;
 		FloatRound = SuitMalfunctionEvery > 0 && Wave % SuitMalfunctionEvery == 0;
 		bossPending = BossWave;
@@ -539,12 +554,13 @@ public partial class WaveDirector : Node3D
 		// Back from the wreck site: a new game starts from the first area (the level is built afresh).
 		if ( SeaTerrain.Area == 2 ) { GetTree().ReloadCurrentScene(); return; }
 		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
-		foreach ( var b in Bloober.All.ToList() ) b.QueueFree();
-		foreach ( var q in Squilien.All.ToList() ) q.QueueFree();
-		foreach ( var c in JunkCrab.All.ToList() ) c.QueueFree();
-		foreach ( var s in RockyShark.All.ToList() ) s.QueueFree();
-		foreach ( var m in MC61.All.ToList() ) m.QueueFree();
-		foreach ( var k in Kraken.All.ToList() ) k.QueueFree();
+		// Every enemy of every kind (spiders too); an ally spider stays.
+		foreach ( var enemy in Creature.Everyone.Where( x => x.IsEnemy ).ToList() ) enemy.QueueFree();
+		// A teleporter left from a death while it waited after wave 10 would take the new game to the wreck site.
+		if ( Teleporter.Current is { } teleporter && IsInstanceValid( teleporter ) ) teleporter.QueueFree();
+		WaitingForTeleport = false;
+		failedSpawns = 0;
+		credited = 0;
 		KrakenWave = krakenPending = krakenForced = false;
 		KrakenVisits = 0;
 		krakenRoundsSince = 0;

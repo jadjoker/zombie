@@ -90,6 +90,8 @@ public partial class PlayerWeapon : Node
 	TimeUntil reloadFinished;
 	TimeUntil nextShell;
 	bool firstShell;
+	double lastFrameAt;
+	float frameStep;
 	readonly HashSet<Node> hitThisShot = new();
 
 	public static PlayerWeapon Rifle() => new() { Name = "Rifle" };
@@ -150,6 +152,9 @@ public partial class PlayerWeapon : Node
 
 	public override void _Process( double delta )
 	{
+		// Game time since the last frame, measured on the same clock as TimeSinceShot (for Shoot's carry-over).
+		frameStep = (float)(Clock.Now - lastFrameAt);
+		lastFrameAt = Clock.Now;
 		if ( !Active ) return;
 		// Dead (issue #34): no gun on screen, no aiming, no firing or reloading.
 		if ( controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) is { Health: not null, IsAlive: false } )
@@ -218,7 +223,11 @@ public partial class PlayerWeapon : Node
 
 	void Shoot()
 	{
-		TimeSinceShot = 0f;
+		// Firing on the first frame the gun is ready: keep the part of that frame that ran past the interval, so held
+		// fire keeps the real rate at any frame rate. Otherwise (a fresh pull, a test shot) start from zero.
+		var interval = 1f / FireRate;
+		var over = TimeSinceShot - interval;
+		TimeSinceShot = over > 0f && over < frameStep && over < interval ? over : 0f;
 		Sfx.Play2D( $"{ModelName}_shoot", 1.1f, bus: Sfx.GunBus );   // 10% louder (playtest 11/12)
 		Controls.Rumble( ModelName == "shotgun" ? 0.55f : 0.22f );
 		Ammo--;

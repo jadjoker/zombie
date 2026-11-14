@@ -215,6 +215,7 @@ public partial class Teleporter : Node3D
 		tween.TweenProperty( fade, "color:a", 1f, 0.35f );
 		tween.TweenCallback( Callable.From( () =>
 		{
+			if ( !IsInstanceValid( this ) ) return;   // freed meanwhile (a restart): stay in this area
 			var level = GetTree().CurrentScene as Node3D;
 			AreaTwo.Go( level, controller );
 			fade.Color = new Color( 0.02f, 0.06f, 0.1f, 1f );

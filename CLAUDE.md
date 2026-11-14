@@ -99,6 +99,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Buildings use `MeshKit` (shared with `ShipWreck`). Stations stand behind the arrival pad, spawns on the ring street
   at 65 m, the Kraken comes up in the west plaza (`Atlantis.KrakenCentre`). Test: `--atlantis` (shots need a window).
   The wreck is built at `ShipWreck.Scale` (1.2) through its frame.
+  The island statue is Poseidon's own rig in gold (`Poseidon.BuildRig`, `BuildStatue`); the globe glass is a fresnel shader.
 - Poseidon (wave 30 boss, `WaveDirector.PoseidonWave`, takes MC61's place that wave) and the seahorse: built in code
   with `Sculpt` helpers (`Code/Creatures/Poseidon.cs`, `Seahorse.cs`). Poseidon floats and swims (tail wave), vanishes
   and reappears through whirlpools near the player inside the map (`Sculpt.InBounds`), throws tridents with the

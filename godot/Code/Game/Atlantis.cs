@@ -91,8 +91,8 @@ public static class Atlantis
 
 	static readonly Dictionary<string, Material> Materials = new()
 	{
-		["marble"] = Mat( new Color( 0.88f, 0.86f, 0.8f ), 0.5f ),
-		["marble_dark"] = Mat( new Color( 0.62f, 0.63f, 0.62f ), 0.6f ),
+		["marble"] = Mat( new Color( 0.94f, 0.86f, 0.72f ), 0.5f ),       // warm, honey-veined
+		["marble_dark"] = Mat( new Color( 0.56f, 0.45f, 0.38f ), 0.6f ),
 		["gold"] = Mat( new Color( 0.92f, 0.66f, 0.24f ), 0.3f, 0.85f ),   // orichalcum
 		["teal"] = Mat( new Color( 0.16f, 0.55f, 0.56f ), 0.3f, 0.3f ),    // sea-glass domes
 		["obsidian"] = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.25f, 0.2f ),
@@ -106,7 +106,7 @@ public static class Atlantis
 	static readonly string[] NoShadow = { "glow_green", "glow_purple", "glow_teal", "crystal", "crystal_purple" };
 
 	// Materials for the rings (their own meshes, not the kit's).
-	static readonly StandardMaterial3D Paving = Mat( new Color( 0.64f, 0.65f, 0.66f ), 0.8f );
+	static readonly StandardMaterial3D Paving = Mat( new Color( 0.36f, 0.3f, 0.27f ), 0.75f );   // dark warm stone
 	static readonly StandardMaterial3D CanalFloor = CanalMaterial();
 	static readonly StandardMaterial3D BaseStone = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.3f, 0.2f );
 
@@ -121,16 +121,32 @@ public static class Atlantis
 		return m;
 	}
 
-	/// <summary> The glass: nearly clear, a sea-green tint, bright at the edges where you see it side-on. </summary>
-	static StandardMaterial3D GlassMaterial()
+	/// <summary>
+	/// The glass: clear where you look straight through it, bright and sea-green at the edges where you see it side-on
+	/// (a fresnel rim), with faint streaks of light running down it so the dome reads as a surface.
+	/// </summary>
+	static readonly Shader GlassShader = new()
 	{
-		var m = new StandardMaterial3D
-		{
-			AlbedoColor = new Color( 0.62f, 0.92f, 1f, 0.07f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-			Roughness = 0.02f, Metallic = 0.1f, MetallicSpecular = 1f, RimEnabled = true, Rim = 1f, RimTint = 0.2f,
-			EmissionEnabled = true, Emission = new Color( 0.2f, 0.5f, 0.6f ), EmissionEnergyMultiplier = 0.06f,
-			CullMode = BaseMaterial3D.CullModeEnum.Disabled,
-		};
+		Code = @"shader_type spatial;
+render_mode cull_disabled, depth_draw_never, specular_schlick_ggx;
+uniform vec3 tint = vec3(0.45, 0.95, 1.0);
+varying vec3 local_pos;
+void vertex() { local_pos = VERTEX; }
+void fragment() {
+	float f = pow(1.0 - abs(dot(NORMAL, VIEW)), 3.0);
+	float streak = smoothstep(0.92, 1.0, sin(atan(local_pos.z, local_pos.x) * 48.0 + local_pos.y * 0.04)) * 0.35;
+	ALBEDO = tint;
+	ROUGHNESS = 0.03;
+	METALLIC = 0.2;
+	SPECULAR = 1.0;
+	EMISSION = tint * (0.03 + f * 0.85 + streak * 0.12);
+	ALPHA = clamp(0.04 + f * 0.6 + streak * 0.05, 0.0, 0.85);
+}",
+	};
+
+	static Material GlassMaterial()
+	{
+		var m = new ShaderMaterial { Shader = GlassShader };
 		m.SetMeta( "no_caustics", true );
 		return m;
 	}
@@ -200,6 +216,12 @@ public static class Atlantis
 			// Gold coping along both edges.
 			Ring( "Coping", Materials["gold"], inner, inner + 0.35f, Land, Land + 0.06f, 128 );
 			if ( outer < BaseInner ) Ring( "Coping", Materials["gold"], outer - 0.35f, outer, Land, Land + 0.06f, 128 );
+			// Gold inlay bands set into the paving, a pair every few metres.
+			for ( var r = inner + 4f; r < outer - 3f; r += 7f )
+			{
+				Ring( "Inlay", Materials["gold"], r, r + 0.25f, Land, Land + 0.012f, 128, walls: false );
+				Ring( "Inlay", Materials["gold"], r + 0.55f, r + 0.65f, Land, Land + 0.012f, 128, walls: false );
+			}
 		}
 		// Steps down into the canals: one in every stretch of canal between crossings.
 		for ( var k = 0; k < 4; k++ )
@@ -279,36 +301,17 @@ public static class Atlantis
 			kit.Box( "marble", new Vector3( at.X + s * (w * 0.5f + 0.05f), top + 1.9f, at.Z ), new Vector3( 0.3f, 1.6f, d * 0.6f ), solid: false );
 	}
 
-	/// <summary> A colossal gold Poseidon on a black plinth, facing south, holding up a trident like the player's. </summary>
+	/// <summary> A colossal gold Poseidon on a black plinth, facing the arrival. </summary>
 	static void Statue( MeshKit kit, Vector3 at )
 	{
 		kit.Box( "obsidian", at + new Vector3( 0f, 1.2f, 0f ), new Vector3( 3.2f, 2.4f, 3.2f ) );
 		foreach ( var s in new[] { -1f, 1f } )
 			kit.Box( "glow_green", at + new Vector3( s * 1.62f, 1.2f, 0f ), new Vector3( 0.05f, 1.6f, 2f ), solid: false );
 		kit.Box( "glow_green", at + new Vector3( 0f, 1.2f, -1.62f ), new Vector3( 2f, 1.6f, 0.05f ), solid: false );
+		// Poseidon himself, the wave 30 boss, cast in gold: standing on his tail, trident upright, facing the arrival.
 		var foot = at + Vector3.Up * 2.4f;
-		foreach ( var s in new[] { -1f, 1f } )
-			kit.Box( "gold", foot + new Vector3( s * 0.55f, 1.8f, 0f ), new Vector3( 0.8f, 3.6f, 1f ), solid: false );   // legs
-		kit.Box( "gold", foot + new Vector3( 0f, 3.9f, 0f ), new Vector3( 2f, 0.9f, 1.2f ), solid: false );               // hips
-		kit.Cylinder( "gold", foot + new Vector3( 0f, 5.6f, 0f ), 1.15f, 2.8f, sides: 10, topRadius: 1.4f );               // chest
-		kit.Sphere( "gold", foot + new Vector3( 0f, 7.6f, 0f ), 0.7f, 12 );                                                 // head
-		kit.Cylinder( "gold", foot + new Vector3( 0f, 6.95f, -0.35f ), 0.55f, 1.1f, new Basis( Vector3.Right, MathF.PI ), 8, 0.05f );   // beard
-		kit.Cylinder( "gold", foot + new Vector3( 0f, 8.35f, 0f ), 0.62f, 0.4f, sides: 10, topRadius: 0.72f );            // crown
-		for ( var i = 0; i < 5; i++ )
-			kit.Cylinder( "gold", foot + Polar( 0.6f, i * 72f, 8.75f ), 0.1f, 0.5f, sides: 5, topRadius: 0f );
-		kit.Box( "gold", foot + new Vector3( -1.6f, 5.4f, 0f ), new Vector3( 0.5f, 2.6f, 0.5f ), new Basis( Vector3.Back, -0.25f ), solid: false );   // left arm down
-		var shoulder = foot + new Vector3( 1.5f, 6.6f, 0f );
-		var hand = foot + new Vector3( 2.3f, 9.4f, -0.2f );
-		var arm = hand - shoulder;
-		kit.Box( "gold", (shoulder + hand) * 0.5f, new Vector3( 0.55f, arm.Length(), 0.55f ), new Basis( new Quaternion( Vector3.Up, arm.Normalized() ) ), solid: false );
-		kit.Sphere( "gold", hand, 0.4f, 8 );
-		kit.Solid( new Transform3D( Basis.Identity, foot + new Vector3( 0.3f, 4.5f, 0f ) ), new Vector3( 3f, 9f, 1.6f ) );
-
-		// The trident, nine times the size of the player's, standing in its raised hand.
-		var trident = new Node3D { Name = "Poseidon's Trident" };
-		kit.Node.AddChild( trident );
-		trident.Transform = new Transform3D( new Basis( Vector3.Right, MathF.PI * 0.5f ).Scaled( Vector3.One * 9f ), hand );
-		TridentModel.BuildTrident( trident );
+		Poseidon.BuildStatue( kit.Node, foot, 1.7f, (Arrival - at).Flat() );
+		kit.Solid( new Transform3D( Basis.Identity, foot + new Vector3( 0f, 5f, 0f ) ), new Vector3( 2.6f, 10f, 2f ) );
 	}
 
 	/// <summary> A black obelisk with green runes and a glowing tip. </summary>
@@ -588,6 +591,15 @@ public static class Atlantis
 			kit.Box( i % 2 == 0 ? "glow_green" : "glow_purple", at, new Vector3( 0.9f, 2.4f, 0.06f ), new Basis( Vector3.Up, MathF.PI * 0.5f - MathX.Rad( a ) ), solid: false );
 		}
 		Ring( "Base Light", Materials["glow_teal"], BaseInner - 0.06f, BaseInner - 0.02f, BaseHeight - 0.5f, BaseHeight - 0.3f, 128 );
+		// Outside: gold pilasters between purple and green glowing panels, and a glowing collar where the glass sits.
+		for ( var i = 0; i < 48; i++ )
+		{
+			var a = i * 360f / 48f;
+			var face = new Basis( Vector3.Up, MathF.PI * 0.5f - MathX.Rad( a ) );
+			kit.Box( "gold", Polar( BaseOuter + 0.2f, a, BaseHeight * 0.5f ), new Vector3( 0.9f, BaseHeight, 0.4f ), face, solid: false );
+			kit.Box( i % 2 == 0 ? "glow_purple" : "glow_green", Polar( BaseOuter + 0.03f, a + 3.75f, BaseHeight * 0.55f ), new Vector3( 2.2f, 3.6f, 0.06f ), face, solid: false );
+		}
+		Ring( "Glass Collar", Materials["glow_teal"], BaseInner + 0.6f, BaseOuter - 0.6f, BaseHeight + 0.3f, BaseHeight + 0.42f, 128, walls: false );
 	}
 
 	// ---- Rings (annulus meshes and their colliders) ----
@@ -652,6 +664,14 @@ public static class Atlantis
 		}
 		for ( var k = 0; k < Avenues; k++ ) Light( Polar( 50f, 45f * k, Land + 3f ), TealGlow, 1.1f, 13f );
 		Light( new Vector3( 0f, IslandHeight + 6f, -9f ), new Color( 1f, 0.85f, 0.55f ), 1.4f, 18f );   // the statue and the temple front
+		Light( new Vector3( 0f, IslandHeight + 9f, -20f ), new Color( 1f, 0.8f, 0.45f ), 2.2f, 22f );   // the statue, lit from the arrival side
+		// Each district its own colour: pools of purple, green and warm gold light over the streets.
+		Color[] pools = { PurpleGlow, GreenGlow, new Color( 1f, 0.7f, 0.35f ), TealGlow };
+		for ( var k = 0; k < Avenues; k++ )
+		{
+			Light( Polar( 36f, 22.5f + 45f * k, Land + 5f ), pools[k % pools.Length], 1.6f, 15f );
+			Light( Polar( 72f, 22.5f + 45f * k, Land + 6f ), pools[(k + 2) % pools.Length], 1.8f, 20f );
+		}
 	}
 }
 

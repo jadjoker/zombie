@@ -120,22 +120,81 @@ void fragment() {
 
 	// ---- The body ----
 
+	/// <summary> His materials: the boss's own colours, or all gold for his statue in Atlantis. </summary>
+	public sealed class Look
+	{
+		public Material Skin, Scales, Hair, Armour, Purple, Green, Yellow, Fins, EyeBlack, Pupil, Dark;
+		public Material[] ScaleColours;
+	}
+
+	/// <summary> The joints of his body, to pose and animate. </summary>
+	public sealed class Rig
+	{
+		public Node3D Body, Chest, Head, ArmR, ForeR, ArmL, ForeL, Hand, Trident;
+		public readonly List<Node3D> Tail = new();
+	}
+
 	void Build()
 	{
 		skin = new ShaderMaterial { Shader = SkinShader };
 		scales = Sculpt.Paint( Scales, 0.35f, 0.2f );
-		var hair = Sculpt.Paint( Hair, 0.7f );
-		var armour = Sculpt.Paint( Armour, 0.25f, 0.6f );
-		var purple = Sculpt.Glow( JewelPurple, 2.4f );
-		var green = Sculpt.Glow( JewelGreen, 2.4f );
-		var yellow = Sculpt.Glow( JewelYellow, 2.2f );
-		var fins = Sculpt.Membrane( new Color( 0.2f, 0.75f, 0.65f ), 0.55f );
-		var eyeBlack = Sculpt.Paint( new Color( 0.02f, 0.02f, 0.025f ), 0.15f );
-		var pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f );
-		var dark = Sculpt.Paint( new Color( 0.12f, 0.03f, 0.08f ), 0.6f );
-		var scaleColours = new[] { Sculpt.Paint( new Color( 1f, 0.8f, 0.15f ), 0.3f, 0.3f ), Sculpt.Paint( JewelPurple, 0.3f, 0.3f ), Sculpt.Paint( new Color( 0.3f, 0.85f, 0.3f ), 0.3f, 0.3f ), Sculpt.Paint( Scales, 0.3f, 0.3f ) };
-		body = new Node3D { Name = "Body" };
-		AddChild( body );
+		var look = new Look
+		{
+			Skin = skin, Scales = scales, Hair = Sculpt.Paint( Hair, 0.7f ), Armour = Sculpt.Paint( Armour, 0.25f, 0.6f ),
+			Purple = Sculpt.Glow( JewelPurple, 2.4f ), Green = Sculpt.Glow( JewelGreen, 2.4f ), Yellow = Sculpt.Glow( JewelYellow, 2.2f ),
+			Fins = Sculpt.Membrane( new Color( 0.2f, 0.75f, 0.65f ), 0.55f ),
+			EyeBlack = Sculpt.Paint( new Color( 0.02f, 0.02f, 0.025f ), 0.15f ), Pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f ),
+			Dark = Sculpt.Paint( new Color( 0.12f, 0.03f, 0.08f ), 0.6f ),
+			ScaleColours = new Material[] { Sculpt.Paint( new Color( 1f, 0.8f, 0.15f ), 0.3f, 0.3f ), Sculpt.Paint( JewelPurple, 0.3f, 0.3f ), Sculpt.Paint( new Color( 0.3f, 0.85f, 0.3f ), 0.3f, 0.3f ), Sculpt.Paint( Scales, 0.3f, 0.3f ) },
+		};
+		var rig = BuildRig( this, look );
+		body = rig.Body;
+		chest = rig.Chest;
+		head = rig.Head;
+		armR = rig.ArmR;
+		foreR = rig.ForeR;
+		armL = rig.ArmL;
+		foreL = rig.ForeL;
+		hand = rig.Hand;
+		heldTrident = rig.Trident;
+		tail.AddRange( rig.Tail );
+
+		// What can be shot: the head (index 0), chest, belly, and the top of the tail.
+		void Hit( Node3D on, int index, Vector3 at, float radius )
+		{
+			var part = CreaturePart.Create( this, index, $"Poseidon {index}", radius );
+			on.AddChild( part );
+			part.Position = at;
+		}
+		Hit( head, 0, new Vector3( 0f, 0.25f, 0f ), 0.36f );
+		Hit( chest, 1, new Vector3( 0f, 0.75f, 0f ), 0.68f );
+		Hit( chest, 2, new Vector3( 0f, 0.15f, 0f ), 0.5f );
+		for ( var i = 0; i < 4; i++ ) Hit( tail[i], 3 + i, new Vector3( 0f, -0.2f, 0f ), MathX.Lerp( 0.42f, 0.3f, i / 3f ) );
+	}
+
+
+	/// <summary>
+	/// His body, under a node: the scaled tail, the belt, the bare-chested torso with armour down the sides and back,
+	/// the angry crowned head, the armoured arms and the trident in his right hand. Metres, facing -Z, the waist at the
+	/// node's origin. Placing the trident is left to the caller.
+	/// </summary>
+	public static Rig BuildRig( Node3D into, Look look )
+	{
+		var skin = look.Skin;
+		var scales = look.Scales;
+		var hair = look.Hair;
+		var armour = look.Armour;
+		var purple = look.Purple;
+		var green = look.Green;
+		var yellow = look.Yellow;
+		var fins = look.Fins;
+		var eyeBlack = look.EyeBlack;
+		var pupil = look.Pupil;
+		var dark = look.Dark;
+		var scaleColours = look.ScaleColours;
+		var rig = new Rig();
+		var body = new Node3D { Name = "Body" };
+		into.AddChild( body );
 
 		// The tail: a chain of joints from the hips down, each a scaled blob with a darker band, ending in a wide fluke.
 		Node3D parent = body;
@@ -156,14 +215,14 @@ void fragment() {
 					var face = new Basis( Vector3.Up, MathF.PI * 0.5f - a ) * new Basis( Vector3.Right, -0.35f );   // flat side out, lower edge lifted
 					Sculpt.Blob( joint, at2, new Vector3( r * 0.75f, r * 0.62f, 0.035f ), scaleColours[(i + k + row) % scaleColours.Length], face, "Scale" );
 				}
-			tail.Add( joint );
+			rig.Tail.Add( joint );
 			parent = joint;
 			at = new Vector3( 0f, -0.36f, 0f );
 		}
 		foreach ( var s in new[] { -1f, 1f } )   // the fluke
 			Sculpt.Block( parent, new Vector3( s * 0.32f, -0.42f, 0.08f ), new Vector3( 0.7f, 0.03f, 0.45f ), fins, new Basis( Vector3.Back, s * 0.5f ) * new Basis( Vector3.Right, 0.35f ) );
 		foreach ( var s in new[] { -1f, 1f } )   // hip fins
-			Sculpt.Block( tail[1], new Vector3( s * 0.45f, -0.15f, 0.05f ), new Vector3( 0.55f, 0.03f, 0.3f ), fins, new Basis( Vector3.Back, s * 0.7f ) );
+			Sculpt.Block( rig.Tail[1], new Vector3( s * 0.45f, -0.15f, 0.05f ), new Vector3( 0.55f, 0.03f, 0.3f ), fins, new Basis( Vector3.Back, s * 0.7f ) );
 
 		// Belt: black with a big yellow jewel and purple and green ones round it.
 		Sculpt.Blob( body, new Vector3( 0f, 0f, 0f ), new Vector3( 1.05f, 0.32f, 0.82f ), armour );
@@ -175,7 +234,7 @@ void fragment() {
 		}
 
 		// The torso: belly and a broad chest.
-		chest = Sculpt.Joint( body, new Vector3( 0f, 0.2f, 0f ), "Chest" );
+		var chest = Sculpt.Joint( body, new Vector3( 0f, 0.2f, 0f ), "Chest" );
 		Sculpt.Blob( chest, new Vector3( 0f, 0.2f, 0f ), new Vector3( 0.85f, 0.75f, 0.6f ), skin );
 		Sculpt.Blob( chest, new Vector3( 0f, 0.75f, 0f ), new Vector3( 1.3f, 0.85f, 0.75f ), skin );
 		foreach ( var s in new[] { -1f, 1f } )
@@ -206,7 +265,7 @@ void fragment() {
 		}
 
 		// Head: white hair and beard, glowing eyes, the black crown with its jewels and spikes.
-		head = Sculpt.Joint( chest, new Vector3( 0f, 1.32f, -0.02f ), "Head" );
+		var head = Sculpt.Joint( chest, new Vector3( 0f, 1.32f, -0.02f ), "Head" );
 		Sculpt.Blob( head, new Vector3( 0f, 0.22f, 0f ), new Vector3( 0.5f, 0.58f, 0.52f ), skin );
 		Sculpt.Blob( head, new Vector3( 0f, 0.3f, 0.12f ), new Vector3( 0.6f, 0.66f, 0.5f ), hair );                              // hair
 		Sculpt.Cone( head, new Vector3( 0f, 0.1f, -0.12f ), new Vector3( 0f, -0.36f, -0.08f ), 0.2f, hair, 10 );                  // beard, tucked under the chin
@@ -249,24 +308,55 @@ void fragment() {
 			Sculpt.Blob( h, Vector3.Zero, new Vector3( 0.24f, 0.26f, 0.22f ), skin );
 			return (arm, fore, h);
 		}
-		(armR, foreR, hand) = Arm( 1f, green );
-		(armL, foreL, _) = Arm( -1f, purple );
-		heldTrident = new Node3D { Name = "Trident" };
+		var (armR, foreR, hand) = Arm( 1f, green );
+		var (armL, foreL, _) = Arm( -1f, purple );
+		var heldTrident = new Node3D { Name = "Trident" };
 		hand.AddChild( heldTrident );
 		// Placed each frame in world space (Animate): upright in his fist like a staff, whatever the arm does.
 		TridentModel.BuildTrident( heldTrident );
+		rig.Body = body;
+		rig.Chest = chest;
+		rig.Head = head;
+		rig.ArmR = armR;
+		rig.ForeR = foreR;
+		rig.ArmL = armL;
+		rig.ForeL = foreL;
+		rig.Hand = hand;
+		rig.Trident = heldTrident;
+		return rig;
+	}
 
-		// What can be shot: the head (index 0), chest, belly, and the top of the tail.
-		void Hit( Node3D on, int index, Vector3 at, float radius )
+	/// <summary>
+	/// The statue of him that stands on Atlantis's island: his own body all in gold (the jewels still glowing), standing
+	/// on the tip of his tail with the trident upright like a staff and his fist out, facing `facing`. `feet` is where
+	/// the tail's tip rests; `size` scales the whole statue (1 is the boss's model before his own Size).
+	/// </summary>
+	public static Node3D BuildStatue( Node3D parent, Vector3 feet, float size, Vector3 facing )
+	{
+		var gold = Sculpt.Paint( new Color( 0.96f, 0.74f, 0.3f ), 0.22f, 0.9f );
+		var darkGold = Sculpt.Paint( new Color( 0.72f, 0.48f, 0.14f ), 0.3f, 0.9f );
+		var look = new Look
 		{
-			var part = CreaturePart.Create( this, index, $"Poseidon {index}", radius );
-			on.AddChild( part );
-			part.Position = at;
-		}
-		Hit( head, 0, new Vector3( 0f, 0.25f, 0f ), 0.36f );
-		Hit( chest, 1, new Vector3( 0f, 0.75f, 0f ), 0.68f );
-		Hit( chest, 2, new Vector3( 0f, 0.15f, 0f ), 0.5f );
-		for ( var i = 0; i < 4; i++ ) Hit( tail[i], 3 + i, new Vector3( 0f, -0.2f, 0f ), MathX.Lerp( 0.42f, 0.3f, i / 3f ) );
+			Skin = gold, Scales = gold, Hair = gold, Armour = darkGold, Fins = darkGold, EyeBlack = darkGold, Dark = darkGold,
+			Purple = Sculpt.Glow( JewelPurple, 2.4f ), Green = Sculpt.Glow( JewelGreen, 2.4f ), Yellow = Sculpt.Glow( JewelYellow, 2.2f ),
+			Pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f ),
+			ScaleColours = new Material[] { gold, darkGold },
+		};
+		var root = new Node3D { Name = "Statue of Poseidon" };
+		parent.AddChild( root );
+		var turn = Shapes.LookAt( facing.Flat().SafeNormal() is var f && f != Vector3.Zero ? f : Vector3.Forward );
+		// The tail hangs about 3.5 model metres below his waist.
+		root.GlobalTransform = new Transform3D( turn.Scaled( Vector3.One * size ), feet + Vector3.Up * 3.5f * size );
+		var rig = BuildRig( root, look );
+		rig.ArmR.Rotation = new Vector3( 0.15f, 0f, 1.15f );
+		rig.ForeR.Rotation = new Vector3( 0f, 0f, 1.9f );
+		rig.ArmL.Rotation = new Vector3( 0.2f, 0f, -0.5f );
+		rig.ForeL.Rotation = new Vector3( 0.9f, 0f, 0f );
+		for ( var i = 0; i < rig.Tail.Count; i++ )
+			rig.Tail[i].Rotation = new Vector3( MathF.Sin( 1.2f - i * 0.55f ) * (0.1f + i * 0.02f), 0f, 0f );
+		var up = Vector3.Up + turn * Vector3.Forward * 0.08f;
+		rig.Trident.GlobalTransform = new Transform3D( Shapes.LookAt( up, turn * Vector3.Back ).Scaled( Vector3.One * 3.2f * size ), rig.Hand.GlobalPosition );
+		return root;
 	}
 
 	// ---- Thinking ----

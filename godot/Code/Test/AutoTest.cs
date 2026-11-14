@@ -2730,13 +2730,29 @@ public partial class AutoTest : Node
 		Check( !p.IsDead && p.Health.Current >= 18000f, "Poseidon did not come up" );
 		if ( shots is not null )
 		{
-			var look = p.GlobalPosition + Vector3.Up * 1f;
-			var camAt = p.GlobalPosition + new Vector3( 6f, 1f, 10f );
-			var shotAt = new Transform3D( Basis.LookingAt( (look - camAt).Normalized(), Vector3.Up ), camAt );
+			// Three views of him (front, three-quarter, wide with the player), the HUD hidden.
+			var layers = GetTree().Root.FindChildren( "*", "CanvasLayer", true, false ).OfType<CanvasLayer>().Where( l => l.Visible ).ToList();
+			foreach ( var l in layers ) l.Visible = false;
+			DevFlags.FreezeEnemies = true;   // holds still (still swimming in place) for the pictures
+			var shotAt = Transform3D.Identity;
 			player.CameraOverride = _ => shotAt;
-			await Wait( 0.3f );
-			await Shot( "poseidon" );
+			var facing = -p.GlobalBasis.Z.Flat().Normalized();
+			var side = Vector3.Up.Cross( facing );
+			var middle = p.GlobalPosition + Vector3.Up * 0.6f;
+			foreach ( var (name, at) in new[]
+			{
+				("poseidon", middle + facing * 11f + Vector3.Up * 0.5f),
+				("poseidon_side", middle + facing * 8f + side * 7f + Vector3.Up * 1.5f),
+				("poseidon_wide", middle + facing * 20f + side * 4f + Vector3.Down * 2f),
+			} )
+			{
+				shotAt = new Transform3D( Basis.LookingAt( (middle - at).Normalized(), Vector3.Up ), at );
+				await Wait( 0.4f );
+				await Shot( name );
+			}
 			player.CameraOverride = null;
+			DevFlags.FreezeEnemies = false;
+			foreach ( var l in layers ) l.Visible = true;
 		}
 
 		before = survivor.Health.Current;

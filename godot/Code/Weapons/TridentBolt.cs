@@ -30,10 +30,11 @@ public partial class TridentBolt : Node3D
 	Godot.Collections.Array<Rid> exclude;
 
 	/// <summary> Fires one from `muzzle` toward `target`. `cameraStart` is where the shot was aimed from (checked first, so a gun poked into a wall still hits the wall). </summary>
-	public static TridentBolt Launch( Node parent, Vector3 muzzle, Vector3 target, Vector3 cameraStart, float damage, PlayerController shooter, PlayerWeapon weapon )
+	public static TridentBolt Launch( Node parent, Vector3 muzzle, Vector3 target, Vector3 aim, Vector3 cameraStart, float damage, PlayerController shooter, PlayerWeapon weapon )
 	{
 		var direction = (target - muzzle).SafeNormal();
-		if ( direction == Vector3.Zero ) direction = -shooter.Camera.GlobalBasis.Z;
+		// A target nearer than the muzzle (something right in your face) would send it backward: fly along the aim.
+		if ( direction == Vector3.Zero || direction.Dot( aim ) < 0.2f ) direction = aim;
 		var bolt = new TridentBolt
 		{
 			Name = "Trident",

@@ -82,7 +82,7 @@ public partial class Teleporter : Node3D
 		{
 			Shape = new CylinderShape3D { Radius = Clearance - 0.4f, Height = 2.8f },
 			Transform = new Transform3D( Basis.Identity, at + Vector3.Up * 1.7f ),
-			CollisionMask = Layers.World,
+			CollisionMask = Layers.World | Layers.Plant,
 		};
 		return space.IntersectShape( query, 1 ).Count == 0;
 	}

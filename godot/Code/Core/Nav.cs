@@ -25,7 +25,7 @@ public static class Nav
 			// level's dock (813 m up) onto a phantom floor at 409 m that spawns snapped to.
 			CellHeight = 0.1f,
 			GeometryParsedGeometryType = NavigationMesh.ParsedGeometryType.StaticColliders,
-			GeometryCollisionMask = Layers.World,
+			GeometryCollisionMask = Layers.World | Layers.Plant,   // enemies walk round the solid plants and rocks too
 			GeometrySourceGeometryMode = NavigationMesh.SourceGeometryMode.GroupsWithChildren,
 			GeometrySourceGroupName = "navmesh_source",
 		};

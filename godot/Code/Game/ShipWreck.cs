@@ -421,7 +421,7 @@ public static class ShipWreck
 	}
 
 	/// <summary> One lobe: a low-poly unit sphere, flattened by its transform. </summary>
-	static readonly SphereMesh LeafMesh = new() { Radius = 1f, Height = 2f, RadialSegments = 7, Rings = 3 };
+	static readonly SphereMesh LeafMesh = new() { Radius = 1f, Height = 2f, RadialSegments = 6, Rings = 2 };   // few triangles: there are thousands
 
 	// ---- Floors and ramps ----
 

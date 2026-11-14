@@ -95,4 +95,9 @@ public static class Layers
 	public const uint Gib = 1 << 3;
 	public const uint Trigger = 1 << 4;
 	public const uint Debris = 1 << 5;
+	/// <summary>
+	/// Solid plants and rocks on the sea floor (VegetationColliders). Their own layer, so only what should bump into
+	/// them does (the player's body, the navmesh): shots, the dive's landing, pickups and effects still see only World.
+	/// </summary>
+	public const uint Plant = 1 << 6;
 }

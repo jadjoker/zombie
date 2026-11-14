@@ -117,7 +117,7 @@ public partial class PlayerController : CharacterBody3D
 		AddChild( shape );
 
 		CollisionLayer = Layers.Player;
-		CollisionMask = Layers.World;
+		CollisionMask = Layers.World | Layers.Plant;
 		FloorMaxAngle = MathX.Rad( GroundAngle );
 		FloorSnapLength = StepHeight;
 		FloorStopOnSlope = true;
@@ -409,7 +409,7 @@ public partial class PlayerController : CharacterBody3D
 		{
 			Shape = full,
 			Transform = new Transform3D( Basis.Identity, target + Vector3.Up * (BodyHeight * 0.5f + 0.01f) ),
-			CollisionMask = Layers.World,
+			CollisionMask = Layers.World | Layers.Plant,
 			Exclude = new Godot.Collections.Array<Rid> { GetRid() },
 		};
 		return GetWorld3D().DirectSpaceState.IntersectShape( query, 1 ).Count == 0;

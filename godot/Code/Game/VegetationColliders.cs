@@ -6,9 +6,10 @@ using Godot;
 /// a static body beside it (not under it, so kelp sway and odd scales don't bend the shape) holding a shape taken from
 /// its own mesh at its final size:
 /// - kelp: an upright cylinder round the stem (the leaves stay soft, so they don't snag you),
-/// - branching coral and tube sponges: the mesh split into a few convex pieces that follow the branches (worked
-///   out once per model; its own triangles if that fails),
-/// - brain coral, boulders, reef rocks and cliffs: a convex hull of the mesh.
+/// - branching coral, tube sponges, reef rocks and cliffs: the mesh split into a few convex pieces that follow its
+///   shape (worked out once per model; its own triangles if that fails),
+/// - brain coral and boulders: a convex hull of the mesh.
+/// The bodies are on their own layer (Layers.Plant): the player's body and the navmesh see them, nothing else does.
 /// Pebbles stay soft. Props close to an enemy spawn point stay soft too, so nothing spawns stuck inside one.
 /// </summary>
 public static class VegetationColliders
@@ -38,7 +39,9 @@ public static class VegetationColliders
 		var model = prop.HasMeta( "model" ) ? (string)prop.GetMeta( "model" ) : "";
 		if ( kind.StartsWith( "Kelp" ) ) return Kind.Stem;
 		if ( model.Contains( "coral_branch" ) || model.Contains( "sponge" ) ) return Kind.Pieces;
-		if ( kind.StartsWith( "Coral" ) || kind.StartsWith( "Boulder" ) || kind.StartsWith( "Reef" ) || kind.StartsWith( "Cliff" ) ) return Kind.Hull;
+		// Reef rocks and cliffs are lumpy and overhang: one hull would fill their hollows with an invisible wall.
+		if ( kind.StartsWith( "Reef" ) || kind.StartsWith( "Cliff" ) ) return Kind.Pieces;
+		if ( kind.StartsWith( "Coral" ) || kind.StartsWith( "Boulder" ) ) return Kind.Hull;
 		return Kind.None;
 	}
 
@@ -56,7 +59,7 @@ public static class VegetationColliders
 			var shapes = kind == Kind.Stem ? Stem( prop ) : FromMesh( prop, kind );
 			if ( shapes.Count == 0 ) continue;
 			// Beside the prop, at its origin, unrotated: the shape is already in world orientation and size.
-			var body = new StaticBody3D { Name = $"{prop.Name} Solid", CollisionLayer = Layers.World, CollisionMask = 0 };
+			var body = new StaticBody3D { Name = $"{prop.Name} Solid", CollisionLayer = Layers.Plant, CollisionMask = 0 };
 			body.SetMeta( "kind", "Solid" );
 			prop.GetParent().AddChild( body );
 			body.GlobalTransform = new Transform3D( Basis.Identity, prop.GlobalPosition );
@@ -126,7 +129,7 @@ public static class VegetationColliders
 	{
 		if ( pieces.TryGetValue( mesh, out var p ) ) return p;
 		var settings = new MeshConvexDecompositionSettings { MaxConvexHulls = 10 };
-		p = mesh.ConvexDecompose( settings ).Select( hull => hull.Points ).Where( points => points.Length >= 4 ).ToArray();
+		p = mesh.ConvexDecompose( settings ).OfType<ConvexPolygonShape3D>().Select( hull => hull.Points ).Where( points => points.Length >= 4 ).ToArray();
 		if ( p.Length == 0 )
 		{
 			triangleMeshes.Add( mesh );

@@ -75,8 +75,11 @@ public static class DiveCrater
 		{
 			if ( node is StaticBody3D ) continue;
 			var name = Level.Kind( node );
+			var apart = node.GlobalPosition.Flat().DistanceTo( at.Flat() );
+			// A boulder or rock right where you land stays, but not solid: you'd be stuck inside it.
+			if ( apart < 3f ) VegetationColliders.RemoveSolid( node );
 			if ( !(name.StartsWith( "Kelp" ) || name.StartsWith( "Coral" ) || name.StartsWith( "Pebbles" )) ) continue;
-			if ( node.GlobalPosition.Flat().DistanceTo( at.Flat() ) >= shape.Radius * 1.5f * U.In ) continue;
+			if ( apart >= shape.Radius * 1.5f * U.In ) continue;
 			node.Visible = false;
 			VegetationColliders.RemoveSolid( node );
 		}

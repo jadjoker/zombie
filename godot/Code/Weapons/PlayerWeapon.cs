@@ -284,7 +284,11 @@ public partial class PlayerWeapon : Node
 			var aimDirection = (forward + Rng.InSphere( 1f ) * spread).Normalized();
 			var aim = Trace.Ray( controller, start, start + aimDirection * Range, Layers.World | Layers.Creature | Layers.Gib, exclude );
 			var target = aim.Hit ? aim.HitPosition : start + aimDirection * Range;
-			TridentBolt.Launch( GetTree().CurrentScene, trailStart, target, start, CurrentDamage, controller, this );
+			// In third person the camera hangs behind the robot: the trident leaves from in front of the robot's eyes.
+			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
+			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
+			var from = controller.ThirdPerson ? eyes + aimDirection * 0.6f : trailStart;
+			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this );
 		}
 		else for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
 		{

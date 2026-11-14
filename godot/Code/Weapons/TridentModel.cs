@@ -105,7 +105,7 @@ public static class TridentModel
 	static void BuildGun( Node3D gun )
 	{
 		// Grip, trigger and guard where the Blaster's were, so the right hand closes round them.
-		Box( gun, new Vector3( -0.6f, 0f, -4.0f ), new Vector3( 3.0f, 2.7f, 7.8f ), BlackPaint, -18f );
+		Box( gun, new Vector3( -0.6f, 0f, -4.0f ), new Vector3( 3.0f, 2.7f, 7.8f ), BlackPaint, 18f );   // the foot leans back, as the fingers are posed
 		Box( gun, new Vector3( 1.6f, 0f, -1.1f ), new Vector3( 0.5f, 0.5f, 1.6f ), YellowPaint );
 		Box( gun, new Vector3( 2.4f, 0f, -2.1f ), new Vector3( 4.2f, 0.6f, 0.5f ), BlackPaint );
 		// Receiver: purple, a black underframe, yellow stripes and glowing green windows down both sides.

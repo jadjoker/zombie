@@ -2702,7 +2702,10 @@ public partial class AutoTest : Node
 		var scene = GetTree().CurrentScene;
 		var director = WaveDirector.Current;
 		director.SpawningPaused = true;
+		// Open sea floor (the run can start on the dock, where the hut stands in the way of a thrown trident).
+		player.GlobalPosition = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) ) + Vector3.Up * 0.1f;
 		player.Velocity = Vector3.Zero;
+		await Wait( 0.5f );
 		var home = player.GlobalPosition;
 
 		// The seahorse.

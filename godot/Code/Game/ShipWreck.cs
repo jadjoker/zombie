@@ -338,6 +338,7 @@ public static class ShipWreck
 	{
 		const float x0 = -34f, x1 = 26f, room = 5f, half = 1.3f;
 		var floor = FloorB + Slab * 0.5f;
+		var cabinChairs = new Random( 1914 );
 		var ceiling = FloorA - Slab * 0.5f;
 		var height = ceiling - floor;
 		for ( var x = x0; x < x1 - 0.1f; x += room )
@@ -364,8 +365,31 @@ public static class ShipWreck
 				var tableAt = new Vector3( cx - 1.2f, floor, s * (half + 3.2f) );
 				kit.Cylinder( "dark_wood", tableAt + new Vector3( 0f, 0.38f, 0f ), 0.06f, 0.76f );
 				kit.Cylinder( "dark_wood", tableAt + new Vector3( 0f, 0.77f, 0f ), 0.4f, 0.04f );
-				if ( random.NextDouble() < 0.6 ) kit.Box( "rust", tableAt + new Vector3( R( 0.5f, 1.2f ), 0.25f, s * R( 0.5f, 1.5f ) ) + down * 0.0f, new Vector3( 0.7f, 0.45f, 0.4f ), new Basis( Vector3.Up, R( 0f, 3f ) ), solid: false );   // a suitcase
-				if ( random.NextDouble() < 0.5 ) kit.Box( "dark_wood", tableAt + new Vector3( R( -0.5f, 0.5f ), 0.22f, s * R( 0.6f, 1.6f ) ), new Vector3( 0.45f, 0.45f, 0.45f ), new Basis( Vector3.Right, MathF.PI * 0.5f ) * new Basis( Vector3.Up, R( 0f, 3f ) ), solid: false );   // a chair on its side
+				// A chair: inside this cabin, clear of the wardrobe, the bed (it starts at 6.3 m across) and the table leg
+				// (it can tuck under the top), and of the suitcase.
+				var cabin = new ChairScatter( kit, cabinChairs, floor, x + 0.1f, x + room - 0.1f,
+					s > 0f ? half + 0.1f : -6.25f, s > 0f ? 6.25f : -(half + 0.1f) );
+				cabin.Block( new Vector3( cx - 1.8f, floor, s * (half + 0.45f) ), 0.6f );
+				cabin.Block( tableAt, 0.25f );
+				if ( random.NextDouble() < 0.6 )
+				{
+					var suitcase = tableAt + new Vector3( R( 0.5f, 1.2f ), 0.25f, s * R( 0.5f, 1.5f ) );
+					kit.Box( "rust", suitcase, new Vector3( 0.7f, 0.45f, 0.4f ), new Basis( Vector3.Up, R( 0f, 3f ) ), solid: false );
+					cabin.Block( suitcase, 0.42f );
+				}
+				var chairRoll = cabin.R( 0f, 1f );
+				if ( chairRoll < 0.35f )
+				{
+					// Still at the table, facing it.
+					for ( var k = 0; k < 6; k++ )
+					{
+						var b = cabin.R( 0f, MathF.Tau );
+						var away = new Vector3( MathF.Cos( b ), 0f, MathF.Sin( b ) );
+						if ( cabin.Place( () => tableAt + away * 0.62f, 1, BackToward( away.X, away.Z ), ChairPose.Upright ) ) break;
+					}
+				}
+				else if ( chairRoll < 0.85f )
+					cabin.Place( () => tableAt + new Vector3( cabin.R( -1.2f, 1.2f ), 0f, s * cabin.R( 0.5f, 1.8f ) ), 8, cabin.R( 0f, MathF.Tau ), cabin.Fallen() );
 			}
 		}
 		// The hallway: a runner of carpet and dim wall lamps.
@@ -415,6 +439,14 @@ public static class ShipWreck
 		foreach ( var x in new[] { -9f, -1.5f, 6.5f, 11f, 17f, 24f } )
 			foreach ( var z in new[] { -5.6f, -2f, 2f, 5.6f } )
 				if ( !(MathF.Abs( z ) < 3f && x > 23f) ) tables.Add( new Vector3( x + R( -0.4f, 0.4f ), floor, z ) );
+		// Chairs stay inside the saloon's walls and clear of the tables (the cloth's radius is 0.82) and the columns.
+		var inner = 8f - Wall - 0.05f;
+		var chairs = new ChairScatter( kit, new Random( 1913 ), floor, x0 + 0.15f, x1 - 0.15f, -inner, inner );
+		foreach ( var t in tables ) chairs.Block( t, 0.84f );
+		foreach ( var x in new[] { -6f, 4f, 14f, 22f } )
+			foreach ( var z in new[] { -4f, 4f } )
+				chairs.Block( new Vector3( x, floor, z ), 0.45f );
+		var seats = new List<(Vector3 Table, float Angle)>();
 		foreach ( var t in tables )
 		{
 			kit.Cylinder( "dark_wood", t + new Vector3( 0f, 0.38f, 0f ), 0.1f, 0.76f );
@@ -425,18 +457,46 @@ public static class ShipWreck
 				var a = i / 4f * MathF.Tau + 0.4f;
 				var at = t + new Vector3( MathF.Cos( a ) * 0.55f, 0.79f, MathF.Sin( a ) * 0.55f );
 				if ( random.NextDouble() < 0.75 ) Setting( kit, random, R, at, a );
-				var chairAt = t + new Vector3( MathF.Cos( a ) * 1.15f, 0f, MathF.Sin( a ) * 1.15f );
-				if ( random.NextDouble() < 0.7 ) Chair( kit, chairAt, a + MathF.PI );
-				else Chair( kit, chairAt + new Vector3( 0f, 0f, R( 0.5f, 2.5f ) ), a, toppled: true );
+				seats.Add( (t, a) );
 			}
 		}
-		// Plates, cutlery and chairs slid down against the low side.
+		// About a third of the chairs still stand at their places (first, so they get their spots), a few more stand
+		// shoved away and turned, and the rest have fallen over, mostly slid toward the low side.
+		var standing = new List<(Vector3 Table, float Angle)>();
+		var shoved = new List<(Vector3 Table, float Angle)>();
+		var fallen = new List<(Vector3 Table, float Angle)>();
+		foreach ( var seat in seats )
+		{
+			var roll = chairs.R( 0f, 1f );
+			(roll < 0.3f ? standing : roll < 0.45f ? shoved : fallen).Add( seat );
+		}
+		foreach ( var (t, a) in standing )
+		{
+			var outward = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
+			chairs.Place( () => t + outward * chairs.R( 1.18f, 1.3f ), 3, BackToward( outward.X, outward.Z ) + chairs.R( -0.25f, 0.25f ), ChairPose.Upright );
+		}
+		foreach ( var (t, a) in shoved )
+		{
+			chairs.Place( () =>
+			{
+				var b = a + chairs.R( -0.5f, 0.5f );
+				return t + new Vector3( MathF.Cos( b ), 0f, MathF.Sin( b ) ) * chairs.R( 1.5f, 2.4f );
+			}, 8, chairs.R( 0f, MathF.Tau ), ChairPose.Upright );
+		}
+		foreach ( var (t, a) in fallen )
+		{
+			var from = t + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * 1.3f;
+			chairs.Place( () => from + new Vector3( chairs.R( -1.4f, 1.4f ), 0f, chairs.R( -0.4f, 2.6f ) ), 10, chairs.R( 0f, MathF.Tau ), chairs.Fallen() );
+		}
+		// More chairs slid down against the low side, then plates and cutlery spilled round them (not under them).
+		for ( var i = 0; i < 12; i++ )
+			chairs.Place( () => new Vector3( chairs.R( x0 + 1f, x1 - 1f ), floor, chairs.R( 5.2f, inner ) ), 10, chairs.R( 0f, MathF.Tau ), chairs.Fallen() );
 		for ( var i = 0; i < 60; i++ )
 		{
 			var at = new Vector3( R( x0 + 1f, x1 - 1f ), floor + 0.02f, R( 5.4f, 7.4f ) );
-			Setting( kit, random, R, at, R( 0f, MathF.Tau ), spilled: true );
+			var facing = R( 0f, MathF.Tau );
+			if ( chairs.Clear( at, 0.3f ) ) Setting( kit, random, R, at, facing, spilled: true );
 		}
-		for ( var i = 0; i < 8; i++ ) Chair( kit, new Vector3( R( x0 + 1f, x1 - 2f ), floor, R( 6f, 7.2f ) ), R( 0f, MathF.Tau ), toppled: true );
 		// Panelled walls at the saloon's ends: the kitchen side has two doorways.
 		var height = ceiling - floor;
 		kit.Box( "panel", new Vector3( x0, floor + height * 0.5f, 0f ), new Vector3( 0.2f, height, 2.4f ) );
@@ -458,17 +518,113 @@ public static class ShipWreck
 		if ( !spilled && random.NextDouble() < 0.5 ) kit.Cylinder( "glass", at + turn * new Vector3( 0.12f, 0.08f, -0.14f ), 0.035f, 0.14f, sides: 8 );
 	}
 
-	static void Chair( Kit kit, Vector3 at, float facing, bool toppled = false )
+	// ---- Chairs: standing, shoved about or fallen over, always resting on the floor ----
+
+	enum ChairPose { Upright, OnBack, OnFront, OnSide }
+
+	/// <summary> A chair's boxes in its own space: the origin on the floor under the seat's middle, the back toward +Z. </summary>
+	static readonly (string Key, Vector3 Centre, Vector3 Size)[] ChairParts =
 	{
-		var turn = new Basis( Vector3.Up, facing );
-		if ( toppled ) turn = turn * new Basis( Vector3.Right, MathF.PI * 0.5f );
-		var lift = toppled ? 0.25f : 0f;
-		kit.Box( "dark_wood", at + new Vector3( 0f, 0.45f - lift * 0.8f, 0f ) + turn * new Vector3( 0f, toppled ? -0.2f : 0f, 0f ), new Vector3( 0.46f, 0.06f, 0.46f ), turn, solid: false );
-		kit.Box( "carpet", at + new Vector3( 0f, 0.49f - lift * 0.8f, 0f ) + turn * new Vector3( 0f, toppled ? -0.2f : 0f, 0f ), new Vector3( 0.42f, 0.04f, 0.42f ), turn, solid: false );
-		kit.Box( "dark_wood", at + turn * new Vector3( 0f, toppled ? 0.05f : 0.75f, 0.22f ) + new Vector3( 0f, toppled ? lift : 0f, 0f ), new Vector3( 0.46f, 0.6f, 0.05f ), turn, solid: false );
-		if ( !toppled )
-			for ( var i = 0; i < 4; i++ )
-				kit.Box( "dark_wood", at + turn * new Vector3( (i % 2 - 0.5f) * 0.38f, 0.22f, (i / 2 - 0.5f) * 0.38f ), new Vector3( 0.04f, 0.44f, 0.04f ), turn, solid: false );
+		("dark_wood", new Vector3( 0f, 0.45f, 0f ), new Vector3( 0.46f, 0.06f, 0.46f )),     // seat
+		("carpet", new Vector3( 0f, 0.49f, 0f ), new Vector3( 0.42f, 0.04f, 0.42f )),        // cushion
+		("dark_wood", new Vector3( 0f, 0.75f, 0.22f ), new Vector3( 0.46f, 0.6f, 0.05f )),    // back
+		("dark_wood", new Vector3( -0.19f, 0.22f, -0.19f ), new Vector3( 0.04f, 0.44f, 0.04f )),
+		("dark_wood", new Vector3( 0.19f, 0.22f, -0.19f ), new Vector3( 0.04f, 0.44f, 0.04f )),
+		("dark_wood", new Vector3( -0.19f, 0.22f, 0.19f ), new Vector3( 0.04f, 0.44f, 0.04f )),
+		("dark_wood", new Vector3( 0.19f, 0.22f, 0.19f ), new Vector3( 0.04f, 0.44f, 0.04f )),
+	};
+
+	/// <summary> The yaw that turns a chair's back toward a direction on the floor. </summary>
+	static float BackToward( float x, float z ) => MathF.Atan2( x, z );
+
+	/// <summary>
+	/// Puts chairs in a room without overlaps: each one is posed, dropped so its lowest corner sits exactly on the
+	/// floor, and only placed where its footprint (a circle round it) stays inside the room and clear of everything
+	/// blocked so far (tables, columns, other chairs).
+	/// </summary>
+	sealed class ChairScatter
+	{
+		readonly Kit kit;
+		readonly Random random;
+		readonly float floor, minX, maxX, minZ, maxZ;
+		readonly List<(Vector2 At, float Radius)> taken = new();
+
+		public ChairScatter( Kit kit, Random random, float floor, float minX, float maxX, float minZ, float maxZ )
+		{
+			this.kit = kit;
+			this.random = random;
+			this.floor = floor;
+			this.minX = minX;
+			this.maxX = maxX;
+			this.minZ = minZ;
+			this.maxZ = maxZ;
+		}
+
+		public float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+		public bool Chance( double p ) => random.NextDouble() < p;
+
+		/// <summary> Something chairs must keep clear of, as a circle on the floor. </summary>
+		public void Block( Vector3 at, float radius ) => taken.Add( (new Vector2( at.X, at.Z ), radius) );
+
+		/// <summary> Is a circle on the floor inside the room and clear of everything placed? </summary>
+		public bool Free( Vector3 at, float radius ) =>
+			at.X - radius >= minX && at.X + radius <= maxX && at.Z - radius >= minZ && at.Z + radius <= maxZ && Clear( at, radius );
+
+		/// <summary> Is a circle on the floor clear of everything placed (the room's edges aside)? </summary>
+		public bool Clear( Vector3 at, float radius )
+		{
+			var p = new Vector2( at.X, at.Z );
+			foreach ( var (other, r) in taken )
+				if ( p.DistanceTo( other ) < radius + r ) return false;
+			return true;
+		}
+
+		/// <summary> A fallen pose, picked at random: mostly on the back or a side, sometimes face down. </summary>
+		public ChairPose Fallen()
+		{
+			var roll = random.NextDouble();
+			return roll < 0.45 ? ChairPose.OnBack : roll < 0.85 ? ChairPose.OnSide : ChairPose.OnFront;
+		}
+
+		/// <summary>
+		/// Tries the spots `spot` gives (up to `tries`) and places the chair at the first clear one, its footprint
+		/// centred there. False if none was clear (then nothing is drawn).
+		/// </summary>
+		public bool Place( Func<Vector3> spot, int tries, float facing, ChairPose pose )
+		{
+			var basis = pose switch
+			{
+				ChairPose.OnBack => new Basis( Vector3.Right, MathF.PI * 0.5f ),
+				ChairPose.OnFront => new Basis( Vector3.Right, -MathF.PI * 0.5f ),
+				ChairPose.OnSide => new Basis( Vector3.Back, Chance( 0.5 ) ? MathF.PI * 0.5f : -MathF.PI * 0.5f ),
+				_ => Basis.Identity,
+			};
+			// The posed chair's lowest point and its footprint on the floor.
+			float lowY = float.MaxValue, lowX = float.MaxValue, highX = float.MinValue, lowZ = float.MaxValue, highZ = float.MinValue;
+			foreach ( var (_, centre, size) in ChairParts )
+				for ( var c = 0; c < 8; c++ )
+				{
+					var corner = centre + new Vector3( (c & 1) == 0 ? -0.5f : 0.5f, (c & 2) == 0 ? -0.5f : 0.5f, (c & 4) == 0 ? -0.5f : 0.5f ) * size;
+					var p = basis * corner;
+					lowY = MathF.Min( lowY, p.Y );
+					lowX = MathF.Min( lowX, p.X ); highX = MathF.Max( highX, p.X );
+					lowZ = MathF.Min( lowZ, p.Z ); highZ = MathF.Max( highZ, p.Z );
+				}
+			var middle = new Vector3( (lowX + highX) * 0.5f, 0f, (lowZ + highZ) * 0.5f );
+			var radius = 0.5f * new Vector2( highX - lowX, highZ - lowZ ).Length();
+			for ( var i = 0; i < tries; i++ )
+			{
+				var at = spot() with { Y = floor };
+				if ( !Free( at, radius ) ) continue;
+				Block( at, radius );
+				var yaw = new Basis( Vector3.Up, facing );
+				var turn = yaw * basis;
+				foreach ( var (key, centre, size) in ChairParts )
+					kit.Box( key, at + new Vector3( 0f, -lowY, 0f ) + yaw * (basis * centre - middle), size, turn, solid: false );
+				return true;
+			}
+			return false;
+		}
 	}
 
 	// ---- Deck A: the kitchen (behind the saloon, toward the stern) ----

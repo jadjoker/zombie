@@ -101,7 +101,7 @@ jobs:
           ./butler/butler push build/windows "$target:windows" --userversion "$version"
           ./butler/butler status "$target:windows"
 
-      # Pictures of the newest boss, rendered on a virtual screen (the tests above run without one), pushed to the
+      # Pictures of the newest boss and of Atlantis, rendered on a virtual screen (the tests above run without one), pushed to the
       # ci-screenshots branch so they can be looked at. Never blocks the release.
       - name: Screenshots
         if: always()
@@ -109,9 +109,11 @@ jobs:
         run: |
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
           mkdir -p build/shots
-          timeout 240 xvfb-run -a -s "-screen 0 1600x900x24" build/linux/RiskOfCopyright.x86_64 --rendering-method gl_compatibility \
-            --log-file "$PWD/build/shots.log" -- --autotest --poseidon --shots "$PWD/build/shots" > /dev/null 2>&1 || true
-          grep "\[autotest\] shot" build/shots.log || true
+          for test in poseidon atlantis; do
+            timeout 300 xvfb-run -a -s "-screen 0 1600x900x24" build/linux/RiskOfCopyright.x86_64 --rendering-method gl_compatibility \
+              --log-file "$PWD/build/shots_$test.log" -- --autotest --$test --shots "$PWD/build/shots" > /dev/null 2>&1 || true
+            grep "\[autotest\] shot" "build/shots_$test.log" || true
+          done
           ls build/shots
 
       - name: Push screenshots

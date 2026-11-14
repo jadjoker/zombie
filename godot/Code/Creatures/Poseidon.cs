@@ -43,11 +43,39 @@ public partial class Poseidon : Creature
 	static readonly Color JewelYellow = new( 1f, 0.82f, 0.15f );
 	static readonly Color GooColor = new( 0.3f, 0.95f, 0.85f );
 
-	enum Mode { Swim, WindUp, Summon, Vanish, Appear, Stab, Dead }
+	enum Mode { Swim, WindUp, Throw, Summon, Vanish, Appear, Stab, Dead }
 
 	Node3D body, chest, head, armR, foreR, armL, foreL, hand, heldTrident;
 	readonly List<Node3D> tail = new();
-	StandardMaterial3D skin, scales;
+	ShaderMaterial skin;
+	StandardMaterial3D scales;
+	/// <summary> Where the held trident points (eased toward what he is doing). </summary>
+	Vector3 tridentPoint = Vector3.Up;
+
+	/// <summary>
+	/// His skin: purple on his right (the trident side), green on his left, split down his middle in world space so
+	/// every part of him (face, chest, arms) shares the line. Lit like the other creatures, with a soft rim; hits flash it.
+	/// </summary>
+	static readonly Shader SkinShader = new()
+	{
+		Code = @"shader_type spatial;
+uniform vec3 left_colour : source_color = vec3(0.32, 0.78, 0.36);
+uniform vec3 right_colour : source_color = vec3(0.56, 0.26, 0.8);
+uniform vec3 split_origin = vec3(0.0);
+uniform vec3 split_normal = vec3(1.0, 0.0, 0.0);
+uniform float flash = 0.0;
+varying vec3 world_pos;
+void vertex() { world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float side = smoothstep(-0.02, 0.02, dot(world_pos - split_origin, split_normal));
+	vec3 c = mix(left_colour, right_colour, side);
+	c = mix(c, vec3(2.2), flash);
+	ALBEDO = c;
+	ROUGHNESS = 0.55;
+	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
+	EMISSION = c * rim * 0.18;
+}",
+	};
 	Mode mode = Mode.Swim;
 	TimeSince inMode;
 	TimeUntil nextAttack = 5f;
@@ -94,7 +122,7 @@ public partial class Poseidon : Creature
 
 	void Build()
 	{
-		skin = Sculpt.Paint( Skin, 0.55f );
+		skin = new ShaderMaterial { Shader = SkinShader };
 		scales = Sculpt.Paint( Scales, 0.35f, 0.2f );
 		var hair = Sculpt.Paint( Hair, 0.7f );
 		var armour = Sculpt.Paint( Armour, 0.25f, 0.6f );
@@ -102,7 +130,10 @@ public partial class Poseidon : Creature
 		var green = Sculpt.Glow( JewelGreen, 2.4f );
 		var yellow = Sculpt.Glow( JewelYellow, 2.2f );
 		var fins = Sculpt.Membrane( new Color( 0.2f, 0.75f, 0.65f ), 0.55f );
-		var eyes = Sculpt.Glow( new Color( 0.5f, 1f, 0.9f ), 3f );
+		var eyeBlack = Sculpt.Paint( new Color( 0.02f, 0.02f, 0.025f ), 0.15f );
+		var pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f );
+		var dark = Sculpt.Paint( new Color( 0.12f, 0.03f, 0.08f ), 0.6f );
+		var scaleColours = new[] { Sculpt.Paint( new Color( 1f, 0.8f, 0.15f ), 0.3f, 0.3f ), Sculpt.Paint( JewelPurple, 0.3f, 0.3f ), Sculpt.Paint( new Color( 0.3f, 0.85f, 0.3f ), 0.3f, 0.3f ), Sculpt.Paint( Scales, 0.3f, 0.3f ) };
 		body = new Node3D { Name = "Body" };
 		AddChild( body );
 
@@ -115,6 +146,16 @@ public partial class Poseidon : Creature
 			var r = MathX.Lerp( 0.44f, 0.12f, i / 8f );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.2f, 0f ), new Vector3( r * 2f, 0.5f, r * 1.8f ), scales );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.05f, 0f ), new Vector3( r * 2.05f, 0.08f, r * 1.85f ), armour );
+			for ( var row = 0; row < 2; row++ )
+				for ( var k = 0; k < 8; k++ )
+				{
+					var a = (k + row * 0.5f) / 8f * MathF.Tau;
+					var y = row == 0 ? -0.12f : -0.3f;
+					var squeeze = 1f - MathF.Abs( y + 0.2f ) * 0.8f;   // the blob narrows toward its ends
+					var at2 = new Vector3( MathF.Cos( a ) * r * 0.97f * squeeze, y, MathF.Sin( a ) * r * 0.88f * squeeze );
+					var face = new Basis( Vector3.Up, MathF.PI * 0.5f - a ) * new Basis( Vector3.Right, -0.35f );   // flat side out, lower edge lifted
+					Sculpt.Blob( joint, at2, new Vector3( r * 0.75f, r * 0.62f, 0.035f ), scaleColours[(i + k + row) % scaleColours.Length], face, "Scale" );
+				}
 			tail.Add( joint );
 			parent = joint;
 			at = new Vector3( 0f, -0.36f, 0f );
@@ -138,7 +179,21 @@ public partial class Poseidon : Creature
 		Sculpt.Blob( chest, new Vector3( 0f, 0.2f, 0f ), new Vector3( 0.85f, 0.75f, 0.6f ), skin );
 		Sculpt.Blob( chest, new Vector3( 0f, 0.75f, 0f ), new Vector3( 1.3f, 0.85f, 0.75f ), skin );
 		foreach ( var s in new[] { -1f, 1f } )
+		{
 			Sculpt.Blob( chest, new Vector3( s * 0.25f, 0.82f, -0.28f ), new Vector3( 0.48f, 0.38f, 0.25f ), skin );   // pecs
+			Sculpt.Blob( chest, new Vector3( s * 0.27f, 0.77f, -0.405f ), new Vector3( 0.06f, 0.06f, 0.025f ), dark );   // nipples
+			for ( var k = 0; k < 3; k++ )   // abs
+				Sculpt.Blob( chest, new Vector3( s * 0.12f, 0.42f - k * 0.17f, -0.29f + k * 0.02f ), new Vector3( 0.2f, 0.14f, 0.1f ), skin );
+			// Black plates down his sides.
+			Sculpt.Blob( chest, new Vector3( s * 0.5f, 0.55f, 0.06f ), new Vector3( 0.32f, 0.95f, 0.58f ), armour );
+			Sculpt.Blob( chest, new Vector3( s * 0.4f, 0.12f, 0.08f ), new Vector3( 0.3f, 0.55f, 0.5f ), armour );
+		}
+		// The back plate, with spikes like the shoulders' and a purple jewel.
+		Sculpt.Blob( chest, new Vector3( 0f, 0.62f, 0.25f ), new Vector3( 1.15f, 1.1f, 0.42f ), armour );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.16f, 0.2f ), new Vector3( 0.82f, 0.6f, 0.36f ), armour );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.62f, 0.47f ), Vector3.One * 0.13f, purple );
+		foreach ( var (x, y) in new[] { (-0.32f, 0.92f), (0f, 0.98f), (0.32f, 0.92f), (-0.2f, 0.45f), (0.2f, 0.45f) } )
+			Sculpt.Cone( chest, new Vector3( x, y, 0.4f ), new Vector3( x * 1.4f, y + 0.25f, 0.85f ), 0.075f, armour );
 
 		// Shoulder armour: black spiked pauldrons with jewels.
 		foreach ( var s in new[] { -1f, 1f } )
@@ -154,13 +209,18 @@ public partial class Poseidon : Creature
 		head = Sculpt.Joint( chest, new Vector3( 0f, 1.32f, -0.02f ), "Head" );
 		Sculpt.Blob( head, new Vector3( 0f, 0.22f, 0f ), new Vector3( 0.5f, 0.58f, 0.52f ), skin );
 		Sculpt.Blob( head, new Vector3( 0f, 0.3f, 0.12f ), new Vector3( 0.6f, 0.66f, 0.5f ), hair );                              // hair
-		Sculpt.Cone( head, new Vector3( 0f, 0.1f, -0.16f ), new Vector3( 0f, -0.62f, -0.22f ), 0.28f, hair, 10 );                 // beard
+		Sculpt.Cone( head, new Vector3( 0f, 0.1f, -0.12f ), new Vector3( 0f, -0.36f, -0.08f ), 0.2f, hair, 10 );                  // beard, tucked under the chin
 		Sculpt.Blob( head, new Vector3( 0f, 0.16f, -0.24f ), new Vector3( 0.32f, 0.1f, 0.12f ), hair );                           // moustache
 		foreach ( var s in new[] { -1f, 1f } )
 		{
-			Sculpt.Blob( head, new Vector3( s * 0.11f, 0.3f, -0.23f ), new Vector3( 0.09f, 0.05f, 0.04f ), eyes );
-			Sculpt.Block( head, new Vector3( s * 0.11f, 0.37f, -0.25f ), new Vector3( 0.14f, 0.035f, 0.04f ), hair, new Basis( Vector3.Back, -s * 0.35f ) );   // brows
+			// Black eyes with green pupils, narrowed under a heavy brow that drops toward the nose (angry).
+			Sculpt.Blob( head, new Vector3( s * 0.11f, 0.29f, -0.235f ), new Vector3( 0.1f, 0.06f, 0.04f ), eyeBlack );
+			Sculpt.Blob( head, new Vector3( s * 0.11f, 0.29f, -0.255f ), new Vector3( 0.034f, 0.034f, 0.015f ), pupil );
+			Sculpt.Block( head, new Vector3( s * 0.11f, 0.345f, -0.255f ), new Vector3( 0.16f, 0.045f, 0.05f ), hair, new Basis( Vector3.Back, s * 0.5f ) );
+			// A frown: the corners of the mouth pulled down under the moustache.
+			Sculpt.Block( head, new Vector3( s * 0.055f, 0.1f, -0.245f ), new Vector3( 0.08f, 0.018f, 0.02f ), dark, new Basis( Vector3.Back, -s * 0.45f ) );
 		}
+		Sculpt.Block( head, new Vector3( 0f, 0.33f, -0.255f ), new Vector3( 0.025f, 0.06f, 0.02f ), dark );                     // the scowl crease
 		Sculpt.Limb( head, new Vector3( 0f, 0.44f, 0f ), new Vector3( 0f, 0.62f, 0f ), 0.3f, 0.32f, armour );                    // crown band
 		Sculpt.Blob( head, new Vector3( 0f, 0.53f, -0.3f ), new Vector3( 0.15f, 0.18f, 0.08f ), yellow );
 		for ( var k = 0; k < 7; k++ )
@@ -178,9 +238,12 @@ public partial class Poseidon : Creature
 			var arm = Sculpt.Joint( chest, new Vector3( s * 0.78f, 1.0f, 0f ), s > 0 ? "Right Arm" : "Left Arm" );
 			Sculpt.Limb( arm, Vector3.Zero, new Vector3( 0f, -0.68f, 0f ), 0.2f, 0.17f, skin );
 			Sculpt.Blob( arm, new Vector3( 0f, -0.25f, 0f ), new Vector3( 0.38f, 0.42f, 0.36f ), skin );   // biceps
+			Sculpt.Limb( arm, new Vector3( 0f, -0.05f, 0f ), new Vector3( 0f, -0.62f, 0f ), 0.23f, 0.2f, armour );   // armoured sleeve
+			Sculpt.Blob( arm, new Vector3( 0f, -0.66f, 0f ), Vector3.One * 0.36f, armour );                        // elbow cop
+			Sculpt.Cone( arm, new Vector3( 0f, -0.68f, 0.14f ), new Vector3( 0f, -0.72f, 0.42f ), 0.06f, armour );   // elbow spike
 			var fore = Sculpt.Joint( arm, new Vector3( 0f, -0.68f, 0f ), "Elbow" );
 			Sculpt.Limb( fore, Vector3.Zero, new Vector3( 0f, -0.62f, 0f ), 0.16f, 0.13f, skin );
-			Sculpt.Limb( fore, new Vector3( 0f, -0.22f, 0f ), new Vector3( 0f, -0.55f, 0f ), 0.18f, 0.16f, armour );
+			Sculpt.Limb( fore, new Vector3( 0f, -0.05f, 0f ), new Vector3( 0f, -0.6f, 0f ), 0.19f, 0.16f, armour );
 			Sculpt.Blob( fore, new Vector3( 0f, -0.38f, -0.16f ), Vector3.One * 0.1f, bracerJewel );
 			var h = Sculpt.Joint( fore, new Vector3( 0f, -0.72f, 0f ), "Hand" );
 			Sculpt.Blob( h, Vector3.Zero, new Vector3( 0.24f, 0.26f, 0.22f ), skin );
@@ -190,8 +253,7 @@ public partial class Poseidon : Creature
 		(armL, foreL, _) = Arm( -1f, purple );
 		heldTrident = new Node3D { Name = "Trident" };
 		hand.AddChild( heldTrident );
-		// Its points out along the arm (the hand's -Y; the trident is built along -Z), so up when the arm is raised.
-		heldTrident.Transform = new Transform3D( new Basis( Vector3.Right, -MathF.PI * 0.5f ).Scaled( Vector3.One * 3.2f ), Vector3.Zero );
+		// Placed each frame in world space (Animate): upright in his fist like a staff, whatever the arm does.
 		TridentModel.BuildTrident( heldTrident );
 
 		// What can be shot: the head (index 0), chest, belly, and the top of the tail.
@@ -240,7 +302,17 @@ public partial class Poseidon : Creature
 			case Mode.WindUp:
 			case Mode.Summon:
 				Hold( prey, dt );
-				if ( inMode >= (mode == Mode.Summon ? 1.1f : 0.65f) ) { afterWindUp?.Invoke(); afterWindUp = null; SetMode( Mode.Swim ); }
+				if ( inMode >= (mode == Mode.Summon ? 1.1f : 0.65f) )
+				{
+					var then = afterWindUp;
+					afterWindUp = null;
+					SetMode( mode == Mode.WindUp ? Mode.Throw : Mode.Swim );
+					then?.Invoke();
+				}
+				break;
+			case Mode.Throw:
+				Hold( prey, dt );
+				if ( inMode >= 0.45f ) SetMode( Mode.Swim );
 				break;
 			case Mode.Vanish:
 				shown = MathX.Lerp( 1f, 0.05f, MathX.Clamp( (float)inMode / 0.8f, 0f, 1f ) );
@@ -358,8 +430,8 @@ public partial class Poseidon : Creature
 		aim += prey.Controller.Velocity * flight * 0.6f;
 		PoseidonTrident.Throw( this, from, (aim - from).SafeNormal() * TridentSpeed, TridentDamage );
 		if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon throws a trident from {from} at {aim}" );
-		heldTrident.Visible = false;
-		GetTree().CreateTimer( 1.0 ).Timeout += () => { if ( IsInstanceValid( heldTrident ) ) heldTrident.Visible = true; };
+		heldTrident.Visible = false;   // in flight now; another is in his hand when the swing is over
+		GetTree().CreateTimer( 0.9 ).Timeout += () => { if ( IsInstanceValid( heldTrident ) ) heldTrident.Visible = true; };
 		Sfx.Play( "harpoon", from, 1f, 0.7f );
 	}
 
@@ -443,7 +515,9 @@ public partial class Poseidon : Creature
 	{
 		body.Scale = Vector3.One * Size * MathF.Max( 0.02f, shown );
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
-		skin.AlbedoColor = Skin.Lerp( Colors.White * 2.2f, flash ) with { A = 1f };
+		skin.SetShaderParameter( "flash", flash );
+		skin.SetShaderParameter( "split_origin", body.GlobalPosition );
+		skin.SetShaderParameter( "split_normal", GlobalBasis.X.Normalized() );
 		scales.AlbedoColor = Scales.Lerp( Colors.White * 2.2f, flash ) with { A = 1f };
 		if ( mode == Mode.Dead ) return;
 		// Swimming: the tail sweeps in a wave down its length, the body bobbing and rocking with it.
@@ -453,17 +527,29 @@ public partial class Poseidon : Creature
 		body.Position = new Vector3( 0f, MathF.Sin( t * 1.4f ) * 0.12f, 0f );
 		body.Rotation = new Vector3( MathF.Sin( t * 2.2f * speed + 1.2f ) * 0.05f, 0f, MathF.Sin( t * 0.9f ) * 0.04f );
 
-		// Arms: the trident held up at the ready; drawn back to throw; both arms raised to call up the sea; thrust to stab.
-		var raiseR = new Vector3( -0.4f, 0f, 2.6f );     // right arm up and out, trident aloft
+		// Arms (Euler YXZ: Z swings an arm out and up from his side, X forward; elbows bend forward with +X): the trident
+		// held upright at his side like a staff (upper arm out, forearm up); drawn back over the shoulder to throw and
+		// whipped forward to let go; both arms raised to call up the sea; thrust out in front to stab.
+		var raiseR = new Vector3( 0.15f, 0f, 1.15f );
+		var foreR0 = new Vector3( 0f, 0f, 1.9f );
 		var raiseL = new Vector3( 0.2f, 0f, -0.5f );     // left fist out
-		var foreR0 = new Vector3( 0.5f, 0f, 0f );
-		var foreL0 = new Vector3( 0.9f, 0f, 0f );     // elbows bend forward (+X turns the forearm toward -Z)
+		var foreL0 = new Vector3( 0.9f, 0f, 0f );
 		var u = MathX.Clamp( (float)inMode / 0.6f, 0f, 1f );
+		var point = Vector3.Up + -GlobalBasis.Z * 0.08f;   // the trident: upright, a touch forward
+		var prey = Target;
+		var aim = prey is not null ? (prey.WorldPosition + Vector3.Up - HandAt).SafeNormal() : -GlobalBasis.Z;
 		switch ( mode )
 		{
 			case Mode.WindUp:
-				raiseR = raiseR.Lerp( new Vector3( 0.6f, 0f, 2.9f ), u );   // back
+				raiseR = raiseR.Lerp( new Vector3( 0.85f, 0f, 2.75f ), u );   // up and back over the shoulder
 				foreR0 = foreR0.Lerp( new Vector3( 1.1f, 0f, 0f ), u );
+				point = point.Lerp( (aim + Vector3.Up * 0.35f).SafeNormal(), u );   // levelled at the target like a javelin
+				break;
+			case Mode.Throw:
+				var swing = MathX.Clamp( (float)inMode / 0.15f, 0f, 1f );
+				raiseR = new Vector3( 0.85f, 0f, 2.75f ).Lerp( new Vector3( -0.9f, 0f, 2.1f ), swing );   // whipped forward
+				foreR0 = new Vector3( 1.1f, 0f, 0f ).Lerp( Vector3.Zero, swing );
+				point = aim;
 				break;
 			case Mode.Summon:
 				raiseR = raiseR.Lerp( new Vector3( 0f, 0f, 2.9f ), u );
@@ -474,8 +560,13 @@ public partial class Poseidon : Creature
 				var thrust = MathX.Clamp( ((float)inMode - 1.0f) / 0.25f, 0f, 1f );
 				raiseR = raiseR.Lerp( new Vector3( 1.45f, 0f, 0.15f ), thrust );   // straight out in front (+X about the shoulder swings the arm to -Z)
 				foreR0 = foreR0.Lerp( Vector3.Zero, thrust );
+				point = point.Lerp( (aim + Vector3.Down * 0.2f).SafeNormal(), MathX.Clamp( (float)inMode / 1.0f, 0f, 1f ) );   // points at the victim
 				break;
 		}
+		// The trident in his fist, gripped at the middle of the shaft, swinging smoothly to where it should point.
+		tridentPoint = tridentPoint.Slerp( point.SafeNormal(), 1f - MathF.Exp( -12f * dt ) ).SafeNormal();
+		if ( tridentPoint == Vector3.Zero ) tridentPoint = Vector3.Up;
+		heldTrident.GlobalTransform = new Transform3D( Shapes.LookAt( tridentPoint, GlobalBasis.Z ).Scaled( Vector3.One * 3.2f * Size * MathF.Max( 0.02f, shown ) ), HandAt );
 		var k = 1f - MathF.Exp( -10f * dt );
 		armR.Rotation = armR.Rotation.Lerp( raiseR + new Vector3( MathF.Sin( t * 1.3f ) * 0.05f, 0f, 0f ), k );
 		foreR.Rotation = foreR.Rotation.Lerp( foreR0, k );

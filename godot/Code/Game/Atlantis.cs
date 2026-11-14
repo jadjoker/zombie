@@ -41,7 +41,7 @@ public static class Atlantis
 		("island", new Vector3( 5f, IslandHeight, -10f )),
 		("ring1 street", Polar( 36f, 22.5f, Land )),
 		("canal", Polar( 22f, 60f, CanalFloorY )),
-		("outer canal", Polar( 50f, 112.5f, CanalFloorY )),
+		("outer canal", Polar( 50f, 100f, CanalFloorY )),
 		("bridge east", Polar( 50f, 0f, Land )),
 		("bridge north", Polar( 50f, 90f, Land )),
 		("kraken plaza", KrakenCentre),
@@ -260,12 +260,12 @@ void fragment() {
 		for ( var k = 0; k < 4; k++ )
 		{
 			var a = 45f + 90f * k;   // canal 1: between the island's four stairways
-			Ramp( kit, Polar( Canals[0].Outer, a, Land ), Polar( Canals[0].Outer - 7f, a, CanalFloorY ), 3f, "marble" );
+			Ramp( kit, Polar( Canals[0].Outer, a, Land ), Polar( Canals[0].Outer - 6f, a, CanalFloorY ), 3f, "marble" );
 		}
 		for ( var k = 0; k < Avenues; k++ )
 		{
 			var a = 22.5f + 45f * k;   // canal 2: between the bridges
-			Ramp( kit, Polar( Canals[1].Inner, a, Land ), Polar( Canals[1].Inner + 7f, a, CanalFloorY ), 3f, "marble" );
+			Ramp( kit, Polar( Canals[1].Inner, a, Land ), Polar( Canals[1].Inner + 6f, a, CanalFloorY ), 3f, "marble" );
 		}
 	}
 

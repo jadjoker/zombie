@@ -16,6 +16,16 @@ public static class VegetationColliders
 	/// <summary> The stem's radius in metres at scale 1 (the stalk wanders about 0.15 m round its axis). </summary>
 	const float KelpRadius = 0.2f;
 	const float SpawnClearance = 3f;
+	/// <summary> Meta on a prop: its collider's body. </summary>
+	public const string SolidMeta = "solid";
+
+	/// <summary> Takes away a prop's collider (the prop was blasted away or hidden). </summary>
+	public static void RemoveSolid( Node prop )
+	{
+		if ( !prop.HasMeta( SolidMeta ) ) return;
+		if ( prop.GetMeta( SolidMeta ).AsGodotObject() is Node body && GodotObject.IsInstanceValid( body ) ) body.QueueFree();
+		prop.RemoveMeta( SolidMeta );
+	}
 
 	static readonly Dictionary<Mesh, Vector3[]> hullPoints = new();
 	static readonly Dictionary<Mesh, Vector3[][]> pieces = new();
@@ -51,6 +61,7 @@ public static class VegetationColliders
 			prop.GetParent().AddChild( body );
 			body.GlobalTransform = new Transform3D( Basis.Identity, prop.GlobalPosition );
 			foreach ( var (shape, offset) in shapes ) body.AddChild( new CollisionShape3D { Shape = shape, Position = offset } );
+			prop.SetMeta( SolidMeta, body );   // so whatever removes the plant (the dive crater) can take its collider too
 			made++;
 		}
 		GD.Print( $"[vegetation] {made} solid props, {skipped} left soft by spawn points" );

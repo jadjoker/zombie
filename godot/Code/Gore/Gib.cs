@@ -136,9 +136,10 @@ public partial class Gib : RigidBody3D
 		Floating = water && (surface is not float top || GlobalPosition.Y < top);
 		if ( !Floating )
 		{
+			// The body's defaults, as before buoyancy existed.
 			GravityScale = 1f;
-			LinearDamp = 0.1f;
-			AngularDamp = 0.1f;
+			LinearDamp = 0f;
+			AngularDamp = 0f;
 			return;
 		}
 		var gravity = (float)ProjectSettings.GetSetting( "physics/3d/default_gravity", 9.8f );

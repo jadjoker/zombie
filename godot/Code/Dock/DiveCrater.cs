@@ -70,11 +70,15 @@ public static class DiveCrater
 		root.GlobalPosition = at;
 
 		// The blast clears the small stuff inside the rim.
+		// By kind, not node name: Godot renames the copies ("@Node3D@12"). Their colliders go with them.
 		foreach ( var node in scene.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>().ToList() )
 		{
-			var name = node.Name.ToString();
+			if ( node is StaticBody3D ) continue;
+			var name = Level.Kind( node );
 			if ( !(name.StartsWith( "Kelp" ) || name.StartsWith( "Coral" ) || name.StartsWith( "Pebbles" )) ) continue;
-			if ( node.GlobalPosition.Flat().DistanceTo( at.Flat() ) < shape.Radius * 1.5f * U.In ) node.Visible = false;
+			if ( node.GlobalPosition.Flat().DistanceTo( at.Flat() ) >= shape.Radius * 1.5f * U.In ) continue;
+			node.Visible = false;
+			VegetationColliders.RemoveSolid( node );
 		}
 
 		const int sides = 64;

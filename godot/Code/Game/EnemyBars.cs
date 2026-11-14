@@ -84,12 +84,17 @@ public partial class EnemyBars : Control
 		}
 
 		var camera = GetViewport().GetCamera3D();
+		Dictionary<Node3D, List<CreaturePart>> partsByCreature = null;
 		foreach ( var bar in bars.Values )
 		{
 			// Healing (or a reset) moves the health up without a hit.
 			if ( bar.Health.Current > bar.Known ) bar.Known = bar.Health.Current;
 			bar.Lag = bar.Lag > bar.Health.Current ? MathX.Approach( bar.Lag, bar.Health.Current, MathF.Max( 1f, bar.Health.MaxHealth ) * 0.6f * dt ) : bar.Health.Current;
-			if ( bar.SinceMeasured > 0.25f ) Measure( bar );
+			if ( bar.SinceMeasured > 0.25f )
+			{
+				partsByCreature ??= PartsByCreature();
+				Measure( bar, partsByCreature.GetValueOrDefault( bar.Creature ) );
+			}
 			if ( camera is not null && bar.SinceLook > 0.15f )
 			{
 				bar.SinceLook = 0f;
@@ -104,17 +109,33 @@ public partial class EnemyBars : Control
 		QueueRedraw();
 	}
 
-	/// <summary> Puts the bar just over the top of everything the creature is drawn with. </summary>
-	static void Measure( Bar bar )
+	/// <summary> Every creature's shootable parts (many creatures keep them in a rig under the scene root, not under themselves). </summary>
+	static Dictionary<Node3D, List<CreaturePart>> PartsByCreature()
+	{
+		var map = new Dictionary<Node3D, List<CreaturePart>>();
+		foreach ( var part in CreaturePart.All )
+		{
+			if ( !IsInstanceValid( part ) || part.Creature is null ) continue;
+			if ( !map.TryGetValue( part.Creature, out var list ) ) map[part.Creature] = list = new();
+			list.Add( part );
+		}
+		return map;
+	}
+
+	/// <summary> Puts the bar just over the top of everything the creature is drawn with (its own node and its parts). </summary>
+	static void Measure( Bar bar, List<CreaturePart> parts )
 	{
 		bar.SinceMeasured = 0f;
 		var origin = bar.Creature.GlobalPosition;
 		var top = float.MinValue;
 		var sum = Vector3.Zero;
 		var count = 0;
-		foreach ( var mesh in bar.Creature.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		var roots = new List<Node>( (IEnumerable<Node>)parts ?? Array.Empty<Node>() ) { bar.Creature };
+		var seen = new HashSet<MeshInstance3D>();   // parts hang off parts: each mesh once
+		foreach ( var mesh in roots.SelectMany( r => r.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() ) )
 		{
-			if ( !mesh.IsVisibleInTree() || mesh.Mesh is null ) continue;
+			if ( !seen.Add( mesh ) || !mesh.IsVisibleInTree() || mesh.Mesh is null ) continue;
+			if ( mesh.GetParent() is TridentBolt ) continue;   // a trident stuck in it isn't its body
 			var box = mesh.GlobalTransform * mesh.GetAabb();
 			top = MathF.Max( top, box.End.Y );
 			sum += box.GetCenter();

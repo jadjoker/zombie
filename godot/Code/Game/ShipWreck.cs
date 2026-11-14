@@ -316,11 +316,11 @@ public static class ShipWreck
 		var faces = new List<(Face Face, int Patches, Func<Vector3> Start, float Drift)>
 		{
 			// The high side's hull (-Z), the most exposed: thick, draping down from the rail.
-			(new Face( Vector3.Forward, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 34f && p.Y > 0.8f && p.Y < 12.95f, p => p with { Z = -Side( p.X ) } ),
-				26, () => new Vector3( R( -33f, 33f ), random.NextDouble() < 0.6 ? 12.8f : R( 3f, 12.5f ), 0f ), -0.35f),
+			(new Face( Vector3.Forward, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 29.5f && p.Y > 0.8f && p.Y < 12.95f, p => p with { Z = -Side( p.X ) } ),
+				26, () => new Vector3( R( -33f, 29f ), random.NextDouble() < 0.6 ? 12.8f : R( 3f, 12.5f ), 0f ), -0.35f),
 			// The low side (+Z): climbing up from the sand (which reaches about the lower window row), not over the breach.
-			(new Face( Vector3.Back, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 34f && MathF.Abs( p.X ) > 7f && p.Y > 5.4f && p.Y < 12.95f, p => p with { Z = Side( p.X ) } ),
-				12, () => new Vector3( random.NextDouble() < 0.5 ? R( -33f, -7.5f ) : R( 7.5f, 33f ), 5.6f, 0f ), 0.35f),
+			(new Face( Vector3.Back, Vector3.Right, Vector3.Up, p => p.X > -34f && p.X < 29.5f && MathF.Abs( p.X ) > 7f && p.Y > 5.4f && p.Y < 12.95f, p => p with { Z = Side( p.X ) } ),
+				12, () => new Vector3( random.NextDouble() < 0.5 ? R( -33f, -7.5f ) : R( 7.5f, 29f ), 5.6f, 0f ), 0.35f),
 			// The main deck, round the deckhouse, clear of the rail and the aft stair's opening.
 			(new Face( Vector3.Up, Vector3.Right, Vector3.Back, p => MathF.Abs( p.X ) < HalfLength - 3f && MathF.Abs( p.Z ) < HalfBeam( p.X ) - 0.5f
 					&& !(p.X > hx0 - 0.2f && p.X < hx1 + 0.2f && MathF.Abs( p.Z ) < hz + 0.2f) && !(p.X > -38.7f && p.X < -24.8f && MathF.Abs( p.Z ) < 3.2f), p => p with { Y = deck + 0.02f } ),
@@ -366,7 +366,7 @@ public static class ShipWreck
 		var hang = down.Normalized();
 		for ( var i = 0; i < 40; i++ )
 		{
-			var x = R( -33f, 33f );
+			var x = R( -33f, 29f );
 			if ( MathF.Abs( x ) < 6.5f ) continue;   // the breach stays open to walk in
 			var p = new Vector3( x, deck - 0.1f, Side( x ) + 0.05f );
 			var length = R( 1.5f, 6f );

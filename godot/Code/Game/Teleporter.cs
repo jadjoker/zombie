@@ -68,7 +68,7 @@ public partial class Teleporter : Node3D
 			var parent = n.GetParent();
 			if ( parent is null ) continue;
 			var kind = Level.Kind( parent );
-			if ( kind is "Dressing" or "Buy Stations" or "Zombie Spawns" || parent.Name.ToString() is "Sea Dressing" || n is BuyStation || n.Name.ToString() == "Floater" )
+			if ( kind is "Dressing" or "Buy Stations" or "Zombie Spawns" || parent.Name.ToString() is "Sea Dressing" || n.GetNodeOrNull<BuyStation>( "BuyStation" ) is not null || n.Name.ToString() == "Floater" )
 				list.Add( n.GlobalPosition );
 		}
 		return list;

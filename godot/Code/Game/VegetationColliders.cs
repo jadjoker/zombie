@@ -121,19 +121,36 @@ public static class VegetationColliders
 	/// <summary> Meshes the split gave nothing for: their one piece is their triangles. </summary>
 	static readonly HashSet<Mesh> triangleMeshes = new();
 
+	/// <summary> How many cells across each side of a mesh's box it is cut into for its convex pieces. </summary>
+	const int Cells = 3;
+
 	/// <summary>
-	/// The mesh split into convex pieces (each a list of hull points, in its own space); worked out once per mesh. If
-	/// the split gives nothing, the mesh's own triangles are used as one piece.
+	/// The mesh split into convex pieces (each a list of points whose hull is the piece, in its own space); worked out
+	/// once per mesh. Its box is cut into a grid of cells, every triangle goes to the cell its middle is in, and each
+	/// cell's triangles become one hull, so the pieces follow branches and overhangs instead of filling the gaps
+	/// between them. (Godot's own convex decomposition is not in its C# API.) If that gives nothing, the mesh's own
+	/// triangles are used as one piece.
 	/// </summary>
 	static Vector3[][] Pieces( Mesh mesh )
 	{
 		if ( pieces.TryGetValue( mesh, out var p ) ) return p;
-		var settings = new MeshConvexDecompositionSettings { MaxConvexHulls = 10 };
-		p = mesh.ConvexDecompose( settings ).OfType<ConvexPolygonShape3D>().Select( hull => hull.Points ).Where( points => points.Length >= 4 ).ToArray();
+		var faces = mesh.GetFaces();
+		var box = mesh.GetAabb();
+		var size = box.Size;
+		var cells = new Dictionary<(int, int, int), List<Vector3>>();
+		int Cell( float v, float start, float length ) => length < 1e-5f ? 0 : Math.Clamp( (int)((v - start) / length * Cells ), 0, Cells - 1 );
+		for ( var i = 0; i + 2 < faces.Length; i += 3 )
+		{
+			var middle = (faces[i] + faces[i + 1] + faces[i + 2]) / 3f;
+			var key = (Cell( middle.X, box.Position.X, size.X ), Cell( middle.Y, box.Position.Y, size.Y ), Cell( middle.Z, box.Position.Z, size.Z ));
+			if ( !cells.TryGetValue( key, out var points ) ) cells[key] = points = new List<Vector3>();
+			points.Add( faces[i] ); points.Add( faces[i + 1] ); points.Add( faces[i + 2] );
+		}
+		p = cells.Values.Select( points => points.Distinct().ToArray() ).Where( points => points.Length >= 4 ).ToArray();
 		if ( p.Length == 0 )
 		{
 			triangleMeshes.Add( mesh );
-			p = new[] { mesh.GetFaces() };
+			p = new[] { faces };
 		}
 		pieces[mesh] = p;
 		return p;

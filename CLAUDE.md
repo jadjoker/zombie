@@ -94,7 +94,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   vines over the hull, deck and deckhouse.
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe
-  (`Atlantis.cs`: island temple of Poseidon with a gold statue holding a giant trident, glowing canals, bridges, 8
+  (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor
+  dressed with rocks, coral, kelp and ruins; `SeaTerrain` sinks the ground under them), bridges, 8
   avenues, 116 marble/obsidian/crystal buildings, a turning green crystal heart, the globe on a black and gold base).
   Buildings use `MeshKit` (shared with `ShipWreck`). Stations stand behind the arrival pad, spawns on the ring street
   at 65 m, the Kraken comes up in the west plaza (`Atlantis.KrakenCentre`). Test: `--atlantis` (shots need a window).

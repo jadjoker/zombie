@@ -53,27 +53,40 @@ public partial class Poseidon : Creature
 	Vector3 tridentPoint = Vector3.Up;
 
 	/// <summary>
-	/// His skin: purple on his right (the trident side), green on his left, split down his middle in world space so
-	/// every part of him (face, chest, arms) shares the line. Lit like the other creatures, with a soft rim; hits flash it.
+	/// His skin: the alien sea's purple, blue and green blended in slow drifting patches with faint glowing veins, in
+	/// world space round his middle so every part of him (face, chest, arms) shares one pattern. Hits flash it.
 	/// </summary>
 	static readonly Shader SkinShader = new()
 	{
 		Code = @"shader_type spatial;
-uniform vec3 left_colour : source_color = vec3(0.32, 0.78, 0.36);
-uniform vec3 right_colour : source_color = vec3(0.56, 0.26, 0.8);
-uniform vec3 split_origin = vec3(0.0);
-uniform vec3 split_normal = vec3(1.0, 0.0, 0.0);
+// His skin drifts like the alien sea: broad slow patches of purple, blue and green blending into each other, with
+// faint glowing veins. Measured from his own middle (centre), so the pattern stays on him as he swims.
+uniform vec3 purple : source_color = vec3(0.56, 0.26, 0.8);
+uniform vec3 blue : source_color = vec3(0.22, 0.42, 0.88);
+uniform vec3 green : source_color = vec3(0.32, 0.78, 0.36);
+uniform vec3 centre = vec3(0.0);
 uniform float flash = 0.0;
 varying vec3 world_pos;
+float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
+float noise(vec3 x) {
+	vec3 i = floor(x); vec3 f = fract(x); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x), mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+		mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x), mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
 void vertex() { world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	float side = smoothstep(-0.02, 0.02, dot(world_pos - split_origin, split_normal));
-	vec3 c = mix(left_colour, right_colour, side);
-	c = mix(c, vec3(2.2), flash);
-	ALBEDO = c;
-	ROUGHNESS = 0.55;
+	vec3 p = (world_pos - centre) * 1.1;
+	float t = TIME * 0.18;
+	float u = noise(p + vec3(t, -t * 0.7, t * 0.4));
+	float v = noise(p * 0.8 - vec3(t * 0.6, t * 0.5, -t * 0.3) + vec3(7.3, 2.1, 4.4));
+	vec3 c = mix(purple, blue, smoothstep(0.25, 0.75, u));
+	c = mix(c, green, smoothstep(0.4, 0.8, v));
+	float vein = pow(1.0 - abs(noise(p * 2.4 + vec3(0.0, t * 2.0, 0.0)) * 2.0 - 1.0), 12.0);
+	vec3 shown = mix(c, vec3(2.2), flash);
+	ALBEDO = shown;
+	ROUGHNESS = 0.5;
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	EMISSION = c * rim * 0.18;
+	EMISSION = shown * rim * 0.2 + mix(green, purple, u) * vein * 0.45;
 }",
 	};
 	Mode mode = Mode.Swim;
@@ -609,8 +622,7 @@ void fragment() {
 		body.Scale = Vector3.One * Size * MathF.Max( 0.02f, shown );
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
-		skin.SetShaderParameter( "split_origin", body.GlobalPosition );
-		skin.SetShaderParameter( "split_normal", GlobalBasis.X.Normalized() );
+		skin.SetShaderParameter( "centre", body.GlobalPosition );
 		scales.AlbedoColor = Scales.Lerp( Colors.White * 2.2f, flash ) with { A = 1f };
 		if ( mode == Mode.Dead ) return;
 		// Swimming: the tail sweeps in a wave down its length, the body bobbing and rocking with it.

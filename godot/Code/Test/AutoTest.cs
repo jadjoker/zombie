@@ -2884,7 +2884,7 @@ public partial class AutoTest : Node
 				("atlantis_temple", new Vector3( 0f, 7f, -30f ), new Vector3( 0f, 10f, 0f )),
 				("atlantis_statue", new Vector3( 6f, 6f, -19f ), new Vector3( 0f, 10f, -11.5f )),
 				("atlantis_above", new Vector3( 55f, 45f, -55f ), new Vector3( 0f, 5f, 0f )),
-				("atlantis_canal", Atlantis.Polar( 50f, 30f, 2f ), Atlantis.Polar( 50f, 75f, 0.5f )),
+				("atlantis_canal", Atlantis.Polar( 50f, 100f, 0.5f ), Atlantis.Polar( 50f, 125f, -3f )),
 				("atlantis_kraken_plaza", Atlantis.KrakenCentre + new Vector3( 14f, 5f, 8f ), Atlantis.KrakenCentre),
 				("atlantis_globe_outside", new Vector3( 0f, 25f, -108f ), new Vector3( 0f, 25f, 0f )),
 			};

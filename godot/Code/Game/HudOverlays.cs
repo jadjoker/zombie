@@ -163,7 +163,9 @@ public partial class HudOverlays : Control
 		if ( station is null && (use?.AtTeleporter ?? false) )
 		{
 			promptTitle.Text = "Teleport";
-			promptDesc.Text = "To the wreck site. Wave 11 starts there";
+			promptDesc.Text = SeaTerrain.Area >= 2
+				? $"To Atlantis, the third stage. Wave {WaveDirector.Current?.Wave + 1 ?? 21} starts there"
+				: "To the wreck site, the second stage. Wave 11 starts there";
 			promptTitle.AddThemeColorOverride( "font_color", new Color( 0.5f, 1f, 0.55f ) );
 		}
 		if ( station is not null )

@@ -20,6 +20,8 @@ public static class Atlantis
 	public const float IslandRadius = 18f, IslandHeight = 3f;
 	/// <summary> The top of the land rings (the canals are the sea floor, at 0). </summary>
 	public const float Land = 1f;
+	/// <summary> The floor of the dry canals, a storey below the streets (the old sea floor round the city is at 0). </summary>
+	public const float CanalFloorY = -3f;
 	public static readonly (float Inner, float Outer)[] Canals = { (18f, 26f), (46f, 54f) };
 	public static readonly (float Inner, float Outer)[] Rings = { (26f, 46f), (54f, BaseInner) };
 	public const int Avenues = 8;
@@ -38,7 +40,8 @@ public static class Atlantis
 		("arrival", Arrival),
 		("island", new Vector3( 5f, IslandHeight, -10f )),
 		("ring1 street", Polar( 36f, 22.5f, Land )),
-		("canal", Polar( 22f, 60f, 0f )),
+		("canal", Polar( 22f, 60f, CanalFloorY )),
+		("outer canal", Polar( 50f, 112.5f, CanalFloorY )),
 		("bridge east", Polar( 50f, 0f, Land )),
 		("bridge north", Polar( 50f, 90f, Land )),
 		("kraken plaza", KrakenCentre),
@@ -52,13 +55,13 @@ public static class Atlantis
 	public static Vector3 Polar( float radius, float degrees, float y ) =>
 		new( MathF.Cos( MathX.Rad( degrees ) ) * radius, y, MathF.Sin( MathX.Rad( degrees ) ) * radius );
 
-	/// <summary> The walking surface's height: the island top, a land ring, or the canal floor (the sea floor, 0). </summary>
+	/// <summary> The walking surface's height: the island top, a land ring, or the dry canals' floor. </summary>
 	public static float SurfaceAt( Vector3 p )
 	{
 		var r = p.Flat().Length();
 		if ( r < IslandRadius ) return IslandHeight;
 		foreach ( var (inner, outer) in Rings ) if ( r >= inner && r < outer ) return Land;
-		return 0f;
+		return r < BaseInner ? CanalFloorY : 0f;
 	}
 
 	/// <summary> Inside the globe's base (with a margin), where the city replaces the sea floor's own things. </summary>
@@ -114,6 +117,8 @@ public static class Atlantis
 		["banner_purple"] = Glow( new Color( 0.5f, 0.14f, 0.78f ), 0.45f ),
 		["banner_green"] = Glow( new Color( 0.2f, 0.7f, 0.22f ), 0.45f ),
 		["water"] = Glow( new Color( 0.3f, 0.95f, 0.9f ), 1.2f ),
+		["rock"] = Mat( new Color( 0.45f, 0.42f, 0.38f ), 0.9f ),
+		["rock_dark"] = Mat( new Color( 0.24f, 0.22f, 0.24f ), 0.9f ),
 		["teal"] = Mat( new Color( 0.16f, 0.55f, 0.56f ), 0.3f, 0.3f ),    // sea-glass domes
 		["obsidian"] = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.25f, 0.2f ),
 		["purple"] = Mat( new Color( 0.34f, 0.1f, 0.52f ), 0.4f ),
@@ -134,16 +139,8 @@ public static class Atlantis
 	static readonly StandardMaterial3D CanalFloor = CanalMaterial();
 	static readonly StandardMaterial3D BaseStone = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.3f, 0.2f );
 
-	static StandardMaterial3D CanalMaterial()
-	{
-		var m = new StandardMaterial3D
-		{
-			AlbedoColor = new Color( 0.04f, 0.3f, 0.28f ), Roughness = 0.1f, Metallic = 0.4f,
-			EmissionEnabled = true, Emission = new Color( 0.1f, 0.85f, 0.65f ), EmissionEnergyMultiplier = 0.9f,
-		};
-		m.SetMeta( "no_caustics", true );
-		return m;
-	}
+	/// <summary> The dry canals' floor: pale sea sand. </summary>
+	static StandardMaterial3D CanalMaterial() => Mat( new Color( 0.62f, 0.54f, 0.42f ), 0.95f );
 
 	/// <summary>
 	/// The glass: clear where you look straight through it, bright and sea-green at the edges where you see it side-on
@@ -187,6 +184,7 @@ void fragment() {
 		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
 
 		Ground( kit );
+		DryCanals( kit, random, R );
 		Island( kit );
 		Crossings( kit );
 		AvenueLamps( kit );
@@ -235,16 +233,19 @@ void fragment() {
 		body.AddChild( new CollisionShape3D { Shape = shape, Position = new Vector3( 0f, GlobeCentreY, 0f ) } );
 	}
 
-	// ---- The ground: land rings over glowing canals ----
+	// ---- The ground: land rings over the dry canals, a storey down ----
 
 	static void Ground( MeshKit kit )
 	{
 		foreach ( var (inner, outer) in Canals )
-			Ring( "Canal", CanalFloor, inner, outer, 0.02f, 0.03f, 96, walls: false );
+			Ring( "Canal", CanalFloor, inner, outer, CanalFloorY + 0.02f, CanalFloorY + 0.03f, 96, walls: false );
 		foreach ( var (inner, outer) in Rings )
 		{
-			Ring( "Land Ring", Paving, inner, outer, 0f, Land, 128 );
-			RingSolid( kit, inner, outer, 0f, Land, 128 );
+			Ring( "Land Ring", Paving, inner, outer, CanalFloorY, Land, 128 );
+			RingSolid( kit, inner, outer, CanalFloorY, Land, 128 );
+			// Glowing runes along the canal walls, below the street.
+			if ( inner > IslandRadius + 1f ) Ring( "Canal Wall Light", Materials["glow_teal"], inner - 0.04f, inner, -0.6f, -0.45f, 128 );
+			if ( outer < BaseInner ) Ring( "Canal Wall Light", Materials["glow_purple"], outer, outer + 0.04f, -0.6f, -0.45f, 128 );
 			// Gold coping along both edges.
 			Ring( "Coping", Materials["gold"], inner, inner + 0.35f, Land, Land + 0.06f, 128 );
 			if ( outer < BaseInner ) Ring( "Coping", Materials["gold"], outer - 0.35f, outer, Land, Land + 0.06f, 128 );
@@ -259,12 +260,12 @@ void fragment() {
 		for ( var k = 0; k < 4; k++ )
 		{
 			var a = 45f + 90f * k;   // canal 1: between the island's four stairways
-			Ramp( kit, Polar( Canals[0].Outer, a, Land ), Polar( Canals[0].Outer - 3.5f, a, 0f ), 3f, "marble" );
+			Ramp( kit, Polar( Canals[0].Outer, a, Land ), Polar( Canals[0].Outer - 7f, a, CanalFloorY ), 3f, "marble" );
 		}
 		for ( var k = 0; k < Avenues; k++ )
 		{
 			var a = 22.5f + 45f * k;   // canal 2: between the bridges
-			Ramp( kit, Polar( Canals[1].Inner, a, Land ), Polar( Canals[1].Inner + 3.5f, a, 0f ), 3f, "marble" );
+			Ramp( kit, Polar( Canals[1].Inner, a, Land ), Polar( Canals[1].Inner + 7f, a, CanalFloorY ), 3f, "marble" );
 		}
 	}
 
@@ -272,10 +273,12 @@ void fragment() {
 
 	static void Island( MeshKit kit )
 	{
-		kit.Cylinder( "marble", new Vector3( 0f, IslandHeight * 0.5f, 0f ), IslandRadius, IslandHeight, sides: 64 );
-		kit.Solid( new CylinderShape3D { Radius = IslandRadius, Height = IslandHeight }, new Transform3D( Basis.Identity, new Vector3( 0f, IslandHeight * 0.5f, 0f ) ) );
+		var islandMid = (IslandHeight + CanalFloorY) * 0.5f;
+		var islandTall = IslandHeight - CanalFloorY;
+		kit.Cylinder( "marble", new Vector3( 0f, islandMid, 0f ), IslandRadius, islandTall, sides: 64 );
+		kit.Solid( new CylinderShape3D { Radius = IslandRadius, Height = islandTall }, new Transform3D( Basis.Identity, new Vector3( 0f, islandMid, 0f ) ) );
 		kit.Cylinder( "gold", new Vector3( 0f, IslandHeight - 0.2f, 0f ), IslandRadius + 0.12f, 0.3f, sides: 64 );
-		kit.Cylinder( "obsidian", new Vector3( 0f, 0.35f, 0f ), IslandRadius + 0.1f, 0.7f, sides: 64 );
+		kit.Cylinder( "obsidian", new Vector3( 0f, CanalFloorY + 0.35f, 0f ), IslandRadius + 0.1f, 0.7f, sides: 64 );
 		for ( var i = 0; i < 48; i++ )   // glowing runes round the island's foot
 		{
 			var a = i * 7.5f;
@@ -732,27 +735,126 @@ void fragment() {
 		}
 		var n = random.Next( 5, 9 );
 		for ( var i = 0; i < n; i++ )
-		{
-			var key = random.NextDouble() switch { < 0.35 => "coral_pink", < 0.6 => "coral_orange", < 0.8 => "purple", _ => "roof_jade" };
-			var tip = random.NextDouble() < 0.5 ? "glow_purple" : "glow_green";
-			var foot = L( R( -0.4f, 0.4f ) * gw, 0.1f, R( -0.38f, 0.38f ) * gd );
-			Branch( foot, Vector3.Up, R( 0.9f, 1.6f ), 0.13f, 0 );
-			kit.Solid( new Transform3D( Basis.Identity, foot + Vector3.Up * 0.6f ), new Vector3( 0.35f, 1.2f, 0.35f ) );
+			Coral( kit, random, R, L( R( -0.4f, 0.4f ) * gw, 0.1f, R( -0.38f, 0.38f ) * gd ), 1f );
+	}
 
-			void Branch( Vector3 from, Vector3 dir, float length, float r, int depthLevel )
+	/// <summary> One branching coral: pink, orange, purple or jade, forking twice, glowing at the tips. Solid at the trunk. </summary>
+	static void Coral( MeshKit kit, Random random, Func<float, float, float> R, Vector3 foot, float size )
+	{
+		var key = random.NextDouble() switch { < 0.35 => "coral_pink", < 0.6 => "coral_orange", < 0.8 => "purple", _ => "roof_jade" };
+		var tip = random.NextDouble() < 0.5 ? "glow_purple" : "glow_green";
+		Branch( foot, Vector3.Up, R( 0.9f, 1.6f ) * size, 0.13f * size, 0 );
+		kit.Solid( new Transform3D( Basis.Identity, foot + Vector3.Up * 0.6f * size ), new Vector3( 0.35f, 1.2f, 0.35f ) * size );
+
+		void Branch( Vector3 from, Vector3 dir, float length, float r, int level )
+		{
+			var to = from + dir * length;
+			kit.Cylinder( key, (from + to) * 0.5f, r, length, new Basis( new Quaternion( Vector3.Up, dir ) ), 6, r * 0.7f );
+			if ( level == 2 ) { kit.Sphere( tip, to, r * 1.4f, 6 ); return; }
+			var forks = random.Next( 2, 4 );
+			for ( var f = 0; f < forks; f++ )
 			{
-				var to = from + dir * length;
-				kit.Cylinder( key, (from + to) * 0.5f, r, length, new Basis( new Quaternion( Vector3.Up, dir ) ), 6, r * 0.7f );
-				if ( depthLevel == 2 ) { kit.Sphere( tip, to, r * 1.4f, 6 ); return; }
-				var forks = random.Next( 2, 4 );
-				for ( var f = 0; f < forks; f++ )
-				{
-					var a = R( 0f, MathF.Tau );
-					var bent = (dir + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * R( 0.4f, 0.9f )).Normalized();
-					Branch( to, bent, length * R( 0.5f, 0.75f ), r * 0.7f, depthLevel + 1 );
-				}
+				var a = R( 0f, MathF.Tau );
+				var bent = (dir + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * R( 0.4f, 0.9f )).Normalized();
+				Branch( to, bent, length * R( 0.5f, 0.75f ), r * 0.7f, level + 1 );
 			}
 		}
+	}
+
+	/// <summary>
+	/// The dry canals: a lower floor of sand a storey under the streets, reached by the ramps, with the sea floor's own
+	/// things growing in it: rocks, coral, tall kelp reaching up past the street, glowing alien bulbs, crystals, and the
+	/// city's fallen pieces (column drums, amphorae). Kept clear of the ramps, stairways and bridges.
+	/// </summary>
+	static void DryCanals( MeshKit kit, Random random, Func<float, float, float> R )
+	{
+		var floor = CanalFloorY;
+		for ( var c = 0; c < Canals.Length; c++ )
+		{
+			var (inner, outer) = Canals[c];
+			var mid = (inner + outer) * 0.5f;
+			// What crosses or comes down into this canal, by angle: keep 5 m either side clear.
+			var crossings = new List<float>();
+			for ( var k = 0; k < 8; k++ )
+			{
+				if ( c == 0 && k % 2 == 0 ) crossings.Add( 45f * k );   // the island's stairways
+				if ( c == 0 && k % 2 == 1 ) crossings.Add( 45f * k );   // the ramps down
+				if ( c == 1 ) { crossings.Add( 45f * k ); crossings.Add( 22.5f + 45f * k ); }   // bridges, ramps
+			}
+			bool Clear( float degrees ) => crossings.All( x => MathF.Abs( Mathf.Wrap( degrees - x, -180f, 180f ) ) * MathF.PI / 180f * mid > 5.5f );
+			var count = (int)(MathF.Tau * mid / 2.6f);
+			for ( var i = 0; i < count; i++ )
+			{
+				var deg = R( 0f, 360f );
+				if ( !Clear( deg ) ) continue;
+				var at = Polar( R( inner + 1f, outer - 1f ), deg, floor );
+				if ( Places.Any( pl => pl.At.Flat().DistanceTo( at.Flat() ) < 3.5f ) ) continue;   // where the test stands
+				var roll = random.NextDouble();
+				if ( roll < 0.25 )   // rocks
+				{
+					var size = R( 0.5f, 1.4f );
+					kit.Add( random.NextDouble() < 0.5 ? "rock" : "rock_dark", new SphereMesh { Radius = size, Height = size * R( 1f, 1.5f ), RadialSegments = 8, Rings = 5 },
+						new Transform3D( new Basis( Vector3.Up, R( 0f, MathF.Tau ) ).Scaled( new Vector3( R( 1f, 1.6f ), 1f, 1f ) ), at + Vector3.Up * size * 0.25f ) );
+					kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * size * 0.3f ), new Vector3( size * 1.4f, size * 0.9f, size * 1.4f ) );
+				}
+				else if ( roll < 0.45 ) Coral( kit, random, R, at, R( 0.8f, 1.5f ) );
+				else if ( roll < 0.62 ) Kelp( kit, random, R, at );
+				else if ( roll < 0.74 )   // glowing alien bulbs on stalks
+				{
+					var n = random.Next( 2, 5 );
+					for ( var b = 0; b < n; b++ )
+					{
+						var foot = at + new Vector3( R( -0.6f, 0.6f ), 0f, R( -0.6f, 0.6f ) );
+						var tall = R( 0.4f, 1.3f );
+						kit.Cylinder( "vine_purple", foot + Vector3.Up * tall * 0.5f, 0.04f, tall, sides: 5 );
+						kit.Sphere( random.NextDouble() < 0.5 ? "glow_green" : "glow_purple", foot + Vector3.Up * tall, R( 0.12f, 0.22f ), 8 );
+					}
+				}
+				else if ( roll < 0.82 )   // a cluster of crystals
+				{
+					for ( var b = 0; b < 3; b++ )
+					{
+						var tall = R( 0.8f, 2.2f );
+						var tilt = new Basis( Vector3.Up, R( 0f, MathF.Tau ) ) * new Basis( Vector3.Right, R( -0.4f, 0.4f ) );
+						kit.Add( random.NextDouble() < 0.6 ? "crystal" : "crystal_purple", new CylinderMesh { BottomRadius = 0.25f, TopRadius = 0f, Height = tall, RadialSegments = 6, Rings = 1 },
+							new Transform3D( tilt, at + tilt * (Vector3.Up * tall * 0.45f) ) );
+					}
+					kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * 0.5f ), new Vector3( 0.6f, 1f, 0.6f ) );
+				}
+				else if ( roll < 0.92 )   // a fallen column drum, half in the sand
+				{
+					var turn = new Basis( Vector3.Up, R( 0f, MathF.Tau ) ) * new Basis( Vector3.Back, MathF.PI * 0.5f );
+					var length = R( 1.2f, 2.6f );
+					kit.Cylinder( "marble", at + Vector3.Up * 0.3f, 0.42f, length, turn, 12 );
+					kit.Solid( new Transform3D( turn, at + Vector3.Up * 0.3f ), new Vector3( 0.8f, length, 0.8f ) );
+				}
+				else Amphorae( kit, random, R, at );
+			}
+		}
+	}
+
+	/// <summary> A strand of kelp from the canal floor up past the street: a swaying chain of stem pieces with blades. </summary>
+	static void Kelp( MeshKit kit, Random random, Func<float, float, float> R, Vector3 foot )
+	{
+		var p = foot;
+		var tall = R( 3.5f, 7f );
+		var lean = new Vector3( R( -0.25f, 0.25f ), 0f, R( -0.25f, 0.25f ) );
+		var key = random.NextDouble() < 0.35 ? "vine_purple" : "leaf";
+		for ( var h = 0f; h < tall; )
+		{
+			var step = R( 0.5f, 0.8f );
+			lean = new Vector3( MathX.Clamp( lean.X + R( -0.15f, 0.15f ), -0.4f, 0.4f ), 0f, MathX.Clamp( lean.Z + R( -0.15f, 0.15f ), -0.4f, 0.4f ) );
+			var dir = (Vector3.Up + lean).Normalized();
+			var next = p + dir * step;
+			kit.Cylinder( "vine", (p + next) * 0.5f, 0.05f, step, new Basis( new Quaternion( Vector3.Up, dir ) ), 5 );
+			var a = R( 0f, MathF.Tau );
+			kit.Box( key, (p + next) * 0.5f + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * 0.18f, new Vector3( 0.12f, step * 0.9f, 0.03f ),
+				new Basis( Vector3.Up, -a ) * new Basis( Vector3.Back, R( -0.4f, 0.4f ) ), solid: false );
+			p = next;
+			h += step;
+		}
+		if ( random.NextDouble() < 0.4 ) kit.Sphere( "glow_green", p, 0.14f, 6 );
+		kit.Solid( new Transform3D( Basis.Identity, foot + Vector3.Up * 1f ), new Vector3( 0.15f, 2f, 0.15f ) );
 	}
 
 	/// <summary> A little square in place of a building: a fountain, or the broken columns of a fallen shrine. </summary>
@@ -935,6 +1037,9 @@ void fragment() {
 		for ( var k = 0; k < Avenues; k++ ) Light( Polar( 50f, 45f * k, Land + 3f ), TealGlow, 1.1f, 13f );
 		Light( new Vector3( 0f, IslandHeight + 6f, -9f ), new Color( 1f, 0.85f, 0.55f ), 1.4f, 18f );   // the statue and the temple front
 		Light( new Vector3( 0f, IslandHeight + 9f, -20f ), new Color( 1f, 0.8f, 0.45f ), 2.2f, 22f );   // the statue, lit from the arrival side
+		// The dry canals: low teal and purple light along the lower floor.
+		for ( var k = 0; k < 4; k++ ) Light( Polar( 22f, 22.5f + 90f * k, CanalFloorY + 2f ), k % 2 == 0 ? TealGlow : PurpleGlow, 1.4f, 14f );
+		for ( var k = 0; k < 6; k++ ) Light( Polar( 50f, 11f + 60f * k, CanalFloorY + 2f ), k % 2 == 0 ? PurpleGlow : TealGlow, 1.5f, 16f );
 		// The temple: lit from inside its colonnade, purple and green, and washed in warm light from the front.
 		Light( new Vector3( -6f, IslandHeight + 4f, 2f ), PurpleGlow, 2.2f, 14f );
 		Light( new Vector3( 6f, IslandHeight + 4f, 2f ), GreenGlow, 2.2f, 14f );

@@ -52,6 +52,10 @@ public static class SeaTerrain
 	{
 		var r = MathF.Sqrt( x * x + z * z );
 		var outside = Smooth( Atlantis.BaseOuter, Atlantis.BaseOuter + 10f, r );
+		// Sunk to the dry canals' floor under them; the slopes either side are hidden inside the land rings' solid walls.
+		foreach ( var (inner, outer) in Atlantis.Canals )
+			if ( r > inner - 2.5f && r < outer + 2.5f )
+				return Atlantis.CanalFloorY * MathF.Min( Smooth( inner - 2.5f, inner - 1.5f, r ), 1f - Smooth( outer + 1.5f, outer + 2.5f, r ) );
 		return MathX.Lerp( 0f, BaseHeight( x, z ), outside );
 	}
 

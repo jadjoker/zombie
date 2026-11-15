@@ -199,6 +199,8 @@ void fragment() {
 	{
 		public Node3D Body, Chest, Head, ArmR, ForeR, ArmL, ForeL, Hand, Trident;
 		public readonly List<Node3D> Tail = new();
+		/// <summary> Each eye's pieces, for the blinker (the statue does not blink). </summary>
+		public readonly List<Node3D[]> Eyes = new();
 	}
 
 	void Build()
@@ -231,6 +233,8 @@ void fragment() {
 		hand = rig.Hand;
 		heldTrident = rig.Trident;
 		tail.AddRange( rig.Tail );
+		var blinker = Blinker.Add( this );
+		foreach ( var eye in rig.Eyes ) blinker.Eye( eye );
 
 		// What can be shot: the head (index 0), chest, belly, and the top of the tail.
 		void Hit( Node3D on, int index, Vector3 at, float radius )
@@ -359,8 +363,9 @@ void fragment() {
 			// Alien eyes: big black almonds slanted up at the outer corners, a green pupil in each, under a heavy brow
 			// that drops toward the nose (angry).
 			var slant = new Basis( Vector3.Back, -s * 0.5f );
-			Sculpt.Blob( head, new Vector3( s * 0.125f, 0.285f, -0.225f ), new Vector3( 0.19f, 0.105f, 0.07f ), eyeBlack, slant );
-			Sculpt.Blob( head, new Vector3( s * 0.115f, 0.28f, -0.258f ), new Vector3( 0.05f, 0.05f, 0.02f ), pupil );
+			var ball = Sculpt.Blob( head, new Vector3( s * 0.125f, 0.285f, -0.225f ), new Vector3( 0.19f, 0.105f, 0.07f ), eyeBlack, slant );
+			var dot = Sculpt.Blob( head, new Vector3( s * 0.115f, 0.28f, -0.258f ), new Vector3( 0.05f, 0.05f, 0.02f ), pupil );
+			rig.Eyes.Add( new Node3D[] { ball, dot } );
 			Sculpt.Block( head, new Vector3( s * 0.12f, 0.375f, -0.25f ), new Vector3( 0.19f, 0.045f, 0.06f ), hair, new Basis( Vector3.Back, s * 0.5f ) );
 			// A frown: the corners of the mouth pulled down under the moustache.
 			Sculpt.Block( head, new Vector3( s * 0.055f, 0.1f, -0.245f ), new Vector3( 0.08f, 0.018f, 0.02f ), dark, new Basis( Vector3.Back, -s * 0.45f ) );

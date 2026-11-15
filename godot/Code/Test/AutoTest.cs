@@ -64,6 +64,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
 		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
+		if ( args.Contains( "--crab" ) ) { await CrabTest(); return; }
 		if ( args.Contains( "--pickups" ) ) { await PickupTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
@@ -2858,6 +2859,67 @@ public partial class AutoTest : Node
 	/// hurts no one; one left alone climbs, dives and hits the player for 15. Mines: eight laid, none near the middle
 	/// or a spawn point; a shot rings off one; walking into one costs 45.
 	/// </summary>
+	/// <summary>
+	/// The Junk Crab's ant antennas with the alien eyes on their tips: they must wave (the eyes move while the crab
+	/// stands still), and pictures from the front, close on an eye, and from the side.
+	/// </summary>
+	async Task CrabTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		WaveDirector.Current.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		survivor.Health.Invulnerable = true;
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		var crab = JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -4f ) ), 90f );
+		crab.Hue = 0.3f;
+		await Wait( 1.2f );
+		DevFlags.FreezeEnemies = true;
+		await Wait( 0.3f );
+		var eyes = CreaturePart.All.Where( p => p.Creature == crab && p.Name.ToString().Contains( "Eye" ) )
+			.Select( p => p.FindChild( "Eyeball", true, false ) as Node3D ).Where( e => e is not null ).ToList();
+		Check( eyes.Count == 2, $"the crab has {eyes.Count} antenna eyes, not 2" );
+		var before = eyes.Select( e => e.GlobalPosition ).ToList();
+		await Wait( 1.2f );
+		var moved = eyes.Select( ( e, i ) => e.GlobalPosition.DistanceTo( before[i] ) ).DefaultIfEmpty( 0f ).Min();
+		GD.Print( $"[autotest] crab antennas: the eyes moved {moved * 100f:0.0} cm in 1.2 s standing still" );
+		Check( moved > 0.01f, "the crab's antennas do not wave" );
+		if ( shots is not null && eyes.Count > 0 )
+		{
+			var hidden = new List<CanvasLayer>();
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl && cl.Visible ) { cl.Visible = false; hidden.Add( cl ); }
+			var guns = GetTree().Root.FindChildren( "*", "", true, false ).OfType<Node3D>().Where( n => n.Visible && (n is ViewModel || n is ViewModelAxe) ).ToList();
+			foreach ( var g in guns ) g.Visible = false;
+			var ahead = (-crab.GlobalBasis.Z).Flat().Normalized();
+			var right = ahead.Cross( Vector3.Up );
+			var middle = crab.GlobalPosition + Vector3.Up * 0.5f;
+			var eye = eyes[0].GlobalPosition;
+			foreach ( var (name, from, look) in new[]
+			{
+				("crab_antennas", middle + ahead * 1.7f + right * 0.5f + Vector3.Up * 0.35f, middle + Vector3.Up * 0.1f),
+				("crab_eye", eye + ahead * 0.55f + right * 0.15f + Vector3.Up * 0.05f, eye),
+				("crab_side_antennas", middle + right * 1.8f + ahead * 0.4f + Vector3.Up * 0.3f, middle + Vector3.Up * 0.1f),
+			} )
+			{
+				var at = new Transform3D( Basis.LookingAt( (look - from).Normalized(), Vector3.Up ), from );
+				player.CameraOverride = _ => at;
+				await Wait( 0.35f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+			foreach ( var cl in hidden ) cl.Visible = true;
+			foreach ( var g in guns ) g.Visible = true;
+		}
+		DevFlags.FreezeEnemies = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task MissileTest()
 	{
 		DockHouse.Current?.SkipDive();
@@ -2896,6 +2958,14 @@ public partial class AutoTest : Node
 				await Wait( 0.3f );
 				await Shot( name );
 			}
+			// Straight at its face, for the grin.
+			var nose = missiles[1].GlobalPosition;
+			var ahead = -missiles[1].GlobalBasis.Z.Normalized();
+			var faceFrom = nose + ahead * 1.05f + Vector3.Up * 0.04f;
+			var faceAt = new Transform3D( Basis.LookingAt( (nose + ahead * 0.3f - faceFrom).Normalized(), Mathf.Abs( ahead.Y ) > 0.9f ? Vector3.Forward : Vector3.Up ), faceFrom );
+			player.CameraOverride = _ => faceAt;
+			await Wait( 0.3f );
+			await Shot( "missile_face" );
 			// One going off, for the explosion.
 			AlienBlast.Spawn( scene, mid + new Vector3( -1.6f, 0f, 0f ), 1f );
 			var blastFrom = mid + new Vector3( 0.4f, 0.3f, 4.2f );
@@ -3299,6 +3369,24 @@ public partial class AutoTest : Node
 			if ( reached ) from = got;
 		}
 
+		// Overhangs hold the player up: the cap of an avenue arch, and a villa's porch roof.
+		var archTop = Atlantis.Polar( 31.5f, 45f, Atlantis.Land + 8.25f );
+		player.GlobalPosition = archTop + Vector3.Up * 0.4f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 1f );
+		GD.Print( $"[autotest] atlantis arch top: standing {player.IsOnGround} at y {player.GlobalPosition.Y:0.00} (cap {archTop.Y:0.00})" );
+		Check( player.IsOnGround && player.GlobalPosition.Y > archTop.Y - 0.3f, "the player cannot stand on top of an Atlantis arch" );
+		if ( Atlantis.Fronts.Count > 0 )
+		{
+			var porchTop = Atlantis.Fronts.MinBy( f => f.Door.DistanceTo( arrival ) ).PorchTop;
+			player.GlobalPosition = porchTop + Vector3.Up * 0.4f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 1f );
+			GD.Print( $"[autotest] atlantis porch roof: standing {player.IsOnGround} at y {player.GlobalPosition.Y:0.00} (roof {porchTop.Y:0.00})" );
+			Check( player.IsOnGround && player.GlobalPosition.Y > porchTop.Y - 0.3f, "the player cannot stand on a villa's porch roof" );
+		}
+		Check( Atlantis.Fronts.Count > 10, $"Atlantis built only {Atlantis.Fronts.Count} villas" );
+
 		if ( shots is not null )
 		{
 			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
@@ -3314,7 +3402,16 @@ public partial class AutoTest : Node
 				("atlantis_canal", Atlantis.Polar( 50f, 100f, 0.5f ), Atlantis.Polar( 50f, 125f, -3f )),
 				("atlantis_kraken_plaza", Atlantis.KrakenCentre + new Vector3( 14f, 5f, 8f ), Atlantis.KrakenCentre),
 				("atlantis_globe_outside", new Vector3( 0f, 25f, -108f ), new Vector3( 0f, 25f, 0f )),
+				("atlantis_street", Atlantis.Polar( 35f, 45f, Atlantis.Land + 1.3f ), Atlantis.Polar( 44f, 45f, Atlantis.Land )),
+				("atlantis_vent", Atlantis.VentSpots[0] + new Vector3( 2.6f, 1.6f, 2.6f ), Atlantis.VentSpots[0] + Vector3.Up * 0.9f),
 			};
+			if ( Atlantis.Fronts.Count > 0 )
+			{
+				// The villa nearest the arrival, from its street: doorstep, scallop, planters, the porch lantern.
+				var (door, facing, _) = Atlantis.Fronts.MinBy( f => f.Door.DistanceTo( arrival ) );
+				views = views.Append( ("atlantis_villa", door + facing * 6.5f + Vector3.Up * 2.2f, door + Vector3.Up * 2f) )
+					.Append( ("atlantis_villa_close", door + facing * 2.6f + facing.Cross( Vector3.Up ) * 1.2f + Vector3.Up * 1.8f, door + Vector3.Up * 2.1f) ).ToArray();
+			}
 			foreach ( var (name, at, look) in views )
 			{
 				shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );

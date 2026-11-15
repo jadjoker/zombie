@@ -186,6 +186,8 @@ void fragment() {
 		Root = new Node3D { Name = "Atlantis" };
 		level.AddChild( Root );
 		var kit = new MeshKit( Root, Materials, "Atlantis Body", NoShadow );
+		detail = new Random( 4242 );
+		Fronts.Clear();
 		var random = new Random( 1620 );
 		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
 
@@ -198,6 +200,7 @@ void fragment() {
 		Arches( kit );
 		StairStatues( kit );
 		GlobeBase( kit );
+		StreetLife( kit );
 		kit.Commit();
 
 		var glass = new MeshInstance3D
@@ -220,6 +223,8 @@ void fragment() {
 			Root.AddChild( school );
 		}
 		Lights();
+		var vents = new AtlantisVents { Name = "Bubble Vents" };
+		Root.AddChild( vents );
 		GD.Print( $"[atlantis] {kit.Pieces} pieces, {kit.Solids} colliders" );
 		return Root;
 	}
@@ -340,7 +345,7 @@ void fragment() {
 		foreach ( var s in new[] { -1f, 1f } )
 			kit.Box( "gold_bright", new Vector3( at.X, top + 1f + 1.2f, at.Z + s * d * 0.25f ), new Vector3( w + 0.8f, 0.4f, slope ), new Basis( Vector3.Right, s * pitch ) );
 		foreach ( var s in new[] { -1f, 1f } )   // the gable ends, filled
-			kit.Box( "marble", new Vector3( at.X + s * (w * 0.5f + 0.05f), top + 1.9f, at.Z ), new Vector3( 0.3f, 1.6f, d * 0.6f ), solid: false );
+			kit.Box( "marble", new Vector3( at.X + s * (w * 0.5f + 0.05f), top + 1.9f, at.Z ), new Vector3( 0.3f, 1.6f, d * 0.6f ) );
 		// Glowing trim: purple along the eaves and the ridge, green round the platform's edge, purple column bands.
 		foreach ( var s in new[] { -1f, 1f } )
 		{
@@ -541,7 +546,7 @@ void fragment() {
 		var back = -1.3f;   // the house sits to the back of the plot, the porch in front
 		kit.Box( "marble", L( 0f, h * 0.5f, back ), new Vector3( w, h, d ), b );
 		kit.Box( "gold", L( 0f, h - 0.4f, back ), new Vector3( w + 0.12f, 0.3f, d + 0.12f ), b, solid: false );
-		kit.Box( "marble_dark", L( 0f, h + 0.15f, back ), new Vector3( w + 0.4f, 0.3f, d + 0.4f ), b, solid: false );
+		kit.Box( "marble_dark", L( 0f, h + 0.15f, back ), new Vector3( w + 0.4f, 0.3f, d + 0.4f ), b );   // the roof slab (stand on its lip)
 		kit.Sphere( random.NextDouble() < 0.7 ? roof : "gold", L( 0f, h + 0.3f, back ), MathF.Min( w, d ) * 0.32f, 14 );
 		if ( random.NextDouble() < 0.4 )
 			kit.Cylinder( "crystal", L( 0f, h + 0.3f + MathF.Min( w, d ) * 0.32f + 0.6f, back ), 0.18f, 1.4f, sides: 6, topRadius: 0f );
@@ -559,8 +564,9 @@ void fragment() {
 			kit.Cylinder( "marble", L( x, ph * 0.5f, porch + 0.6f ), 0.22f, ph, sides: 10 );
 			kit.Solid( new Transform3D( b, L( x, ph * 0.5f, porch + 0.6f ) ), new Vector3( 0.4f, ph, 0.4f ) );
 		}
-		kit.Box( "marble", L( 0f, ph + 0.18f, porch ), new Vector3( w * 0.92f, 0.35f, 2.6f ), b, solid: false );
-		kit.Box( "gold", L( 0f, ph + 0.42f, porch ), new Vector3( w * 0.92f, 0.14f, 2.6f ), b, solid: false );
+		kit.Box( "marble", L( 0f, ph + 0.18f, porch ), new Vector3( w * 0.92f, 0.35f, 2.6f ), b );   // the porch roof: solid, to climb onto
+		kit.Box( "gold", L( 0f, ph + 0.42f, porch ), new Vector3( w * 0.92f, 0.14f, 2.6f ), b );
+		VillaDetails( kit, L, b, w, h, front, porch, ph );
 		// Alien vines creeping down the walls, and banners either side of the door.
 		var vines = random.Next( 0, 4 );
 		for ( var i = 0; i < vines; i++ )
@@ -589,6 +595,8 @@ void fragment() {
 		for ( var y = 3f; y < h - 1.5f; y += R( 2.6f, 3.4f ) )
 			kit.Cylinder( "glow_green", at + Vector3.Up * y, r * (1f - 0.12f * y / h) + 0.04f, 0.28f, sides: 16 );
 		kit.Cylinder( "gold", at + Vector3.Up * (h + 0.15f), r * 0.98f, 0.3f, sides: 16 );
+		kit.Solid( new CylinderShape3D { Radius = r * 0.98f, Height = 0.3f }, new Transform3D( Basis.Identity, at + Vector3.Up * (h + 0.15f) ) );
+		TowerDetails( kit, at, b, r );
 		kit.Cylinder( random.NextDouble() < 0.35 ? "gold" : roof, at + Vector3.Up * (h + 0.3f + r * 0.9f), r * 0.95f, r * 1.8f, sides: 16, topRadius: 0f );
 		kit.Cylinder( "crystal", at + Vector3.Up * (h + 0.3f + r * 1.8f + 0.9f), 0.25f, 1.8f, sides: 6, topRadius: 0f );
 		var vines = random.Next( 0, 4 );
@@ -621,8 +629,9 @@ void fragment() {
 				kit.Cylinder( "marble", L( x, 0.3f + h * 0.5f, z ), 0.26f, h, sides: 10 );
 				kit.Solid( new Transform3D( b, L( x, 0.3f + h * 0.5f, z ) ), new Vector3( 0.45f, h, 0.45f ) );
 			}
-		kit.Box( "gold", L( 0f, 0.3f + h + 0.2f, 0f ), new Vector3( w + 0.3f, 0.4f, d + 0.3f ), b, solid: false );
-		kit.Box( "marble", L( 0f, 0.3f + h + 0.55f, 0f ), new Vector3( w * 0.7f, 0.3f, d * 0.7f ), b, solid: false );
+		kit.Box( "gold", L( 0f, 0.3f + h + 0.2f, 0f ), new Vector3( w + 0.3f, 0.4f, d + 0.3f ), b );   // the roof is solid: stand on it
+		kit.Box( "marble", L( 0f, 0.3f + h + 0.55f, 0f ), new Vector3( w * 0.7f, 0.3f, d * 0.7f ), b );
+		ShrineDetails( kit, L, b, w, d, h );
 		kit.Box( "obsidian", L( 0f, 0.8f, 0f ), new Vector3( 1.2f, 1f, 1.2f ), b );
 		kit.Cylinder( "crystal_purple", L( 0f, 1.3f + 0.9f, 0f ), 0.35f, 1.8f, sides: 6, topRadius: 0f );
 	}
@@ -907,7 +916,7 @@ void fragment() {
 		Vector3 L( float x, float y, float z ) => at + b * new Vector3( x, y, z );
 		const float w = 3.6f, top = 1.05f;
 		kit.Box( "wood", L( 0f, top * 0.5f, 0.3f ), new Vector3( w, top, 0.9f ), b );
-		kit.Box( "wood_dark", L( 0f, top + 0.04f, 0.3f ), new Vector3( w + 0.2f, 0.08f, 1.1f ), b, solid: false );
+		kit.Box( "wood_dark", L( 0f, top + 0.04f, 0.3f ), new Vector3( w + 0.2f, 0.08f, 1.1f ), b );
 		foreach ( var sx in new[] { -1f, 1f } )
 			foreach ( var z in new[] { -0.7f, 0.85f } )
 				kit.Cylinder( "wood_dark", L( sx * (w * 0.5f + 0.05f), 1.5f, z ), 0.07f, 3f, sides: 6 );
@@ -916,6 +925,7 @@ void fragment() {
 		for ( var i = 0; i < 8; i++ )
 			kit.Box( i % 2 == 0 ? (cheese ? "cheese" : "banner_purple") : "marble", L( -w * 0.5f - 0.1f + (i + 0.5f) * (w + 0.2f) / 8f, 3f, 0.1f ), new Vector3( (w + 0.2f) / 8f, 0.05f, 2.1f ), b * slope, solid: false );
 		kit.Box( "wood_dark", L( 0f, 2.55f, 1.1f ), new Vector3( w + 0.2f, 0.5f, 0.06f ), b, solid: false );   // the sign board
+		kit.Solid( new Transform3D( b * slope, L( 0f, 3f, 0.1f ) ), new Vector3( w + 0.2f, 0.08f, 2.1f ) );   // the awning holds you up
 		var sign = new Label3D
 		{
 			Text = cheese ? "CHEESE" : "TREASURES", FontSize = 96, PixelSize = 0.004f, Modulate = cheese ? new Color( 1f, 0.85f, 0.3f ) : new Color( 0.6f, 1f, 0.7f ),
@@ -1049,14 +1059,14 @@ void fragment() {
 				{
 					var pier = at + across * s * half;
 					kit.Box( "obsidian", pier + Vector3.Up * h * 0.5f, new Vector3( 1f, h, 1.2f ), b );
-					kit.Box( "gold", pier + Vector3.Up * 0.3f, new Vector3( 1.2f, 0.6f, 1.4f ), b, solid: false );
-					kit.Box( "gold", pier + Vector3.Up * (h - 0.2f), new Vector3( 1.2f, 0.4f, 1.4f ), b, solid: false );
+					kit.Box( "gold", pier + Vector3.Up * 0.3f, new Vector3( 1.2f, 0.6f, 1.4f ), b );
+					kit.Box( "gold", pier + Vector3.Up * (h - 0.2f), new Vector3( 1.2f, 0.4f, 1.4f ), b );
 					kit.Box( "glow_green", pier + Vector3.Up * h * 0.5f + across * -s * 0.51f, new Vector3( 0.04f, h * 0.6f, 0.2f ), b, solid: false );
 					foreach ( var face in new[] { -1f, 1f } )
 						Banner( kit, pier + Vector3.Up * (h - 0.8f) + dir * face * 0.62f, face > 0 ? b : b * new Basis( Vector3.Up, MathF.PI ), 3.2f, k % 2 == 0 ? "banner_purple" : "banner_green" );
 				}
 				kit.Box( "marble", at + Vector3.Up * (h + 0.5f), new Vector3( half * 2f + 2f, 1f, 1.4f ), b );
-				kit.Box( "gold", at + Vector3.Up * (h + 1.1f), new Vector3( half * 2f + 2.3f, 0.25f, 1.6f ), b, solid: false );
+				kit.Box( "gold", at + Vector3.Up * (h + 1.1f), new Vector3( half * 2f + 2.3f, 0.25f, 1.6f ), b );   // the arch's cap: walk along it
 				kit.Box( "glow_purple", at + Vector3.Up * (h + 0.05f), new Vector3( half * 2f - 1f, 0.1f, 1.2f ), b, solid: false );
 				kit.Box( "glow_green", at + Vector3.Up * (h + 0.5f), new Vector3( 0.9f, 1.3f, 1.5f ), b * new Basis( Vector3.Back, MathF.PI * 0.25f ), solid: false );
 				kit.Cylinder( "crystal_purple", at + Vector3.Up * (h + 2.1f), 0.3f, 1.8f, sides: 6, topRadius: 0f );
@@ -1071,7 +1081,7 @@ void fragment() {
 		{
 			var at = new Vector3( s * 4.3f, Land, -27.4f );
 			kit.Box( "marble_dark", at + Vector3.Up * 0.6f, new Vector3( 1.6f, 1.2f, 1.6f ) );
-			kit.Box( "gold", at + Vector3.Up * 1.25f, new Vector3( 1.7f, 0.1f, 1.7f ), solid: false );
+			kit.Box( "gold", at + Vector3.Up * 1.25f, new Vector3( 1.7f, 0.1f, 1.7f ) );
 			Poseidon.BuildStatue( kit.Node, at + Vector3.Up * 1.3f, 0.55f, (Arrival - at).Flat(), marble: true );
 			kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * 2.5f ), new Vector3( 1.2f, 2.5f, 1f ) );
 		}
@@ -1084,6 +1094,7 @@ void fragment() {
 		Ring( "Globe Base", BaseStone, BaseInner, BaseOuter, 0f, BaseHeight, 128 );
 		RingSolid( kit, BaseInner, BaseOuter, 0f, BaseHeight, 128 );
 		Ring( "Base Rim", Materials["gold"], BaseInner - 0.2f, BaseOuter + 0.2f, BaseHeight, BaseHeight + 0.3f, 128 );
+		RingSolid( kit, BaseInner - 0.2f, BaseOuter + 0.2f, BaseHeight, BaseHeight + 0.3f, 128 );
 		Ring( "Base Skirting", Materials["gold"], BaseInner - 0.15f, BaseInner, 0.6f, 0.9f, 128 );
 		// Glowing runes round the inside of the base, and a band of light under the gold rim.
 		for ( var i = 0; i < 64; i++ )
@@ -1102,6 +1113,186 @@ void fragment() {
 			kit.Box( i % 2 == 0 ? "glow_purple" : "glow_green", Polar( BaseOuter + 0.03f, a + 3.75f, BaseHeight * 0.55f ), new Vector3( 2.2f, 3.6f, 0.06f ), face, solid: false );
 		}
 		Ring( "Glass Collar", Materials["glow_teal"], BaseInner + 0.6f, BaseOuter - 0.6f, BaseHeight + 0.3f, BaseHeight + 0.42f, 128, walls: false );
+	}
+
+	// ---- Small things: the details that make it a place people lived ----
+
+	/// <summary> Every villa's front door (on the ground), the way it faces, and the top of its porch roof (for tests and pictures). </summary>
+	public static readonly List<(Vector3 Door, Vector3 Facing, Vector3 PorchTop)> Fronts = new();
+
+	/// <summary> Its own dice, so the details never shift the buildings the main seed lays out. </summary>
+	static Random detail = new( 4242 );
+	static float D( float a, float b ) => a + (float)detail.NextDouble() * (b - a);
+	static readonly string[] CoralKeys = { "coral_pink", "coral_orange", "purple" };
+	static readonly string[] GlowKeys = { "glow_teal", "glow_green", "glow_purple" };
+
+	/// <summary> A doorstep, a gold scallop shell over the door, planters of glowing coral under the windows, a lantern hung in the porch. </summary>
+	static void VillaDetails( MeshKit kit, Func<float, float, float, Vector3> L, Basis b, float w, float h, float front, float porch, float ph )
+	{
+		Fronts.Add( (L( 0f, 0f, front ), b.Z, L( 0f, ph + 0.49f, porch )) );
+		kit.Box( "marble_dark", L( 0f, 0.08f, front + 0.4f ), new Vector3( 1.9f, 0.16f, 0.8f ), b );
+		Scallop( kit, L( 0f, 2.45f, front + 0.04f ), b, 0.55f );
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			var sill = L( s * w * 0.3f, h * 0.6f - 0.64f, front + 0.2f );
+			kit.Box( "terracotta", sill, new Vector3( 1f, 0.26f, 0.36f ), b, solid: false );
+			kit.Box( "gold", sill + b * new Vector3( 0f, 0.1f, 0.19f ), new Vector3( 1.04f, 0.04f, 0.02f ), b, solid: false );
+			for ( var i = 0; i < 4; i++ )
+				Sprig( kit, sill + b * new Vector3( -0.36f + i * 0.24f, 0.12f, 0f ), D( 0.25f, 0.45f ) );
+		}
+		if ( ph > 3f )
+		{
+			var hook = L( 0f, ph, porch + 0.3f );
+			kit.Cylinder( "obsidian", hook + Vector3.Down * 0.3f, 0.025f, 0.6f, sides: 4 );
+			Lantern( kit, hook + Vector3.Down * 0.8f, GlowKeys[detail.Next( GlowKeys.Length )] );
+		}
+	}
+
+	/// <summary> Candles on the altar's corners and two gold braziers at the front of the platform. </summary>
+	static void ShrineDetails( MeshKit kit, Func<float, float, float, Vector3> L, Basis b, float w, float d, float h )
+	{
+		foreach ( var x in new[] { -0.45f, 0.45f } )
+			foreach ( var z in new[] { -0.45f, 0.45f } )
+			{
+				var foot = L( x, 1.3f, z );
+				kit.Cylinder( "marble", foot + Vector3.Up * 0.08f, 0.05f, 0.16f, sides: 6 );
+				kit.Sphere( "glow_teal", foot + Vector3.Up * 0.21f, 0.045f, 6 );
+			}
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			var foot = L( s * w * 0.25f, 0.3f, d * 0.5f - 0.3f );
+			kit.Cylinder( "obsidian", foot + Vector3.Up * 0.35f, 0.07f, 0.7f, sides: 6 );
+			kit.Cylinder( "gold", foot + Vector3.Up * 0.78f, 0.2f, 0.18f, sides: 10, topRadius: 0.32f );
+			kit.Sphere( "glow_green", foot + Vector3.Up * 0.95f, 0.17f, 8 );
+		}
+	}
+
+	/// <summary> A dark door with a scallop over it, a step, and a glowing sconce either side. </summary>
+	static void TowerDetails( MeshKit kit, Vector3 at, Basis b, float r )
+	{
+		var face = at + b.Z * (r + 0.02f);
+		kit.Box( "obsidian", face + Vector3.Up * 2f, new Vector3( 1.3f, 2.4f, 0.1f ), b, solid: false );
+		kit.Box( "gold", face + Vector3.Up * 3.25f, new Vector3( 1.5f, 0.1f, 0.14f ), b, solid: false );
+		Scallop( kit, face + Vector3.Up * 3.35f + b.Z * 0.03f, b, 0.5f );
+		foreach ( var s in new[] { -1f, 1f } )
+		{
+			var wall = face + b.X * s * 1.1f + Vector3.Up * 2.6f;
+			kit.Box( "gold", wall + b.Z * 0.12f, new Vector3( 0.06f, 0.06f, 0.26f ), b, solid: false );
+			Lantern( kit, wall + b.Z * 0.26f + Vector3.Down * 0.18f, "glow_teal" );
+		}
+	}
+
+	/// <summary> A gold scallop shell: ribs fanning up from a knot, with a glowing pearl. </summary>
+	static void Scallop( MeshKit kit, Vector3 centre, Basis b, float size )
+	{
+		const int ribs = 7;
+		for ( var i = 0; i < ribs; i++ )
+		{
+			var turn = b * new Basis( Vector3.Back, -1.25f + i * 2.5f / (ribs - 1) );
+			kit.Box( "gold", centre + turn * Vector3.Up * size * 0.5f, new Vector3( 0.09f, size, 0.05f ), turn, solid: false );
+		}
+		kit.Sphere( "gold", centre, size * 0.2f, 8 );
+		kit.Sphere( "glow_teal", centre + b.Z * size * 0.12f, size * 0.11f, 6 );
+	}
+
+	/// <summary> A little hanging lantern: a gold cap and foot round a glowing ball. </summary>
+	static void Lantern( MeshKit kit, Vector3 at, string glow )
+	{
+		kit.Cylinder( "gold", at + Vector3.Up * 0.2f, 0.17f, 0.07f, sides: 8, topRadius: 0.05f );
+		kit.Sphere( glow, at, 0.16f, 10 );
+		kit.Cylinder( "gold", at + Vector3.Down * 0.18f, 0.11f, 0.06f, sides: 8 );
+	}
+
+	/// <summary> A sprig of coral with a glowing tip. </summary>
+	static void Sprig( MeshKit kit, Vector3 foot, float size )
+	{
+		var turn = new Basis( Vector3.Up, D( 0f, MathF.Tau ) ) * new Basis( Vector3.Right, D( -0.4f, 0.4f ) );
+		var tip = foot + turn * Vector3.Up * size;
+		kit.Cylinder( CoralKeys[detail.Next( CoralKeys.Length )], (foot + tip) * 0.5f, 0.035f, size, turn, sides: 5, topRadius: 0.015f );
+		kit.Sphere( GlowKeys[detail.Next( GlowKeys.Length )], tip, 0.045f, 6 );
+	}
+
+	/// <summary>
+	/// Life on the streets: starfish, clams with glowing pearls and pebbles along the avenues' edges, and the vents in
+	/// the canal floors that the bubbles rise from.
+	/// </summary>
+	static void StreetLife( MeshKit kit )
+	{
+		var placed = 0;
+		for ( var k = 0; k < Avenues; k++ )
+		{
+			var a = 45f * k;
+			var dir = Polar( 1f, a, 0f );
+			var side = Vector3.Up.Cross( dir );
+			for ( var r = IslandRadius + 9f; r < 86f; r += D( 2.5f, 5.5f ) )
+			{
+				if ( Canals.Any( c => r > c.Inner - 1f && r < c.Outer + 1f ) ) continue;
+				if ( MathF.Abs( r - 31.5f ) < 1.5f || MathF.Abs( r - 58.5f ) < 1.5f ) continue;   // the arches' piers
+				var s = detail.NextDouble() < 0.5 ? -1f : 1f;
+				var at = dir * r + side * s * D( 2.3f, 3.3f ) + Vector3.Up * Land;
+				if ( at.Flat().DistanceTo( Arrival.Flat() ) < 14f || at.Flat().DistanceTo( KrakenCentre.Flat() ) < KrakenPlaza ) continue;
+				var roll = detail.NextDouble();
+				if ( roll < 0.42 ) Starfish( kit, at );
+				else if ( roll < 0.75 ) Clam( kit, at );
+				else Pebbles( kit, at );
+				placed++;
+			}
+		}
+		foreach ( var vent in VentSpots ) Vent( kit, vent );
+		GD.Print( $"[atlantis] {placed} street details, {VentSpots.Length} vents" );
+	}
+
+	static void Starfish( MeshKit kit, Vector3 at )
+	{
+		var key = CoralKeys[detail.Next( CoralKeys.Length )];
+		var spin = D( 0f, MathF.Tau );
+		var size = D( 0.8f, 1.3f );
+		for ( var i = 0; i < 5; i++ )
+		{
+			var turn = new Basis( Vector3.Up, spin + i * MathF.Tau / 5f );
+			kit.Box( key, at + turn * new Vector3( 0f, 0.025f, 0.13f * size ), new Vector3( 0.08f, 0.05f, 0.26f ) * size, turn, solid: false );
+		}
+		kit.Sphere( key, at + Vector3.Up * 0.03f, 0.07f * size, 6 );
+	}
+
+	static void Clam( MeshKit kit, Vector3 at )
+	{
+		var turn = new Basis( Vector3.Up, D( 0f, MathF.Tau ) );
+		var shell = detail.NextDouble() < 0.5 ? "roof_coral" : "purple";
+		var ball = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 10, Rings = 5 };
+		kit.Add( shell, ball, new Transform3D( turn * Basis.FromScale( new Vector3( 0.44f, 0.12f, 0.36f ) ), at + Vector3.Up * 0.05f ) );
+		var lid = turn * new Basis( Vector3.Right, -0.6f );
+		kit.Add( shell, ball, new Transform3D( lid * Basis.FromScale( new Vector3( 0.44f, 0.1f, 0.36f ) ), at + turn * new Vector3( 0f, 0.18f, -0.08f ) ) );
+		kit.Sphere( "glow_teal", at + Vector3.Up * 0.13f, 0.065f, 8 );
+	}
+
+	static void Pebbles( MeshKit kit, Vector3 at )
+	{
+		var ball = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 8, Rings = 4 };
+		var n = detail.Next( 3, 6 );
+		for ( var i = 0; i < n; i++ )
+		{
+			var size = D( 0.1f, 0.24f );
+			var p = at + new Vector3( D( -0.4f, 0.4f ), size * 0.25f, D( -0.4f, 0.4f ) );
+			kit.Add( detail.NextDouble() < 0.5 ? "rock" : "marble_dark", ball, new Transform3D( new Basis( Vector3.Up, D( 0f, 3f ) ) * Basis.FromScale( new Vector3( size, size * 0.55f, size * 0.8f ) ), p ) );
+		}
+	}
+
+	/// <summary> Where the canal floors breathe bubbles: in the middle of both canals, between the avenues. </summary>
+	public static readonly Vector3[] VentSpots = Canals.SelectMany( c => Enumerable.Range( 0, Avenues )
+		.Select( k => Polar( (c.Inner + c.Outer) * 0.5f + (k % 2 == 0 ? -1.2f : 1.2f), 45f * k + 22.5f + (k % 3) * 6f, CanalFloorY ) ) ).ToArray();
+
+	/// <summary> A vent: a low ring of dark rocks round a glowing green crack. </summary>
+	static void Vent( MeshKit kit, Vector3 at )
+	{
+		var ball = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 8, Rings = 4 };
+		for ( var i = 0; i < 7; i++ )
+		{
+			var a = i * MathF.Tau / 7f;
+			var p = at + new Vector3( MathF.Cos( a ) * 0.55f, 0.08f, MathF.Sin( a ) * 0.55f );
+			kit.Add( "rock_dark", ball, new Transform3D( new Basis( Vector3.Up, a ) * Basis.FromScale( new Vector3( 0.42f, 0.3f, 0.32f ) ), p ) );
+		}
+		kit.Add( "glow_green", ball, new Transform3D( Basis.FromScale( new Vector3( 0.5f, 0.06f, 0.18f ) ), at + Vector3.Up * 0.02f ) );
 	}
 
 	// ---- Rings (annulus meshes and their colliders) ----
@@ -1256,6 +1447,28 @@ public partial class AtlantisFish : MultiMeshInstance3D
 			var weave = new Vector3( MathF.Sin( time * 2.3f + i ) * 0.3f, MathF.Sin( time * 1.7f + i * 1.3f ) * 0.2f, 0f );
 			var wag = new Basis( Vector3.Up, MathF.Sin( time * 9f + i * 0.7f ) * 0.25f );
 			Multimesh.SetInstanceTransform( i, new Transform3D( turn * wag, centre + turn * (o + weave) ) );
+		}
+	}
+}
+
+/// <summary> Streams of bubbles rising from the vents in the canal floors, each in its own rhythm. </summary>
+public partial class AtlantisVents : Node3D
+{
+	readonly float[] next = new float[Atlantis.VentSpots.Length];
+
+	public override void _Process( double delta )
+	{
+		var dt = (float)delta;
+		for ( var i = 0; i < next.Length; i++ )
+		{
+			next[i] -= dt;
+			if ( next[i] > 0f ) continue;
+			// Now and then a vent burps a burst; mostly a lazy trickle.
+			var burst = Rng.Float() < 0.06f;
+			next[i] = burst ? Rng.Float( 0.8f, 1.6f ) : Rng.Float( 0.12f, 0.35f );
+			var at = Atlantis.VentSpots[i] + Vector3.Up * 0.15f;
+			for ( var k = 0; k < (burst ? 10 : 1); k++ )
+				WaterBubble.Create( at + new Vector3( Rng.Float( -0.25f, 0.25f ), 0f, Rng.Float( -0.25f, 0.25f ) ), Rng.Float( 0.6f, 1.6f ), k * 0.03f, Rng.Float( 2.5f, 4f ) );
 		}
 	}
 }

@@ -53,6 +53,10 @@ public partial class CreaturePart : StaticBody3D, IShootable
 /// </summary>
 public partial class Bloober : Creature
 {
+	Blinker blinks;
+	/// <summary> The eyes' blinker, made when the first eye is built. </summary>
+	Blinker Blinks => blinks ??= Blinker.Add( this );
+
 	public int SegmentCount = 9;
 	public float HeadRadius = 13f;
 	public float TailRadius = 5f;
@@ -330,22 +334,24 @@ public partial class Bloober : Creature
 			foreach ( var side in new[] { -1f, 1f } )
 			{
 				var eyeAt = new Vector3( r * 0.98f, side * r * 0.37f, r * 0.3f );   // in the model's sockets
-				Shapes.Part( head.Go, "Eye", eyeAt, Shapes.Ellipsoid( r * 0.17f ), new Color( 0.04f, 0.02f, 0.03f ) );
+				var ball = Shapes.Part( head.Go, "Eye", eyeAt, Shapes.Ellipsoid( r * 0.17f ), new Color( 0.04f, 0.02f, 0.03f ) );
 				var k = r * 0.12f;
-				Shapes.Part( head.Go, "Pupil", eyeAt + new Vector3( r * 0.12f, side * r * 0.05f, 0f ), Shapes.Ellipsoid( 0.3f * k, 1f * k, 0.75f * k ), SpotColor, glow: true );
+				var glow = Shapes.Part( head.Go, "Pupil", eyeAt + new Vector3( r * 0.12f, side * r * 0.05f, 0f ), Shapes.Ellipsoid( 0.3f * k, 1f * k, 0.75f * k ), SpotColor, glow: true );
 				var k2 = r * 0.11f;
-				Shapes.Part( head.Go, "Slit", eyeAt + new Vector3( r * 0.15f, side * r * 0.055f, 0f ), Shapes.Ellipsoid( 0.2f * k2, 0.18f * k2, 0.85f * k2 ), Colors.Black );
+				var slit = Shapes.Part( head.Go, "Slit", eyeAt + new Vector3( r * 0.15f, side * r * 0.055f, 0f ), Shapes.Ellipsoid( 0.2f * k2, 0.18f * k2, 0.85f * k2 ), Colors.Black );
+				Blinks.Eye( ball, glow, slit );
 			}
 			return;
 		}
 		foreach ( var side in new[] { -1f, 1f } )
 		{
 			var eyeAt = new Vector3( r * 0.75f * Stretch, side * r * 0.45f, r * 0.5f );
-			Shapes.Part( head.Go, "Eye", eyeAt, Shapes.Ellipsoid( r * 0.22f ), new Color( 0.04f, 0.02f, 0.03f ) );
+			var ball = Shapes.Part( head.Go, "Eye", eyeAt, Shapes.Ellipsoid( r * 0.22f ), new Color( 0.04f, 0.02f, 0.03f ) );
 			var k = r * 0.14f;
-			Shapes.Part( head.Go, "Pupil", eyeAt + new Vector3( r * 0.17f, side * r * 0.02f, 0f ), Shapes.Ellipsoid( 0.3f * k, 1f * k, 0.75f * k ), SpotColor, glow: true );
+			var glow = Shapes.Part( head.Go, "Pupil", eyeAt + new Vector3( r * 0.17f, side * r * 0.02f, 0f ), Shapes.Ellipsoid( 0.3f * k, 1f * k, 0.75f * k ), SpotColor, glow: true );
 			var k2 = r * 0.13f;
-			Shapes.Part( head.Go, "Slit", eyeAt + new Vector3( r * 0.21f, side * r * 0.02f, 0f ), Shapes.Ellipsoid( 0.2f * k2, 0.18f * k2, 0.85f * k2 ), Colors.Black );
+			var slit = Shapes.Part( head.Go, "Slit", eyeAt + new Vector3( r * 0.21f, side * r * 0.02f, 0f ), Shapes.Ellipsoid( 0.2f * k2, 0.18f * k2, 0.85f * k2 ), Colors.Black );
+			Blinks.Eye( ball, glow, slit );
 		}
 		head.Mouth = Shapes.Part( head.Go, "Mouth", Vector3.Zero, Vector3.One, new Color( 0.05f, 0f, 0.015f ) );
 

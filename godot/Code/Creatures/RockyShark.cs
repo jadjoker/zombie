@@ -100,6 +100,8 @@ public partial class RockyShark : PartCreature
 	readonly List<Hole> holes = new();
 	readonly List<(Node3D Node, float Side)> fins = new();
 	MeshInstance3D eyeMeshL, eyeMeshR;
+	/// <summary> The glowing slits in the eyes ("PupilL", "PupilR"), which blink with them. </summary>
+	readonly List<MeshInstance3D> pupils = new();
 	Node3D jaw;
 	Color rockColor = new( 0.32f, 0.31f, 0.30f );
 	Color finColor = new( 0.20f, 0.48f, 0.30f );
@@ -155,6 +157,9 @@ public partial class RockyShark : PartCreature
 		// Head: the whole creature's health. A long, low wedge with a hinged jaw and the glowing eyes.
 		var head = AddPart( Head, -1, rig, "Head", Vector3.Zero, Basis.Identity, 0f );
 		Sculpt( head, "head", HeadRadius );
+		var blinker = Blinker.Add( this );
+		blinker.Eye( pupils.Where( p => p.Name.ToString().EndsWith( "L" ) ).Prepend( eyeMeshL ).ToArray() );
+		blinker.Eye( pupils.Where( p => p.Name.ToString().EndsWith( "R" ) ).Prepend( eyeMeshR ).ToArray() );
 		Trigger( head, new Vector3( -0.60f * HeadRadius, 0, 0 ), new Vector3( 2.15f * HeadRadius, 0, 0 ), 0.72f * HeadRadius );
 
 		// Eyes: small, precise parts on the head. Their own health, and the best damage in the game.
@@ -239,6 +244,7 @@ public partial class RockyShark : PartCreature
 			}
 			else if ( name.StartsWith( "Pupil" ) )
 			{
+				pupils.Add( mesh );
 				// The eyes are black almonds with a glowing neon green slit.
 				mesh.MaterialOverride = Shapes.Material( gooColor, glow: true );
 				mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;

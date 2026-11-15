@@ -133,6 +133,13 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,
   movement buff, the Biden Blast on the `blast` action: G (RB on a pad, which fires it instead of the axe only while it is
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
+- Quality of life batch: `Creatures/Blinker.cs` blinks eyes on creatures with no lids of their own (Bloober, Rocky Shark,
+  Kraken, Poseidon, mermaids, seahorses, missiles: it squashes each eye's meshes shut). The Junk Crab's eyes are on ant
+  antennas (`BuildAntenna`, `WaveAntennas`: a waving shaft and a springy whip) with a green alien bulb and almond eye.
+  Atlantis overhangs are solid (roof slabs, porch roofs, shrine roofs, arch caps, the base rim, the market awnings), and
+  it has small details on their own seed (`Atlantis.detail`, so the layout never shifts): doorsteps, scallops, planters,
+  lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals
+  (`AtlantisVents`). Test: `--crab` (shots need a window); `--atlantis` checks standing on an arch and a porch roof.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

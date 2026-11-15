@@ -76,6 +76,8 @@ public partial class Kraken : PartCreature
 	readonly List<(Node3D Stump, TimeSince Age, float Size)> bleeders = new();
 	TimeSince sinceSpurt;
 	readonly List<MeshInstance3D> glowing = new();
+	/// <summary> The eye meshes of the model just sculpted (the head's go to its blinker). </summary>
+	readonly List<MeshInstance3D> eyeMeshes = new();
 	Node3D mound, brainModel;
 	StandardMaterial3D glassMaterial;
 	TimeSince sinceSpawned, sinceDust, sinceGlassHit = 99f;
@@ -159,6 +161,7 @@ public partial class Kraken : PartCreature
 			mesh.MaterialOverride = Paint( surface, out var tint );
 			part.Renderers.Add( (mesh, tint) );
 			if ( surface is "glow" or "sucker" ) glowing.Add( mesh );
+			if ( surface == "eye" ) eyeMeshes.Add( mesh );
 		}
 		return node;
 	}
@@ -190,6 +193,11 @@ public partial class Kraken : PartCreature
 		headPivot = new Node3D { Name = "Head Pivot" };
 		head.Go.AddChild( headPivot );
 		headModel = Sculpt( head, headPivot, "head" );
+		// Its big slanted eyes blink, slowly (they are one mesh: both at once).
+		var blinker = Blinker.Add( this );
+		blinker.Length = 0.3f;
+		blinker.Eye( eyeMeshes.ToArray() );
+		eyeMeshes.Clear();
 		BuildMouth( head );
 		// Both stop at the collar (the dome is the whole top half of the head now), so a shot up at the dome or
 		// the brain from below is not caught by the head.

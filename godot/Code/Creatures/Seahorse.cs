@@ -77,9 +77,10 @@ public partial class Seahorse : Creature
 			Sculpt.Cone( body, head + new Vector3( (i - 1) * 0.05f, 0.08f, 0.04f + i * 0.02f ), head + new Vector3( (i - 1) * 0.08f, 0.24f, 0.1f + i * 0.03f ), 0.03f, crest );
 		var eyeAt = head + new Vector3( 0f, 0.04f, -0.1f );
 		Sculpt.Blob( body, eyeAt, new Vector3( 0.17f, 0.17f, 0.12f ), dark );                                         // socket
-		Sculpt.Blob( body, eyeAt + new Vector3( 0f, 0f, -0.035f ), new Vector3( 0.14f, 0.14f, 0.1f ), Sculpt.Paint( new Color( 0.92f, 1f, 0.85f ), 0.2f ) );
-		Sculpt.Blob( body, eyeAt + new Vector3( 0f, 0f, -0.075f ), new Vector3( 0.095f, 0.095f, 0.03f ), Sculpt.Glow( Yellow, 2.2f ) );
-		Sculpt.Block( body, eyeAt + new Vector3( 0f, 0f, -0.09f ), new Vector3( 0.018f, 0.075f, 0.01f ), dark );     // slit pupil
+		var ball = Sculpt.Blob( body, eyeAt + new Vector3( 0f, 0f, -0.035f ), new Vector3( 0.14f, 0.14f, 0.1f ), Sculpt.Paint( new Color( 0.92f, 1f, 0.85f ), 0.2f ) );
+		var iris = Sculpt.Blob( body, eyeAt + new Vector3( 0f, 0f, -0.075f ), new Vector3( 0.095f, 0.095f, 0.03f ), Sculpt.Glow( Yellow, 2.2f ) );
+		var slit = Sculpt.Block( body, eyeAt + new Vector3( 0f, 0f, -0.09f ), new Vector3( 0.018f, 0.075f, 0.01f ), dark );     // slit pupil
+		Blinker.Add( this ).Eye( ball, iris, slit );
 
 		// Small side fins by the head, and the fin on its back that flutters.
 		foreach ( var s in new[] { -1f, 1f } )

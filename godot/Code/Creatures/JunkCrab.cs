@@ -50,6 +50,9 @@ public partial class JunkCrab : PartCreature
 		public Quaternion GazeRot = Quaternion.Identity;
 		public Vector3 Wander = Vector3.Forward;   // Godot, eyeball local
 		public float Upper = 0.2f, Lower = 0.08f, Slant, PupilSize = 1f;
+		/// <summary> The antenna's elbow, and its springy bend (pitch, yaw in degrees) and how fast that is moving. </summary>
+		public Node3D Elbow;
+		public Vector2 Bend, BendSpeed;
 	}
 
 	const float EyeRadius = 3.4f;
@@ -124,9 +127,10 @@ public partial class JunkCrab : PartCreature
 		foreach ( var (index, side) in new[] { (EyeL, 1f), (EyeR, -1f) } )
 		{
 			var eye = AddPart( index, Body, body.Go, side > 0 ? "Eye L" : "Eye R", new Vector3( 11f, side * 5f, 5f ), new Angles( -10, 0, -side * 12 ).ToBasis(), EyeHealth );
-			Sculpt( eye, "eyestalk", bellyColor );
-			BuildEye( eye, side );
-			Trigger( eye, new Vector3( 0, 0, 3 ), new Vector3( 0, 0, 12 ), 4f );
+			var elbow = BuildAntenna( eye, side );
+			BuildEye( eye, side, elbow, ElbowToTip( side ) );
+			Trigger( eye, new Vector3( 0, 0, 2 ), new Vector3( 1, side * 2.5f, 10 ), 3f );
+			Trigger( eye, new Vector3( 1, side * 2.5f, 10 ), new Vector3( 8f, side * 5.5f, 13f ), 4.5f );
 		}
 
 		foreach ( var (arm, pincer, side) in new[] { (ArmL, PincerL, 1f), (ArmR, PincerR, -1f) } )
@@ -175,24 +179,67 @@ public partial class JunkCrab : PartCreature
 		}
 	}
 
-	void BuildEye( Part part, float side )
+	/// <summary> The alien green of the eye bulbs and their lids, and the big dark almond eye. </summary>
+	static readonly Color AlienSkin = new( 0.27f, 0.72f, 0.3f ), AlienEye = new( 0.02f, 0.3f, 0.15f );
+
+	/// <summary> Where the eye sits from the antenna's elbow (s&box inches): forward, out and a little up. </summary>
+	static Vector3 ElbowToTip( float side ) => new( 7f, side * 3f, 3f );
+
+	/// <summary>
+	/// An ant's elbowed antenna on the eye part: a stiff shaft up from the shell, then a beaded whip bent forward from
+	/// the elbow (its own joint, which springs and jiggles). Returns the elbow; the eye goes on its tip.
+	/// </summary>
+	Node3D BuildAntenna( Part part, float side )
+	{
+		var stalk = shellColor.Lerp( Colors.Black, 0.35f );
+		var mat = Shapes.Material( stalk, "chitin" );
+		var top = U.Sbox( 1f, side * 2.5f, 10f );
+		part.Renderers.Add( (global::Sculpt.Limb( part.Go, Vector3.Zero, top, 0.95f * U.In, 0.6f * U.In, mat, "Shaft" ), stalk) );
+		part.Renderers.Add( (Shapes.Part( part.Go, "Socket", Vector3.Zero, Shapes.Ellipsoid( 1.8f ), stalk, skin: "chitin" ), stalk) );
+		var elbow = new Node3D { Name = "Elbow" };
+		part.Go.AddChild( elbow );
+		elbow.Position = top;
+		part.Renderers.Add( (Shapes.Part( elbow, "Knuckle", Vector3.Zero, Shapes.Ellipsoid( 0.95f ), stalk, skin: "chitin" ), stalk) );
+		// The whip: beads getting smaller toward the eye.
+		var tip = ElbowToTip( side );
+		var previous = Vector3.Zero;
+		const int beads = 5;
+		for ( var i = 1; i <= beads; i++ )
+		{
+			var t = i / (float)(beads + 1);
+			var at = tip * t + new Vector3( 0f, 0f, MathF.Sin( t * MathF.PI ) * 1.2f );
+			part.Renderers.Add( (global::Sculpt.Limb( elbow, U.Sbox( previous ), U.Sbox( at ), 0.55f * U.In, 0.45f * U.In, mat, "Whip" ), stalk) );
+			part.Renderers.Add( (Shapes.Part( elbow, "Bead", at, Shapes.Ellipsoid( 0.7f - t * 0.2f ), stalk, skin: "chitin" ), stalk) );
+			previous = at;
+		}
+		part.Renderers.Add( (global::Sculpt.Limb( elbow, U.Sbox( previous ), U.Sbox( tip ), 0.45f * U.In, 0.4f * U.In, mat, "Whip" ), stalk) );
+		return elbow;
+	}
+
+	/// <summary>
+	/// A classic alien eye on the tip of an antenna: a green egg of a bulb with one big dark almond eye slanted up and
+	/// out, a white glint, and green lids that blink over it. The almond turns to follow the player.
+	/// </summary>
+	void BuildEye( Part part, float side, Node3D holder, Vector3 at )
 	{
 		var ball = new Node3D { Name = "Eyeball" };
-		part.Go.AddChild( ball );
-		ball.Position = U.Sbox( 0.6f, 0, 11.5f );
-		Sphere( ball, part, Vector3.Zero, new Vector3( EyeRadius, EyeRadius, EyeRadius ), new Color( 0.97f, 0.96f, 0.93f ) );
+		holder.AddChild( ball );
+		ball.Position = U.Sbox( at );
+		ball.Scale = new Vector3( 1f, 1.18f, 1f );   // an egg, like an alien's head
+		Sphere( ball, part, Vector3.Zero, new Vector3( EyeRadius, EyeRadius, EyeRadius ), AlienSkin );
 
 		var gaze = new Node3D { Name = "Gaze" };
 		ball.AddChild( gaze );
 		var pupil = new Node3D { Name = "Pupil" };
 		gaze.AddChild( pupil );
-		Sphere( pupil, part, new Vector3( EyeRadius * 0.9f, 0, 0 ), new Vector3( 0.42f, 1.55f, 1.75f ), new Color( 0.02f, 0.02f, 0.03f ) );
-		Sphere( pupil, part, new Vector3( EyeRadius * 0.98f, 0.5f * side, 0.65f ), new Vector3( 0.2f, 0.42f, 0.42f ), Colors.White );
-		Sphere( pupil, part, new Vector3( EyeRadius * 0.98f, -0.45f * side, -0.6f ), new Vector3( 0.15f, 0.2f, 0.2f ), new Color( 0.85f, 0.88f, 0.95f ) );
+		var almond = new Node3D { Name = "Almond", Basis = new Basis( Vector3.Back, side * 0.38f ) };
+		pupil.AddChild( almond );
+		Sphere( almond, part, new Vector3( EyeRadius * 0.6f, 0, 0 ), new Vector3( EyeRadius * 0.44f, EyeRadius * 0.64f, EyeRadius * 0.38f ), AlienEye );
+		Sphere( almond, part, new Vector3( EyeRadius * 0.95f, 0.55f * side, 0.42f ), new Vector3( 0.22f, 0.6f, 0.32f ), Colors.White );
 
-		var upper = Lid( ball, part, "Upper Lid", shellColor );
-		var lower = Lid( ball, part, "Lower Lid", bellyColor );
-		eyes.Add( new CrabEye { Index = part.Index, Side = side, Ball = ball, Gaze = gaze, Pupil = pupil, UpperLid = upper, LowerLid = lower } );
+		var upper = Lid( ball, part, "Upper Lid", AlienSkin );
+		var lower = Lid( ball, part, "Lower Lid", AlienSkin );
+		eyes.Add( new CrabEye { Index = part.Index, Side = side, Ball = ball, Gaze = gaze, Pupil = pupil, UpperLid = upper, LowerLid = lower, Elbow = holder } );
 	}
 
 	/// <summary> An eyelid: a half dome a touch bigger than the eyeball (dome over s&box +Z, Godot +Y). </summary>
@@ -339,9 +386,37 @@ public partial class JunkCrab : PartCreature
 			}
 		}
 
-		foreach ( var (eye, side) in new[] { (EyeL, 1f), (EyeR, -1f) } )
-			if ( Has( eye ) ) parts[eye].Go.Basis = parts[eye].Rest * new Angles( MathF.Sin( now * 2.3f + side ) * 8f, 0, MathF.Sin( now * 1.7f + side * 2f ) * 10f ).ToBasis();
+		WaveAntennas( dt, now, moving );
 		UpdateEyes( dt );
+	}
+
+	/// <summary>
+	/// The antennas wave slowly, left and right, up and down, each out of step; the whip past the elbow lags on a soft
+	/// spring, so it jiggles as the crab scuttles and overshoots when the shaft turns.
+	/// </summary>
+	void WaveAntennas( float dt, float now, float moving )
+	{
+		foreach ( var e in eyes )
+		{
+			if ( !Has( e.Index ) || !IsInstanceValid( e.Elbow ) ) continue;
+			var go = parts[e.Index].Go;
+			var phase = e.Side * 1.9f + Hue * 6f;
+			var pitch = MathF.Sin( now * 0.8f + phase ) * 16f + MathF.Sin( now * 1.9f + phase * 2f ) * 4f;
+			var yaw = MathF.Sin( now * 0.55f + phase * 1.3f ) * 24f + MathF.Sin( now * 1.3f + phase ) * 5f;
+			go.Basis = parts[e.Index].Rest * new Angles( pitch, yaw, 0f ).ToBasis();
+			// The whip's spring: it chases a bend that leads the shaft's own wave, and each step of the crab kicks it.
+			var target = new Vector2( MathF.Sin( now * 0.8f + phase - 0.9f ) * 10f, MathF.Sin( now * 0.55f + phase * 1.3f - 0.9f ) * 12f );
+			target += new Vector2( MathF.Sin( gait * 2f ) * 9f, MathF.Cos( gait ) * 5f ) * moving;
+			var steps = Math.Max( 1, (int)MathF.Ceiling( dt / 0.008f ) );
+			var h = dt / steps;
+			for ( var i = 0; i < steps; i++ )
+			{
+				e.BendSpeed += ((target - e.Bend) * 90f - e.BendSpeed * 4.5f) * h;
+				e.Bend += e.BendSpeed * h;
+			}
+			e.Bend = new Vector2( MathX.Clamp( e.Bend.X, -35f, 35f ), MathX.Clamp( e.Bend.Y, -35f, 35f ) );
+			e.Elbow.Basis = new Angles( e.Bend.X, e.Bend.Y, 0f ).ToBasis();
+		}
 	}
 
 	// ---- Brain ----

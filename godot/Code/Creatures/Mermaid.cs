@@ -11,6 +11,8 @@ using Godot;
 /// </summary>
 public partial class Mermaid : Creature
 {
+	Blinker blinks;
+
 	public static readonly List<Mermaid> All = new();
 
 	/// <summary> Metres per model unit (Poseidon's units): about 1.9 m from the crown to the tip of the tail. </summary>
@@ -258,8 +260,9 @@ void fragment() {
 			}
 			if ( !Male ) Sculpt.Cone( head, cheek + new Vector3( s * 0.02f, -0.06f, -0.05f ), cheek + new Vector3( s * 0.1f, -0.1f, -0.1f ), 0.01f, spike, 4 );
 			// Black eyes, a dark amber iris in each.
-			Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.225f ), new Vector3( 0.12f, 0.065f, 0.05f ), black, new Basis( Vector3.Back, -s * 0.15f ) );
-			Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.248f ), new Vector3( 0.045f, 0.045f, 0.012f ), iris );
+			var ball = Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.225f ), new Vector3( 0.12f, 0.065f, 0.05f ), black, new Basis( Vector3.Back, -s * 0.15f ) );
+			var ring = Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.248f ), new Vector3( 0.045f, 0.045f, 0.012f ), iris );
+			(blinks ??= Blinker.Add( this )).Eye( ball, ring );
 			// Pastel dots under and beside the eyes.
 			for ( var k = 0; k < (Male ? 0 : 6); k++ )
 			{

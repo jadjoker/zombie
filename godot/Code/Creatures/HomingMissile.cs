@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// MC-51's homing missiles (they took the place of his cards): fat cartoon rockets in the game's colours (a green nose
-/// with his one red eye in the middle of its face and a toothy grin, a purple body with yellow bands and fins, a
+/// with his one red eye in the middle of its face and a mean toothy grin, a purple body with yellow bands and fins, a
 /// green and yellow flame). Launched from his hand, each drifts slowly upward for 5 to 8 seconds, then tips over and
 /// dives after the nearest player, turning only so fast (they can be dodged). The body is a chain of sections that
 /// bends toward where it is turning, wobbling a little. They have little health: shoot one and it bursts harmlessly;
@@ -80,14 +80,35 @@ public partial class HomingMissile : Creature
 		Sculpt.Blob( head, new Vector3( 0f, 0f, -0.12f ), new Vector3( r * 2.1f, r * 2.1f, 0.5f ), nose );
 		Sculpt.Blob( head, new Vector3( 0f, 0f, 0.04f ), new Vector3( r * 2.2f, r * 2.2f, 0.12f ), silver );   // the collar
 		// His one eye, in the middle of its face: white ball, red iris, black pupil, an angry silver brow over it.
-		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.335f ), new Vector3( 0.11f, 0.11f, 0.08f ), white );
-		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.37f ), new Vector3( 0.065f, 0.065f, 0.025f ), iris );
-		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.382f ), new Vector3( 0.03f, 0.03f, 0.012f ), dark );
+		var ball = Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.335f ), new Vector3( 0.11f, 0.11f, 0.08f ), white );
+		var ring = Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.37f ), new Vector3( 0.065f, 0.065f, 0.025f ), iris );
+		var dot = Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.382f ), new Vector3( 0.03f, 0.03f, 0.012f ), dark );
+		Blinker.Add( this ).Eye( ball, ring, dot );
 		foreach ( var s in new[] { -1f, 1f } )
 			Sculpt.Block( head, new Vector3( s * 0.03f, 0.078f, -0.335f ), new Vector3( 0.07f, 0.02f, 0.04f ), silver, new Basis( Vector3.Back, -s * 0.45f ) );
-		// The grin: a row of white teeth across the black face.
-		for ( var k = 0; k < 5; k++ )
-			Sculpt.Block( head, new Vector3( (k - 2) * 0.022f, -0.05f, -0.335f + MathF.Abs( k - 2 ) * 0.01f ), new Vector3( 0.018f, 0.028f, 0.016f ), white );
+		// The grin: a wide mean smile, its corners pulled up, the gap dark red, pointed teeth clenched top and bottom.
+		var gum = Sculpt.Paint( new Color( 0.35f, 0.02f, 0.03f ), 0.5f );
+		static float Smile( float x ) => -0.068f + x * x / (0.065f * 0.065f) * 0.032f;
+		// On the face's front: the nose blob is an ellipsoid 0.11 by 0.11 by 0.25 (radii) round z -0.12.
+		static float Face( float x, float y ) => -0.12f - 0.25f * MathF.Sqrt( MathF.Max( 0.05f, 1f - (x / 0.11f) * (x / 0.11f) - (y / 0.11f) * (y / 0.11f) ) );
+		const int steps = 8;
+		for ( var k = 0; k < steps; k++ )
+		{
+			var x0 = -0.065f + 0.13f * k / steps;
+			var x1 = -0.065f + 0.13f * (k + 1) / steps;
+			Sculpt.Limb( head, new Vector3( x0, Smile( x0 ), Face( x0, Smile( x0 ) ) + 0.004f ), new Vector3( x1, Smile( x1 ), Face( x1, Smile( x1 ) ) + 0.004f ), 0.014f, 0.014f, gum, "Mouth" );
+		}
+		for ( var k = 0; k < 6; k++ )
+		{
+			// Upper fangs point down; the lower ones point up between them.
+			var xu = -0.0525f + k * 0.021f;
+			var yu = Smile( xu );
+			Sculpt.Cone( head, new Vector3( xu, yu + 0.014f, Face( xu, yu ) - 0.002f ), new Vector3( xu, yu - 0.008f, Face( xu, yu ) - 0.004f ), 0.0095f, white, 6, "Tooth" );
+			if ( k == 5 ) continue;
+			var xl = xu + 0.0105f;
+			var yl = Smile( xl );
+			Sculpt.Cone( head, new Vector3( xl, yl - 0.014f, Face( xl, yl ) - 0.002f ), new Vector3( xl, yl + 0.008f, Face( xl, yl ) - 0.004f ), 0.0085f, white, 6, "Tooth" );
+		}
 
 		// Three body sections behind it, each a joint that bends, then the tail with its fins and flame.
 		var parent = head;

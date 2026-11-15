@@ -198,32 +198,44 @@ public partial class Teleporter : Node3D
 	public bool InReach( PlayerController controller ) =>
 		!Arrival && !taking && (float)born > 1f && controller.GlobalPosition.Flat().DistanceTo( GlobalPosition.Flat() ) < Reach && MathF.Abs( controller.GlobalPosition.Y - GlobalPosition.Y ) < 2.5f;
 
-	/// <summary> Into the beam: a flash, and out the other side at the wreck site, where wave 11 begins. </summary>
+	/// <summary> Into the beam: a fade to a loading screen, and out the other side in the next area, where its first wave begins. </summary>
 	public void Take( PlayerController controller )
 	{
 		if ( taking ) return;
 		taking = true;
 		Sfx.Play2D( "surge", 1f );
 		Sfx.Play2D( "beam_fire", 0.8f, 1.3f );
-		var fade = new ColorRect { Color = new Color( 0.5f, 1f, 0.55f, 0f ), MouseFilter = Control.MouseFilterEnum.Ignore };
+		// Fade to black, show the loading screen, build the next area behind it, then fade back in.
+		var fade = new ColorRect { Color = new Color( 0f, 0f, 0f, 0f ), MouseFilter = Control.MouseFilterEnum.Ignore };
 		fade.SetAnchorsPreset( Control.LayoutPreset.FullRect );
-		var layer = new CanvasLayer { Layer = 50, Name = "Teleport Flash" };
+		var layer = new CanvasLayer { Layer = 50, Name = "Teleport Fade" };
 		GetTree().CurrentScene.AddChild( layer );
 		layer.AddChild( fade );
+		var loading = new LoadingScreen
+		{
+			Name = "Loading",
+			Destination = SeaTerrain.Area == 1 ? "To the wreck site" : "To Atlantis",
+			Modulate = new Color( 1f, 1f, 1f, 0f ),
+		};
+		layer.AddChild( loading );
 		controller.UseInputControls = false;
 		var tween = layer.CreateTween();
-		tween.TweenProperty( fade, "color:a", 1f, 0.35f );
+		tween.TweenProperty( fade, "color:a", 1f, 0.3f );
+		tween.TweenProperty( loading, "modulate:a", 1f, 0.25f );
+		tween.TweenCallback( Callable.From( () => loading.Progress = 0.35f ) );
+		tween.TweenInterval( 0.35f );   // drawn on screen before the build holds up the frames
 		tween.TweenCallback( Callable.From( () =>
 		{
 			if ( !IsInstanceValid( this ) ) return;   // freed meanwhile (a restart): stay in this area
 			var level = GetTree().CurrentScene as Node3D;
 			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, controller );
 			else AreaThree.Go( level, controller );   // from the wreck site to Atlantis
-			fade.Color = new Color( 0.02f, 0.06f, 0.1f, 1f );
+			loading.Progress = 1f;
 			QueueFree();
 		} ) );
-		tween.TweenInterval( 0.3f );
-		tween.TweenProperty( fade, "color:a", 0f, 0.8f );
+		tween.TweenInterval( 0.9f );
+		tween.TweenProperty( loading, "modulate:a", 0f, 0.35f );
+		tween.TweenProperty( fade, "color:a", 0f, 0.6f );
 		tween.TweenCallback( Callable.From( () =>
 		{
 			controller.UseInputControls = true;

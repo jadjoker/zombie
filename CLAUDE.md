@@ -77,13 +77,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `AlienReef.cs` adds a coral reef ring round the basin (radius 23-33 m) and patches inside it, recolours about 45% of the
   kelp and coral alien (neon green, black, purple, violet), and 230 glowing floating alien plants (`AlienFloaters`). The
   sea surface has a dark blue hole off the end of the diving board (`water.gdshader` hole uniforms,
-  `DockHouse.BlueHoleRadius`). Converted props keep their s&box name in `Level.Kind(node)` (Godot renames duplicates).
+  `DockHouse.BlueHoleRadius`), ringed by a low reef after the Great Blue Hole of Belize (`DockHouse.BuildReefRing`, show only).
+  `SeaTerrain.Fit` removes the arena's invisible crate and barricade boxes (they were invisible walls). Converted props keep their s&box name in `Level.Kind(node)` (Godot renames duplicates).
 - The teleporter and the wreck site (issue #35): after wave 10 `Teleporter.cs` zaps in near the landing spot on clear
   ground (`FindSpot`), and wave 11 waits (`WaveDirector.TeleportAfterWave`, `WaitingForTeleport`) until the player uses
   it. `AreaTwo.Go` rebuilds the ground in place as area 2 (`SeaTerrain.Area`): a flat plain with the sunken liner
   (`ShipWreck.cs`, after the Titanic: heeled 27 degrees, three decks joined by ramps, cabins, a dining saloon, a kitchen,
   broken windows and a breach; boxes merged into a few meshes with box colliders), rebakes the navmesh and starts
-  wave 11. A game over there reloads the level. Dev menu: World, Waves, Clear wave 10. Test: `--teleport` (shots
+  wave 11. Teleporting fades to black behind `LoadingScreen` (a drawn postcard of the dock, the destination, a tip). A game over there reloads the level. Dev menu: World, Waves, Clear wave 10. Test: `--teleport` (shots
   need a window).
 - Playtest batch (wreck site and combat): `VegetationColliders.cs` makes kelp (a stem cylinder), coral, boulders, reef and
   cliffs solid from their own meshes after placement (before the navmesh); `SeaTerrain.Fit` moves most of the basin's

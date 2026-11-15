@@ -96,6 +96,124 @@ public partial class DockHouse : Node3D
 	}
 
 	float Deck => SurfaceHeight + 18f;
+
+	/// <summary>
+	/// A ring of reef round the blue hole, after the Great Blue Hole of Belize: a low band of white coral rubble and
+	/// sand just out of the water, patched brown and olive, sloping into the turquoise shallows, broken where the pier
+	/// comes in and in a couple of other places, with a few islets of reef off it and dark coral heads on top. Only for
+	/// show (no collider).
+	/// </summary>
+	void BuildReefRing( Node3D root )
+	{
+		var centre = BlueHoleCentre;
+		var surface = SurfaceHeight * U.In;
+		var radius = BlueHoleRadius * U.In;
+		var toPier = (U.Sbox( Origin.X, Origin.Y, SurfaceHeight ) - centre).Flat().SafeNormal();
+		var pierAngle = MathF.Atan2( toPier.Z, toPier.X );
+		var noise = new FastNoiseLite { Seed = 1971, Frequency = 0.9f, FractalOctaves = 3 };
+		var patches = new FastNoiseLite { Seed = 77, Frequency = 0.35f };
+		float Gap( float a )
+		{
+			// 1 on the reef, down to 0 in the breaks (the pier's, and two narrow ones).
+			float Cut( float at, float half ) => MathX.Clamp( (MathF.Abs( Mathf.Wrap( a - at, -MathF.PI, MathF.PI ) ) - half) / 0.12f, 0f, 1f );
+			return Cut( pierAngle, 0.3f ) * Cut( pierAngle + 2.1f, 0.08f ) * Cut( pierAngle - 2.6f, 0.06f );
+		}
+		var sand = new Color( 0.93f, 0.9f, 0.8f );
+		var rubble = new Color( 0.55f, 0.47f, 0.33f );
+		var olive = new Color( 0.38f, 0.42f, 0.26f );
+		var shallow = new Color( 0.3f, 0.62f, 0.6f );
+		Color Paint( float x, float z, float top )
+		{
+			var n = patches.GetNoise2D( x * 3f, z * 3f ) * 0.5f + 0.5f;
+			var c = sand.Lerp( rubble, MathX.Clamp( (n - 0.35f) * 2.2f, 0f, 1f ) );
+			c = c.Lerp( olive, MathX.Clamp( (patches.GetNoise2D( z * 5f, x * 5f ) - 0.3f) * 2f, 0f, 1f ) );
+			return shallow.Lerp( c, MathX.Clamp( top, 0f, 1f ) );   // under water the band fades to the shallows' colour
+		}
+
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		const int around = 220;
+		// Across the band: under water, up the inner slope, the top, down the outer slope, under water.
+		float[] across = { 0f, 0.1f, 0.25f, 0.5f, 0.75f, 0.9f, 1f };
+		float[] lift = { -1.4f, 0.55f, 0.95f, 1f, 0.9f, 0.5f, -1.6f };
+		var rows = new Vector3[around + 1, across.Length];
+		var colours = new Color[around + 1, across.Length];
+		for ( var i = 0; i <= around; i++ )
+		{
+			var a = i / (float)around * MathF.Tau;
+			var dir = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
+			var u = MathF.Cos( a ) * 2f;
+			var v = MathF.Sin( a ) * 2f;
+			var inner = radius * (1.06f + noise.GetNoise2D( u, v ) * 0.05f);
+			var width = radius * (0.24f + (noise.GetNoise2D( v + 9f, u - 3f ) * 0.5f + 0.5f) * 0.22f);
+			var height = (0.25f + (noise.GetNoise2D( u * 2f, v * 2f ) * 0.5f + 0.5f) * 0.3f) * Gap( a );
+			for ( var k = 0; k < across.Length; k++ )
+			{
+				var r = inner + width * across[k];
+				var y = lift[k] > 0f ? height * lift[k] - (1f - Gap( a )) * 0.9f : lift[k];
+				var p = centre + dir * r;
+				rows[i, k] = new Vector3( p.X, surface + y, p.Z );
+				colours[i, k] = Paint( p.X, p.Z, lift[k] > 0f ? Gap( a ) : 0f );
+			}
+		}
+		void V( int i, int k ) { st.SetColor( colours[i, k] ); st.AddVertex( rows[i, k] ); }
+		for ( var i = 0; i < around; i++ )
+			for ( var k = 0; k < across.Length - 1; k++ )
+			{
+				// Facing up: (c - a) x (b - a) must point up.
+				V( i, k ); V( i + 1, k + 1 ); V( i + 1, k );
+				V( i, k ); V( i, k + 1 ); V( i + 1, k + 1 );
+			}
+		// Islets of reef off the ring, like the patches round the real one.
+		var random = new Random( 3210 );
+		float R( float lo, float hi ) => lo + (float)random.NextDouble() * (hi - lo);
+		for ( var n = 0; n < 7; n++ )
+		{
+			var a = pierAngle + R( 0.6f, MathF.Tau - 0.6f );
+			var at = centre + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * radius * R( 1.75f, 2.4f );
+			var size = radius * R( 0.08f, 0.16f );
+			const int sides = 14;
+			var rim = new Vector3[sides];
+			for ( var j = 0; j < sides; j++ )
+			{
+				var b = j / (float)sides * MathF.Tau;
+				var rr = size * (0.75f + noise.GetNoise2D( at.X + j, at.Z ) * 0.4f);
+				rim[j] = new Vector3( at.X + MathF.Cos( b ) * rr * 1.4f, surface - 1.2f, at.Z + MathF.Sin( b ) * rr );
+			}
+			var top = new Vector3( at.X, surface + R( 0.1f, 0.3f ), at.Z );
+			for ( var j = 0; j < sides; j++ )
+			{
+				var p0 = rim[j];
+				var p1 = rim[(j + 1) % sides];
+				var mid0 = top.Lerp( p0, 0.6f ) with { Y = top.Y - 0.05f };
+				var mid1 = top.Lerp( p1, 0.6f ) with { Y = top.Y - 0.05f };
+				var cTop = Paint( top.X, top.Z, 1f );
+				// Wound so (c - a) x (b - a) points up and out (Godot's front face).
+				st.SetColor( cTop ); st.AddVertex( top ); st.SetColor( cTop ); st.AddVertex( mid0 ); st.SetColor( cTop ); st.AddVertex( mid1 );
+				st.SetColor( cTop ); st.AddVertex( mid0 ); st.SetColor( shallow ); st.AddVertex( p0 ); st.SetColor( shallow ); st.AddVertex( p1 );
+				st.SetColor( cTop ); st.AddVertex( mid0 ); st.SetColor( shallow ); st.AddVertex( p1 ); st.SetColor( cTop ); st.AddVertex( mid1 );
+			}
+		}
+		st.GenerateNormals();
+		var material = new StandardMaterial3D { VertexColorUseAsAlbedo = true, Roughness = 0.95f };
+		var reef = new MeshInstance3D { Name = "Blue Hole Reef", Mesh = st.Commit(), MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		root.AddChild( reef );
+
+		// Dark coral heads and rocks on top of the ring.
+		var rock = new SphereMesh { Radius = 0.5f, Height = 0.7f, RadialSegments = 8, Rings = 4 };
+		var rockMaterial = new StandardMaterial3D { AlbedoColor = new Color( 0.3f, 0.27f, 0.22f ), Roughness = 1f };
+		var greenMaterial = new StandardMaterial3D { AlbedoColor = new Color( 0.22f, 0.32f, 0.16f ), Roughness = 1f };
+		for ( var n = 0; n < 40; n++ )
+		{
+			var a = R( 0f, MathF.Tau );
+			if ( Gap( a ) < 0.99f ) continue;
+			var at = centre + new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * radius * R( 1.12f, 1.4f );
+			var s = R( 0.4f, 1.3f );
+			var head = new MeshInstance3D { Mesh = rock, MaterialOverride = random.NextDouble() < 0.4 ? greenMaterial : rockMaterial, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+			reef.AddChild( head );
+			head.GlobalTransform = new Transform3D( new Basis( Vector3.Up, R( 0f, MathF.Tau ) ).Scaled( new Vector3( s * R( 1f, 1.8f ), s * 0.5f, s ) ), at with { Y = surface + 0.25f } );
+		}
+	}
 	Vector3 DivePoint => new( Origin.X + PierLength - 20f, Origin.Y, Deck );
 	Vector3 StartPoint => new( Origin.X - 140f, Origin.Y, Deck + 4f );
 
@@ -175,6 +293,7 @@ public partial class DockHouse : Node3D
 		waves.GlobalPosition = U.Sbox( o.X, o.Y, SurfaceHeight );
 		// The blue hole you dive into: a dark circle just off the end of the diving board, the board reaching over its edge.
 		waves.SetBlueHole( new Vector2( BoardEnd.X + BlueHoleRadius * 0.62f, BoardEnd.Y ), BlueHoleRadius );
+		BuildReefRing( root );
 		// The level's murk is underwater fog; above the surface it glowed green in the air and filled the hut.
 		// A big negative-density volume clears it from the surface up.
 		var air = new FogVolume

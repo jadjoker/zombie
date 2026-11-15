@@ -198,7 +198,11 @@ public static class SeaTerrain
 	{
 		var all = level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>().ToList();
 		// Only the converted arena's own floor, sand and walls (the dock and others have parts with the same names).
-		bool OldGround( Node3D n ) => (n.GetParent()?.Name.ToString() == "Arena" && (n.Name.ToString() == "Floor" || Level.Kind( n ).StartsWith( "Wall " )))
+		// The arena's crates and barricades go too: they are invisible boxes from the s&box scene (each crate sat
+		// under a boulder, which has its own collider now and is often moved out to the hills; the barricades had no
+		// model at all), so they were the invisible walls players stopped dead against (playtest).
+		bool OldGround( Node3D n ) => (n.GetParent()?.Name.ToString() == "Arena" && (n.Name.ToString() == "Floor" || Level.Kind( n ).StartsWith( "Wall " )
+				|| Level.Kind( n ).StartsWith( "Crate" ) || Level.Kind( n ).StartsWith( "Barricade" )))
 			|| (Level.Kind( n.GetParent() ) == "Dressing" && Level.Kind( n ) == "Sand");
 		foreach ( var n in all.Where( OldGround ).ToList() )
 			if ( IsInstanceValid( n ) ) { n.GetParent().RemoveChild( n ); n.Free(); }

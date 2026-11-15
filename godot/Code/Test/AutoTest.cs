@@ -2696,6 +2696,24 @@ public partial class AutoTest : Node
 	/// </summary>
 	async Task PoseidonTest()
 	{
+		// While still at the dock: the blue hole and its reef ring, from the air.
+		if ( shots is not null && DockHouse.Current is { } dock )
+		{
+			var hidden = new List<CanvasLayer>();
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl && cl.Visible ) { cl.Visible = false; hidden.Add( cl ); }
+			var hole = dock.BlueHoleCentre;
+			var toBoard = (dock.BoardTip - hole).Flat().SafeNormal();
+			foreach ( var (name, from) in new[] { ("dock_bluehole", hole + toBoard * 30f + Vector3.Up * 38f), ("dock_bluehole_low", dock.BoardTip + Vector3.Up * 3f - toBoard * 2f) } )
+			{
+				var at = new Transform3D( Basis.LookingAt( (hole - from).Normalized(), Vector3.Up ), from );
+				player.CameraOverride = _ => at;
+				await Wait( 0.35f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+			foreach ( var cl in hidden ) cl.Visible = true;
+		}
 		DockHouse.Current?.SkipDive();
 		await Wait( 0.5f );
 		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
@@ -2837,7 +2855,9 @@ public partial class AutoTest : Node
 		await Wait( 0.4f );
 		Check( use.AtTeleporter, "standing on the wreck site's teleporter does not offer it" );
 		use.PressUse();
-		await Wait( 3f );
+		await Wait( 0.75f );
+		await Shot( "loading_screen" );   // the teleporter's loading screen, up before the build
+		await Wait( 2.25f );
 		Check( SeaTerrain.Area == 3 && Atlantis.Root is not null && IsInstanceValid( Atlantis.Root ) && !ShipWreck.Placed, "the teleporter did not take the player to Atlantis" );
 		var arrival = Atlantis.Arrival;
 		GD.Print( $"[autotest] atlantis: player at {player.GlobalPosition}, {player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ):0.0} m from the arrival" );

@@ -98,13 +98,14 @@ void fragment() {
 	static readonly Shader ScaleShader = new()
 	{
 		Code = @"shader_type spatial;
+render_mode cull_disabled;
 uniform vec3 colour : source_color = vec3(0.1, 0.56, 0.5);
 uniform float metal = 0.3;
 uniform float glow = 0.0;
 varying vec2 q;
 varying float seed;
 float hex(vec2 v) { return max(abs(v.x), max(abs(0.5 * v.x + 0.866 * v.y), abs(0.5 * v.x - 0.866 * v.y))); }
-void vertex() { q = VERTEX.xz; seed = fract(float(INSTANCE_ID) * 0.6180339 + 0.137); }
+void vertex() { q = UV; seed = COLOR.r; }
 void fragment() {
 	float d = hex(q);
 	float inner = 0.16 + fract(seed * 7.31) * 0.14;
@@ -123,7 +124,6 @@ void fragment() {
 	EMISSION = c * glow;
 }",
 	};
-	static Mesh scaleMesh;
 
 	/// <summary> A tail scale material in a colour (see ScaleShader). </summary>
 	public static ShaderMaterial ScaleMaterial( Color c, float metal = 0.3f, float glow = 0f )
@@ -441,8 +441,7 @@ void fragment() {
 			var r = MathX.Lerp( 0.44f, 0.12f, i / 8f );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.2f, 0f ), new Vector3( r * 2f, 0.5f, r * 1.8f ), scales );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.05f, 0f ), new Vector3( r * 2.05f, 0.08f, r * 1.85f ), armour );
-			// Scales: four rings of sixteen small six-sided plates, laid like tiles, one multimesh per colour.
-			scaleMesh ??= new CylinderMesh { TopRadius = 0.5f, BottomRadius = 0.5f, Height = 1f, RadialSegments = 6, Rings = 1 };
+			// Scales: four rings of sixteen small six-sided plates, laid like tiles.
 			var plates = new List<(Transform3D At, float Seed)>[scaleColours.Length];
 			for ( var c = 0; c < plates.Length; c++ ) plates[c] = new();
 			for ( var row = 0; row < 4; row++ )
@@ -461,16 +460,33 @@ void fragment() {
 					var colour = (i * 3 + k + row * 5 + (k * 7 + row * 3 + i) % 3) % scaleColours.Length;
 					plates[colour].Add( (new Transform3D( new Basis( across * size, normal * 0.03f, down * size * 1.15f ), at2 + normal * 0.012f ), (i * 64 + row * 16 + k) * 0.6180339f % 1f) );
 				}
+			// Baked into one mesh per colour per section (multimeshes corrupted memory in the test runs): each plate a
+			// flat hexagon, its pattern coordinates in the UVs and its own number in the vertex colour.
 			for ( var c = 0; c < plates.Length; c++ )
 			{
 				if ( plates[c].Count == 0 ) continue;
-				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = scaleMesh };
-				mm.InstanceCount = plates[c].Count;
-				for ( var n = 0; n < plates[c].Count; n++ )
+				var st = new SurfaceTool();
+				st.Begin( Mesh.PrimitiveType.Triangles );
+				foreach ( var (plateAt, seed) in plates[c] )
 				{
-					mm.SetInstanceTransform( n, plates[c][n].At );
+					var normal = plateAt.Basis.Y.Normalized();
+					var colourSeed = new Color( seed, 0f, 0f, 1f );
+					void Corner( float angle )
+					{
+						var local = angle < 0f ? Vector2.Zero : new Vector2( MathF.Cos( angle ), MathF.Sin( angle ) ) * 0.5f;
+						st.SetNormal( normal );
+						st.SetColor( colourSeed );
+						st.SetUV( local );
+						st.AddVertex( plateAt * new Vector3( local.X, 0.5f, local.Y ) );
+					}
+					for ( var k = 0; k < 6; k++ )
+					{
+						Corner( -1f );
+						Corner( k / 6f * MathF.Tau );
+						Corner( (k + 1) / 6f * MathF.Tau );
+					}
 				}
-				joint.AddChild( new MultiMeshInstance3D { Name = "Scales", Multimesh = mm, MaterialOverride = scaleColours[c] } );
+				joint.AddChild( new MeshInstance3D { Name = "Scales", Mesh = st.Commit(), MaterialOverride = scaleColours[c] } );
 			}
 			tail.Add( joint );
 			parent = joint;

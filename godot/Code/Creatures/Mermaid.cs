@@ -382,7 +382,7 @@ void fragment() {
 		{
 			// The shield's own part: a thin hexagonal slab in front of the body, so shots stop on it first.
 			var guard = CreaturePart.Create( this, ShieldIndex, "Mermaid Shield", 1f );
-			guard.Collider.Shape = new CylinderShape3D { Radius = 1.05f, Height = 0.12f };
+			guard.Collider.Shape = new CylinderShape3D { Radius = 1.05f, Height = 0.4f };   // thick enough for the physics engine at this scale
 			guard.Collider.Basis = new Basis( Vector3.Right, MathF.PI * 0.5f );
 			shield.AddChild( guard );
 		}

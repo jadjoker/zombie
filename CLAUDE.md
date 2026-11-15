@@ -109,7 +109,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   and reappears through whirlpools near the player inside the map (`Sculpt.InBounds`), throws tridents with the
   player trident's bubbles, throws a whirlpool that carries the player to him for a stab, and summons seahorses
   (`WaveDirector.Adopt` puts them in the wave). Dev menu: Enemies (spawn both, Poseidon attacks), World (Poseidon
-  wave). Test: `--poseidon`. Looks: gold armour and collar, veins (`Veins` in `BuildRig`), tail scales as multimeshes with
+  wave). Test: `--poseidon`. Looks: gold armour and collar, veins (`Veins` in `BuildRig`), tail scales baked into meshes with
   `ScaleShader` (hex lines), hands pinned to the chest's colour. His whirlpool sweeps the player up and carries them back
   to him (`Grab` with the vortex); on death he swells and bursts into loose pieces (`Burst`). The held trident is leant
   off the forearm in `Animate` so it never passes through his arm. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).

@@ -119,7 +119,12 @@ jobs:
           for test in poseidon atlantis mermaids missiles; do
             timeout 300 xvfb-run -a -s "-screen 0 1600x900x24" build/linux/RiskOfCopyright.x86_64 --rendering-method gl_compatibility \
               --log-file "$PWD/build/shots_$test.log" -- --autotest --$test --shots "$PWD/build/shots" > /dev/null 2>&1 || true
-            grep "\[autotest\] shot" "build/shots_$test.log" || true
+            # A run that crashed before its pictures gets one more go.
+            if ! grep -q "\[autotest\] done" "build/shots_$test.log"; then
+              timeout 300 xvfb-run -a -s "-screen 0 1600x900x24" build/linux/RiskOfCopyright.x86_64 --rendering-method gl_compatibility \
+                --log-file "$PWD/build/shots_$test.log" -- --autotest --$test --shots "$PWD/build/shots" > /dev/null 2>&1 || true
+            fi
+            grep "\[autotest\] shot" "build/shots_$test.log" || { echo "no pictures from $test:"; tail -8 "build/shots_$test.log"; }
           done
           ls build/shots
 

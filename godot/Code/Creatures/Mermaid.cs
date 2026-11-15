@@ -27,6 +27,7 @@ public partial class Mermaid : Creature
 	public float TailMultiplier = 0.7f;
 	/// <summary> The trident carriers' shield: its part index. Shots that hit it do nothing. </summary>
 	public const int ShieldIndex = 9;
+	const float ShieldRadius = 0.95f;   // model units
 	/// <summary> Tests: shots the shield has turned. </summary>
 	public int Blocked { get; private set; }
 
@@ -320,11 +321,11 @@ void fragment() {
 			// A futuristic shield on the left forearm, held across the chest: a hexagon of glowing energy in a dark
 			// metal frame with gold corners, an emitter in the middle and light strips round it. It stops bullets;
 			// the head and the tail are still open.
-			shield = Sculpt.Joint( chest, new Vector3( -0.18f, 0.42f, -0.62f ), "Shield" );
+			shield = Sculpt.Joint( chest, new Vector3( -0.18f, 0.3f, -0.62f ), "Shield" );   // its top under the chin
 			var face = new Basis( Vector3.Right, MathF.PI * 0.5f );   // the pane's plane faces -Z
 			shieldPane = new ShaderMaterial { Shader = ShieldShader };
 			shieldPane.SetMeta( "no_caustics", true );
-			const float r = 1.05f;
+			const float r = ShieldRadius;
 			shield.AddChild( pane = new MeshInstance3D
 			{
 				Name = "Pane", Mesh = new CylinderMesh { TopRadius = r, BottomRadius = r, Height = 0.02f, RadialSegments = 6, Rings = 1 },
@@ -382,7 +383,7 @@ void fragment() {
 		{
 			// The shield's own part: a thin hexagonal slab in front of the body, so shots stop on it first.
 			var guard = CreaturePart.Create( this, ShieldIndex, "Mermaid Shield", 1f );
-			guard.Collider.Shape = new CylinderShape3D { Radius = 1.05f, Height = 0.4f };   // thick enough for the physics engine at this scale
+			guard.Collider.Shape = new CylinderShape3D { Radius = ShieldRadius * 0.95f, Height = 0.4f };   // thick enough for the physics engine at this scale
 			guard.Collider.Basis = new Basis( Vector3.Right, MathF.PI * 0.5f );
 			shield.AddChild( guard );
 		}

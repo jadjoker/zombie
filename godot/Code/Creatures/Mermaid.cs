@@ -348,11 +348,8 @@ void fragment() {
 				for ( var rr = -3; rr <= 3; rr++ )
 				{
 					var at = new Vector2( CellSize * 1.5f * q, CellSize * 1.7320508f * (rr + q * 0.5f) );
-					// Only cells wholly inside the frame (each corner of the cell inside the frame's hexagon).
-					var inside = true;
-					for ( var k = 0; k < 6 && inside; k++ )
-						inside = HexDistance( at + new Vector2( MathF.Cos( k * MathF.Tau / 6f ), MathF.Sin( k * MathF.Tau / 6f ) ) * CellSize ) <= apothem;
-					if ( !inside ) continue;
+					// Cells right up to the frame (the frame's bars cover their outer edges).
+					if ( HexDistance( at ) > apothem - CellSize * 0.25f ) continue;
 					var material = new ShaderMaterial { Shader = CellShader };
 					material.SetShaderParameter( "cell_r", CellSize * 0.9f );
 					material.SetShaderParameter( "seed", (seedBase + cells.Count * 0.6180339f) % 1f );
@@ -618,8 +615,10 @@ void fragment() {
 			var local = shield.GlobalTransform.AffineInverse() * position;
 			var spot = new Vector2( local.X, local.Y );
 			Cell hit = null;
-			foreach ( var c in cells )
-				if ( c.At.DistanceTo( spot ) < CellSize * 1.05f && (hit is null || c.At.DistanceSquaredTo( spot ) < hit.At.DistanceSquaredTo( spot )) ) hit = c;
+			// Anywhere on the pane belongs to the nearest cell; only the outer rim is frame.
+			if ( spot.Length() < ShieldRadius * 0.92f )
+				foreach ( var c in cells )
+					if ( hit is null || c.At.DistanceSquaredTo( spot ) < hit.At.DistanceSquaredTo( spot ) ) hit = c;
 			if ( hit is { Health: <= 0f } )
 			{
 				ShotThrough( damage, direction, position, origin, shooter, scoreHit );

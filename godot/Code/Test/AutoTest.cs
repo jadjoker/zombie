@@ -2738,16 +2738,25 @@ public partial class AutoTest : Node
 			var hidden = new List<CanvasLayer>();
 			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
 				if ( n is CanvasLayer cl && cl.Visible ) { cl.Visible = false; hidden.Add( cl ); }
+			var guns = GetTree().Root.FindChildren( "*", "", true, false ).OfType<Node3D>().Where( n => n.Visible && (n is ViewModel || n is ViewModelAxe) ).ToList();
+			foreach ( var g in guns ) g.Visible = false;   // the gun would fill the close-ups
 			for ( var i = 0; i < mermaids.Count; i++ )
 			{
 				var m = mermaids[i];
 				var front = -m.GlobalBasis.Z.Flat().Normalized();
-				var target = m.GlobalPosition + Vector3.Up * 0.2f;
-				var from = target + front * 3.2f + m.GlobalBasis.X.Normalized() * 0.9f + Vector3.Up * 0.4f;
+				// Close on the face (the head is about 0.5 m over its middle), a little to one side.
+				var target = m.GlobalPosition + Vector3.Up * 0.5f;
+				var from = target + front * 1.25f + m.GlobalBasis.X.Normalized() * 0.35f + Vector3.Up * 0.05f;
 				var at = new Transform3D( Basis.LookingAt( (target - from).Normalized(), Vector3.Up ), from );
 				player.CameraOverride = _ => at;
 				await Wait( 0.3f );
 				await Shot( looks[i].Name );
+				// And the whole of it, tail and all.
+				var fullFrom = m.GlobalPosition + front * 3f + Vector3.Up * 0.1f;
+				var full = new Transform3D( Basis.LookingAt( (m.GlobalPosition - fullFrom).Normalized(), Vector3.Up ), fullFrom );
+				player.CameraOverride = _ => full;
+				await Wait( 0.2f );
+				await Shot( looks[i].Name + "_full" );
 			}
 			var wideFrom = home + new Vector3( 0f, 2.2f, 2f );
 			var wide = new Transform3D( Basis.LookingAt( (home + new Vector3( 0f, 1f, -8f ) - wideFrom).Normalized(), Vector3.Up ), wideFrom );
@@ -2756,6 +2765,7 @@ public partial class AutoTest : Node
 			await Shot( "mermaids" );
 			player.CameraOverride = null;
 			foreach ( var cl in hidden ) cl.Visible = true;
+			foreach ( var g in guns ) g.Visible = true;
 		}
 
 		// The fight.

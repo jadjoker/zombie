@@ -467,7 +467,7 @@ public partial class Mermaid : Creature
 			var forearm = (handR.GlobalPosition - foreR.GlobalPosition).SafeNormal();
 			var side = point - forearm * point.Dot( forearm );
 			if ( side.Length() < 0.5f ) point = (point + GlobalBasis.X.Normalized() * 0.5f).Normalized();
-			weapon.GlobalTransform = new Transform3D( Shapes.LookAt( point, GlobalBasis.Z ).Scaled( Vector3.One * 1.7f ), handR.GlobalPosition + forward * 0.05f );
+			weapon.GlobalTransform = new Transform3D( Shapes.LookAt( point, GlobalBasis.Z ).Scaled( Vector3.One * 1.05f ), handR.GlobalPosition + forward * 0.05f );
 		}
 	}
 

@@ -107,7 +107,7 @@ public partial class PlayerWeapon : Node
 	public static PlayerWeapon Trident() => new()
 	{
 		Name = "Trident", DisplayName = "Trident Shooter", Slot = 3, ModelName = "trident",
-		Damage = 140f, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
+		Damage = 350f /* 140 before: 2.5x (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
 		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
 		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
 		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,

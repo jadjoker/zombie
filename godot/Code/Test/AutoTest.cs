@@ -2005,16 +2005,16 @@ public partial class AutoTest : Node
 
 		// Upgrades: ten of each. Health keeps healing after ten without raising the maximum.
 		var max0 = survivor.Health.MaxHealth;
-		for ( var i = 0; i < 10; i++ ) { Check( health.Press( survivor ), $"health purchase {i + 1} was refused" ); }
+		for ( var i = 0; i < health.MaxPurchases; i++ ) { Check( health.Press( survivor ), $"health purchase {i + 1} was refused" ); }
 		var max10 = survivor.Health.MaxHealth;
 		survivor.Health.OnDamage( new DamageInfo { Damage = 50f } );
 		var hurt = survivor.Health.Current;
 		var priceAtLimit = health.CurrentCost;
 		var again = health.Press( survivor );
 		GD.Print( $"[autotest] round11: health max {max0} -> {max10} after 10 buys; an 11th buy {again}, max {survivor.Health.MaxHealth}, healed {hurt} -> {survivor.Health.Current}, price {priceAtLimit} -> {health.CurrentCost}, sold out {health.SoldOut}" );
-		Check( max10 == max0 + 250f && again && survivor.Health.MaxHealth == max10 && survivor.Health.Current == max10 && !health.SoldOut, "health after ten upgrades should still heal without raising the maximum" );
+		Check( max10 == max0 + health.HealthPerPurchase * health.MaxPurchases && again && survivor.Health.MaxHealth == max10 && survivor.Health.Current == max10 && !health.SoldOut, "health after ten upgrades should still heal without raising the maximum" );
 		Check( health.CurrentCost == priceAtLimit, "the health price kept climbing past the limit" );
-		for ( var i = 0; i < 10; i++ ) Check( damage.Press( survivor ), $"damage purchase {i + 1} was refused" );
+		for ( var i = 0; i < damage.MaxPurchases; i++ ) Check( damage.Press( survivor ), $"damage purchase {i + 1} was refused" );
 		Check( damage.SoldOut && !damage.Press( survivor ), "damage should sell out after ten" );
 
 		// The Kraken is twice as tough and 20% tougher each time it comes back, dome and all.
@@ -2766,11 +2766,6 @@ public partial class AutoTest : Node
 			player.CameraOverride = null;
 			foreach ( var cl in hidden ) cl.Visible = true;
 			foreach ( var g in guns ) g.Visible = true;
-			// The HUD as the player sees it: the crosshair on a mermaid.
-			var look = (mermaids[1].GlobalPosition + Vector3.Up * 0.3f - (player.GlobalPosition + Vector3.Up * 1.6f)).Normalized();
-			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ), 0f );
-			await Wait( 0.4f );
-			await Shot( "crosshair" );
 		}
 
 		// A shot at a trident mermaid's chest from in front stops on its shield and does no harm.

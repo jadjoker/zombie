@@ -112,26 +112,16 @@ public partial class WeaponHud : Control
 			DrawCircle( c, 2.5f, new Color( "ff3b2e" ) with { A = scope } );
 		}
 
-		// The crosshair: four small ticks round an open middle, with a thin dark edge so it reads on bright water.
-		// Its gap kicks open with each shot. It stays while you aim down the sights (issue #37) and only gives way
-		// to the scope's own reticle.
-		var since = weapon is null ? 999f : (float)weapon.TimeSinceShot;
-		var kick = MathX.Clamp( 1f - since / 0.12f, 0f, 1f );
+		// The crosshair: two thin lines, one across and one up and down, small. It stays while you aim down the
+		// sights (issue #37) and only gives way to the scope's own reticle.
 		var dotAlpha = PlayerSurvivor.LocalDead ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
 		DotAlpha = dotAlpha;
 		if ( dotAlpha > 0f )
 		{
-			const float tick = 5f, thick = 1.5f;
-			var gap = 3f + kick * 3f;
-			var edge = new Color( 0f, 0f, 0f, 0.5f * dotAlpha );
-			var line = new Color( 1f, 1f, 1f, 0.92f * dotAlpha );
-			foreach ( var (dx, dy) in new[] { (1f, 0f), (-1f, 0f), (0f, 1f), (0f, -1f) } )
-			{
-				var from = c + new Vector2( dx, dy ) * gap;
-				var to = c + new Vector2( dx, dy ) * (gap + tick);
-				DrawLine( from - new Vector2( dx, dy ) * 0.75f, to + new Vector2( dx, dy ) * 0.75f, edge, thick + 1.5f );
-				DrawLine( from, to, line, thick );
-			}
+			const float half = 6f;
+			var line = new Color( 1f, 1f, 1f, 0.9f * dotAlpha );
+			DrawLine( c + new Vector2( -half, 0f ), c + new Vector2( half, 0f ), line, 1.5f );
+			DrawLine( c + new Vector2( 0f, -half ), c + new Vector2( 0f, half ), line, 1.5f );
 		}
 
 		// Hitmarker.

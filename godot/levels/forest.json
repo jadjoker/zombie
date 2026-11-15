@@ -37203,7 +37203,7 @@
     "CostIncrease": 250,
     "HealthPerPurchase": 25,
     "Kind": "Health",
-    "MaxPurchases": 10,
+    "MaxPurchases": 16,
     "Title": "Health"
    }
   },
@@ -37309,7 +37309,7 @@
     "CostIncrease": 500,
     "HealthPerPurchase": 25,
     "Kind": "Damage",
-    "MaxPurchases": 10,
+    "MaxPurchases": 16,
     "Title": "Damage"
    }
   },

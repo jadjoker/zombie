@@ -20,6 +20,16 @@ public partial class PlayerWeapon : Node
 	public float BulletImpulse = 150f * U.In;
 	public int Pellets = 1;
 	public bool Automatic = true;
+	/// <summary>
+	/// Seconds the trigger can be held to charge a shot (0: none). The shot goes on release; held the full time it is
+	/// a charged shot (the trident flies faster and goes through enemies).
+	/// </summary>
+	public float ChargeTime;
+	/// <summary> How charged the held shot is, 0 to 1 (for the HUD). </summary>
+	public float ChargeAmount => charging && ChargeTime > 0f ? MathX.Clamp( (float)sinceChargeStart / ChargeTime, 0f, 1f ) : 0f;
+	bool charging, chargeFull, chargedShot;
+	TimeSince sinceChargeStart;
+	ulong chargeFrame;
 	public bool ShellReload;
 	public float ShellTime = 0.5f;
 	/// <summary> Fires a flying trident (TridentBolt) instead of hitscan rays. </summary>
@@ -107,11 +117,11 @@ public partial class PlayerWeapon : Node
 	public static PlayerWeapon Trident() => new()
 	{
 		Name = "Trident", DisplayName = "Trident Shooter", Slot = 3, ModelName = "trident",
-		Damage = 350f /* 140 before: 2.5x (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
+		Damage = 380f /* 140 at first (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
 		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
 		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
 		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,
-		Projectile = true, ShootSound = "harpoon",
+		Projectile = true, ShootSound = "harpoon", ChargeTime = 1f,
 	};
 
 	public static PlayerWeapon Shotgun() => new()
@@ -205,6 +215,37 @@ public partial class PlayerWeapon : Node
 
 
 
+		if ( ChargeTime > 0f )
+		{
+			// Hold to charge, let go to fire. (A charge the gun was put away during is dropped, not fired.)
+			var frame = Engine.GetProcessFrames();
+			if ( charging && frame - chargeFrame > 3 ) charging = false;
+			chargeFrame = frame;
+			if ( IsReloading ) charging = false;
+			var held = Input.IsActionPressed( "attack1" );
+			if ( !charging )
+			{
+				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / FireRate )
+				{
+					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
+					else if ( Reserve > 0 ) StartReload();
+					else Sfx.Play2D( "dry_fire" );
+				}
+			}
+			else
+			{
+				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
+				if ( !held )
+				{
+					charging = false;
+					chargedShot = chargeFull;
+					Shoot();
+					chargedShot = false;
+				}
+			}
+			return;
+		}
+
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )
 		{
@@ -249,6 +290,8 @@ public partial class PlayerWeapon : Node
 
 	/// <summary> Testing aid: fires one shot as if the trigger was pulled. </summary>
 	public void TestFire() => Shoot();
+	/// <summary> Testing aid: fires one charged shot (as if the trigger had been held the full time). </summary>
+	public void TestFireCharged() { chargedShot = true; Shoot(); chargedShot = false; }
 
 	void Shoot()
 	{
@@ -288,7 +331,8 @@ public partial class PlayerWeapon : Node
 			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
 			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
 			var from = controller.ThirdPerson ? eyes + aimDirection * 0.6f : trailStart;
-			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this );
+			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this, chargedShot );
+			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }
 		}
 		else for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
 		{

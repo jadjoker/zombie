@@ -91,7 +91,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   plants out over the hills; star ferns sit near the sand. Severed pieces (`Gib`) float up under water. `EnemyBars.cs`
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
-  the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). `ShipWreck.Kudzu` grows alien
+  the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). Hold the trigger 1 s (`PlayerWeapon.ChargeTime`)
+  for a charged trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
+  `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe

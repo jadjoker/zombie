@@ -16,7 +16,7 @@ public partial class Mermaid : Creature
 	/// <summary> Metres per model unit (Poseidon's units): about 1.9 m from the crown to the tip of the tail. </summary>
 	public const float Scale = 0.3f;
 	public float Speed = 3.6f;              // m/s: a little slower than the others (about 4 to 5)
-	public float HoverHeight = 1.25f;       // the waist above the floor
+	public float HoverHeight = 1.5f;        // the waist above the floor (the tail hangs about 1.2 m)
 	public float TridentDamage = 14f;
 	public float TridentReach = 2.4f;
 	public float StabCooldown = 1.5f;
@@ -540,10 +540,12 @@ void fragment() {
 			tail[i].Rotation = new Vector3( MathF.Sin( t * 3f * speed - i * 0.55f ) * (0.12f + i * 0.025f) * (1f - curl * 0.6f) + 0.06f - curl * 0.21f, 0f, MathF.Sin( t * 1.4f - i * 0.4f ) * 0.05f );
 		if ( tail.Count > 0 )
 		{
-			var tip = tail[^1].GlobalPosition + Vector3.Down * 0.5f * Scale;
-			var ground = MathF.Max( floorY, Sculpt.GroundAt( tip ) );
-			if ( tip.Y < ground + 0.12f ) curl = MathF.Min( 1f, curl + dt * 5f );
-			else if ( tip.Y > ground + 0.6f ) curl = MathF.Max( 0f, curl - dt * 1.2f );
+			// From how much room the tail would have hanging straight (not from where the curled tip is now: that fed
+			// back on itself, the tail flicking between curled and straight: the glitch seen in play).
+			var ground = MathF.Max( floorY, Sculpt.GroundAt( GlobalPosition ) );
+			var room = GlobalPosition.Y - 4.2f * Scale * MathF.Cos( lean ) - ground;
+			var want = MathX.Clamp( (0.3f - room) / 0.45f, 0f, 1f );
+			curl = MathX.Lerp( curl, want, 1f - MathF.Exp( -4f * dt ) );
 		}
 		for ( var i = 0; i < hair.Count; i++ )
 			hair[i].Rotation = new Vector3( 0.35f - lean * 0.6f + MathF.Sin( t * 2.1f + i ) * 0.12f, 0f, MathF.Sin( t * 1.7f + i * 0.8f ) * 0.08f );

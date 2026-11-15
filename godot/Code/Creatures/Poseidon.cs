@@ -808,12 +808,11 @@ void fragment() {
 		// Low over the floor his tail curls up behind him instead of going through it (playtest: it clipped and glitched).
 		if ( tail.Count > 0 )
 		{
-			var tip = tail[^1].GlobalPosition + Vector3.Down * 0.5f * Size * MathF.Max( 0.02f, shown );
-			var mid = tail[tail.Count / 2].GlobalPosition;
-			var ground = MathF.Max( floorY, MathF.Max( Sculpt.GroundAt( tip ), Sculpt.GroundAt( mid ) ) );
-			var low = MathF.Min( tip.Y, mid.Y - 0.3f * Size );
-			if ( low < ground + 0.35f ) curl = MathF.Min( 1f, curl + dt * 5f );
-			else if ( low > ground + 1.3f ) curl = MathF.Max( 0f, curl - dt * 1.2f );
+			// From the room the tail would have hanging straight (measuring the curled tip fed back on itself).
+			var ground = MathF.Max( floorY, Sculpt.GroundAt( GlobalPosition ) );
+			var room = GlobalPosition.Y - 4.2f * Size * MathF.Max( 0.02f, shown ) - ground;
+			var want = MathX.Clamp( (0.5f - room) / 1.5f, 0f, 1f );
+			curl = MathX.Lerp( curl, want, 1f - MathF.Exp( -4f * dt ) );
 		}
 		body.Position = new Vector3( 0f, MathF.Sin( t * 1.4f ) * 0.12f, 0f );
 		body.Rotation = new Vector3( MathF.Sin( t * 2.2f * speed + 1.2f ) * 0.05f, 0f, MathF.Sin( t * 0.9f ) * 0.04f );

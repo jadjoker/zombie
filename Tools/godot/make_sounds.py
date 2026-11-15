@@ -352,6 +352,14 @@ def build():
         wet = squelch(0.38, 200, 950, 1.7)
         pop = blub(420 + 60 * i, 1300, 0.06)
         s[f"stab_squish_{i}"] = reverb(mix((pierce, 0, 0.9), (punch, 0.0, 0.8), (wet, 0.025, 1.0), (pop, 0.2, 0.5)), room=0.14, wet=0.12)
+    # The trident shooter's hits: a sharp steel pierce (a ring and a punch), the wet tear of flesh, the whine of a
+    # charged shot winding up, and a tiny bubble pop.
+    shing = (tone(0.22, 5200, 3900) + 0.6 * tone(0.22, 7800, 6100)) * env(int(SR * 0.22), 0.0005, 0.11)
+    stab = spectral(noise(0.05), lo=3000, hi=11000) * env(int(SR * 0.05), 0.0003, 0.02)
+    s["trident_pierce"] = reverb(mix((stab, 0, 1.0), (shing, 0.002, 0.45), (thump(0.16, 260, 70, 0.06), 0.0, 0.9), (click(4200, 0.03, 0.01), 0.0, 0.6)), room=0.18, wet=0.15)
+    s["trident_flesh"] = reverb(mix((squelch(0.45, 180, 1100, 2.0), 0.01, 1.0), (thump(0.12, 150, 60, 0.05), 0, 0.6), (blub(360, 1200, 0.07), 0.18, 0.5), (blub(300, 900, 0.06), 0.27, 0.35)), room=0.12, wet=0.1)
+    s["trident_charge"] = mix((spectral(tone(1.0, 180, 720, "saw"), hi=2600) * bell(int(SR * 1.0), 0.92) * 0.5, 0, 1.0), (tone(1.0, 360, 1440) * bell(int(SR * 1.0), 0.95) * 0.35, 0, 1.0), (chime((1568, 2093), 0.05, 0.2), 0.97, 0.7))
+    s["bubble_pop"] = mix((blub(900, 2600, 0.03), 0, 1.0), (click(5000, 0.012, 0.004), 0.022, 0.35))
     # The suit failing: a klaxon, and the suit coming back.
     siren = mix(*[(tone(0.24, 880 if i % 2 == 0 else 640, shape="square") * env(int(SR * 0.24), 0.004, 0.14), i * 0.26, 0.35) for i in range(6)], (tone(1.6, 55, 38) * bell(int(SR * 1.6), 0.3) * 0.5, 0, 1.0))
     s["suit_alarm"] = reverb(spectral(siren, lo=60, hi=3500), room=0.5, wet=0.25)

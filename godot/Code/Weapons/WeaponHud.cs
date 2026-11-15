@@ -124,6 +124,15 @@ public partial class WeaponHud : Control
 			DrawLine( c + new Vector2( 0f, -half ), c + new Vector2( 0f, half ), line, 1.5f );
 		}
 
+		// A charging shot: a thin bar under the crosshair, filling, green when full.
+		if ( weapon is { ChargeAmount: > 0.02f } )
+		{
+			var full = weapon.ChargeAmount >= 1f;
+			var at = c + new Vector2( -16f, 14f );
+			DrawRect( new Rect2( at, new Vector2( 32f, 3f ) ), new Color( 0f, 0f, 0f, 0.45f ) );
+			DrawRect( new Rect2( at, new Vector2( 32f * weapon.ChargeAmount, 3f ) ), full ? new Color( 0.45f, 1f, 0.55f ) : Colors.White );
+		}
+
 		// Hitmarker.
 		if ( weapon is not null )
 		{

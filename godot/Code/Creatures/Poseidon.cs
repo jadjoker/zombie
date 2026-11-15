@@ -104,7 +104,7 @@ uniform float glow = 0.0;
 varying vec2 q;
 varying float seed;
 float hex(vec2 v) { return max(abs(v.x), max(abs(0.5 * v.x + 0.866 * v.y), abs(0.5 * v.x - 0.866 * v.y))); }
-void vertex() { q = VERTEX.xz; seed = INSTANCE_CUSTOM.x; }
+void vertex() { q = VERTEX.xz; seed = fract(float(INSTANCE_ID) * 0.6180339 + 0.137); }
 void fragment() {
 	float d = hex(q);
 	float inner = 0.16 + fract(seed * 7.31) * 0.14;
@@ -464,12 +464,11 @@ void fragment() {
 			for ( var c = 0; c < plates.Length; c++ )
 			{
 				if ( plates[c].Count == 0 ) continue;
-				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = scaleMesh };
+				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = scaleMesh };
 				mm.InstanceCount = plates[c].Count;
 				for ( var n = 0; n < plates[c].Count; n++ )
 				{
 					mm.SetInstanceTransform( n, plates[c][n].At );
-					mm.SetInstanceCustomData( n, new Color( plates[c][n].Seed, 0f, 0f, 0f ) );
 				}
 				joint.AddChild( new MultiMeshInstance3D { Name = "Scales", Multimesh = mm, MaterialOverride = scaleColours[c] } );
 			}

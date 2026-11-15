@@ -64,6 +64,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
 		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
+		if ( args.Contains( "--pickups" ) ) { await PickupTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2696,6 +2697,161 @@ public partial class AutoTest : Node
 	/// out of his whirlpool, throw a trident that hurts, summon seahorses into the wave, catch the player in a thrown
 	/// whirlpool and stab them, vanish to a spot near the player inside the map, and die.
 	/// </summary>
+	/// <summary>
+	/// The pickups creatures drop: the drop roll gives one thing at most and its odds add up; every pickup can be
+	/// walked over and taken; and each does its job: the chest's points, the shield soaking a hit and coming back, the
+	/// reload and fire rate stacks, the movement buff, an emptied magazine thrown and hurting creatures but not the
+	/// player, a shock jumping between creatures, and the blast once a wave.
+	/// </summary>
+	async Task PickupTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var scene = GetTree().CurrentScene;
+		var director = WaveDirector.Current;
+		director.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		var perks = PlayerPerks.Of( player );
+		Check( perks is not null, "the player has no PlayerPerks" );
+		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Sum( e => e.Chance );
+		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
+		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
+
+		// One of each on the floor in front of the player, for a picture, then walked over.
+		DevFlags.FreezeEnemies = true;
+		var drops = new List<PerkPickup>();
+		for ( var i = 0; i < PlayerPerks.Table.Length; i++ )
+			drops.Add( PerkPickup.DropAt( scene, player, home + new Vector3( (i - 3.5f) * 1.1f, 0.5f, -4.5f ), PlayerPerks.Table[i].Kind ) );
+		await Wait( 0.6f );
+		if ( shots is not null )
+		{
+			var from = home + new Vector3( 0f, 1.5f, 0.2f );
+			var at = new Transform3D( Basis.LookingAt( (home + new Vector3( 0f, 0.5f, -4.5f ) - from).Normalized(), Vector3.Up ), from );
+			player.CameraOverride = _ => at;
+			await Wait( 0.3f );
+			await Shot( "pickups_floor" );
+			player.CameraOverride = null;
+		}
+		var pointsBefore = survivor.Points;
+		foreach ( var drop in drops )
+		{
+			player.GlobalPosition = drop.GlobalPosition with { Y = home.Y + 0.1f };
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.25f );
+		}
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		await Wait( 0.3f );
+		var held = string.Join( ", ", PlayerPerks.Table.Select( e => $"{e.Name} {perks.Count( e.Kind )}" ) );
+		GD.Print( $"[autotest] pickups: took {PlayerPerks.Taken}; {held}; points {pointsBefore} to {survivor.Points}" );
+		Check( PlayerPerks.Table.All( e => e.Kind == PerkKind.Chest ? perks.Count( e.Kind ) == 0 : perks.Count( e.Kind ) == 1 ), "walking over the pickups did not give one of each" );
+		Check( survivor.Points == pointsBefore + PlayerPerks.ChestPoints, "the pirate chest did not give 4000 points" );
+
+		// Stacks: reload and fire rate.
+		var rifle = player.GetChildren().OfType<PlayerWeapon>().First( w => w.ModelName == "rifle" );
+		GD.Print( $"[autotest] pickups: rifle reload {rifle.ReloadTime:0.00} to {rifle.CurrentReloadTime:0.00} s, fire rate {rifle.FireRate:0.00} to {rifle.CurrentFireRate:0.00}" );
+		Check( rifle.CurrentReloadTime < rifle.ReloadTime && MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.02f ) < 0.001f, "the reload or fire rate pickup did nothing" );
+		perks.Give( PerkKind.FireRate );
+		Check( MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.04f ) < 0.001f, "a second fire rate pickup did not stack" );
+
+		// The movement buff: more stamina (10%, then 5% more) and 0.5 m/s.
+		var movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
+		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.1f ) < 0.001f && perks.SpeedBonus == 0.5f, "the movement buff did not add 10% stamina and 0.5 m/s" );
+		perks.Give( PerkKind.Move );
+		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.15f ) < 0.001f && perks.SpeedBonus == 0.5f, "a second movement buff did not add just 5% stamina" );
+
+		// The shield: 25, soaks a hit before health, comes back; +10 for the next.
+		survivor.Health.Heal( 999f );
+		var health = survivor.Health.Current;
+		Check( perks.ShieldMax == 25f && perks.Shield == 25f, $"the first shield is {perks.ShieldMax}, not 25" );
+		survivor.Health.OnDamage( new DamageInfo { Damage = 15f, Attacker = this } );
+		var after15 = perks.Shield;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 15f, Attacker = this } );
+		GD.Print( $"[autotest] pickups: shield 25, 15 damage leaves {after15:0}, 15 more leaves {perks.Shield:0} and health {health:0} to {survivor.Health.Current:0}" );
+		Check( after15 == 10f && perks.Shield == 0f && MathF.Abs( health - survivor.Health.Current - 5f ) < 0.01f, "the shield did not take the hits before health" );
+		perks.Give( PerkKind.Shield );
+		Check( perks.ShieldMax == 35f && perks.Shield == 35f, "a second shield did not add 10" );
+		survivor.Health.OnDamage( new DamageInfo { Damage = 10f, Attacker = this } );
+		await Wait( survivor.RegenDelay * 0.5f + 0.8f );
+		Check( perks.Shield >= 34.9f, $"the shield did not come back after half health's wait (it is {perks.Shield:0})" );
+		survivor.Health.Heal( 999f );
+
+		// The HUD with it all on, for a picture.
+		if ( shots is not null )
+		{
+			perks.Give( PerkKind.Reload ); perks.Give( PerkKind.Electric ); perks.Give( PerkKind.Electric );
+			survivor.Health.OnDamage( new DamageInfo { Damage = 20f, Attacker = this } );
+			GameHud.Announce( "Shield", new Color( 0.16f, 0.75f, 1f ) );
+			await Wait( 0.4f );
+			await Shot( "pickups_hud" );
+			survivor.Health.Heal( 999f );
+		}
+
+		// Creatures in a row: the blast, the thrown magazine and the shock.
+		DevFlags.FreezeEnemies = true;
+		var crabs = new List<Creature>();
+		for ( var i = 0; i < 4; i++ )
+			crabs.Add( JunkCrab.Spawn( scene, Nav.Closest( player, home + new Vector3( (i - 1.5f) * 2.2f, 0f, -5f ) ), 5000f ) );
+		await Wait( 0.8f );
+		float Lost() => crabs.Sum( c => c.Health.MaxHealth - c.Health.Current );
+		// The blast: ready, 500 to each within 8 m, then spent until the next wave.
+		Check( perks.BlastReady, "the blast is not ready when first picked up" );
+		var mid = survivor.Health.Current;
+		perks.LetOffBlast();
+		if ( shots is not null )
+		{
+			var from = home + new Vector3( 5f, 3.5f, 6f );
+			var at = new Transform3D( Basis.LookingAt( (home + Vector3.Up * 0.8f - from).Normalized(), Vector3.Up ), from );
+			player.CameraOverride = _ => at;
+			await Wait( 0.18f );
+			await Shot( "pickups_blast" );
+			player.CameraOverride = null;
+		}
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] pickups: blast took {Lost():0} off 4 crabs, player health {mid:0} to {survivor.Health.Current:0}, ready again {perks.BlastReady}" );
+		Check( MathF.Abs( Lost() - 4f * PlayerPerks.BlastDamage ) < 1f && !perks.BlastReady && survivor.Health.Current >= mid, "the blast did not do 500 to each creature near, or is not once a wave" );
+		director.Wave++;
+		Check( perks.BlastReady, "the blast did not come back on the next wave" );
+		director.Wave--;
+
+		// The thrown magazine: 100 to creatures round where it lands, none to the player.
+		var before = Lost();
+		var shield = perks.Shield;
+		ThrownClip.Throw( scene, home + new Vector3( 0f, 1.4f, -1f ), new Vector3( 0f, 1f, -9f ), perks.ClipBlastDamage, player );
+		await Wait( 1.6f );
+		GD.Print( $"[autotest] pickups: thrown magazine took {Lost() - before:0} off the crabs (100 each it reaches), shield {shield:0} to {perks.Shield:0}" );
+		Check( Lost() - before >= 100f && perks.Shield >= shield && survivor.Health.Current >= mid, "the thrown magazine did not hurt creatures, or hurt the player" );
+
+		// The shock: forced through the chances a few times, it must hit and jump between the crabs.
+		PlayerPerks.Shocks = PlayerPerks.ShockJumps = 0;
+		var part = CreaturePart.All.First( p => p.Creature == crabs[0] );
+		for ( var i = 0; i < 80; i++ ) perks.RifleHit( part, part.GlobalPosition );
+		if ( shots is not null )
+		{
+			var from = home + new Vector3( 0f, 2.2f, 1f );
+			var at = new Transform3D( Basis.LookingAt( (home + new Vector3( 0f, 0.6f, -5f ) - from).Normalized(), Vector3.Up ), from );
+			player.CameraOverride = _ => at;
+			for ( var i = 0; i < 30 && PlayerPerks.ShockJumps < 1000; i++ ) perks.RifleHit( part, part.GlobalPosition );
+			await Shot( "pickups_shock" );
+			player.CameraOverride = null;
+		}
+		GD.Print( $"[autotest] pickups: 80 rifle hits gave {PlayerPerks.Shocks} shocks and {PlayerPerks.ShockJumps} jumps" );
+		Check( PlayerPerks.Shocks > 5 && PlayerPerks.ShockJumps > 3, "electric bullets did not shock and jump" );
+
+		// A new game clears them.
+		perks.Clear();
+		Check( PlayerPerks.Table.All( e => perks.Count( e.Kind ) == 0 ) && perks.ShieldMax == 0f && movement.StaminaCap == movement.MaxStamina, "clearing did not take the pickups away" );
+		foreach ( var c in crabs.Where( IsInstanceValid ) ) c.QueueFree();
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	/// <summary>
 	/// MC-51's missiles and the sea mines. Missiles: pictures of them hanging in the water; one shot down bursts and
 	/// hurts no one; one left alone climbs, dives and hits the player for 15. Mines: eight laid, none near the middle

@@ -128,6 +128,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`
   after each area is built): 8 per area on the outskirts, chained and drifting, shots tink off, touching one costs 45.
   Test: `--missiles` (shots need a window).
+- Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
+  chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
+  explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,
+  movement buff, the Biden Blast on the `blast` action: C or RB, which stand in for view and melee only while it is
+  ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

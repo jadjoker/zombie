@@ -20,6 +20,8 @@ public partial class Health : Node
 	public float Fraction => MaxHealth > 0f ? Current / MaxHealth : 0f;
 	public TimeSince TimeSinceDamaged { get; private set; } = 999f;
 
+	/// <summary> Something in front of this health (the player's shield): given a hit, returns the damage that gets through. </summary>
+	public Func<DamageInfo, float> Absorb;
 	public event Action<DamageInfo> Damaged;
 	public event Action Died;
 
@@ -34,6 +36,7 @@ public partial class Health : Node
 		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
 		if ( DockHouse.Diving && GetParent() is PlayerController or PlayerSurvivor ) return;   // can't be hurt on the way down
 		if ( DevFlags.OneShot && GetParent() is not PlayerController ) damage.Damage = MathF.Max( damage.Damage, Current );
+		if ( Absorb is not null ) { damage.Damage = Absorb( damage ); if ( damage.Damage <= 0f ) return; }
 		Current = MathF.Max( 0f, Current - damage.Damage );
 		TimeSinceDamaged = 0f;
 		Damaged?.Invoke( damage );
@@ -44,7 +47,7 @@ public partial class Health : Node
 			if ( GetParent() is Node3D body && body is not PlayerController )
 			{
 				Sfx.Play( "creature_death", body.GlobalPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
-				if ( !DockHouse.Diving ) AmmoPickup.MaybeDrop( body );   // none mid-dive: they'd land far away
+				if ( !DockHouse.Diving ) PerkPickup.MaybeDrop( body );   // none mid-dive: they'd land far away
 			}
 		}
 	}

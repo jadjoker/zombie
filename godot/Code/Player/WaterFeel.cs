@@ -104,8 +104,9 @@ public partial class WaterFeel : Node, ICameraModifier
 		if ( movement is not null )
 		{
 			// The movement kit owns walk/run speed (and the weapon scales it for aiming), so scale the kit's numbers.
-			movement.MoveSpeed = MathX.Lerp( dryWalk, dryWalk * SpeedScale, b );
-			movement.SprintSpeed = MathX.Lerp( dryRun, dryRun * SpeedScale, b );
+			var buff = PlayerPerks.Of( controller )?.SpeedBonus ?? 0f;   // the movement buff: a flat 0.5 m/s on top
+			movement.MoveSpeed = MathX.Lerp( dryWalk, dryWalk * SpeedScale, b ) + buff;
+			movement.SprintSpeed = MathX.Lerp( dryRun, dryRun * SpeedScale, b ) + buff;
 			movement.SlideFriction = MathX.Lerp( drySlideFriction, drySlideFriction * SlideFrictionScale, b );
 			movement.SlideMaxTime = MathX.Lerp( drySlideTime, drySlideTime * SlideTimeScale, b );
 			movement.SlideSteer = MathX.Lerp( drySlideSteer, drySlideSteer * SlideSteerScale, b );

@@ -12,6 +12,10 @@ public partial class PlayerMovement : Node, ICameraModifier
 {
 	// Stamina
 	public int MaxStamina = 3;
+	/// <summary> Extra stamina from the movement buff, as a share of MaxStamina (0.1 = 10% more). </summary>
+	public float StaminaBonus;
+	/// <summary> The most stamina the player can hold. </summary>
+	public float StaminaCap => MaxStamina * (1f + StaminaBonus);
 	public float StaminaRegenTime = 2.4f;
 	public float StaminaRegenDelay = 0.6f;
 
@@ -140,7 +144,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 		Controller.Landed += OnLanded;
 		Controller.Jumped += () => Sfx.Play( "jump", Controller.GlobalPosition, 0.6f );
 		AirJumpsLeft = AirJumps;
-		Stamina = MaxStamina;
+		Stamina = StaminaCap;
 		ProcessPhysicsPriority = -10;   // runs before the controller moves, like s&box OnFixedUpdate before the physics step
 	}
 
@@ -159,10 +163,10 @@ public partial class PlayerMovement : Node, ICameraModifier
 		if ( TimeSinceStaminaSpent < StaminaRegenDelay ) return;
 		// Irradiated players get it back slowly.
 		var scale = Controller.GetNodeOrNull<PlayerAfflictions>( "PlayerAfflictions" )?.StaminaRegenScale ?? 1f;
-		Stamina = MathF.Min( MaxStamina, Stamina + dt * scale / MathF.Max( 0.05f, StaminaRegenTime ) );
+		Stamina = MathF.Min( StaminaCap, Stamina + dt * scale / MathF.Max( 0.05f, StaminaRegenTime ) );
 	}
 
-	public void ResetStamina() => Stamina = MaxStamina;
+	public void ResetStamina() => Stamina = StaminaCap;
 
 	// ---- Input (s&box OnUpdate) ----
 

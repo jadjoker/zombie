@@ -30,6 +30,17 @@ public partial class GameHud : Control
 	Control banner, gameOver, dive;
 	Label diveCount, diveHelp, depthNum, depthSpeed;
 	float lagHealth = 100f;
+	static string announceText = "";
+	static Color announceColour = Colors.White;
+	static TimeSince announceAge = 99f;
+
+	/// <summary> Shows a pickup's name in the middle of the screen for a moment. </summary>
+	public static void Announce( string text, Color colour )
+	{
+		announceText = text.ToUpperInvariant();
+		announceColour = colour.Lightened( 0.35f );
+		announceAge = 0f;
+	}
 	int lastKills;
 	TimeSince timeSinceKillCount = 999f;
 
@@ -84,7 +95,7 @@ public partial class GameHud : Control
 
 		healthCaption = Text( this, 16, new Color( 1, 1, 1, 0.8f ), HorizontalAlignment.Left );
 		healthCaption.SetAnchorsPreset( LayoutPreset.BottomLeft );
-		healthCaption.OffsetLeft = 40; healthCaption.OffsetTop = healthCaption.OffsetBottom = -58; healthCaption.GrowVertical = GrowDirection.Begin;
+		healthCaption.OffsetLeft = 40; healthCaption.OffsetTop = healthCaption.OffsetBottom = -66; healthCaption.GrowVertical = GrowDirection.Begin;
 
 		// The dive: crushed counter and controls up top, depth meter on the right.
 		dive = new Control { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
@@ -247,13 +258,56 @@ public partial class GameHud : Control
 
 	public override void _Draw()
 	{
-		// Health bar: dark track, pale lag, red (green when venomed) fill.
-		var at = new Vector2( 40, Size.Y - 40 - 16 );
+		// Health bar: dark track, pale lag, red (green when venomed) fill. Thin, with the shield's blue bar over it.
+		const float barHeight = 10f;
+		var at = new Vector2( 40, Size.Y - 40 - barHeight );
 		var percent = (player?.Health?.Fraction ?? 0f) * 100f;
 		var venom = player?.Afflictions?.Venomed ?? false;
-		DrawRect( new Rect2( at, new Vector2( 320, 16 ) ), new Color( 0, 0, 0, 0.5f ) );
-		DrawRect( new Rect2( at, new Vector2( 320 * lagHealth / 100f, 16 ) ), new Color( 1, 1, 1, 0.6f ) );
-		DrawRect( new Rect2( at, new Vector2( 320 * percent / 100f, 16 ) ), venom ? new Color( "5fe03a" ) : new Color( "e8443a" ) );
+		DrawRect( new Rect2( at, new Vector2( 320, barHeight ) ), new Color( 0, 0, 0, 0.5f ) );
+		DrawRect( new Rect2( at, new Vector2( 320 * lagHealth / 100f, barHeight ) ), new Color( 1, 1, 1, 0.6f ) );
+		DrawRect( new Rect2( at, new Vector2( 320 * percent / 100f, barHeight ) ), venom ? new Color( "5fe03a" ) : new Color( "e8443a" ) );
+		var perks = PlayerPerks.Of( player?.Controller );
+		if ( perks is { ShieldMax: > 0f } )
+		{
+			// As long as the health bar when the shield matches the starting health; longer shields are capped at it.
+			var shieldAt = at + new Vector2( 0f, -barHeight - 3f );
+			var width = 320f * MathF.Min( 1f, perks.ShieldMax / 100f );
+			DrawRect( new Rect2( shieldAt, new Vector2( width, barHeight - 2f ) ), new Color( 0, 0, 0, 0.5f ) );
+			DrawRect( new Rect2( shieldAt, new Vector2( width * perks.Shield / perks.ShieldMax, barHeight - 2f ) ), new Color( "38c0ff" ) );
+		}
+
+		// The pickups held: their icons in a row over the bars, a count on each that stacks; the blast's key when ready.
+		if ( perks is not null )
+		{
+			var font = ThemeDB.FallbackFont;
+			var x = 40f;
+			var y = Size.Y - 40 - barHeight - 3f - barHeight - 34f - 44f;
+			foreach ( var entry in PlayerPerks.Table )
+			{
+				var count = perks.Count( entry.Kind );
+				if ( count == 0 ) continue;
+				var spent = entry.Kind == PerkKind.Blast && !perks.BlastReady;
+				var tint = spent ? new Color( 1f, 1f, 1f, 0.3f ) : Colors.White;
+				var rect = new Rect2( x, y, 40f, 40f );
+				if ( PerkPickup.Icon( entry.Icon ) is { } icon ) DrawTextureRect( icon, rect, false, tint );
+				else DrawRect( rect, entry.Colour with { A = tint.A } );
+				if ( entry.Kind == PerkKind.Blast )
+					DrawString( font, new Vector2( x, y - 4f ), spent ? "next wave" : Controls.IsController ? "RB" : "C", HorizontalAlignment.Center, 40f, 13, tint );
+				else if ( count > 1 )
+				{
+					DrawRect( new Rect2( x + 22f, y + 24f, 20f, 18f ), new Color( 0f, 0f, 0f, 0.75f ) );
+					DrawString( font, new Vector2( x + 22f, y + 38f ), $"x{count}", HorizontalAlignment.Center, 20f, 13, Colors.White );
+				}
+				x += 46f;
+			}
+		}
+
+		// A pickup just taken: its name over the middle of the screen for a moment.
+		if ( announceAge < 2.2f )
+		{
+			var alpha = MathX.Clamp( MathF.Min( (float)announceAge / 0.15f, (2.2f - (float)announceAge) / 0.5f ), 0f, 1f );
+			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, Size.Y * 0.68f ), announceText, HorizontalAlignment.Center, Size.X, 30, announceColour with { A = alpha } );
+		}
 
 		// Danger bar (open world).
 		var d = Director;

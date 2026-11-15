@@ -62,7 +62,11 @@ public partial class PlayerWeapon : Node
 	public int Reserve { get; private set; }
 	public bool InfiniteAmmo;
 	public bool IsReloading { get; private set; }
-	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, ReloadTime ), 0f, 1f );
+	PlayerPerks Perks => PlayerPerks.Of( controller );
+	/// <summary> Reload time and rate of fire with the player's pickups counted in. </summary>
+	public float CurrentReloadTime => ReloadTime * (Perks?.ReloadScale ?? 1f);
+	public float CurrentFireRate => FireRate * (Perks?.FireRateScale ?? 1f);
+	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, CurrentReloadTime ), 0f, 1f );
 
 	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.ThirdPerson ?? false);
 
@@ -225,7 +229,7 @@ public partial class PlayerWeapon : Node
 			var held = Input.IsActionPressed( "attack1" );
 			if ( !charging )
 			{
-				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / FireRate )
+				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
 					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
 					else if ( Reserve > 0 ) StartReload();
@@ -247,7 +251,7 @@ public partial class PlayerWeapon : Node
 		}
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
-		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / FireRate )
+		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
@@ -297,7 +301,7 @@ public partial class PlayerWeapon : Node
 	{
 		// Firing on the first frame the gun is ready: keep the part of that frame that ran past the interval, so held
 		// fire keeps the real rate at any frame rate. Otherwise (a fresh pull, a test shot) start from zero.
-		var interval = 1f / FireRate;
+		var interval = 1f / CurrentFireRate;
 		var over = TimeSinceShot - interval;
 		TimeSinceShot = over > 0f && over < frameStep && over < interval ? over : 0f;
 		Sfx.Play2D( ShootSound ?? $"{ModelName}_shoot", 1.1f, bus: Sfx.GunBus );   // 10% louder (playtest 11/12)
@@ -361,6 +365,7 @@ public partial class PlayerWeapon : Node
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
 			if ( firstPellet ) Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
 			shootable.ReceiveShot( CurrentDamage, tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
+			if ( ModelName == "rifle" ) Perks?.RifleHit( tr.Node, tr.HitPosition );   // Electric Bullets
 			if ( wasAlive && shootable.IsDead ) TimeSinceKill = 0f;
 			return;
 		}
@@ -397,12 +402,14 @@ public partial class PlayerWeapon : Node
 		if ( ShellReload )
 		{
 			firstShell = Ammo == 0;
-			nextShell = ShellTime * 1.2f;
+			nextShell = ShellTime * 1.2f * (Perks?.ReloadScale ?? 1f);
 			ViewModel?.ShellReloadBegin();
 			return;
 		}
-		reloadFinished = ReloadTime;
-		ViewModel?.Reload( ReloadTime );
+		// Explosive Round: an emptied magazine is thrown, and goes off on what it hits.
+		if ( Ammo == 0 && !Projectile ) Perks?.ThrowClip();
+		reloadFinished = CurrentReloadTime;
+		ViewModel?.Reload( CurrentReloadTime );
 	}
 
 	void UpdateShellReload()
@@ -413,7 +420,7 @@ public partial class PlayerWeapon : Node
 		Reserve--;
 		ViewModel?.InsertShell();
 		firstShell = false;
-		nextShell = ShellTime;
+		nextShell = ShellTime * (Perks?.ReloadScale ?? 1f);
 		if ( Ammo >= MagazineSize || Reserve <= 0 ) EndShellReload();
 	}
 

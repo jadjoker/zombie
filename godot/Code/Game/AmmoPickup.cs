@@ -21,6 +21,12 @@ public partial class AmmoPickup : Node3D
 	public static void MaybeDrop( Node3D at )
 	{
 		if ( at is null || !GodotObject.IsInstanceValid( at ) || Rng.Float() > DropChance ) return;
+		Drop( at );
+	}
+
+	/// <summary> Drops one where a creature died. </summary>
+	public static void Drop( Node3D at )
+	{
 		var root = at.GetTree()?.CurrentScene;
 		if ( root is null ) return;
 		var from = at.GlobalPosition + Vector3.Up * 20f * U.In;

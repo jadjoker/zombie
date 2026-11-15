@@ -475,6 +475,18 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Cheats", "+1000 points money" ) ) Action( "+1000 points", () => player?.AddPoints( 1000 ) );
 		}
 
+		if ( Sec( "Player", "Pickups", "pickups perks drops give " + string.Join( " ", PlayerPerks.Table.Select( e => e.Name ) ) ) )
+		{
+			Section( "Pickups" );
+			foreach ( var entry in PlayerPerks.Table )
+			{
+				var kind = entry.Kind;
+				if ( Show( "Pickups", entry.Name ) ) Action( $"Give {entry.Name} ({PlayerPerks.Of( Controller )?.Count( kind ) ?? 0})", () => PlayerPerks.Of( Controller )?.Give( kind ) );
+			}
+			if ( Show( "Pickups", "clear all" ) ) Action( "Clear all pickups", () => PlayerPerks.Of( Controller )?.Clear() );
+			if ( Show( "Pickups", "drop chance x20" ) ) Chip( "Drop chances x20", PerkPickup.ChanceScale > 1f, () => PerkPickup.ChanceScale = PerkPickup.ChanceScale > 1f ? 1f : 20f );
+		}
+
 		if ( Sec( "Player", "Appearance", "robot paint outfit skin gun skin weapon rifle model design " + string.Join( " ", CharacterSkins.Names ) + " " + string.Join( " ", WeaponSkins.Names ) + " " + string.Join( " ", RifleModels.Names ) ) )
 		{
 			Section( "Appearance" );

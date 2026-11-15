@@ -18,6 +18,7 @@ public static class PlayerFactory
 		player.AddChild( PlayerWeapon.Rifle() );
 		player.AddChild( PlayerWeapon.Shotgun() );
 		player.AddChild( new PlayerMelee() );
+		player.AddChild( new PlayerPerks() );
 		player.AddChild( new WaterFeel() );
 		player.AddChild( new Jetpack() );
 		player.AddChild( new AllyCommander() );

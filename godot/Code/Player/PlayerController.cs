@@ -201,7 +201,7 @@ public partial class PlayerController : CharacterBody3D
 		}
 		lookDelta = Vector2.Zero;
 
-		if ( Input.IsActionJustPressed( "view" ) )
+		if ( Input.IsActionJustPressed( "view" ) && !(PlayerPerks.Of( this )?.BlastPressed ?? false) )   // C is the blast when it is ready
 		{
 			ThirdPerson = !ThirdPerson;
 			cameraDistance = 20f * U.In;

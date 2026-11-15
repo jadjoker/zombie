@@ -134,7 +134,7 @@ public partial class HudOverlays : Control
 		var wantJet = jet is not null && (jet.Power < jet.MaxPower - 0.5f || jet.Thrusting || jet.Surging || jet.Charging || jet.TimeSinceRefused < 0.6f) ? 1f : 0f;
 		jetShown = MathX.Approach( jetShown, wantJet, dt * (wantJet > 0f ? 8f : 1.5f) );
 		var m = Movement;
-		var wantStamina = m is not null && (m.Stamina < m.MaxStamina - 0.01f || m.TimeSinceOutOfStamina < 0.6f) ? 1f : 0f;
+		var wantStamina = m is not null && (m.Stamina < m.StaminaCap - 0.01f || m.TimeSinceOutOfStamina < 0.6f) ? 1f : 0f;
 		staminaShown = MathX.Approach( staminaShown, wantStamina, dt * (wantStamina > 0f ? 8f : 1.5f) );
 
 		var b = Boss;
@@ -208,14 +208,17 @@ public partial class HudOverlays : Control
 		if ( m is not null && staminaShown > 0.01f )
 		{
 			var empty = m.TimeSinceOutOfStamina < 0.35f;
-			var count = m.MaxStamina;
-			var start = new Vector2( c.X - (count * 30f - 4f) * 0.5f, c.Y + 34f );
+			// One pip for each whole point; the movement buff's extra is a shorter pip on the end.
+			var cap = m.StaminaCap;
+			var count = (int)MathF.Ceiling( cap - 0.001f );
+			var start = new Vector2( c.X - (cap * 30f - 4f) * 0.5f, c.Y + 34f );
 			for ( var i = 0; i < count; i++ )
 			{
-				var fill = MathX.Clamp( m.Stamina - i, 0f, 1f );
+				var size = MathX.Clamp( cap - i, 0f, 1f );
+				var fill = MathX.Clamp( (m.Stamina - i) / size, 0f, 1f );
 				var at = start + new Vector2( i * 30f, 0f );
-				DrawRect( new Rect2( at, new Vector2( 26f, 5f ) ), (empty ? new Color( "ff3b3b" ) : new Color( 0, 0, 0 )) with { A = 0.45f * staminaShown } );
-				DrawRect( new Rect2( at, new Vector2( 26f * fill, 5f ) ), (fill >= 1f ? Colors.White : new Color( 1, 1, 1, 0.55f )) with { A = (fill >= 1f ? 0.9f : 0.55f) * staminaShown } );
+				DrawRect( new Rect2( at, new Vector2( 26f * size, 5f ) ), (empty ? new Color( "ff3b3b" ) : new Color( 0, 0, 0 )) with { A = 0.45f * staminaShown } );
+				DrawRect( new Rect2( at, new Vector2( 26f * size * fill, 5f ) ), (fill >= 1f ? Colors.White : new Color( 1, 1, 1, 0.55f )) with { A = (fill >= 1f ? 0.9f : 0.55f) * staminaShown } );
 			}
 		}
 

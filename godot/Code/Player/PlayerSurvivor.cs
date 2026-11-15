@@ -76,7 +76,7 @@ public partial class PlayerSurvivor : Node
 
 	public void Respawn( Vector3 position, bool fullReset )
 	{
-		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); }
+		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); }
 		else Health.ResetTo( Health.MaxHealth );
 		Afflictions?.Clear();
 		Controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" )?.ResetStamina();

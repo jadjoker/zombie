@@ -2766,6 +2766,11 @@ public partial class AutoTest : Node
 			player.CameraOverride = null;
 			foreach ( var cl in hidden ) cl.Visible = true;
 			foreach ( var g in guns ) g.Visible = true;
+			// The HUD as the player sees it: the crosshair on a mermaid.
+			var look = (mermaids[1].GlobalPosition + Vector3.Up * 0.3f - (player.GlobalPosition + Vector3.Up * 1.6f)).Normalized();
+			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ), 0f );
+			await Wait( 0.4f );
+			await Shot( "crosshair" );
 		}
 
 		// A shot at a trident mermaid's chest from in front stops on its shield and does no harm.

@@ -36,6 +36,9 @@ public partial class LoadingScreen : Control
 	public override void _Process( double delta )
 	{
 		time += (float)delta;
+		// Sized to the window directly (a Control under a CanvasLayer can sit at zero size before its first layout).
+		var screen = GetViewportRect().Size;
+		if ( Size != screen ) { Position = Vector2.Zero; Size = screen; }
 		shown = MathX.Lerp( shown, Progress, 1f - MathF.Exp( -5f * (float)delta ) );
 		QueueRedraw();
 	}

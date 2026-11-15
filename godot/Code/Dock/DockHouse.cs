@@ -111,7 +111,7 @@ public partial class DockHouse : Node3D
 		var toPier = (U.Sbox( Origin.X, Origin.Y, SurfaceHeight ) - centre).Flat().SafeNormal();
 		var pierAngle = MathF.Atan2( toPier.Z, toPier.X );
 		var noise = new FastNoiseLite { Seed = 1971, Frequency = 0.9f, FractalOctaves = 3 };
-		var patches = new FastNoiseLite { Seed = 77, Frequency = 0.35f };
+		var patches = new FastNoiseLite { Seed = 77, Frequency = 0.08f, FractalOctaves = 4 };
 		float Gap( float a )
 		{
 			// 1 on the reef, down to 0 in the breaks (the pier's, and two narrow ones).
@@ -125,8 +125,8 @@ public partial class DockHouse : Node3D
 		Color Paint( float x, float z, float top )
 		{
 			var n = patches.GetNoise2D( x * 3f, z * 3f ) * 0.5f + 0.5f;
-			var c = sand.Lerp( rubble, MathX.Clamp( (n - 0.35f) * 2.2f, 0f, 1f ) );
-			c = c.Lerp( olive, MathX.Clamp( (patches.GetNoise2D( z * 5f, x * 5f ) - 0.3f) * 2f, 0f, 1f ) );
+			var c = sand.Lerp( rubble, MathX.Clamp( (n - 0.25f) * 2f, 0f, 0.85f ) );
+			c = c.Lerp( olive, MathX.Clamp( (patches.GetNoise2D( z * 1.3f, x * 1.3f ) + 0.05f) * 1.8f, 0f, 0.8f ) );
 			return shallow.Lerp( c, MathX.Clamp( top, 0f, 1f ) );   // under water the band fades to the shallows' colour
 		}
 

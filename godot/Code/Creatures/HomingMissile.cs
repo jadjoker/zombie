@@ -14,7 +14,7 @@ public partial class HomingMissile : Creature
 
 	public float RiseSpeed = 1.3f;
 	public float DiveSpeed = 11f;
-	public float TurnRate = 2.1f;          // radians per second while diving
+	public float TurnRate = 2.6f;          // radians per second while diving
 	public float Damage = 15f;
 	public float HitRadius = 1f;           // from a player's middle
 	/// <summary> How long it climbs before it dives (5 to 8 seconds unless set). </summary>
@@ -153,7 +153,10 @@ public partial class HomingMissile : Creature
 				var angle = heading.AngleTo( want );
 				if ( angle > 0.001f ) heading = heading.Slerp( want, MathF.Min( 1f, TurnRate * dt / angle ) ).SafeNormal();
 			}
-			var speed = MathX.Lerp( velocity.Length(), DiveSpeed, 1f - MathF.Exp( -1.6f * dt ) );
+			// Slow while it is turned away from them and fast once lined up, so it comes round onto a player close by
+			// instead of circling them (at full speed its turning circle is 4 m wide).
+			var lined = prey is not null ? MathX.Clamp( heading.Dot( (prey.WorldPosition + Vector3.Up * 1f - GlobalPosition).SafeNormal() ), 0f, 1f ) : 1f;
+			var speed = MathX.Lerp( velocity.Length(), DiveSpeed * MathX.Lerp( 0.25f, 1f, lined * lined ), 1f - MathF.Exp( -4f * dt ) );
 			velocity = heading * speed;
 			if ( age > RiseTime + 9f ) { Explode( false ); return; }   // lost: it gives up
 		}

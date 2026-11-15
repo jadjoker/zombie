@@ -25,7 +25,7 @@ public partial class Squilien : Creature
 	public float ThrowRange = 1200f;
 	public float InkSpeed = 750f;
 	public float InkGravity = 300f;
-	public float InkDamage = 8f;
+	public float InkDamage = 5f;
 	public float TentacleHealth = 12f;
 	public float BellMultiplier = 1.1f;
 	public float TentacleMultiplier = 0.12f;

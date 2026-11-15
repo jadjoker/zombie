@@ -14,8 +14,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	public float HoverHeight = 110f;
 	public float MoveSpeed = 230f;
 	public float ChargeTime = 1.6f;
-	public float BeamTime = 2.4f;
-	public float BeamDamagePerSecond = 45f;
+	public float BeamTime = 2f;
+	public float BeamDamagePerSecond = 40f;
 	public float BeamWidth = 16f;
 	public float BeamTrackSpeed = 40f;
 	public float BeamRange = 3000f;
@@ -23,8 +23,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	public int CardRings = 2;
 	public float CardSpeed = 520f;
 	public float CardDamage = 6f;
-	public Vector2 AttackGap = new( 2f, 3.5f );
-	public float DanceChance = 0.15f;
+	public Vector2 AttackGap = new( 2f, 4.5f );
+	public float DanceChance = 0.1f;
 	public float DanceTime = 4.5f;
 	public float DanceDamageScale = 1.6f;
 	public float RamDamage = 25f;
@@ -848,7 +848,10 @@ public partial class MC61 : PartCreature, MC61Marker
 		BeamEnd = tr.Hit ? tr.HitPosition : to;
 	}
 
-	/// <summary> Anyone the beam passes through (head to toe) gets burned. </summary>
+	/// <summary>
+	/// Anyone the beam passes through (head to toe) gets burned, unless they are behind something: the part of them
+	/// the beam is close to must be in plain sight of his eye (no wall, rock, cover or ground in between).
+	/// </summary>
 	void BeamDamage( float amount )
 	{
 		var from = EyePosition;
@@ -857,10 +860,15 @@ public partial class MC61 : PartCreature, MC61Marker
 		{
 			if ( !player.IsAlive ) continue;
 			var feet = player.WorldPosition;
-			var closest = float.MaxValue;
+			var exclude = player.Controller is { } c ? new Godot.Collections.Array<Rid> { c.GetRid() } : null;
 			for ( var h = 10f; h <= 70f; h += 15f )
-				closest = MathF.Min( closest, DistanceToSegment( feet + Vector3.Up * h * U.In, from, to ) );
-			if ( closest < (BeamWidth + 14f) * U.In ) Hurt( player, amount );
+			{
+				var point = feet + Vector3.Up * h * U.In;
+				if ( DistanceToSegment( point, from, to ) >= (BeamWidth + 14f) * U.In ) continue;
+				if ( Trace.Ray( this, from, point, Layers.World, exclude ).Hit ) continue;   // in cover
+				Hurt( player, amount );
+				break;
+			}
 		}
 	}
 

@@ -17,10 +17,10 @@ public partial class Mermaid : Creature
 	public const float Scale = 0.3f;
 	public float Speed = 3.6f;              // m/s: a little slower than the others (about 4 to 5)
 	public float HoverHeight = 1.5f;        // the waist above the floor (the tail hangs about 1.2 m)
-	public float TridentDamage = 14f;
+	public float TridentDamage = 18f;
 	public float TridentReach = 2.4f;
 	public float StabCooldown = 1.5f;
-	public float ArrowDamage = 10f;
+	public float ArrowDamage = 12f;
 	public float ArrowSpeed = 24f;
 	public float ShootEvery = 2.4f;
 	public float KeepAway = 13f;            // archers circle at about this distance

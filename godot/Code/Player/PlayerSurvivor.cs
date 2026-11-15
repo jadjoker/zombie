@@ -9,7 +9,7 @@ public partial class PlayerSurvivor : Node
 	public float RegenDelay = 4f;
 	public float RegenPerSecond = 20f;
 	public float HurtShake = 0.5f;
-	public int StartingPoints = 500;
+	public int StartingPoints = 1000;
 	public int PointsPerHit = 10;
 	public int PointsPerKill = 60;
 
@@ -151,12 +151,12 @@ public partial class PlayerAfflictions : Node
 	public float InkDuration = 3.5f;
 	public int InkBlots = 4;
 	public float BurnDuration = 4f;
-	public float BurnDamagePerSecond = 8f;
+	public float BurnDamagePerSecond = 5f;
 	public float SlowDuration = 3.5f;
 	public float SlowSpeed = 0.45f;
 	/// <summary> Irradiated (the Kraken): stamina comes back this much slower, and a poisoned dose also hurts. </summary>
 	public float RadiationStaminaScale = 0.35f;
-	public float RadiationDamagePerSecond = 4f;
+	public float RadiationDamagePerSecond = 5f;
 
 	public readonly record struct Blot( float X, float Y, float Size, int Seed );
 	public readonly record struct ScreenDrip( float X, float Y, float Size, Color Color, float Born, float Slide );

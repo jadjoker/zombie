@@ -11,7 +11,7 @@ public partial class Seahorse : Creature
 	public static readonly List<Seahorse> All = new();
 
 	public float Speed = 7.5f;           // m/s: the others swim about 3 to 5
-	public float BiteDamage = 6f;
+	public float BiteDamage = 8f;
 	public float BiteRange = 1.3f;
 	public float BiteCooldown = 1.1f;
 	public float HoverHeight = 1.2f;     // above the floor, where the player's chest is

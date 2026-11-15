@@ -26,8 +26,8 @@ public partial class RockyShark : PartCreature
 	public float BiteRange = 110f;
 	public float BiteDamage = 15f;
 	public float BiteCooldown = 1.6f;
-	public float BiteRadiationChance = 0.6f;
-	public float BiteRadiationTime = 8f;
+	public float BiteRadiationChance = 0.5f;
+	public float BiteRadiationTime = 6f;
 
 	public float HeadRadius = 16f;   // a big boulder head
 	public float SegmentHealth = 45f;

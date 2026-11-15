@@ -51,11 +51,11 @@ public partial class WaveDirector : Node3D
 
 	public int BossEvery = 5;
 	public float BossBaseHealth = 2000f;
-	public float BossHealthPerVisit = 800f;
+	public float BossHealthPerVisit = 1500f;
 	public float BossSpawnHeight = 160f;
-	public float KrakenBaseHealth = 7000f;
+	public float KrakenBaseHealth = 8000f;
 	/// <summary> Its dome (shield) at the first visit, and how much tougher each return is (playtest 11/11). </summary>
-	public float KrakenDomeHealth = 1200f, KrakenReturnScale = 1.2f;
+	public float KrakenDomeHealth = 1500f, KrakenReturnScale = 1.2f;
 	float KrakenScale => MathF.Pow( KrakenReturnScale, Math.Max( 0, KrakenVisits - 1 ) );
 
 	// ---- The Kraken event (issue #30, stage 5): it turns up on waves of its own choosing ----
@@ -214,13 +214,13 @@ public partial class WaveDirector : Node3D
 
 	/// <summary> Mermaids: only in Atlantis (area 3), about a third of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
-	public float MermaidChance = 0.35f;
+	public float MermaidChance = 0.5f;
 	public float MermaidBaseHealth = 208f;
 	public float MermaidHealthPerWave = 32.5f;
 
 	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
 	public int PoseidonWave = 30;
-	public float PoseidonHealth = 18000f;
+	public float PoseidonHealth = 30000f;
 	/// <summary> Seahorses (Poseidon's summons): weak, so a hit or two kills one. </summary>
 	public float SeahorseBaseHealth = 20f;
 	public float SeahorseHealthPerWave = 0.5f;

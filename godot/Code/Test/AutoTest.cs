@@ -2022,7 +2022,7 @@ public partial class AutoTest : Node
 		var kraken = Kraken.All.First();
 		await Wait( 0.5f );
 		GD.Print( $"[autotest] round11: Kraken health {kraken.Health.MaxHealth:0}, dome {kraken.HelmetHealth:0}, visits {director.KrakenVisits}" );
-		Check( kraken.Health.MaxHealth == 7000f && kraken.HelmetHealth == 1200f, "the first Kraken is not 7000 health and a 1200 dome" );
+		Check( kraken.Health.MaxHealth == director.KrakenBaseHealth && kraken.HelmetHealth == director.KrakenDomeHealth, "the first Kraken does not have its base health and dome" );
 		kraken.QueueFree();
 		for ( var visit = 0; visit < 2; visit++ )
 		{

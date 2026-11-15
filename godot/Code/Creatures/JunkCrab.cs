@@ -12,7 +12,7 @@ public partial class JunkCrab : PartCreature
 	public float AttackRange = 70f;
 	/// <summary> Claws reach this high above the crab's feet (inches): standing over it is safe (playtest 11/11). </summary>
 	public float ReachHeight = 24f;
-	public float ClawDamage = 14f;
+	public float ClawDamage = 10f;
 	public float AttackCooldown = 1.1f;
 	public float BarrelHealth = 80f;
 	public float LimbHealth = 20f;

@@ -127,8 +127,8 @@ public partial class PlayerWeapon : Node
 	public static PlayerWeapon Shotgun() => new()
 	{
 		Name = "Shotgun", DisplayName = "Shotgun", Slot = 2, ModelName = "shotgun",
-		Damage = 21f /* 14 before: +50% (playtest) */, FireRate = 1.4f, Range = 2600f * U.In, SpreadDegrees = 5.5f, Recoil = 3.5f,
-		MagazineSize = 6, StartingReserve = 42, BulletImpulse = 120f * U.In, Pellets = 9, Automatic = false,
+		Damage = 20f, FireRate = 1.4f, Range = 2600f * U.In, SpreadDegrees = 5.5f, Recoil = 3.5f,
+		MagazineSize = 6, StartingReserve = 42, BulletImpulse = 120f * U.In, Pellets = 12, Automatic = false,
 		ShellReload = true, ShellTime = 0.5f, MuzzleFlashScale = 0.45f, ShakePerShot = 0.45f, FovKickPerShot = 4f,
 		AimFovScale = 0.8f, AimSpreadScale = 0.6f, AimRecoilScale = 0.7f,
 	};

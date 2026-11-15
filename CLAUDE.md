@@ -131,7 +131,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
   chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,
-  movement buff, the Biden Blast on the `blast` action: V or RB, which fire it instead of the axe only while it is
+  movement buff, the Biden Blast on the `blast` action: G (RB on a pad, which fires it instead of the axe only while it is
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.

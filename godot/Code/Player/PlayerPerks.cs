@@ -16,8 +16,8 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Shield: 25 shield (a blue bar over the health bar), +10 for each more. It takes hits before health does, comes
 ///   back in half the time health does, but after being emptied it waits twice as long as health.
 /// - Movement Buff: the first adds 0.5 m/s and 10% more stamina; each more adds 5% stamina.
-/// - Biden Blast: once a wave, V (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
-///   (V and RB are also the axe: while the blast is ready they fire it instead; the axe is still on Mouse 4.)
+/// - Biden Blast: once a wave, G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
+///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node
@@ -80,7 +80,7 @@ public partial class PlayerPerks : Node
 		if ( !InputMap.HasAction( "blast" ) )
 		{
 			InputMap.AddAction( "blast", 0.5f );
-			InputMap.ActionAddEvent( "blast", new InputEventKey { PhysicalKeycode = Key.V } );
+			InputMap.ActionAddEvent( "blast", new InputEventKey { PhysicalKeycode = Key.G } );
 			InputMap.ActionAddEvent( "blast", new InputEventJoypadButton { ButtonIndex = JoyButton.RightShoulder } );
 		}
 		shieldGlow = new OmniLight3D { Name = "Shield Glow", LightColor = new Color( 0.3f, 0.75f, 1f ), LightEnergy = 0f, OmniRange = 3.5f, ShadowEnabled = false, Position = Vector3.Up * 1f };
@@ -133,7 +133,7 @@ public partial class PlayerPerks : Node
 		return damage.Damage - taken;
 	}
 
-	/// <summary> V or RB was pressed for the blast this frame (so the axe stands aside). </summary>
+	/// <summary> G or RB was pressed for the blast this frame (so the axe stands aside). </summary>
 	public bool BlastPressed => Count( PerkKind.Blast ) > 0 && Input.IsActionJustPressed( "blast" ) && (BlastReady || blastFrame == Engine.GetProcessFrames());
 
 	public override void _Process( double delta )

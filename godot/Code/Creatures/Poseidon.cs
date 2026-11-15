@@ -56,7 +56,7 @@ public partial class Poseidon : Creature
 	/// His skin: the alien sea's purple, blue and green blended in slow drifting patches with faint glowing veins, in
 	/// world space round his middle so every part of him (face, chest, arms) shares one pattern. Hits flash it.
 	/// </summary>
-	static readonly Shader SkinShader = new()
+	public static readonly Shader SkinShader = new()
 	{
 		Code = @"shader_type spatial;
 // His skin drifts like the alien sea: broad slow patches of purple, blue and green blending into each other, with
@@ -271,55 +271,7 @@ void fragment() {
 		var body = new Node3D { Name = "Body" };
 		into.AddChild( body );
 
-		// The tail: a chain of joints from the hips down, each a scaled blob with a darker band, ending in a wide fluke.
-		Node3D parent = body;
-		var at = new Vector3( 0f, -0.15f, 0f );
-		for ( var i = 0; i < 9; i++ )
-		{
-			var joint = Sculpt.Joint( parent, at, $"Tail {i}" );
-			var r = MathX.Lerp( 0.44f, 0.12f, i / 8f );
-			Sculpt.Blob( joint, new Vector3( 0f, -0.2f, 0f ), new Vector3( r * 2f, 0.5f, r * 1.8f ), scales );
-			Sculpt.Blob( joint, new Vector3( 0f, -0.05f, 0f ), new Vector3( r * 2.05f, 0.08f, r * 1.85f ), armour );
-			// Scales: four rings of sixteen small six-sided plates, laid like tiles, one multimesh per colour.
-			scaleMesh ??= new CylinderMesh { TopRadius = 0.5f, BottomRadius = 0.5f, Height = 1f, RadialSegments = 6, Rings = 1 };
-			var plates = new List<(Transform3D At, float Seed)>[scaleColours.Length];
-			for ( var c = 0; c < plates.Length; c++ ) plates[c] = new();
-			for ( var row = 0; row < 4; row++ )
-				for ( var k = 0; k < 16; k++ )
-				{
-					var a = (k + row * 0.5f) / 16f * MathF.Tau;
-					var y = -0.03f - row * 0.115f;
-					var off = (y + 0.2f) / 0.25f;
-					var squeeze = MathF.Sqrt( MathF.Max( 0.2f, 1f - off * off ) );   // the blob narrows toward its ends
-					var out3 = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
-					var at2 = new Vector3( out3.X * r * squeeze, y, out3.Z * r * 0.9f * squeeze );
-					var normal = (out3 + Vector3.Up * 0.35f).Normalized();   // lower edge lifted, like roof tiles
-					var across = Vector3.Up.Cross( out3 ).Normalized();
-					var down = across.Cross( normal );
-					var size = r * 0.46f;
-					var colour = (i * 3 + k + row * 5 + (k * 7 + row * 3 + i) % 3) % scaleColours.Length;
-					plates[colour].Add( (new Transform3D( new Basis( across * size, normal * 0.03f, down * size * 1.15f ), at2 + normal * 0.012f ), (i * 64 + row * 16 + k) * 0.6180339f % 1f) );
-				}
-			for ( var c = 0; c < plates.Length; c++ )
-			{
-				if ( plates[c].Count == 0 ) continue;
-				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = scaleMesh };
-				mm.InstanceCount = plates[c].Count;
-				for ( var n = 0; n < plates[c].Count; n++ )
-				{
-					mm.SetInstanceTransform( n, plates[c][n].At );
-					mm.SetInstanceCustomData( n, new Color( plates[c][n].Seed, 0f, 0f, 0f ) );
-				}
-				joint.AddChild( new MultiMeshInstance3D { Name = "Scales", Multimesh = mm, MaterialOverride = scaleColours[c] } );
-			}
-			rig.Tail.Add( joint );
-			parent = joint;
-			at = new Vector3( 0f, -0.36f, 0f );
-		}
-		foreach ( var s in new[] { -1f, 1f } )   // the fluke
-			Sculpt.Block( parent, new Vector3( s * 0.32f, -0.42f, 0.08f ), new Vector3( 0.7f, 0.03f, 0.45f ), fins, new Basis( Vector3.Back, s * 0.5f ) * new Basis( Vector3.Right, 0.35f ) );
-		foreach ( var s in new[] { -1f, 1f } )   // hip fins
-			Sculpt.Block( rig.Tail[1], new Vector3( s * 0.45f, -0.15f, 0.05f ), new Vector3( 0.55f, 0.03f, 0.3f ), fins, new Basis( Vector3.Back, s * 0.7f ) );
+		BuildTail( body, look, rig.Tail );
 
 		// Belt: black with a big yellow jewel and purple and green ones round it.
 		Sculpt.Blob( body, new Vector3( 0f, 0f, 0f ), new Vector3( 1.05f, 0.32f, 0.82f ), armour );
@@ -467,6 +419,68 @@ void fragment() {
 		rig.Hand = hand;
 		rig.Trident = heldTrident;
 		return rig;
+	}
+
+	/// <summary>
+	/// A merfolk tail under `body`: nine joints from the hips down, each a scaled blob with a band and four rings of
+	/// hexagon scales, a wide fluke and hip fins, in Poseidon's model units (the waist at the origin, about 3.9 long).
+	/// The joints go into `tail`, hips first. Shared with the mermaids.
+	/// </summary>
+	public static void BuildTail( Node3D body, Look look, List<Node3D> tail )
+	{
+		var scales = look.Scales;
+		var armour = look.Armour;
+		var fins = look.Fins;
+		var scaleColours = look.ScaleColours;
+		// The tail: a chain of joints from the hips down, each a scaled blob with a darker band, ending in a wide fluke.
+		Node3D parent = body;
+		var at = new Vector3( 0f, -0.15f, 0f );
+		for ( var i = 0; i < 9; i++ )
+		{
+			var joint = Sculpt.Joint( parent, at, $"Tail {i}" );
+			var r = MathX.Lerp( 0.44f, 0.12f, i / 8f );
+			Sculpt.Blob( joint, new Vector3( 0f, -0.2f, 0f ), new Vector3( r * 2f, 0.5f, r * 1.8f ), scales );
+			Sculpt.Blob( joint, new Vector3( 0f, -0.05f, 0f ), new Vector3( r * 2.05f, 0.08f, r * 1.85f ), armour );
+			// Scales: four rings of sixteen small six-sided plates, laid like tiles, one multimesh per colour.
+			scaleMesh ??= new CylinderMesh { TopRadius = 0.5f, BottomRadius = 0.5f, Height = 1f, RadialSegments = 6, Rings = 1 };
+			var plates = new List<(Transform3D At, float Seed)>[scaleColours.Length];
+			for ( var c = 0; c < plates.Length; c++ ) plates[c] = new();
+			for ( var row = 0; row < 4; row++ )
+				for ( var k = 0; k < 16; k++ )
+				{
+					var a = (k + row * 0.5f) / 16f * MathF.Tau;
+					var y = -0.03f - row * 0.115f;
+					var off = (y + 0.2f) / 0.25f;
+					var squeeze = MathF.Sqrt( MathF.Max( 0.2f, 1f - off * off ) );   // the blob narrows toward its ends
+					var out3 = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
+					var at2 = new Vector3( out3.X * r * squeeze, y, out3.Z * r * 0.9f * squeeze );
+					var normal = (out3 + Vector3.Up * 0.35f).Normalized();   // lower edge lifted, like roof tiles
+					var across = Vector3.Up.Cross( out3 ).Normalized();
+					var down = across.Cross( normal );
+					var size = r * 0.46f;
+					var colour = (i * 3 + k + row * 5 + (k * 7 + row * 3 + i) % 3) % scaleColours.Length;
+					plates[colour].Add( (new Transform3D( new Basis( across * size, normal * 0.03f, down * size * 1.15f ), at2 + normal * 0.012f ), (i * 64 + row * 16 + k) * 0.6180339f % 1f) );
+				}
+			for ( var c = 0; c < plates.Length; c++ )
+			{
+				if ( plates[c].Count == 0 ) continue;
+				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = scaleMesh };
+				mm.InstanceCount = plates[c].Count;
+				for ( var n = 0; n < plates[c].Count; n++ )
+				{
+					mm.SetInstanceTransform( n, plates[c][n].At );
+					mm.SetInstanceCustomData( n, new Color( plates[c][n].Seed, 0f, 0f, 0f ) );
+				}
+				joint.AddChild( new MultiMeshInstance3D { Name = "Scales", Multimesh = mm, MaterialOverride = scaleColours[c] } );
+			}
+			tail.Add( joint );
+			parent = joint;
+			at = new Vector3( 0f, -0.36f, 0f );
+		}
+		foreach ( var s in new[] { -1f, 1f } )   // the fluke
+			Sculpt.Block( parent, new Vector3( s * 0.32f, -0.42f, 0.08f ), new Vector3( 0.7f, 0.03f, 0.45f ), fins, new Basis( Vector3.Back, s * 0.5f ) * new Basis( Vector3.Right, 0.35f ) );
+		foreach ( var s in new[] { -1f, 1f } )   // hip fins
+			Sculpt.Block( tail[1], new Vector3( s * 0.45f, -0.15f, 0.05f ), new Vector3( 0.55f, 0.03f, 0.3f ), fins, new Basis( Vector3.Back, s * 0.7f ) );
 	}
 
 	/// <summary>

@@ -62,6 +62,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
 		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
+		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2694,6 +2695,100 @@ public partial class AutoTest : Node
 	/// out of his whirlpool, throw a trident that hurts, summon seahorses into the wave, catch the player in a thrown
 	/// whirlpool and stab them, vanish to a spot near the player inside the map, and die.
 	/// </summary>
+	/// <summary>
+	/// Mermaids: one of each (woman and man, trident and bow) come up round the player. Pictures of each; then they
+	/// fight: the trident ones must swim in and stab, the archers keep away and their arrows must land; one is killed
+	/// and must burst. Their health is about 30% over a Bloober's.
+	/// </summary>
+	async Task MermaidTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var scene = GetTree().CurrentScene;
+		var director = WaveDirector.Current;
+		director.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		Check( director.MermaidBaseHealth >= director.BlooberBaseHealth * 1.29f && director.MermaidHealthPerWave >= director.BlooberHealthPerWave * 1.29f, "mermaids do not have about 30% more health than a Bloober" );
+
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+		DevFlags.FreezeEnemies = true;
+		var looks = new (string Name, bool Male, bool Archer, Vector3 Offset)[]
+		{
+			("mermaid_trident", false, false, new Vector3( -2.4f, 0f, -5f )),
+			("merman_trident", true, false, new Vector3( 2.4f, 0f, -5f )),
+			("mermaid_bow", false, true, new Vector3( -4f, 0f, -11f )),
+			("merman_bow", true, true, new Vector3( 4f, 0f, -11f )),
+		};
+		var mermaids = new List<Mermaid>();
+		foreach ( var (_, male, archer, offset) in looks )
+		{
+			var at = Nav.Closest( player, home + offset );
+			var m = Mermaid.Spawn( scene, at + Vector3.Up * 1.3f, 900f, male, archer );
+			m.GlobalBasis = Shapes.LookAt( (home - at).Flat() );
+			mermaids.Add( m );
+		}
+		await Wait( 0.8f );
+		if ( shots is not null )
+		{
+			var hidden = new List<CanvasLayer>();
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl && cl.Visible ) { cl.Visible = false; hidden.Add( cl ); }
+			for ( var i = 0; i < mermaids.Count; i++ )
+			{
+				var m = mermaids[i];
+				var front = -m.GlobalBasis.Z.Flat().Normalized();
+				var target = m.GlobalPosition + Vector3.Up * 0.2f;
+				var from = target + front * 3.2f + m.GlobalBasis.X.Normalized() * 0.9f + Vector3.Up * 0.4f;
+				var at = new Transform3D( Basis.LookingAt( (target - from).Normalized(), Vector3.Up ), from );
+				player.CameraOverride = _ => at;
+				await Wait( 0.3f );
+				await Shot( looks[i].Name );
+			}
+			var wideFrom = home + new Vector3( 0f, 2.2f, 2f );
+			var wide = new Transform3D( Basis.LookingAt( (home + new Vector3( 0f, 1f, -8f ) - wideFrom).Normalized(), Vector3.Up ), wideFrom );
+			player.CameraOverride = _ => wide;
+			await Wait( 0.3f );
+			await Shot( "mermaids" );
+			player.CameraOverride = null;
+			foreach ( var cl in hidden ) cl.Visible = true;
+		}
+
+		// The fight.
+		DevFlags.FreezeEnemies = false;
+		survivor.Health.Heal( 999f );
+		for ( var t = 0f; t < 12f; t += 0.25f )
+		{
+			player.GlobalPosition = home + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			if ( survivor.Health.Current < 60f ) survivor.Health.Heal( 999f );
+			await Wait( 0.25f );
+		}
+		var stabs = mermaids.Where( m => IsInstanceValid( m ) && !m.Archer ).Sum( m => m.Hits );
+		var shot = mermaids.Where( m => IsInstanceValid( m ) && m.Archer ).Sum( m => m.ArrowsShot );
+		var arrowHits = mermaids.Where( m => IsInstanceValid( m ) && m.Archer ).Sum( m => m.Hits );
+		var archerGap = mermaids.Where( m => IsInstanceValid( m ) && m.Archer ).Select( m => m.GlobalPosition.Flat().DistanceTo( home.Flat() ) ).DefaultIfEmpty( 0f ).Min();
+		GD.Print( $"[autotest] mermaids: trident hits {stabs}, arrows {shot} ({arrowHits} hit), nearest archer {archerGap:0.0} m away" );
+		Check( stabs > 0, "the trident mermaids did not stab the player" );
+		Check( shot > 0 && arrowHits > 0, "the archer mermaids did not shoot the player" );
+		Check( archerGap > 6f, "an archer mermaid did not keep its distance" );
+
+		var victim = mermaids[0];
+		var killed = false;
+		victim.Killed += _ => killed = true;
+		victim.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+		await Wait( 0.5f );
+		Check( killed && !IsInstanceValid( victim ), "a mermaid did not die and burst" );
+		GD.Print( $"[autotest] mermaid burst; {GetTree().Root.FindChildren( "*", "RigidBody3D", true, false ).OfType<Gib>().Count()} loose pieces" );
+		foreach ( var m in mermaids.Where( IsInstanceValid ) ) m.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task PoseidonTest()
 	{
 		// While still at the dock: the blue hole and its reef ring, from the air.

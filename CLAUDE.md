@@ -113,6 +113,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `ScaleShader` (hex lines), hands pinned to the chest's colour. His whirlpool sweeps the player up and carries them back
   to him (`Grab` with the vortex); on death he swells and bursts into loose pieces (`Burst`). The held trident is leant
   off the forearm in `Animate` so it never passes through his arm. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
+- Mermaids (`Code/Creatures/Mermaid.cs`, `EnemyKind.Mermaid`): Atlantis only (`WaveDirector.MermaidChance` of each wave
+  there), about player height (`Mermaid.Scale` of Poseidon's units), Poseidon's tail (`Poseidon.BuildTail`) and drifting
+  skin, a coral-grown scallop shell mask with glowing eyes and spiky teeth, fin hands. Women have red, blonde or black
+  hair and shell tops; men gold helmets. Trident ones swim in and stab; about a third are archers that keep away and
+  shoot `MermaidArrow`s. Slower, 30% more health than a Bloober. Dev menu: Enemies, Spawn an enemy, Mermaid. Test:
+  `--mermaids` (shots need a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

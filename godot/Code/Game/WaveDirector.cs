@@ -210,7 +210,13 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid }
+
+	/// <summary> Mermaids: only in Atlantis (area 3), about a third of the mix there. Health about 30% over a Bloober's. </summary>
+	public bool SpawnMermaids = true;
+	public float MermaidChance = 0.35f;
+	public float MermaidBaseHealth = 208f;
+	public float MermaidHealthPerWave = 32.5f;
 
 	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
 	public int PoseidonWave = 30;
@@ -268,6 +274,14 @@ public partial class WaveDirector : Node3D
 			var s = Seahorse.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.4f, health );
 			s.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return s;
+		},
+		[EnemyKind.Mermaid] = ( d, at, health ) =>
+		{
+			var m = Mermaid.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.3f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) m.GlobalBasis = Shapes.LookAt( toPlayer );
+			m.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return m;
 		},
 		[EnemyKind.Poseidon] = ( d, at, health ) =>
 		{
@@ -537,6 +551,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.RockyShark => SharkBaseHealth + SharkHealthPerWave * (Wave - 1),
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
 			EnemyKind.Seahorse => SeahorseBaseHealth + SeahorseHealthPerWave * Wave,
+			EnemyKind.Mermaid => MermaidBaseHealth + MermaidHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
@@ -653,6 +668,12 @@ public partial class WaveDirector : Node3D
 	{
 		var roll = Rng.Float();
 		var has = ( EnemyKind k ) => Spawners.TryGetValue( k, out var f ) && f is not null;
+		// Atlantis: a share of every wave are mermaids, the rest the usual mix.
+		if ( SpawnMermaids && SeaTerrain.Area == 3 && has( EnemyKind.Mermaid ) )
+		{
+			if ( roll < MermaidChance ) return Spawn( EnemyKind.Mermaid );
+			roll = (roll - MermaidChance) / (1f - MermaidChance);
+		}
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;
 		var shark = SpawnSharks && has( EnemyKind.RockyShark ) && Wave >= SharkFromWave ? SharkChance : 0f;

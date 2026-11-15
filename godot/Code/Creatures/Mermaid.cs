@@ -2,8 +2,8 @@ using Godot;
 
 /// <summary>
 /// Mermaids (Atlantis only, from wave 21): about player height, with a small copy of Poseidon's scaled tail and his
-/// drifting purple, blue and green skin. Their faces, after the user's reference photo: a pale mask of scallop shells with
-/// spiked cheek flares, black eyes and a mouth stretched open on long needle teeth. Fin hands like the Rocky Shark's fins. Women have long
+/// drifting purple, blue and green skin. The women's faces, after the user's reference photo: a pale mask of scallop
+/// shells with spiked cheek flares; all have black eyes and a mouth stretched open on long needle teeth. Fin hands like the Rocky Shark's fins. Women have long
 /// red, blonde or black hair and shell tops; men are broader and wear gold helmets. Most carry a trident and swim in to
 /// stab; about one in three carries a bow and keeps its distance, shooting arrows. Slower than the other enemies, with
 /// about 30% more health. Built in code (Sculpt) in Poseidon's model units, drawn at `Scale` of them. Head is the weak spot.
@@ -165,37 +165,47 @@ public partial class Mermaid : Creature
 			}
 			Sculpt.Blob( head, hinge, new Vector3( size * 0.3f, size * 0.18f, size * 0.15f ), rib, turn );
 		}
-		// The forehead: five scallops fanned up over the brow.
-		for ( var k = -2; k <= 2; k++ )
+		if ( !Male )   // the women wear the shell mask; the men show their faces under their helmets
 		{
-			var size = k == 0 ? 0.17f : MathF.Abs( k ) == 1 ? 0.15f : 0.16f;
-			var tilt = new Basis( Vector3.Back, -k * 0.32f ) * new Basis( Vector3.Right, 0.3f );
-			Scallop( new Vector3( k * 0.09f, 0.34f, -0.24f + MathF.Abs( k ) * 0.04f ), size, tilt, k % 2 == 0 ? ivory : blush, ivory );
+			// The forehead: five scallops fanned up over the brow.
+			for ( var k = -2; k <= 2; k++ )
+			{
+				var size = k == 0 ? 0.17f : MathF.Abs( k ) == 1 ? 0.15f : 0.16f;
+				var tilt = new Basis( Vector3.Back, -k * 0.32f ) * new Basis( Vector3.Right, 0.3f );
+				Scallop( new Vector3( k * 0.09f, 0.34f, -0.24f + MathF.Abs( k ) * 0.04f ), size, tilt, k % 2 == 0 ? ivory : blush, ivory );
+			}
+			// The ridge up the middle of the brow, with two tall spikes and pearls at its foot.
+			Sculpt.Limb( head, new Vector3( 0f, 0.29f, -0.27f ), new Vector3( 0f, 0.58f, -0.2f ), 0.025f, 0.015f, spike, "Ridge" );
+			foreach ( var s in new[] { -1f, 1f } )
+				Sculpt.Cone( head, new Vector3( s * 0.06f, 0.5f, -0.22f ), new Vector3( s * 0.07f, 0.7f, -0.2f ), 0.014f, spike, 5 );
+			for ( var k = -1; k <= 1; k++ ) Sculpt.Blob( head, new Vector3( k * 0.025f, 0.285f, -0.275f ), Vector3.One * 0.022f, ivory );
 		}
-		// The ridge up the middle of the brow, with two tall spikes and pearls at its foot.
-		Sculpt.Limb( head, new Vector3( 0f, 0.29f, -0.27f ), new Vector3( 0f, 0.58f, -0.2f ), 0.025f, 0.015f, spike, "Ridge" );
-		foreach ( var s in new[] { -1f, 1f } )
-			Sculpt.Cone( head, new Vector3( s * 0.06f, 0.5f, -0.22f ), new Vector3( s * 0.07f, 0.7f, -0.2f ), 0.014f, spike, 5 );
-		for ( var k = -1; k <= 1; k++ ) Sculpt.Blob( head, new Vector3( k * 0.025f, 0.285f, -0.275f ), Vector3.One * 0.022f, ivory );
+		else
+		{
+			// A heavy brow and hard cheekbones.
+			Sculpt.Blob( head, new Vector3( 0f, 0.33f, -0.21f ), new Vector3( 0.4f, 0.09f, 0.12f ), skin );
+			foreach ( var s in new[] { -1f, 1f } )
+				Sculpt.Blob( head, new Vector3( s * 0.15f, 0.18f, -0.19f ), new Vector3( 0.12f, 0.08f, 0.1f ), skin );
+		}
 		foreach ( var s in new[] { -1f, 1f } )
 		{
 			// The cheeks: a ribbed shell flaring back past the eye, spikes standing out of its edge.
 			var cheek = new Vector3( s * 0.16f, 0.2f, -0.2f );
 			var flare = new Basis( Vector3.Up, -s * 0.9f ) * new Basis( Vector3.Back, -s * 0.5f );
-			Scallop( cheek, 0.2f, flare, blush, ivory );
-			for ( var k = 0; k < 8; k++ )
+			if ( !Male ) Scallop( cheek, 0.2f, flare, blush, ivory );
+			for ( var k = 0; k < (Male ? 0 : 8); k++ )
 			{
 				var a = -0.9f + k * 0.28f;   // round the shell's outer edge, from below the eye to above it
 				var foot = cheek + new Vector3( s * (0.12f + MathF.Cos( a ) * 0.08f), MathF.Sin( a ) * 0.13f, 0.06f + MathF.Cos( a ) * 0.05f );
 				var outward = new Vector3( s * MathF.Cos( a ), MathF.Sin( a ) * 0.8f, 0.25f ).Normalized();
 				Sculpt.Cone( head, foot, foot + outward * (0.1f + (k % 3) * 0.035f), 0.01f, spike, 4 );
 			}
-			Sculpt.Cone( head, cheek + new Vector3( s * 0.02f, -0.06f, -0.05f ), cheek + new Vector3( s * 0.1f, -0.1f, -0.1f ), 0.01f, spike, 4 );
+			if ( !Male ) Sculpt.Cone( head, cheek + new Vector3( s * 0.02f, -0.06f, -0.05f ), cheek + new Vector3( s * 0.1f, -0.1f, -0.1f ), 0.01f, spike, 4 );
 			// Black eyes, a dark amber iris in each.
 			Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.225f ), new Vector3( 0.12f, 0.065f, 0.05f ), black, new Basis( Vector3.Back, -s * 0.15f ) );
 			Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.248f ), new Vector3( 0.045f, 0.045f, 0.012f ), iris );
 			// Pastel dots under and beside the eyes.
-			for ( var k = 0; k < 6; k++ )
+			for ( var k = 0; k < (Male ? 0 : 6); k++ )
 			{
 				var dot = new Vector3( s * (0.09f + (k % 3) * 0.04f), 0.2f - (k / 3) * 0.035f, -0.235f + (k % 3) * 0.015f );
 				Sculpt.Blob( head, dot, Vector3.One * (0.018f + (k % 2) * 0.008f), k % 3 == 0 ? Sculpt.Glow( new Color( 1f, 0.5f, 0.65f ), 0.8f ) : k % 3 == 1 ? Sculpt.Glow( new Color( 1f, 0.82f, 0.3f ), 0.8f ) : Sculpt.Glow( new Color( 0.5f, 1f, 0.6f ), 0.8f ) );
@@ -467,7 +477,7 @@ public partial class Mermaid : Creature
 			var forearm = (handR.GlobalPosition - foreR.GlobalPosition).SafeNormal();
 			var side = point - forearm * point.Dot( forearm );
 			if ( side.Length() < 0.5f ) point = (point + GlobalBasis.X.Normalized() * 0.5f).Normalized();
-			weapon.GlobalTransform = new Transform3D( Shapes.LookAt( point, GlobalBasis.Z ).Scaled( Vector3.One * 1.05f ), handR.GlobalPosition + forward * 0.05f );
+			weapon.GlobalTransform = new Transform3D( Shapes.LookAt( point, GlobalBasis.Z ).Scaled( Vector3.One * 0.95f ), handR.GlobalPosition + forward * 0.05f );
 		}
 	}
 

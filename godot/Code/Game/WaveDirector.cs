@@ -578,6 +578,22 @@ public partial class WaveDirector : Node3D
 		ClearEnemies();
 	}
 
+	/// <summary>
+	/// Dev menu: straight to Atlantis (the third stage) from wherever the run is, as if both teleporters had been
+	/// taken: the wave is cleared, the wreck site is passed through, and wave 21 starts there.
+	/// </summary>
+	public void DevGoToAtlantis( PlayerController controller )
+	{
+		if ( OpenWorld || SeaTerrain.Area == 3 || !SeaTerrain.Active || GetTree().CurrentScene is not Node3D level ) return;
+		SkipWave();
+		if ( Teleporter.Current is { } pad && IsInstanceValid( pad ) ) { pad.GetParent()?.RemoveChild( pad ); pad.QueueFree(); }
+		Wave = SecondTeleportAfterWave;
+		State = WaveState.Intermission;
+		WaitingForTeleport = false;
+		if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, controller );
+		AreaThree.Go( level, controller );
+	}
+
 	public void JumpToWave( int wave )
 	{
 		if ( OpenWorld ) return;

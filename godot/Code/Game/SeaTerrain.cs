@@ -249,7 +249,7 @@ public static class SeaTerrain
 		var moved = 0;
 		foreach ( var n in dressing.Where( n => Life( n ) && n.GlobalPosition.Flat().Length() < FlatRadius + 6f ).ToList() )
 		{
-			if ( random.NextDouble() > 0.6 ) continue;
+			if ( random.NextDouble() > 0.82 ) continue;
 			var lift = n.GlobalPosition.Y - HeightAt( n.GlobalPosition );
 			var at = OuterSpot( Range, 10f );
 			n.GlobalPosition = at with { Y = HeightAt( at ) + lift };
@@ -258,7 +258,7 @@ public static class SeaTerrain
 		GD.Print( $"[terrain] moved {moved} plants and stones out of the basin" );
 
 		// More life over the new ground: copies of the kelp, coral, pebbles and boulders, out past the basin.
-		foreach ( var (prefix, count) in new[] { ("Kelp", 190), ("Coral", 110), ("Pebbles", 80), ("Boulder", 50) } )
+		foreach ( var (prefix, count) in new[] { ("Kelp", 150), ("Coral", 80), ("Pebbles", 80), ("Boulder", 34) } )
 		{
 			var sources = dressing.Where( n => Level.Kind( n ).StartsWith( prefix ) ).ToList();
 			if ( sources.Count == 0 ) continue;

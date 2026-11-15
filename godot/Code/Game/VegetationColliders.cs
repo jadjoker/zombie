@@ -15,7 +15,7 @@ using Godot;
 public static class VegetationColliders
 {
 	/// <summary> The stem's radius in metres at scale 1 (the stalk wanders about 0.15 m round its axis). </summary>
-	const float KelpRadius = 0.2f;
+	const float KelpRadius = 0.14f;
 	const float SpawnClearance = 3f;
 	/// <summary> Meta on a prop: its collider's body. </summary>
 	public const string SolidMeta = "solid";
@@ -41,7 +41,9 @@ public static class VegetationColliders
 		if ( model.Contains( "coral_branch" ) || model.Contains( "sponge" ) ) return Kind.Pieces;
 		// Reef rocks and cliffs are lumpy and overhang: one hull would fill their hollows with an invisible wall.
 		if ( kind.StartsWith( "Reef" ) || kind.StartsWith( "Cliff" ) ) return Kind.Pieces;
-		if ( kind.StartsWith( "Coral" ) || kind.StartsWith( "Boulder" ) ) return Kind.Hull;
+		// Other coral (fans, tables): one hull filled the gaps under and between; pieces follow the shape.
+		if ( kind.StartsWith( "Coral" ) ) return Kind.Pieces;
+		if ( kind.StartsWith( "Boulder" ) ) return Kind.Hull;
 		return Kind.None;
 	}
 
@@ -108,6 +110,16 @@ public static class VegetationColliders
 				if ( part.Length == 0 ) continue;
 				var points = new Vector3[part.Length];
 				for ( var i = 0; i < part.Length; i++ ) points[i] = toBody * part[i];
+				// Pulled in toward its own middle (hulls only): the solid sits just inside what you see, so nothing
+				// stops you short of a plant (playtest: invisible walls).
+				if ( !(kind == Kind.Pieces && triangleMeshes.Contains( mesh )) )
+				{
+					var middle = Vector3.Zero;
+					foreach ( var q in points ) middle += q;
+					middle /= points.Length;
+					var keep = kind == Kind.Pieces ? 0.8f : 0.88f;
+					for ( var i = 0; i < points.Length; i++ ) points[i] = middle + (points[i] - middle) * keep;
+				}
 				// The fallback (the mesh's own triangles) is a triangle shape; hull points make a hull.
 				Shape3D shape = kind == Kind.Pieces && triangleMeshes.Contains( mesh )
 					? new ConcavePolygonShape3D { Data = points }

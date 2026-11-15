@@ -558,7 +558,7 @@ public partial class DevMenu : CanvasLayer
 		}
 
 		// ======== WORLD
-		if ( Sec( "World", "Waves", "wave next +5 boss wave state kills enemies left phase" ) )
+		if ( Sec( "World", "Waves", "wave next +5 boss wave state kills enemies left phase teleport atlantis stage 3 level 21" ) )
 		{
 			Section( "Waves" );
 			var wave = d?.Wave ?? 0;
@@ -569,6 +569,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
 			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
+			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area != 3 ) Action( "Teleport to Atlantis (stage 3, wave 21)", () => d.DevGoToAtlantis( Controller ) );
 			Info( $"Wave {wave}    Kills {d?.Kills ?? 0}    Enemies left {d?.ZombiesRemaining ?? 0}    Phase {d?.State.ToString() ?? "-"}" );
 		}
 

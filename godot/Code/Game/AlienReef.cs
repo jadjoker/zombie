@@ -45,24 +45,25 @@ public static class AlienReef
 		var reef = new List<Node3D>();
 		if ( corals.Count > 0 )
 		{
-			for ( var clump = 0; clump < 34; clump++ )
+			for ( var clump = 0; clump < 20; clump++ )
 			{
 				var angle = Range( 0f, MathF.Tau );
 				var radius = Range( ReefInner + 1f, ReefOuter );
 				var centre = new Vector3( MathF.Cos( angle ) * radius, 0f, MathF.Sin( angle ) * radius );
-				var n = random.Next( 3, 7 );
+				var n = random.Next( 2, 5 );
 				for ( var k = 0; k < n; k++ )
 				{
-					var at = centre + new Vector3( Range( -2.2f, 2.2f ), 0f, Range( -2.2f, 2.2f ) );
-					if ( !Clear( at, 0.6f ) ) continue;
-					reef.Add( Copy( corals[random.Next( corals.Count )], at, Range( 0.9f, 2.1f ) ) );
+					var at = centre + new Vector3( Range( -4f, 4f ), 0f, Range( -4f, 4f ) );
+					if ( !Clear( at, 1.2f ) ) continue;
+					taken.Add( (at, 1.6f) );   // room to walk between them
+					reef.Add( Copy( corals[random.Next( corals.Count )], at, Range( 0.9f, 1.7f ) ) );
 				}
-				if ( kelps.Count > 0 && random.NextDouble() < 0.55 ) reef.Add( Copy( kelps[random.Next( kelps.Count )], centre + new Vector3( Range( -1.5f, 1.5f ), 0f, Range( -1.5f, 1.5f ) ), Range( 0.9f, 1.5f ) ) );
+				if ( kelps.Count > 0 && random.NextDouble() < 0.3 ) reef.Add( Copy( kelps[random.Next( kelps.Count )], centre + new Vector3( Range( -1.5f, 1.5f ), 0f, Range( -1.5f, 1.5f ) ), Range( 0.9f, 1.5f ) ) );
 				if ( pebbles.Count > 0 && random.NextDouble() < 0.5 ) Copy( pebbles[random.Next( pebbles.Count )], centre, Range( 0.8f, 1.4f ) );
 			}
 			// A few patches inside the basin, kept off the stations, the dive spot and the barricades (fewer than before:
 			// the middle was crowded).
-			for ( var patch = 0; patch < 7; patch++ )
+			for ( var patch = 0; patch < 3; patch++ )
 			{
 				var at0 = new Vector3( Range( -ReefInner, ReefInner ), 0f, Range( -ReefInner, ReefInner ) );
 				if ( at0.Length() < 6f || at0.Length() > ReefInner || !Clear( at0, 2f ) ) continue;

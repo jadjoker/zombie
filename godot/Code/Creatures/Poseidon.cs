@@ -37,7 +37,7 @@ public partial class Poseidon : Creature
 	static readonly Color Skin = new( 0.86f, 0.68f, 0.5f );
 	static readonly Color Hair = new( 0.94f, 0.94f, 0.92f );
 	static readonly Color Scales = new( 0.1f, 0.56f, 0.5f );
-	static readonly Color Armour = new( 0.04f, 0.04f, 0.05f );
+	static readonly Color Armour = new( 1f, 0.76f, 0.26f );   // polished gold
 	static readonly Color JewelPurple = new( 0.7f, 0.22f, 1f );
 	static readonly Color JewelGreen = new( 0.35f, 1f, 0.3f );
 	static readonly Color JewelYellow = new( 1f, 0.82f, 0.15f );
@@ -47,7 +47,7 @@ public partial class Poseidon : Creature
 
 	Node3D body, chest, head, armR, foreR, armL, foreL, hand, heldTrident;
 	readonly List<Node3D> tail = new();
-	ShaderMaterial skin;
+	ShaderMaterial skin, handSkin;
 	StandardMaterial3D scales;
 	/// <summary> Where the held trident points (eased toward what he is doing). </summary>
 	Vector3 tridentPoint = Vector3.Up;
@@ -65,6 +65,8 @@ uniform vec3 purple : source_color = vec3(0.56, 0.26, 0.8);
 uniform vec3 blue : source_color = vec3(0.22, 0.42, 0.88);
 uniform vec3 green : source_color = vec3(0.32, 0.78, 0.36);
 uniform vec3 centre = vec3(0.0);
+// Hands: w > 0.5 pins the pattern to one spot (xyz, from his middle), so they are the colour of his chest.
+uniform vec4 pin = vec4(0.0);
 uniform float flash = 0.0;
 varying vec3 world_pos;
 float hash(vec3 p) { p = fract(p * 0.3183099 + 0.1); p *= 17.0; return fract(p.x * p.y * p.z * (p.x + p.y + p.z)); }
@@ -75,7 +77,7 @@ float noise(vec3 x) {
 }
 void vertex() { world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
 void fragment() {
-	vec3 p = (world_pos - centre) * 1.1;
+	vec3 p = (pin.w > 0.5 ? pin.xyz : world_pos - centre) * 0.7;
 	float t = TIME * 0.18;
 	float u = noise(p + vec3(t, -t * 0.7, t * 0.4));
 	float v = noise(p * 0.8 - vec3(t * 0.6, t * 0.5, -t * 0.3) + vec3(7.3, 2.1, 4.4));
@@ -89,6 +91,53 @@ void fragment() {
 	EMISSION = shown * rim * 0.2 + mix(green, purple, u) * vein * 0.45;
 }",
 	};
+	/// <summary>
+	/// A tail scale: a small six-sided plate in one colour with darker lines cut into it: its rim, a hexagon inside
+	/// (its size from the scale's own number) and two or three grooves through the middle at the scale's own angles.
+	/// </summary>
+	static readonly Shader ScaleShader = new()
+	{
+		Code = @"shader_type spatial;
+uniform vec3 colour : source_color = vec3(0.1, 0.56, 0.5);
+uniform float metal = 0.3;
+uniform float glow = 0.0;
+varying vec2 q;
+varying float seed;
+float hex(vec2 v) { return max(abs(v.x), max(abs(0.5 * v.x + 0.866 * v.y), abs(0.5 * v.x - 0.866 * v.y))); }
+void vertex() { q = VERTEX.xz; seed = INSTANCE_CUSTOM.x; }
+void fragment() {
+	float d = hex(q);
+	float inner = 0.16 + fract(seed * 7.31) * 0.14;
+	float line = smoothstep(0.37, 0.41, d);
+	line = max(line, 1.0 - smoothstep(0.0, 0.022, abs(d - inner)));
+	for (int i = 0; i < 3; i++) {
+		float a = fract(seed * (3.17 + float(i) * 2.3)) * 3.14159;
+		vec2 n = vec2(cos(a), sin(a));
+		float groove = 1.0 - smoothstep(0.0, 0.018, abs(dot(q, n)));
+		if (i < 2 || fract(seed * 11.7) > 0.5) line = max(line, groove * step(inner, d));
+	}
+	vec3 c = mix(colour, colour * 0.28, line);
+	ALBEDO = c;
+	METALLIC = metal;
+	ROUGHNESS = 0.3;
+	EMISSION = c * glow;
+}",
+	};
+	static Mesh scaleMesh;
+
+	/// <summary> A tail scale material in a colour (see ScaleShader). </summary>
+	public static ShaderMaterial ScaleMaterial( Color c, float metal = 0.3f, float glow = 0f )
+	{
+		var m = new ShaderMaterial { Shader = ScaleShader };
+		m.SetShaderParameter( "colour", c );
+		m.SetShaderParameter( "metal", metal );
+		m.SetShaderParameter( "glow", glow );
+		return m;
+	}
+
+	/// <summary> The arm's resting pose: upper arm out from his side, forearm forward, the trident standing in his fist like a staff. </summary>
+	static readonly Vector3 RestArmR = new( 0.1f, 0f, 0.7f ), RestForeR = new( 1.35f, 0f, 0f );
+
 	Mode mode = Mode.Swim;
 	TimeSince inMode;
 	TimeUntil nextAttack = 5f;
@@ -107,6 +156,9 @@ void fragment() {
 	PlayerSurvivor grabbed;
 	Vector3 grabFrom;
 	bool stabbed;
+	PoseidonVortex grabbedIn;
+	float carryTime = 1f;
+	bool burst;
 
 	public static Poseidon Spawn( Node parent, Vector3 position, float maxHealth ) =>
 		Place( new Poseidon { Name = "Poseidon" }, parent, position, maxHealth );
@@ -136,7 +188,7 @@ void fragment() {
 	/// <summary> His materials: the boss's own colours, or all gold for his statue in Atlantis. </summary>
 	public sealed class Look
 	{
-		public Material Skin, Scales, Hair, Armour, Purple, Green, Yellow, Fins, EyeBlack, Pupil, Dark;
+		public Material Skin, Hands, Vein, Scales, Hair, Armour, Purple, Green, Yellow, Fins, EyeBlack, Pupil, Dark;
 		public Material[] ScaleColours;
 	}
 
@@ -150,15 +202,21 @@ void fragment() {
 	void Build()
 	{
 		skin = new ShaderMaterial { Shader = SkinShader };
+		handSkin = new ShaderMaterial { Shader = SkinShader };
+		handSkin.SetShaderParameter( "pin", new Vector4( 0f, 1.5f, -0.5f, 1f ) );   // the middle of his chest
 		scales = Sculpt.Paint( Scales, 0.35f, 0.2f );
+		var armourGold = Sculpt.Paint( Armour, 0.14f, 0.95f );
+		armourGold.EmissionEnabled = true;
+		armourGold.Emission = Armour;
+		armourGold.EmissionEnergyMultiplier = 0.12f;
 		var look = new Look
 		{
-			Skin = skin, Scales = scales, Hair = Sculpt.Paint( Hair, 0.7f ), Armour = Sculpt.Paint( Armour, 0.25f, 0.6f ),
+			Skin = skin, Hands = handSkin, Vein = Sculpt.Glow( new Color( 0.2f, 0.95f, 0.7f ), 0.9f ), Scales = scales, Hair = Sculpt.Paint( Hair, 0.7f ), Armour = armourGold,
 			Purple = Sculpt.Glow( JewelPurple, 2.4f ), Green = Sculpt.Glow( JewelGreen, 2.4f ), Yellow = Sculpt.Glow( JewelYellow, 2.2f ),
 			Fins = Sculpt.Membrane( new Color( 0.2f, 0.75f, 0.65f ), 0.55f ),
 			EyeBlack = Sculpt.Paint( new Color( 0.02f, 0.02f, 0.025f ), 0.15f ), Pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f ),
 			Dark = Sculpt.Paint( new Color( 0.12f, 0.03f, 0.08f ), 0.6f ),
-			ScaleColours = new Material[] { Sculpt.Paint( new Color( 1f, 0.8f, 0.15f ), 0.3f, 0.3f ), Sculpt.Paint( JewelPurple, 0.3f, 0.3f ), Sculpt.Paint( new Color( 0.3f, 0.85f, 0.3f ), 0.3f, 0.3f ), Sculpt.Paint( Scales, 0.3f, 0.3f ) },
+			ScaleColours = new Material[] { ScaleMaterial( new Color( 1f, 0.8f, 0.15f ) ), ScaleMaterial( JewelPurple ), ScaleMaterial( new Color( 0.3f, 0.85f, 0.3f ) ), ScaleMaterial( Scales ) },
 		};
 		var rig = BuildRig( this, look );
 		body = rig.Body;
@@ -194,6 +252,8 @@ void fragment() {
 	public static Rig BuildRig( Node3D into, Look look )
 	{
 		var skin = look.Skin;
+		var hands = look.Hands ?? look.Skin;
+		var vein = look.Vein ?? look.Skin;
 		var scales = look.Scales;
 		var hair = look.Hair;
 		var armour = look.Armour;
@@ -218,16 +278,38 @@ void fragment() {
 			var r = MathX.Lerp( 0.44f, 0.12f, i / 8f );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.2f, 0f ), new Vector3( r * 2f, 0.5f, r * 1.8f ), scales );
 			Sculpt.Blob( joint, new Vector3( 0f, -0.05f, 0f ), new Vector3( r * 2.05f, 0.08f, r * 1.85f ), armour );
-			for ( var row = 0; row < 2; row++ )
-				for ( var k = 0; k < 8; k++ )
+			// Scales: four rings of sixteen small six-sided plates, laid like tiles, one multimesh per colour.
+			scaleMesh ??= new CylinderMesh { TopRadius = 0.5f, BottomRadius = 0.5f, Height = 1f, RadialSegments = 6, Rings = 1 };
+			var plates = new List<(Transform3D At, float Seed)>[scaleColours.Length];
+			for ( var c = 0; c < plates.Length; c++ ) plates[c] = new();
+			for ( var row = 0; row < 4; row++ )
+				for ( var k = 0; k < 16; k++ )
 				{
-					var a = (k + row * 0.5f) / 8f * MathF.Tau;
-					var y = row == 0 ? -0.12f : -0.3f;
-					var squeeze = 1f - MathF.Abs( y + 0.2f ) * 0.8f;   // the blob narrows toward its ends
-					var at2 = new Vector3( MathF.Cos( a ) * r * 0.97f * squeeze, y, MathF.Sin( a ) * r * 0.88f * squeeze );
-					var face = new Basis( Vector3.Up, MathF.PI * 0.5f - a ) * new Basis( Vector3.Right, -0.35f );   // flat side out, lower edge lifted
-					Sculpt.Blob( joint, at2, new Vector3( r * 0.75f, r * 0.62f, 0.035f ), scaleColours[(i + k + row) % scaleColours.Length], face, "Scale" );
+					var a = (k + row * 0.5f) / 16f * MathF.Tau;
+					var y = -0.03f - row * 0.115f;
+					var off = (y + 0.2f) / 0.25f;
+					var squeeze = MathF.Sqrt( MathF.Max( 0.2f, 1f - off * off ) );   // the blob narrows toward its ends
+					var out3 = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
+					var at2 = new Vector3( out3.X * r * squeeze, y, out3.Z * r * 0.9f * squeeze );
+					var normal = (out3 + Vector3.Up * 0.35f).Normalized();   // lower edge lifted, like roof tiles
+					var across = Vector3.Up.Cross( out3 ).Normalized();
+					var down = across.Cross( normal );
+					var size = r * 0.46f;
+					var colour = (i * 3 + k + row * 5 + (k * 7 + row * 3 + i) % 3) % scaleColours.Length;
+					plates[colour].Add( (new Transform3D( new Basis( across * size, normal * 0.03f, down * size * 1.15f ), at2 + normal * 0.012f ), (i * 64 + row * 16 + k) * 0.6180339f % 1f) );
 				}
+			for ( var c = 0; c < plates.Length; c++ )
+			{
+				if ( plates[c].Count == 0 ) continue;
+				var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseCustomData = true, Mesh = scaleMesh };
+				mm.InstanceCount = plates[c].Count;
+				for ( var n = 0; n < plates[c].Count; n++ )
+				{
+					mm.SetInstanceTransform( n, plates[c][n].At );
+					mm.SetInstanceCustomData( n, new Color( plates[c][n].Seed, 0f, 0f, 0f ) );
+				}
+				joint.AddChild( new MultiMeshInstance3D { Name = "Scales", Multimesh = mm, MaterialOverride = scaleColours[c] } );
+			}
 			rig.Tail.Add( joint );
 			parent = joint;
 			at = new Vector3( 0f, -0.36f, 0f );
@@ -246,53 +328,90 @@ void fragment() {
 			Sculpt.Blob( body, new Vector3( s * 0.5f, 0.02f, -0.12f ), Vector3.One * 0.1f, green );
 		}
 
-		// The torso: belly and a broad chest.
+		// Veins: thin raised cords wandering over a muscle (an ellipsoid at `centre` with half-sizes `half`), from one
+		// direction on it to another.
+		void Veins( Node3D on, Vector3 centre, Vector3 half, Vector3 from, Vector3 to, float wander, int seed )
+		{
+			Vector3 P( float t )
+			{
+				var d = from.Lerp( to, t ) + new Vector3( MathF.Sin( t * 9f + seed ), MathF.Sin( t * 7f + seed * 1.7f ), 0f ) * wander * MathF.Sin( t * MathF.PI );
+				d = d.Normalized();
+				return centre + new Vector3( d.X * half.X, d.Y * half.Y, d.Z * half.Z ) * 1.015f;
+			}
+			const int steps = 7;
+			for ( var n = 0; n < steps; n++ )
+				Sculpt.Limb( on, P( n / (float)steps ), P( (n + 1) / (float)steps ), 0.02f, 0.017f, vein, "Vein" );
+		}
+
+		// The torso: a narrow waist under a huge chest (he is built like a bodybuilder).
 		var chest = Sculpt.Joint( body, new Vector3( 0f, 0.2f, 0f ), "Chest" );
-		Sculpt.Blob( chest, new Vector3( 0f, 0.2f, 0f ), new Vector3( 0.85f, 0.75f, 0.6f ), skin );
-		Sculpt.Blob( chest, new Vector3( 0f, 0.75f, 0f ), new Vector3( 1.3f, 0.85f, 0.75f ), skin );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.2f, 0f ), new Vector3( 0.88f, 0.75f, 0.62f ), skin );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.78f, 0f ), new Vector3( 1.55f, 0.95f, 0.84f ), skin );
+		Sculpt.Limb( chest, new Vector3( 0f, 1.1f, 0f ), new Vector3( 0f, 1.45f, -0.01f ), 0.25f, 0.2f, skin, "Neck" );
 		foreach ( var s in new[] { -1f, 1f } )
 		{
-			Sculpt.Blob( chest, new Vector3( s * 0.25f, 0.82f, -0.28f ), new Vector3( 0.48f, 0.38f, 0.25f ), skin );   // pecs
-			Sculpt.Blob( chest, new Vector3( s * 0.27f, 0.77f, -0.405f ), new Vector3( 0.06f, 0.06f, 0.025f ), dark );   // nipples
+			var pec = new Vector3( s * 0.31f, 0.86f, -0.3f );
+			var pecHalf = new Vector3( 0.33f, 0.25f, 0.19f );
+			Sculpt.Blob( chest, pec, pecHalf * 2f, skin );   // pecs
+			Sculpt.Blob( chest, pec + new Vector3( s * 0.02f, -0.08f, -0.186f ), new Vector3( 0.07f, 0.07f, 0.03f ), dark );   // nipples
+			Veins( chest, pec, pecHalf, new Vector3( s * 0.8f, 0.7f, -0.5f ), new Vector3( -s * 0.2f, -0.1f, -1f ), 0.25f, 1 );
+			Veins( chest, pec, pecHalf, new Vector3( s * 0.5f, 0.85f, -0.4f ), new Vector3( s * 0.55f, -0.3f, -0.8f ), 0.2f, 4 );
+			Sculpt.Blob( chest, new Vector3( s * 0.5f, 1.16f, 0.02f ), new Vector3( 0.6f, 0.36f, 0.5f ), skin );   // traps
+			Sculpt.Blob( chest, new Vector3( s * 0.66f, 0.62f, 0.02f ), new Vector3( 0.4f, 0.8f, 0.6f ), skin );   // lats
 			for ( var k = 0; k < 3; k++ )   // abs
-				Sculpt.Blob( chest, new Vector3( s * 0.12f, 0.42f - k * 0.17f, -0.29f + k * 0.02f ), new Vector3( 0.2f, 0.14f, 0.1f ), skin );
-			// Black plates down his sides.
-			Sculpt.Blob( chest, new Vector3( s * 0.5f, 0.55f, 0.06f ), new Vector3( 0.32f, 0.95f, 0.58f ), armour );
-			Sculpt.Blob( chest, new Vector3( s * 0.4f, 0.12f, 0.08f ), new Vector3( 0.3f, 0.55f, 0.5f ), armour );
+				Sculpt.Blob( chest, new Vector3( s * 0.13f, 0.44f - k * 0.17f, -0.3f + k * 0.02f ), new Vector3( 0.23f, 0.15f, 0.12f ), skin );
+			Sculpt.Blob( chest, new Vector3( s * 0.36f, 0.3f, -0.2f ), new Vector3( 0.2f, 0.42f, 0.2f ), skin, new Basis( Vector3.Back, s * 0.35f ) );   // obliques
+			// Veins up the neck and down the belly.
+			Sculpt.Limb( chest, new Vector3( s * 0.14f, 1.13f, -0.2f ), new Vector3( s * 0.17f, 1.3f, -0.16f ), 0.02f, 0.018f, vein, "Vein" );
+			Sculpt.Limb( chest, new Vector3( s * 0.17f, 1.3f, -0.16f ), new Vector3( s * 0.13f, 1.43f, -0.15f ), 0.018f, 0.016f, vein, "Vein" );
+			Sculpt.Limb( chest, new Vector3( s * 0.27f, 0.42f, -0.27f ), new Vector3( s * 0.3f, 0.2f, -0.27f ), 0.018f, 0.018f, vein, "Vein" );
+			Sculpt.Limb( chest, new Vector3( s * 0.3f, 0.2f, -0.27f ), new Vector3( s * 0.24f, 0.0f, -0.3f ), 0.018f, 0.016f, vein, "Vein" );
+			// Gold plates down his sides.
+			Sculpt.Blob( chest, new Vector3( s * 0.72f, 0.58f, 0.08f ), new Vector3( 0.32f, 0.95f, 0.62f ), armour );
+			Sculpt.Blob( chest, new Vector3( s * 0.43f, 0.12f, 0.08f ), new Vector3( 0.3f, 0.55f, 0.5f ), armour );
 		}
 		// The back plate, with spikes like the shoulders' and a purple jewel.
-		Sculpt.Blob( chest, new Vector3( 0f, 0.62f, 0.25f ), new Vector3( 1.15f, 1.1f, 0.42f ), armour );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.64f, 0.27f ), new Vector3( 1.35f, 1.15f, 0.46f ), armour );
 		Sculpt.Blob( chest, new Vector3( 0f, 0.16f, 0.2f ), new Vector3( 0.82f, 0.6f, 0.36f ), armour );
-		Sculpt.Blob( chest, new Vector3( 0f, 0.62f, 0.47f ), Vector3.One * 0.13f, purple );
-		foreach ( var (x, y) in new[] { (-0.32f, 0.92f), (0f, 0.98f), (0.32f, 0.92f), (-0.2f, 0.45f), (0.2f, 0.45f) } )
-			Sculpt.Cone( chest, new Vector3( x, y, 0.4f ), new Vector3( x * 1.4f, y + 0.25f, 0.85f ), 0.075f, armour );
+		Sculpt.Blob( chest, new Vector3( 0f, 0.62f, 0.51f ), Vector3.One * 0.13f, purple );
+		foreach ( var (x, y) in new[] { (-0.36f, 0.94f), (0f, 1f), (0.36f, 0.94f), (-0.22f, 0.45f), (0.22f, 0.45f) } )
+			Sculpt.Cone( chest, new Vector3( x, y, 0.44f ), new Vector3( x * 1.4f, y + 0.25f, 0.9f ), 0.075f, armour );
 
-		// Shoulder armour: black spiked pauldrons with jewels.
+		// Shoulder armour: gold spiked pauldrons with jewels, joined to a high collar round the back of his neck
+		// by a plate over each trapezius (the throat and the chest stay bare).
 		foreach ( var s in new[] { -1f, 1f } )
 		{
-			var p = new Vector3( s * 0.72f, 1.05f, 0f );
-			Sculpt.Blob( chest, p, new Vector3( 0.62f, 0.45f, 0.62f ), armour );
-			Sculpt.Blob( chest, p + new Vector3( s * 0.12f, 0.08f, -0.26f ), Vector3.One * 0.13f, s < 0 ? green : purple );
+			var p = new Vector3( s * 0.86f, 1.08f, 0f );
+			Sculpt.Blob( chest, p, new Vector3( 0.7f, 0.5f, 0.7f ), armour );
+			Sculpt.Blob( chest, p + new Vector3( s * 0.12f, 0.1f, -0.3f ), Vector3.One * 0.13f, s < 0 ? green : purple );
 			for ( var k = 0; k < 3; k++ )
-				Sculpt.Cone( chest, p + new Vector3( s * 0.18f, 0.12f, (k - 1) * 0.16f ), p + new Vector3( s * 0.55f, 0.55f, (k - 1) * 0.22f ), 0.07f, armour );
+				Sculpt.Cone( chest, p + new Vector3( s * 0.2f, 0.14f, (k - 1) * 0.18f ), p + new Vector3( s * 0.6f, 0.6f, (k - 1) * 0.24f ), 0.07f, armour );
+			Sculpt.Blob( chest, new Vector3( s * 0.5f, 1.24f, 0.08f ), new Vector3( 0.62f, 0.3f, 0.5f ), armour, new Basis( Vector3.Back, -s * 0.3f ) );   // over the trapezius
+			Sculpt.Block( chest, new Vector3( s * 0.26f, 1.47f, 0.13f ), new Vector3( 0.2f, 0.42f, 0.3f ), armour, new Basis( Vector3.Up, -s * 0.5f ) * new Basis( Vector3.Back, -s * 0.2f ) );   // collar wings
+			Sculpt.Blob( chest, new Vector3( s * 0.33f, 1.38f, -0.03f ), Vector3.One * 0.09f, s < 0 ? purple : green );
 		}
+		Sculpt.Block( chest, new Vector3( 0f, 1.45f, 0.24f ), new Vector3( 0.46f, 0.5f, 0.14f ), armour );   // the collar's back
+		Sculpt.Limb( chest, new Vector3( 0f, 1.2f, 0.03f ), new Vector3( 0f, 1.3f, 0.03f ), 0.33f, 0.3f, armour, "Collar" );
+		Sculpt.Blob( chest, new Vector3( 0f, 1.5f, 0.32f ), Vector3.One * 0.11f, yellow );
 
 		// Head: white hair and beard, glowing eyes, the black crown with its jewels and spikes.
-		var head = Sculpt.Joint( chest, new Vector3( 0f, 1.32f, -0.02f ), "Head" );
+		var head = Sculpt.Joint( chest, new Vector3( 0f, 1.4f, -0.02f ), "Head" );
 		Sculpt.Blob( head, new Vector3( 0f, 0.22f, 0f ), new Vector3( 0.5f, 0.58f, 0.52f ), skin );
 		Sculpt.Blob( head, new Vector3( 0f, 0.3f, 0.12f ), new Vector3( 0.6f, 0.66f, 0.5f ), hair );                              // hair
 		Sculpt.Cone( head, new Vector3( 0f, 0.1f, -0.12f ), new Vector3( 0f, -0.36f, -0.08f ), 0.2f, hair, 10 );                  // beard, tucked under the chin
 		Sculpt.Blob( head, new Vector3( 0f, 0.16f, -0.24f ), new Vector3( 0.32f, 0.1f, 0.12f ), hair );                           // moustache
 		foreach ( var s in new[] { -1f, 1f } )
 		{
-			// Black eyes with green pupils, narrowed under a heavy brow that drops toward the nose (angry).
-			Sculpt.Blob( head, new Vector3( s * 0.11f, 0.29f, -0.235f ), new Vector3( 0.1f, 0.06f, 0.04f ), eyeBlack );
-			Sculpt.Blob( head, new Vector3( s * 0.11f, 0.29f, -0.255f ), new Vector3( 0.034f, 0.034f, 0.015f ), pupil );
-			Sculpt.Block( head, new Vector3( s * 0.11f, 0.345f, -0.255f ), new Vector3( 0.16f, 0.045f, 0.05f ), hair, new Basis( Vector3.Back, s * 0.5f ) );
+			// Alien eyes: big black almonds slanted up at the outer corners, a green pupil in each, under a heavy brow
+			// that drops toward the nose (angry).
+			var slant = new Basis( Vector3.Back, -s * 0.5f );
+			Sculpt.Blob( head, new Vector3( s * 0.125f, 0.285f, -0.225f ), new Vector3( 0.19f, 0.105f, 0.07f ), eyeBlack, slant );
+			Sculpt.Blob( head, new Vector3( s * 0.115f, 0.28f, -0.258f ), new Vector3( 0.05f, 0.05f, 0.02f ), pupil );
+			Sculpt.Block( head, new Vector3( s * 0.12f, 0.375f, -0.25f ), new Vector3( 0.19f, 0.045f, 0.06f ), hair, new Basis( Vector3.Back, s * 0.5f ) );
 			// A frown: the corners of the mouth pulled down under the moustache.
 			Sculpt.Block( head, new Vector3( s * 0.055f, 0.1f, -0.245f ), new Vector3( 0.08f, 0.018f, 0.02f ), dark, new Basis( Vector3.Back, -s * 0.45f ) );
 		}
-		Sculpt.Block( head, new Vector3( 0f, 0.33f, -0.255f ), new Vector3( 0.025f, 0.06f, 0.02f ), dark );                     // the scowl crease
+		Sculpt.Block( head, new Vector3( 0f, 0.35f, -0.255f ), new Vector3( 0.025f, 0.06f, 0.02f ), dark );                     // the scowl crease
 		Sculpt.Limb( head, new Vector3( 0f, 0.44f, 0f ), new Vector3( 0f, 0.62f, 0f ), 0.3f, 0.32f, armour );                    // crown band
 		Sculpt.Blob( head, new Vector3( 0f, 0.53f, -0.3f ), new Vector3( 0.15f, 0.18f, 0.08f ), yellow );
 		for ( var k = 0; k < 7; k++ )
@@ -307,18 +426,27 @@ void fragment() {
 		// Arms: shoulder and elbow joints to pose, black bracers with jewels, the trident in the right hand.
 		(Node3D Arm, Node3D Fore, Node3D Hand) Arm( float s, Material bracerJewel )
 		{
-			var arm = Sculpt.Joint( chest, new Vector3( s * 0.78f, 1.0f, 0f ), s > 0 ? "Right Arm" : "Left Arm" );
-			Sculpt.Limb( arm, Vector3.Zero, new Vector3( 0f, -0.68f, 0f ), 0.2f, 0.17f, skin );
-			Sculpt.Blob( arm, new Vector3( 0f, -0.25f, 0f ), new Vector3( 0.38f, 0.42f, 0.36f ), skin );   // biceps
-			Sculpt.Limb( arm, new Vector3( 0f, -0.05f, 0f ), new Vector3( 0f, -0.62f, 0f ), 0.23f, 0.2f, armour );   // armoured sleeve
-			Sculpt.Blob( arm, new Vector3( 0f, -0.66f, 0f ), Vector3.One * 0.36f, armour );                        // elbow cop
-			Sculpt.Cone( arm, new Vector3( 0f, -0.68f, 0.14f ), new Vector3( 0f, -0.72f, 0.42f ), 0.06f, armour );   // elbow spike
+			var arm = Sculpt.Joint( chest, new Vector3( s * 0.92f, 1.02f, 0f ), s > 0 ? "Right Arm" : "Left Arm" );
+			Sculpt.Limb( arm, Vector3.Zero, new Vector3( 0f, -0.68f, 0f ), 0.24f, 0.2f, skin );
+			var biceps = new Vector3( 0f, -0.3f, -0.06f );
+			var bicepsHalf = new Vector3( 0.27f, 0.29f, 0.27f );
+			Sculpt.Blob( arm, biceps, bicepsHalf * 2f, skin );
+			Sculpt.Blob( arm, new Vector3( 0f, -0.36f, 0.12f ), new Vector3( 0.4f, 0.5f, 0.34f ), skin );   // triceps
+			Veins( arm, biceps, bicepsHalf, new Vector3( s * 0.3f, 0.9f, -0.6f ), new Vector3( -s * 0.2f, -0.8f, -0.8f ), 0.3f, 2 );
+			Veins( arm, biceps, bicepsHalf, new Vector3( s * 0.9f, 0.6f, -0.2f ), new Vector3( s * 0.6f, -0.8f, -0.5f ), 0.25f, 5 );
+			// Gold bands round the arm (the muscle bulges out between them), an elbow cop with a spike.
+			Sculpt.Limb( arm, new Vector3( 0f, 0.0f, 0f ), new Vector3( 0f, -0.1f, 0f ), 0.29f, 0.28f, armour );
+			Sculpt.Limb( arm, new Vector3( 0f, -0.54f, 0f ), new Vector3( 0f, -0.62f, 0f ), 0.26f, 0.25f, armour );
+			Sculpt.Blob( arm, new Vector3( 0f, -0.66f, 0f ), Vector3.One * 0.4f, armour );                        // elbow cop
+			Sculpt.Cone( arm, new Vector3( 0f, -0.68f, 0.16f ), new Vector3( 0f, -0.72f, 0.46f ), 0.06f, armour );   // elbow spike
 			var fore = Sculpt.Joint( arm, new Vector3( 0f, -0.68f, 0f ), "Elbow" );
-			Sculpt.Limb( fore, Vector3.Zero, new Vector3( 0f, -0.62f, 0f ), 0.16f, 0.13f, skin );
-			Sculpt.Limb( fore, new Vector3( 0f, -0.05f, 0f ), new Vector3( 0f, -0.6f, 0f ), 0.19f, 0.16f, armour );
-			Sculpt.Blob( fore, new Vector3( 0f, -0.38f, -0.16f ), Vector3.One * 0.1f, bracerJewel );
+			Sculpt.Limb( fore, Vector3.Zero, new Vector3( 0f, -0.62f, 0f ), 0.2f, 0.14f, skin );
+			Sculpt.Blob( fore, new Vector3( 0f, -0.2f, 0f ), new Vector3( 0.4f, 0.42f, 0.38f ), skin );   // the forearm's bulge
+			Veins( fore, new Vector3( 0f, -0.2f, 0f ), new Vector3( 0.2f, 0.21f, 0.19f ), new Vector3( s * 0.5f, 0.8f, -0.5f ), new Vector3( s * 0.3f, -0.9f, -0.6f ), 0.3f, 3 );
+			Sculpt.Limb( fore, new Vector3( 0f, -0.36f, 0f ), new Vector3( 0f, -0.62f, 0f ), 0.2f, 0.17f, armour );   // bracer
+			Sculpt.Blob( fore, new Vector3( 0f, -0.48f, -0.17f ), Vector3.One * 0.1f, bracerJewel );
 			var h = Sculpt.Joint( fore, new Vector3( 0f, -0.72f, 0f ), "Hand" );
-			Sculpt.Blob( h, Vector3.Zero, new Vector3( 0.24f, 0.26f, 0.22f ), skin );
+			Sculpt.Blob( h, Vector3.Zero, new Vector3( 0.26f, 0.28f, 0.24f ), hands );
 			return (arm, fore, h);
 		}
 		var (armR, foreR, hand) = Arm( 1f, green );
@@ -353,10 +481,10 @@ void fragment() {
 			foreach ( var m in new[] { gold, darkGold } ) { m.EmissionEnabled = true; m.Emission = m.AlbedoColor; m.EmissionEnergyMultiplier = 0.25f; }
 		var look = new Look
 		{
-			Skin = gold, Scales = gold, Hair = gold, Armour = darkGold, Fins = darkGold, EyeBlack = darkGold, Dark = darkGold,
+			Skin = gold, Hands = gold, Vein = darkGold, Scales = gold, Hair = gold, Armour = darkGold, Fins = darkGold, EyeBlack = darkGold, Dark = darkGold,
 			Purple = Sculpt.Glow( JewelPurple, 2.4f ), Green = Sculpt.Glow( JewelGreen, 2.4f ), Yellow = Sculpt.Glow( JewelYellow, 2.2f ),
 			Pupil = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 3.2f ),
-			ScaleColours = new Material[] { gold, darkGold },
+			ScaleColours = new Material[] { ScaleMaterial( gold.AlbedoColor, marble ? 0f : 0.85f, marble ? 0f : 0.25f ), ScaleMaterial( darkGold.AlbedoColor, marble ? 0f : 0.85f, marble ? 0f : 0.25f ) },
 		};
 		var root = new Node3D { Name = "Statue of Poseidon" };
 		parent.AddChild( root );
@@ -364,14 +492,14 @@ void fragment() {
 		// The tail hangs about 3.5 model metres below his waist.
 		root.GlobalTransform = new Transform3D( turn.Scaled( Vector3.One * size ), feet + Vector3.Up * 3.5f * size );
 		var rig = BuildRig( root, look );
-		rig.ArmR.Rotation = new Vector3( 0.15f, 0f, 1.15f );
-		rig.ForeR.Rotation = new Vector3( 0f, 0f, 1.9f );
+		rig.ArmR.Rotation = RestArmR;
+		rig.ForeR.Rotation = RestForeR;
 		rig.ArmL.Rotation = new Vector3( 0.2f, 0f, -0.5f );
 		rig.ForeL.Rotation = new Vector3( 0.9f, 0f, 0f );
 		for ( var i = 0; i < rig.Tail.Count; i++ )
 			rig.Tail[i].Rotation = new Vector3( MathF.Sin( 1.2f - i * 0.55f ) * (0.1f + i * 0.02f), 0f, 0f );
 		var up = Vector3.Up + turn * Vector3.Forward * 0.08f;
-		rig.Trident.GlobalTransform = new Transform3D( Shapes.LookAt( up, turn * Vector3.Back ).Scaled( Vector3.One * 3.2f * size ), rig.Hand.GlobalPosition );
+		rig.Trident.GlobalTransform = new Transform3D( Shapes.LookAt( up, turn * Vector3.Back ).Scaled( Vector3.One * 3.2f * size ), rig.Hand.GlobalPosition + turn * Vector3.Forward * 0.14f * size );
 		return root;
 	}
 
@@ -568,13 +696,19 @@ void fragment() {
 		}
 	}
 
-	/// <summary> A whirlpool caught the player: it brings them to him and he stabs them. </summary>
-	public bool Grab( PlayerSurvivor player )
+	/// <summary>
+	/// A whirlpool caught the player: it sweeps them up and runs back to him with them inside, and he stabs them
+	/// when it gets there.
+	/// </summary>
+	public bool Grab( PlayerSurvivor player, PoseidonVortex carrier = null )
 	{
 		if ( mode is Mode.Dead or Mode.Vanish or Mode.Appear or Mode.Stab || player?.Controller is null || !player.IsAlive ) return false;
 		grabbed = player;
-		grabFrom = player.Controller.GlobalPosition;
+		grabFrom = carrier is not null ? carrier.GlobalPosition : player.Controller.GlobalPosition;
+		grabbedIn = carrier;
 		stabbed = false;
+		// The whirlpool runs at about 13 m/s: further away, a longer ride.
+		carryTime = MathX.Clamp( grabFrom.Flat().DistanceTo( GlobalPosition.Flat() ) / 13f, 0.9f, 2.4f );
 		player.Controller.Scripted = true;
 		player.Controller.Velocity = Vector3.Zero;
 		SetMode( Mode.Stab );
@@ -585,16 +719,24 @@ void fragment() {
 	{
 		var c = grabbed?.Controller;
 		if ( c is null || !IsInstanceValid( c ) || !grabbed.IsAlive ) { Release(); SetMode( Mode.Swim ); return; }
-		// Carried up to just in front of him (his height), then the thrust.
+		// The whirlpool runs along the floor to just in front of him, the player spinning up inside it; there it
+		// lifts them to his height for the thrust.
 		var front = GlobalPosition + -GlobalBasis.Z.Flat().SafeNormal() * 2.6f * Size / 1.5f + Vector3.Down * 1.2f;
-		front = front with { Y = MathF.Max( front.Y, Sculpt.FloorBelow( this, front, 80f ) + 0.1f ) };
-		var carry = MathX.Clamp( (float)inMode / 1.0f, 0f, 1f );
+		var floor = Sculpt.FloorBelow( this, front, 80f );
+		front = front with { Y = MathF.Max( front.Y, floor + 0.1f ) };
+		var carry = MathX.Clamp( (float)inMode / carryTime, 0f, 1f );
 		var ease = carry * carry * (3f - 2f * carry);
-		c.GlobalPosition = grabFrom.Lerp( front, ease ) + Vector3.Up * MathF.Sin( carry * MathF.PI ) * 1.5f;
+		var ground = grabFrom.Lerp( front with { Y = floor }, ease );
+		ground.Y = MathF.Max( ground.Y, Sculpt.FloorBelow( this, ground + Vector3.Up * 3f, 30f ) );
+		if ( grabbedIn is not null && IsInstanceValid( grabbedIn ) ) grabbedIn.GlobalPosition = ground;
+		var lift = MathX.Lerp( 1.2f, MathF.Max( 1.2f, front.Y - ground.Y ), ease * ease );
+		var spin = (float)inMode * 7f;
+		var swirl = new Vector3( MathF.Cos( spin ), 0f, MathF.Sin( spin ) ) * 0.5f * (1f - ease);
+		c.GlobalPosition = ground + Vector3.Up * lift + swirl;
 		c.Velocity = Vector3.Zero;
 		c.ResetPhysicsInterpolation();
 		Face( c.GlobalPosition - GlobalPosition, 6f, dt );
-		if ( !stabbed && inMode >= 1.25f )
+		if ( !stabbed && inMode >= carryTime + 0.25f )
 		{
 			stabbed = true;
 			Stabs++;
@@ -612,6 +754,8 @@ void fragment() {
 	void Release()
 	{
 		if ( grabbed?.Controller is { } c && IsInstanceValid( c ) ) c.Scripted = false;
+		if ( grabbedIn is not null && IsInstanceValid( grabbedIn ) ) grabbedIn.Finish();
+		grabbedIn = null;
 		grabbed = null;
 	}
 
@@ -622,6 +766,7 @@ void fragment() {
 		body.Scale = Vector3.One * Size * MathF.Max( 0.02f, shown );
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
+		handSkin.SetShaderParameter( "flash", flash );
 		skin.SetShaderParameter( "centre", body.GlobalPosition );
 		scales.AlbedoColor = Scales.Lerp( Colors.White * 2.2f, flash ) with { A = 1f };
 		if ( mode == Mode.Dead ) return;
@@ -633,10 +778,11 @@ void fragment() {
 		body.Rotation = new Vector3( MathF.Sin( t * 2.2f * speed + 1.2f ) * 0.05f, 0f, MathF.Sin( t * 0.9f ) * 0.04f );
 
 		// Arms (Euler YXZ: Z swings an arm out and up from his side, X forward; elbows bend forward with +X): the trident
-		// held upright at his side like a staff (upper arm out, forearm up); drawn back over the shoulder to throw and
-		// whipped forward to let go; both arms raised to call up the sea; thrust out in front to stab.
-		var raiseR = new Vector3( 0.15f, 0f, 1.15f );
-		var foreR0 = new Vector3( 0f, 0f, 1.9f );
+		// stood upright in his fist like a staff (upper arm out, forearm forward, so the shaft crosses the forearm and
+		// runs down clear of him); drawn back over the shoulder to throw and whipped forward to let go; both arms
+		// raised to call up the sea; thrust out in front to stab.
+		var raiseR = RestArmR;
+		var foreR0 = RestForeR;
 		var raiseL = new Vector3( 0.2f, 0f, -0.5f );     // left fist out
 		var foreL0 = new Vector3( 0.9f, 0f, 0f );
 		var u = MathX.Clamp( (float)inMode / 0.6f, 0f, 1f );
@@ -662,16 +808,30 @@ void fragment() {
 				foreL0 = foreL0.Lerp( Vector3.Zero, u );
 				break;
 			case Mode.Stab:
-				var thrust = MathX.Clamp( ((float)inMode - 1.0f) / 0.25f, 0f, 1f );
+				var thrust = MathX.Clamp( ((float)inMode - carryTime) / 0.25f, 0f, 1f );
 				raiseR = raiseR.Lerp( new Vector3( 1.45f, 0f, 0.15f ), thrust );   // straight out in front (+X about the shoulder swings the arm to -Z)
 				foreR0 = foreR0.Lerp( Vector3.Zero, thrust );
-				point = point.Lerp( (aim + Vector3.Down * 0.2f).SafeNormal(), MathX.Clamp( (float)inMode / 1.0f, 0f, 1f ) );   // points at the victim
+				point = point.Lerp( (aim + Vector3.Down * 0.2f).SafeNormal(), MathX.Clamp( (float)inMode / carryTime, 0f, 1f ) );   // points at the victim
 				break;
 		}
 		// The trident in his fist, gripped at the middle of the shaft, swinging smoothly to where it should point.
 		tridentPoint = tridentPoint.Slerp( point.SafeNormal(), 1f - MathF.Exp( -12f * dt ) ).SafeNormal();
 		if ( tridentPoint == Vector3.Zero ) tridentPoint = Vector3.Up;
-		heldTrident.GlobalTransform = new Transform3D( Shapes.LookAt( tridentPoint, GlobalBasis.Z ).Scaled( Vector3.One * 3.2f * Size * MathF.Max( 0.02f, shown ) ), HandAt );
+		// Never through his own arm: the shaft is long, so when it would lie along the forearm it is leant away from
+		// it (the lower end outward), and it sits in his palm, just off the wrist's line.
+		var forearm = (HandAt - foreR.GlobalPosition).SafeNormal();
+		var held = tridentPoint;
+		var along = held.Dot( forearm );
+		var side = held - forearm * along;
+		var outward = GlobalBasis.X.Normalized() * (along >= 0f ? -1f : 1f) - GlobalBasis.Z.Normalized() * 0.4f;
+		outward = (outward - forearm * outward.Dot( forearm )).SafeNormal();
+		if ( side.Length() < 0.55f && outward != Vector3.Zero )
+			held = (forearm * along + side + outward * (0.55f - side.Length())).SafeNormal();
+		var palm = -GlobalBasis.Z.Normalized();
+		palm = (palm - forearm * palm.Dot( forearm )).SafeNormal();
+		if ( palm == Vector3.Zero ) palm = outward;
+		var grip = HandAt + palm * 0.14f * Size * MathF.Max( 0.02f, shown );
+		heldTrident.GlobalTransform = new Transform3D( Shapes.LookAt( held, GlobalBasis.Z ).Scaled( Vector3.One * 3.2f * Size * MathF.Max( 0.02f, shown ) ), grip );
 		var k = 1f - MathF.Exp( -10f * dt );
 		armR.Rotation = armR.Rotation.Lerp( raiseR + new Vector3( MathF.Sin( t * 1.3f ) * 0.05f, 0f, 0f ), k );
 		foreR.Rotation = foreR.Rotation.Lerp( foreR0, k );
@@ -701,21 +861,92 @@ void fragment() {
 		SetMode( Mode.Dead );
 		RaiseKilled();
 		Sfx.Play2D( "boss_spawn", 0.7f, 0.6f );
-		for ( var i = 0; i < 8; i++ )
-			gore?.ThrowBlob( GlobalPosition + Rng.InSphere( 1.5f ), lastShotDirection + Vector3.Up, i % 3 == 0 ? Scales : Skin, GooColor, 10f );
-		gore?.GooBurst( GlobalPosition, Vector3.Up, GooColor, 30, 420f, 2f );
-		PoseidonVortex.Burst( this, GlobalPosition + Vector3.Down * HoverHeight * 0.8f, 1.6f );
+		gore?.GooBurst( GlobalPosition, Vector3.Up, GooColor, 20, 380f, 1.6f );
 		foreach ( var part in FindChildren( "*", "StaticBody3D", true, false ).OfType<CreaturePart>().ToList() ) part.QueueFree();
 	}
 
-	/// <summary> Dead: he slumps and sinks into a last whirlpool, shrinking away. </summary>
+	/// <summary> How long he swells, shaking and spurting, before he bursts. </summary>
+	public const float SwellSeconds = 1.1f;
+	static readonly Color[] Flesh = { new( 0.56f, 0.26f, 0.8f ), new( 0.22f, 0.42f, 0.88f ), new( 0.32f, 0.78f, 0.36f ) };
+
+	/// <summary> Dead: he clutches, swells and shakes, goo spurting out of him, then bursts (see Burst). </summary>
 	void Sink( float dt )
 	{
-		var t = MathX.Clamp( (float)timeSinceDeath / 3f, 0f, 1f );
-		RotateY( dt * (1f + t * 6f) );
-		GlobalPosition += Vector3.Down * dt * 1.2f;
-		shown = MathX.Lerp( 1f, 0.05f, t * t );
-		if ( t >= 1f ) QueueFree();
+		if ( burst ) return;
+		var t = MathX.Clamp( (float)timeSinceDeath / SwellSeconds, 0f, 1f );
+		shown = 1f + t * t * 0.35f + MathF.Sin( (float)timeSinceDeath * 40f ) * 0.03f * t;
+		body.Position = Rng.InSphere( 0.12f * t );
+		RotateY( dt * (0.5f + t * 3f) );
+		armR.Rotation = armR.Rotation.Lerp( new Vector3( 0.4f, 0f, 2.4f ), 1f - MathF.Exp( -6f * dt ) );
+		armL.Rotation = armL.Rotation.Lerp( new Vector3( 0.4f, 0f, -2.4f ), 1f - MathF.Exp( -6f * dt ) );
+		head.Rotation = new Vector3( -0.5f * t, MathF.Sin( (float)timeSinceDeath * 25f ) * 0.3f * t, 0f );
+		if ( Rng.Float() < 0.25f + t * 0.5f )
+		{
+			var from = chest.GlobalPosition + Rng.InSphere( 1.2f * Size );
+			gore?.GooSpray( from, (from - chest.GlobalPosition).SafeNormal() + Vector3.Up * 0.3f, 4, Rng.Float() < 0.5f ? GooColor : Flesh[Rng.Int( 0, 2 )], 260f );
+		}
+		if ( t >= 1f ) Burst();
+	}
+
+	/// <summary>
+	/// He bursts: head, arms, chest, trident and the tail in sections fly apart as loose pieces (they bleed, can be
+	/// shot and float up like the other creatures' pieces), with lumps of flesh, a wide spray of goo, a shock ring
+	/// of bubbles and a beat of slow motion.
+	/// </summary>
+	void Burst()
+	{
+		burst = true;
+		var centre = chest.GlobalPosition;
+		var away = lastShotDirection.Flat().SafeNormal();
+		void Loose( Node3D piece, float radiusMetres, float mass, float speed )
+		{
+			if ( piece is null || !IsInstanceValid( piece ) ) return;
+			var dir = (piece.GlobalPosition - centre).SafeNormal();
+			if ( dir == Vector3.Zero ) dir = Vector3.Up;
+			var velocity = (dir + away * 0.3f + Vector3.Up * 0.5f + Rng.InSphere( 0.35f )).SafeNormal() * speed * Rng.Float( 0.7f, 1.2f );
+			var gib = Gib.Attach( piece, gore, radiusMetres / U.In, 80f, mass, velocity, GooColor );
+			gib.AngularVelocity = Rng.InSphere( 7f );
+			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radiusMetres * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 8f );
+		}
+		// From the tips inward, so each piece takes only what is still joined to it.
+		Loose( heldTrident, 0.5f, 6f, 9f );
+		for ( var i = tail.Count - 1; i >= 0; i -= 2 ) Loose( tail[i], 0.5f * Size * MathX.Lerp( 1f, 0.5f, i / 8f ), 10f, 8f );
+		Loose( head, 0.42f * Size, 9f, 11f );
+		Loose( foreR, 0.3f * Size, 5f, 12f );
+		Loose( armR, 0.34f * Size, 6f, 11f );
+		Loose( foreL, 0.3f * Size, 5f, 12f );
+		Loose( armL, 0.34f * Size, 6f, 11f );
+		Loose( chest, 0.6f * Size, 16f, 6f );
+		Loose( body, 0.5f * Size, 12f, 5f );
+
+		// Lumps of him, big and small, in his three colours, and his goo everywhere.
+		for ( var i = 0; i < 34; i++ )
+			gore?.ThrowBlob( centre + Rng.InSphere( 1.4f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.6f, Flesh[i % 3], GooColor, i % 5 == 0 ? 16f : Rng.Float( 5f, 11f ) );
+		for ( var i = 0; i < 5; i++ )
+			CreatureGore.Overkill( centre + Rng.InSphere( 1.2f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.4f, Flesh[i % 3], GooColor, 2.4f );
+		gore?.GooBurst( centre, Vector3.Up, GooColor, 70, 620f, 2.6f );
+		gore?.GooBurst( centre, away + Vector3.Up * 0.3f, Flesh[0], 30, 480f, 2f );
+		gore?.GooBurst( centre, -away + Vector3.Up * 0.3f, Flesh[2], 30, 480f, 2f );
+		for ( var i = 0; i < 16; i++ )
+		{
+			var a = i / 16f * MathF.Tau;
+			gore?.GooSpray( centre, new Vector3( MathF.Cos( a ), 0.35f, MathF.Sin( a ) ), 6, i % 2 == 0 ? GooColor : Flesh[i % 3], 520f, 0.8f, 2f );
+		}
+		for ( var i = 0; i < 60; i++ )
+			WaterBubble.Create( centre + Rng.InSphere( 2.5f * Size ), Rng.Float( 0.4f, 1.4f ), 0f, Rng.Float( 0.6f, 1.6f ) );
+		PoseidonVortex.Burst( this, GlobalPosition + Vector3.Down * HoverHeight * 0.8f, 1.8f );
+		gore?.Squelch( centre, 1.6f, 0.6f );
+		Sfx.Play( "gib", centre, 1f, 0.6f );
+		Sfx.Play2D( "boss_spawn", 0.9f, 0.45f );
+		foreach ( var player in PlayerSurvivor.All )
+			if ( player.Controller is { } pc && pc.GlobalPosition.DistanceTo( centre ) < 45f ) pc.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 1.4f );
+		if ( Engine.TimeScale == 1.0 && !AutoTest.Requested )
+		{
+			Engine.TimeScale = 0.3;
+			GetTree().CreateTimer( 0.45, true, false, true ).Timeout += () => { if ( Engine.TimeScale == 0.3 ) Engine.TimeScale = 1.0; };
+		}
+		if ( AutoTest.Requested ) GD.Print( "[autotest] poseidon burst into pieces" );
+		QueueFree();
 	}
 }
 
@@ -808,7 +1039,7 @@ public partial class PoseidonTrident : Node3D
 public partial class PoseidonVortex : Node3D
 {
 	public const float PullRadius = 6f;
-	public const float CatchRadius = 1.8f;
+	public const float CatchRadius = 2.4f;
 	public const float Speed = 5.5f;
 	public const float Life = 7f;
 
@@ -822,6 +1053,9 @@ public partial class PoseidonVortex : Node3D
 	static StandardMaterial3D ringMaterial, coreMaterial;
 
 	public static void Throw( Poseidon owner, Vector3 at, Vector3 heading ) => Make( owner, at, heading, true, 1f, Life );
+
+	/// <summary> Its work is done (the player it carried has been stabbed, or let go): it dies away. </summary>
+	public void Finish() => life = MathF.Min( life, (float)age + 0.5f );
 
 	/// <summary> A short burst at a spot (Poseidon vanishing or appearing, a seahorse arriving). </summary>
 	public static void Burst( Node3D source, Vector3 at, float size = 1f ) => Make( source as Poseidon, at, Vector3.Zero, false, size, 1.6f );
@@ -879,7 +1113,12 @@ public partial class PoseidonVortex : Node3D
 		if ( t >= life ) { QueueFree(); return; }
 		if ( !travelling || DevFlags.FreezeEnemies ) return;
 
-		// Along the floor toward where it was thrown, kept inside the map.
+		// Along the floor toward where it was thrown, bending after the nearest player, kept inside the map.
+		if ( PlayerSurvivor.FindNearestAlive( GlobalPosition ) is { } nearest )
+		{
+			var want = (nearest.WorldPosition - GlobalPosition).Flat().SafeNormal();
+			if ( want != Vector3.Zero ) heading = heading.Lerp( want, 1f - MathF.Exp( -1.6f * dt ) ).Flat().SafeNormal();
+		}
 		var next = GlobalPosition + heading * Speed * dt;
 		next.Y = Sculpt.FloorBelow( this, next + Vector3.Up * 2f, 10f );
 		GlobalPosition = Sculpt.InBounds( next );
@@ -891,11 +1130,12 @@ public partial class PoseidonVortex : Node3D
 			if ( d > PullRadius ) continue;
 			// Dragged in, harder the closer they are; caught at the middle.
 			c.Velocity += offset.SafeNormal() * (1f - d / PullRadius) * 22f * dt;
-			if ( d < CatchRadius && owner is not null && IsInstanceValid( owner ) && owner.Grab( player ) )
+			// Swept up: the whirlpool turns back to Poseidon with the player inside (he moves it from here).
+			if ( d < CatchRadius && MathF.Abs( c.GlobalPosition.Y - GlobalPosition.Y ) < 4f && owner is not null && IsInstanceValid( owner ) && owner.Grab( player, this ) )
 			{
 				Sfx.Play2D( "whirlpool", 1f );
 				c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.6f );
-				life = MathF.Min( life, t + 0.5f );
+				life = t + 8f;
 				travelling = false;
 				return;
 			}

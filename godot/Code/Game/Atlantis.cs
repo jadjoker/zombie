@@ -117,6 +117,12 @@ public static class Atlantis
 		["banner_purple"] = Glow( new Color( 0.5f, 0.14f, 0.78f ), 0.45f ),
 		["banner_green"] = Glow( new Color( 0.2f, 0.7f, 0.22f ), 0.45f ),
 		["water"] = Glow( new Color( 0.3f, 0.95f, 0.9f ), 1.2f ),
+		["wood"] = Mat( new Color( 0.5f, 0.32f, 0.18f ), 0.8f ),
+		["wood_dark"] = Mat( new Color( 0.26f, 0.16f, 0.1f ), 0.8f ),
+		["cheese"] = Mat( new Color( 1f, 0.8f, 0.22f ), 0.6f ),
+		["cheese_rind"] = Mat( new Color( 0.85f, 0.45f, 0.12f ), 0.7f ),
+		["cheese_blue"] = Mat( new Color( 0.82f, 0.86f, 0.78f ), 0.7f ),
+		["sack"] = Mat( new Color( 0.66f, 0.54f, 0.36f ), 0.95f ),
 		["rock"] = Mat( new Color( 0.45f, 0.42f, 0.38f ), 0.9f ),
 		["rock_dark"] = Mat( new Color( 0.24f, 0.22f, 0.24f ), 0.9f ),
 		["teal"] = Mat( new Color( 0.16f, 0.55f, 0.56f ), 0.3f, 0.3f ),    // sea-glass domes
@@ -782,12 +788,33 @@ void fragment() {
 				if ( c == 1 ) { crossings.Add( 45f * k ); crossings.Add( 22.5f + 45f * k ); }   // bridges, ramps
 			}
 			bool Clear( float degrees ) => crossings.All( x => MathF.Abs( Mathf.Wrap( degrees - x, -180f, 180f ) ) * MathF.PI / 180f * mid > 5.5f );
+			// The market: two stands against the outer canal's wall (one sells cheese), and treasure heaps in the inner one.
+			var kept = new List<Vector3>();
+			if ( c == 1 )
+			{
+				MarketStand( kit, random, R, 33.75f, cheese: true );
+				MarketStand( kit, random, R, 303.75f, cheese: false );
+				kept.Add( Polar( outer - 2f, 33.75f, floor ) );
+				kept.Add( Polar( outer - 2f, 303.75f, floor ) );
+			}
+			else
+			{
+				foreach ( var deg0 in new[] { 157.5f, 292.5f } )
+				{
+					var heap = Polar( mid + 1.5f, deg0, floor );
+					kept.Add( heap );
+					for ( var n = 0; n < 4; n++ ) GoldBag( kit, random, R, heap + new Vector3( R( -1.3f, 1.3f ), 0f, R( -1.3f, 1.3f ) ) );
+					Barrel( kit, random, R, heap + new Vector3( R( -2.2f, -1.6f ), 0f, R( -1f, 1f ) ) );
+					Barrel( kit, random, R, heap + new Vector3( R( 1.6f, 2.2f ), 0f, R( -1f, 1f ) ) );
+				}
+			}
 			var count = (int)(MathF.Tau * mid / 2.6f);
 			for ( var i = 0; i < count; i++ )
 			{
 				var deg = R( 0f, 360f );
 				if ( !Clear( deg ) ) continue;
 				var at = Polar( R( inner + 1f, outer - 1f ), deg, floor );
+				if ( kept.Any( k => k.Flat().DistanceTo( at.Flat() ) < 5f ) ) continue;
 				if ( Places.Any( pl => pl.At.Flat().DistanceTo( at.Flat() ) < 3.5f ) ) continue;   // where the test stands
 				var roll = random.NextDouble();
 				if ( roll < 0.25 )   // rocks
@@ -797,7 +824,9 @@ void fragment() {
 						new Transform3D( new Basis( Vector3.Up, R( 0f, MathF.Tau ) ).Scaled( new Vector3( R( 1f, 1.6f ), 1f, 1f ) ), at + Vector3.Up * size * 0.25f ) );
 					kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * size * 0.3f ), new Vector3( size * 1.4f, size * 0.9f, size * 1.4f ) );
 				}
-				else if ( roll < 0.45 ) Coral( kit, random, R, at, R( 0.8f, 1.5f ) );
+				else if ( roll < 0.4 ) Coral( kit, random, R, at, R( 0.8f, 1.5f ) );
+				else if ( roll < 0.47 ) { Barrel( kit, random, R, at ); if ( random.NextDouble() < 0.5 ) Barrel( kit, random, R, at + new Vector3( R( 0.9f, 1.1f ), 0f, R( -0.3f, 0.3f ) ) ); }
+				else if ( roll < 0.52 ) GoldBag( kit, random, R, at );
 				else if ( roll < 0.62 ) Kelp( kit, random, R, at );
 				else if ( roll < 0.74 )   // glowing alien bulbs on stalks
 				{
@@ -831,6 +860,107 @@ void fragment() {
 				else Amphorae( kit, random, R, at );
 			}
 		}
+	}
+
+	/// <summary> A wooden barrel with dark iron hoops, standing or (one in four) on its side. </summary>
+	static void Barrel( MeshKit kit, Random random, Func<float, float, float> R, Vector3 at )
+	{
+		var lying = random.NextDouble() < 0.25;
+		var turn = lying ? new Basis( Vector3.Up, R( 0f, MathF.Tau ) ) * new Basis( Vector3.Back, MathF.PI * 0.5f ) : Basis.Identity;
+		var centre = at + Vector3.Up * (lying ? 0.45f : 0.55f);
+		kit.Cylinder( "wood", centre + turn * (Vector3.Up * 0.275f), 0.45f, 0.55f, turn, 12, 0.38f );
+		kit.Add( "wood", new CylinderMesh { BottomRadius = 0.38f, TopRadius = 0.45f, Height = 0.55f, RadialSegments = 12, Rings = 1 }, new Transform3D( turn, centre - turn * (Vector3.Up * 0.275f) ) );
+		foreach ( var y in new[] { -0.38f, 0f, 0.38f } )
+			kit.Cylinder( "wood_dark", centre + turn * (Vector3.Up * y), y == 0f ? 0.47f : 0.43f, 0.07f, turn, 12 );
+		kit.Solid( new Transform3D( turn, centre ), new Vector3( 0.8f, 1.1f, 0.8f ) );
+	}
+
+	/// <summary> A sack of gold: a slumped bag tied at the neck, coins heaped out of its mouth, jewels spilled round it. </summary>
+	static void GoldBag( MeshKit kit, Random random, Func<float, float, float> R, Vector3 at )
+	{
+		var size = R( 0.8f, 1.2f );
+		kit.Add( "sack", new SphereMesh { Radius = 0.38f * size, Height = 0.62f * size, RadialSegments = 10, Rings = 6 }, new Transform3D( Basis.Identity, at + Vector3.Up * 0.26f * size ) );
+		kit.Cylinder( "sack", at + Vector3.Up * 0.6f * size, 0.16f * size, 0.16f * size, sides: 8, topRadius: 0.24f * size );
+		kit.Cylinder( "wood_dark", at + Vector3.Up * 0.54f * size, 0.17f * size, 0.04f * size, sides: 8 );
+		kit.Add( "gold", new SphereMesh { Radius = 0.2f * size, Height = 0.16f * size, RadialSegments = 8, Rings = 4 }, new Transform3D( Basis.Identity, at + Vector3.Up * 0.68f * size ) );
+		for ( var i = random.Next( 3, 7 ); i > 0; i-- )
+		{
+			var p = at + new Vector3( R( -0.7f, 0.7f ), 0.03f, R( -0.7f, 0.7f ) );
+			if ( random.NextDouble() < 0.5 ) kit.Cylinder( "gold", p, 0.07f, 0.02f, sides: 8 );   // a coin
+			else kit.Add( random.NextDouble() switch { < 0.4 => "glow_green", < 0.8 => "glow_purple", _ => "glow_teal" },
+				new CylinderMesh { BottomRadius = 0f, TopRadius = 0.07f, Height = 0.1f, RadialSegments = 6, Rings = 1 }, new Transform3D( new Basis( Vector3.Up, R( 0f, 3f ) ), p + Vector3.Up * 0.04f ) );   // a cut jewel
+		}
+		kit.Solid( new Transform3D( Basis.Identity, at + Vector3.Up * 0.3f * size ), new Vector3( 0.6f, 0.6f, 0.6f ) * size );
+	}
+
+	/// <summary>
+	/// A market stand on the outer canal's floor, its back to the outer wall: a wooden counter under a striped
+	/// awning on four posts, a sign over it, goods on the counter and barrels and sacks beside it. One sells cheese
+	/// (wheels, wedges, a blue one); the other, treasure (gold, jewels, jars).
+	/// </summary>
+	static void MarketStand( MeshKit kit, Random random, Func<float, float, float> R, float degrees, bool cheese )
+	{
+		var radial = Polar( 1f, degrees, 0f );
+		var at = Polar( Canals[1].Outer - 1.5f, degrees, CanalFloorY );
+		// X along the counter, Z out of the front (toward the middle of the canal).
+		var b = new Basis( Vector3.Up.Cross( -radial ).Normalized(), Vector3.Up, -radial );
+		Vector3 L( float x, float y, float z ) => at + b * new Vector3( x, y, z );
+		const float w = 3.6f, top = 1.05f;
+		kit.Box( "wood", L( 0f, top * 0.5f, 0.3f ), new Vector3( w, top, 0.9f ), b );
+		kit.Box( "wood_dark", L( 0f, top + 0.04f, 0.3f ), new Vector3( w + 0.2f, 0.08f, 1.1f ), b, solid: false );
+		foreach ( var sx in new[] { -1f, 1f } )
+			foreach ( var z in new[] { -0.7f, 0.85f } )
+				kit.Cylinder( "wood_dark", L( sx * (w * 0.5f + 0.05f), 1.5f, z ), 0.07f, 3f, sides: 6 );
+		// The awning: stripes sloping down to the front.
+		var slope = new Basis( Vector3.Right, 0.3f );
+		for ( var i = 0; i < 8; i++ )
+			kit.Box( i % 2 == 0 ? (cheese ? "cheese" : "banner_purple") : "marble", L( -w * 0.5f - 0.1f + (i + 0.5f) * (w + 0.2f) / 8f, 3f, 0.1f ), new Vector3( (w + 0.2f) / 8f, 0.05f, 2.1f ), b * slope, solid: false );
+		kit.Box( "wood_dark", L( 0f, 2.55f, 1.1f ), new Vector3( w + 0.2f, 0.5f, 0.06f ), b, solid: false );   // the sign board
+		var sign = new Label3D
+		{
+			Text = cheese ? "CHEESE" : "TREASURES", FontSize = 96, PixelSize = 0.004f, Modulate = cheese ? new Color( 1f, 0.85f, 0.3f ) : new Color( 0.6f, 1f, 0.7f ),
+			OutlineSize = 12, OutlineModulate = new Color( 0f, 0f, 0f, 0.8f ),
+		};
+		kit.Node.AddChild( sign );
+		sign.Transform = new Transform3D( b, L( 0f, 2.55f, 1.14f ) );
+		if ( cheese )
+		{
+			// Wheels stacked, one cut open, wedges, a blue cheese.
+			kit.Cylinder( "cheese_rind", L( -1.2f, top + 0.2f, 0.3f ), 0.4f, 0.24f, sides: 16 );
+			kit.Cylinder( "cheese", L( -1.2f, top + 0.44f, 0.3f ), 0.36f, 0.22f, sides: 16 );
+			kit.Cylinder( "cheese_rind", L( -1.2f, top + 0.63f, 0.3f ), 0.3f, 0.16f, sides: 16 );
+			kit.Cylinder( "cheese", L( -0.3f, top + 0.2f, 0.25f ), 0.36f, 0.24f, new Basis( Vector3.Up, 0.4f ), 5 );   // the cut wheel
+			kit.Cylinder( "cheese_blue", L( 0.5f, top + 0.19f, 0.4f ), 0.3f, 0.22f, sides: 14 );
+			for ( var i = 0; i < 4; i++ )
+				kit.Add( i == 2 ? "cheese_blue" : "cheese", new PrismMesh { Size = new Vector3( 0.3f, 0.2f, 0.36f ), LeftToRight = 0f },
+					new Transform3D( b * new Basis( Vector3.Up, R( 0f, MathF.Tau ) ), L( 1f + (i % 2) * 0.45f, top + 0.18f, 0.1f + (i / 2) * 0.42f ) ) );
+			for ( var i = 0; i < 9; i++ )   // the holes
+				kit.Sphere( "cheese_rind", L( -0.3f + R( -0.22f, 0.22f ), top + 0.33f, 0.25f + R( -0.22f, 0.22f ) ), 0.035f, 5 );
+			kit.Cylinder( "cheese_rind", L( 0f, 1.9f, -0.75f ), 0.5f, 0.2f, b * new Basis( Vector3.Right, MathF.PI * 0.5f ), 16 );   // a big wheel hung at the back
+			kit.Cylinder( "cheese", L( 0f, 1.9f, -0.72f ), 0.42f, 0.2f, b * new Basis( Vector3.Right, MathF.PI * 0.5f ), 16 );
+		}
+		else
+		{
+			// Gold bars, bowls of jewels, jars, a crystal.
+			for ( var i = 0; i < 5; i++ )
+				kit.Box( "gold", L( -1.3f + (i % 3) * 0.26f, top + 0.13f + (i / 3) * 0.1f, 0.3f ), new Vector3( 0.22f, 0.1f, 0.42f ), b, solid: false );
+			foreach ( var (x, key) in new[] { (-0.2f, "glow_green"), (0.4f, "glow_purple"), (1f, "glow_teal") } )
+			{
+				kit.Cylinder( "gold", L( x, top + 0.14f, 0.3f ), 0.12f, 0.12f, sides: 10, topRadius: 0.24f );
+				for ( var j = 0; j < 6; j++ ) kit.Sphere( key, L( x + R( -0.13f, 0.13f ), top + 0.23f, 0.3f + R( -0.13f, 0.13f ) ), 0.05f, 5 );
+			}
+			kit.Cylinder( "crystal_purple", L( 1.5f, top + 0.45f, 0.3f ), 0.16f, 0.8f, sides: 6, topRadius: 0f );
+			kit.Cylinder( "teal", L( 1.45f, top + 0.22f, 0.65f ), 0.1f, 0.3f, sides: 8, topRadius: 0.05f );
+		}
+		// Stock beside the stand.
+		Barrel( kit, random, R, L( -w * 0.5f - 0.9f, 0f, 0f ) );
+		Barrel( kit, random, R, L( -w * 0.5f - 0.8f, 0f, 1f ) );
+		GoldBag( kit, random, R, L( w * 0.5f + 0.9f, 0f, 0.2f ) );
+		if ( !cheese ) GoldBag( kit, random, R, L( w * 0.5f + 1.5f, 0f, 1f ) );
+		else kit.Cylinder( "cheese_rind", L( w * 0.5f + 1.6f, 0.35f, 1f ), 0.35f, 0.7f, b * new Basis( Vector3.Right, MathF.PI * 0.5f ), 16 );   // a wheel on its edge
+		var light = new OmniLight3D { LightColor = new Color( 1f, 0.8f, 0.5f ), LightEnergy = 1.8f, OmniRange = 7f, ShadowEnabled = false };
+		kit.Node.AddChild( light );
+		light.Position = L( 0f, 2.2f, 0.9f );
 	}
 
 	/// <summary> A strand of kelp from the canal floor up past the street: a swaying chain of stem pieces with blades. </summary>

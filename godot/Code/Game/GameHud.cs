@@ -292,7 +292,7 @@ public partial class GameHud : Control
 				if ( PerkPickup.Icon( entry.Icon ) is { } icon ) DrawTextureRect( icon, rect, false, tint );
 				else DrawRect( rect, entry.Colour with { A = tint.A } );
 				if ( entry.Kind == PerkKind.Blast )
-					DrawString( font, new Vector2( x, y - 4f ), spent ? "next wave" : Controls.IsController ? "RB" : "C", HorizontalAlignment.Center, 40f, 13, tint );
+					DrawString( font, new Vector2( x, y - 4f ), spent ? "next wave" : Controls.IsController ? "RB" : "V", HorizontalAlignment.Center, 40f, 13, tint );
 				else if ( count > 1 )
 				{
 					DrawRect( new Rect2( x + 22f, y + 24f, 20f, 18f ), new Color( 0f, 0f, 0f, 0.75f ) );

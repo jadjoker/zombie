@@ -2740,9 +2740,10 @@ public partial class AutoTest : Node
 			player.CameraOverride = null;
 		}
 		var pointsBefore = survivor.Points;
-		foreach ( var drop in drops )
+		// (Their places noted first: standing on one also takes its neighbours, which are freed.)
+		foreach ( var place in drops.Select( d => d.GlobalPosition ).ToList() )
 		{
-			player.GlobalPosition = drop.GlobalPosition with { Y = home.Y + 0.1f };
+			player.GlobalPosition = place with { Y = home.Y + 0.1f };
 			player.Velocity = Vector3.Zero;
 			await Wait( 0.25f );
 		}

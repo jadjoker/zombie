@@ -61,29 +61,33 @@ public partial class HomingMissile : Creature
 
 	void Build()
 	{
-		var nose = Sculpt.Paint( Nose, 0.35f, 0.1f );
-		var body = Sculpt.Paint( Body, 0.3f, 0.3f );
-		var trim = Sculpt.Paint( Trim, 0.3f, 0.4f );
+		// Black in the face; the body in worn silver, rust and black, section by section, with rings to match.
+		var nose = Sculpt.Paint( new Color( 0.035f, 0.035f, 0.04f ), 0.3f, 0.5f );
+		var silver = Sculpt.Paint( new Color( 0.66f, 0.68f, 0.7f ), 0.3f, 0.85f );
+		var rust = Sculpt.Paint( new Color( 0.55f, 0.24f, 0.1f ), 0.8f, 0.3f );
+		var black = Sculpt.Paint( new Color( 0.06f, 0.06f, 0.07f ), 0.4f, 0.6f );
+		var sections = new[] { silver, rust, black };
+		var rings = new[] { rust, black, silver };
+		var trim = rust;
 		var white = Sculpt.Paint( new Color( 0.97f, 0.97f, 0.95f ), 0.25f );
 		var dark = Sculpt.Paint( new Color( 0.05f, 0.03f, 0.08f ), 0.4f );
 		var iris = Sculpt.Glow( Iris, 2.2f );
-		const float r = 0.17f;
+		const float r = 0.105f;   // slim: about 21 cm across
 
 		// The nose section (the root): a fat rounded head with the face on its front.
 		var head = Sculpt.Joint( this, Vector3.Zero, "Nose" );
 		joints.Add( head );
-		Sculpt.Blob( head, new Vector3( 0f, 0f, -0.12f ), new Vector3( r * 2.3f, r * 2.3f, 0.5f ), nose );
-		Sculpt.Blob( head, new Vector3( 0f, 0f, 0.02f ), new Vector3( r * 2.35f, r * 2.35f, 0.16f ), trim );   // the collar
-		// His one eye, in the middle of its face: white ball, red iris, black pupil, an angry brow over it.
-		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.33f ), new Vector3( 0.15f, 0.15f, 0.1f ), white );
-		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.375f ), new Vector3( 0.085f, 0.085f, 0.03f ), iris );
-		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.39f ), new Vector3( 0.04f, 0.04f, 0.015f ), dark );
+		Sculpt.Blob( head, new Vector3( 0f, 0f, -0.12f ), new Vector3( r * 2.1f, r * 2.1f, 0.5f ), nose );
+		Sculpt.Blob( head, new Vector3( 0f, 0f, 0.04f ), new Vector3( r * 2.2f, r * 2.2f, 0.12f ), silver );   // the collar
+		// His one eye, in the middle of its face: white ball, red iris, black pupil, an angry silver brow over it.
+		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.335f ), new Vector3( 0.11f, 0.11f, 0.08f ), white );
+		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.37f ), new Vector3( 0.065f, 0.065f, 0.025f ), iris );
+		Sculpt.Blob( head, new Vector3( 0f, 0.02f, -0.382f ), new Vector3( 0.03f, 0.03f, 0.012f ), dark );
 		foreach ( var s in new[] { -1f, 1f } )
-			Sculpt.Block( head, new Vector3( s * 0.04f, 0.115f, -0.34f ), new Vector3( 0.1f, 0.03f, 0.05f ), dark, new Basis( Vector3.Back, -s * 0.45f ) );
-		// The grin: a dark mouth with a row of teeth.
-		Sculpt.Blob( head, new Vector3( 0f, -0.08f, -0.3f ), new Vector3( 0.2f, 0.07f, 0.1f ), dark );
+			Sculpt.Block( head, new Vector3( s * 0.03f, 0.078f, -0.335f ), new Vector3( 0.07f, 0.02f, 0.04f ), silver, new Basis( Vector3.Back, -s * 0.45f ) );
+		// The grin: a row of white teeth across the black face.
 		for ( var k = 0; k < 5; k++ )
-			Sculpt.Block( head, new Vector3( (k - 2) * 0.034f, -0.075f, -0.345f + MathF.Abs( k - 2 ) * 0.012f ), new Vector3( 0.028f, 0.04f, 0.02f ), white );
+			Sculpt.Block( head, new Vector3( (k - 2) * 0.022f, -0.05f, -0.335f + MathF.Abs( k - 2 ) * 0.01f ), new Vector3( 0.018f, 0.028f, 0.016f ), white );
 
 		// Three body sections behind it, each a joint that bends, then the tail with its fins and flame.
 		var parent = head;
@@ -91,14 +95,14 @@ public partial class HomingMissile : Creature
 		{
 			var joint = Sculpt.Joint( parent, new Vector3( 0f, 0f, i == 0 ? 0.1f : 0.22f ), $"Section {i}" );
 			joints.Add( joint );
-			Sculpt.Limb( joint, new Vector3( 0f, 0f, -0.02f ), new Vector3( 0f, 0f, 0.24f ), r, r * (i == 2 ? 0.8f : 1f), body );
-			Sculpt.Limb( joint, new Vector3( 0f, 0f, 0.19f ), new Vector3( 0f, 0f, 0.235f ), r * 1.06f, r * 1.06f, i == 1 ? nose : trim );   // a band
+			Sculpt.Limb( joint, new Vector3( 0f, 0f, -0.02f ), new Vector3( 0f, 0f, 0.24f ), r, r * (i == 2 ? 0.8f : 1f), sections[i] );
+			Sculpt.Limb( joint, new Vector3( 0f, 0f, 0.19f ), new Vector3( 0f, 0f, 0.235f ), r * 1.1f, r * 1.1f, rings[i] );   // a ring
 			parent = joint;
 		}
 		for ( var k = 0; k < 4; k++ )   // fins
 		{
 			var turn = new Basis( Vector3.Back, k * MathF.PI * 0.5f + MathF.PI * 0.25f );
-			Sculpt.Block( parent, turn * new Vector3( 0f, r + 0.08f, 0.16f ), new Vector3( 0.03f, 0.22f, 0.22f ), trim, turn * new Basis( Vector3.Right, -0.5f ) );
+			Sculpt.Block( parent, turn * new Vector3( 0f, r + 0.06f, 0.16f ), new Vector3( 0.02f, 0.17f, 0.2f ), k % 2 == 0 ? silver : rust, turn * new Basis( Vector3.Right, -0.5f ) );
 		}
 		Sculpt.Limb( parent, new Vector3( 0f, 0f, 0.22f ), new Vector3( 0f, 0f, 0.3f ), r * 0.7f, r * 0.9f, dark, "Nozzle" );
 		flame = Sculpt.Joint( parent, new Vector3( 0f, 0f, 0.3f ), "Flame" );
@@ -106,7 +110,7 @@ public partial class HomingMissile : Creature
 		Sculpt.Cone( flame, Vector3.Zero, new Vector3( 0f, 0f, 0.32f ), r * 0.5f, Sculpt.Glow( new Color( 0.6f, 1f, 0.5f ), 4f ) );
 		flame.AddChild( new OmniLight3D { LightColor = new Color( 0.7f, 1f, 0.4f ), LightEnergy = 1.2f, OmniRange = 3f, ShadowEnabled = false } );
 
-		var part = CreaturePart.Create( this, 0, "Missile", 0.3f );
+		var part = CreaturePart.Create( this, 0, "Missile", 0.26f );   // a little wider than it looks, so it can be shot
 		AddChild( part );
 		part.Position = new Vector3( 0f, 0f, 0.15f );
 		var tailPart = CreaturePart.Create( this, 1, "Missile Tail", 0.24f );

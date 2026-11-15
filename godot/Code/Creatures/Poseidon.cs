@@ -159,6 +159,8 @@ void fragment() {
 	PoseidonVortex grabbedIn;
 	float carryTime = 1f;
 	bool burst;
+	/// <summary> How far his tail is curled up behind him (0 to 1), so it never goes into the floor. </summary>
+	float curl;
 
 	public static Poseidon Spawn( Node parent, Vector3 position, float maxHealth ) =>
 		Place( new Poseidon { Name = "Poseidon" }, parent, position, maxHealth );
@@ -614,7 +616,7 @@ void fragment() {
 		}
 		velocity = velocity.Lerp( wish, 1f - MathF.Exp( -1.5f * dt ) );
 		var next = GlobalPosition + velocity * dt;
-		next.Y = MathF.Max( next.Y, floorY + HoverHeight * 0.6f );
+		next.Y = MathF.Max( next.Y, floorY + HoverHeight * 0.75f );
 		GlobalPosition = Sculpt.InBounds( next );
 		if ( prey is not null ) Face( prey.WorldPosition - GlobalPosition, 2.5f, dt );
 	}
@@ -773,7 +775,17 @@ void fragment() {
 		// Swimming: the tail sweeps in a wave down its length, the body bobbing and rocking with it.
 		var speed = mode == Mode.Swim ? 1f + velocity.Length() * 0.15f : 0.7f;
 		for ( var i = 0; i < tail.Count; i++ )
-			tail[i].Rotation = new Vector3( MathF.Sin( t * 2.2f * speed - i * 0.55f ) * (0.12f + i * 0.025f) + 0.06f, 0f, MathF.Sin( t * 1.1f - i * 0.4f ) * 0.04f );
+			tail[i].Rotation = new Vector3( MathF.Sin( t * 2.2f * speed - i * 0.55f ) * (0.12f + i * 0.025f) * (1f - curl * 0.6f) + 0.06f - curl * 0.21f, 0f, MathF.Sin( t * 1.1f - i * 0.4f ) * 0.04f );
+		// Low over the floor his tail curls up behind him instead of going through it (playtest: it clipped and glitched).
+		if ( tail.Count > 0 )
+		{
+			var tip = tail[^1].GlobalPosition + Vector3.Down * 0.5f * Size * MathF.Max( 0.02f, shown );
+			var mid = tail[tail.Count / 2].GlobalPosition;
+			var ground = MathF.Max( floorY, MathF.Max( Sculpt.GroundAt( tip ), Sculpt.GroundAt( mid ) ) );
+			var low = MathF.Min( tip.Y, mid.Y - 0.3f * Size );
+			if ( low < ground + 0.35f ) curl = MathF.Min( 1f, curl + dt * 5f );
+			else if ( low > ground + 1.3f ) curl = MathF.Max( 0f, curl - dt * 1.2f );
+		}
 		body.Position = new Vector3( 0f, MathF.Sin( t * 1.4f ) * 0.12f, 0f );
 		body.Rotation = new Vector3( MathF.Sin( t * 2.2f * speed + 1.2f ) * 0.05f, 0f, MathF.Sin( t * 0.9f ) * 0.04f );
 

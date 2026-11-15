@@ -516,6 +516,24 @@ public partial class RockyShark : PartCreature
 			tail.Go.Basis = tail.Rest * new Angles( MathF.Cos( phase * 0.85f ) * 10f, yaw, MathX.Deg( bank ) * 1.2f ).ToBasis();
 		}
 
+		// Its body is stiff behind the head: climbing, the tail swings down. Any part under the floor lifts the whole
+		// shark (playtest: tails went through the ground and glitched).
+		var deepest = 0f;
+		for ( var i = 0; i < parts.Length; i++ )
+		{
+			var part = parts[i];
+			if ( part is null || part.Gone || !IsInstanceValid( part.Go ) ) continue;
+			var at = part.Go.GlobalPosition;
+			var ground = global::Sculpt.GroundAt( at );
+			if ( ground == float.MinValue ) continue;
+			deepest = MathF.Max( deepest, ground + 0.35f * Size - at.Y );
+		}
+		if ( deepest > 0f )
+		{
+			GlobalPosition += Vector3.Up * MathF.Min( deepest, 3f );
+			rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
+		}
+
 		var head = parts[Head];
 		if ( head is not null )
 			head.Go.Basis = new Angles( MathF.Sin( time * rate * 0.6f ) * 1.5f, MathF.Cos( time * rate * 0.5f ) * 2.5f, 0f ).ToBasis();

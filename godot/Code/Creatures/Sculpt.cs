@@ -75,6 +75,16 @@ public static class Sculpt
 	}
 
 	/// <summary>
+	/// The ground's height under a point, worked out (no ray): Atlantis's streets, island and canals in area 3, the
+	/// sea floor's terrain elsewhere. float.MinValue where there is no terrain (the old flat arena).
+	/// </summary>
+	public static float GroundAt( Vector3 p )
+	{
+		if ( SeaTerrain.Area == 3 && Atlantis.Inside( p, 0f ) ) return Atlantis.SurfaceAt( p );
+		return SeaTerrain.Active ? SeaTerrain.HeightAt( p ) : float.MinValue;
+	}
+
+	/// <summary>
 	/// Keeps a point where enemies may go: inside Atlantis's globe in area 3, inside the map's rim elsewhere.
 	/// </summary>
 	public static Vector3 InBounds( Vector3 p )

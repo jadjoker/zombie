@@ -411,6 +411,9 @@ public partial class Bloober : Creature
 				if ( offset.LengthSquared() < 1e-8f ) offset = previous.Go.GlobalBasis.Z;
 				var gap = (previous.Radius + segment.Radius) * Spacing * puffScale * U.In;
 				position = previous.Position + offset.Normalized() * gap;
+				// Never under the floor: a trailing segment dragged down a slope or over a crest rides up over it.
+				var floor = global::Sculpt.GroundAt( position ) + segment.Radius * puffScale * 0.8f * U.In;
+				if ( position.Y < floor ) position.Y = floor;
 				rotation = Shapes.LookAt( previous.Position - position );
 			}
 			segment.Velocity = (position - segment.Position) / dt;

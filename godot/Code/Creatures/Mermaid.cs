@@ -5,7 +5,7 @@ using Godot;
 /// drifting purple, blue and green skin. The women's faces, after the user's reference photo: a pale mask of scallop
 /// shells with spiked cheek flares; all have black eyes and a mouth stretched open on long needle teeth. Fin hands like the Rocky Shark's fins. Women have long
 /// red, blonde or black hair and shell tops; men are broader and wear gold helmets. Most carry a trident and swim in to
-/// stab; about one in three carries a bow and keeps its distance, shooting arrows. Slower than the other enemies, with
+/// stab behind futuristic energy shields that stop bullets (the head and tail are open); about one in three carries a bow and keeps its distance, shooting arrows. Slower than the other enemies, with
 /// about 30% more health. Built in code (Sculpt) in Poseidon's model units, drawn at `Scale` of them. Head is the weak spot.
 /// </summary>
 public partial class Mermaid : Creature
@@ -25,6 +25,46 @@ public partial class Mermaid : Creature
 	public float KeepAway = 13f;            // archers circle at about this distance
 	public float HeadMultiplier = 2f;
 	public float TailMultiplier = 0.7f;
+	/// <summary> The trident carriers' shield: its part index. Shots that hit it do nothing. </summary>
+	public const int ShieldIndex = 9;
+	/// <summary> Tests: shots the shield has turned. </summary>
+	public int Blocked { get; private set; }
+
+	/// <summary>
+	/// The shield's energy pane: a hexagon grid of light over a deep teal glass, brighter at the edges, rippling out
+	/// from the last hit (hit_at, in the pane's own space; hit_age from when it landed).
+	/// </summary>
+	static readonly Shader ShieldShader = new()
+	{
+		Code = @"shader_type spatial;
+render_mode cull_disabled, depth_draw_never, unshaded;
+uniform vec3 tint : source_color = vec3(0.25, 0.95, 1.0);
+uniform vec3 hit_at = vec3(0.0);
+uniform float hit_age = 9.0;
+varying vec3 p;
+vec2 hex_cell(vec2 v) {
+	vec2 r = vec2(1.0, 1.732);
+	vec2 h = r * 0.5;
+	vec2 a = mod(v, r) - h;
+	vec2 b = mod(v - h, r) - h;
+	return dot(a, a) < dot(b, b) ? a : b;
+}
+void vertex() { p = VERTEX; }
+void fragment() {
+	vec2 cell = hex_cell(p.xz * 7.0);
+	float edge = smoothstep(0.36, 0.46, max(abs(cell.x) * 0.866 + abs(cell.y) * 0.5, abs(cell.y)));
+	float rim = smoothstep(0.38, 0.5, length(p.xz));
+	float pulse = 0.5 + 0.5 * sin(TIME * 3.0 - length(p.xz) * 12.0);
+	float ring = hit_age < 0.6 ? (1.0 - smoothstep(0.0, 0.05, abs(distance(p.xz, hit_at.xz) - hit_age * 1.2))) * (1.0 - hit_age / 0.6) : 0.0;
+	float flash = hit_age < 0.15 ? 1.0 - hit_age / 0.15 : 0.0;
+	ALBEDO = tint * (0.25 + edge * 0.9 + rim * 0.8 + ring * 2.0 + flash * 0.8 + pulse * 0.08);
+	ALPHA = clamp(0.18 + edge * 0.45 + rim * 0.5 + ring + flash * 0.4, 0.0, 0.95);
+}",
+	};
+	Node3D shield;
+	MeshInstance3D pane;
+	ShaderMaterial shieldPane;
+	TimeSince sinceBlock = 99f;
 
 	/// <summary> A man (gold helmet, broad chest) rather than a woman (long hair, shell top). </summary>
 	public bool Male;
@@ -275,6 +315,38 @@ public partial class Mermaid : Creature
 		(armR, foreR, handR) = Arm( 1f );
 		(armL, foreL, handL) = Arm( -1f );
 
+		if ( !Archer )
+		{
+			// A futuristic shield on the left forearm, held across the chest: a hexagon of glowing energy in a dark
+			// metal frame with gold corners, an emitter in the middle and light strips round it. It stops bullets;
+			// the head and the tail are still open.
+			shield = Sculpt.Joint( chest, new Vector3( -0.18f, 0.42f, -0.62f ), "Shield" );
+			var face = new Basis( Vector3.Right, MathF.PI * 0.5f );   // the pane's plane faces -Z
+			shieldPane = new ShaderMaterial { Shader = ShieldShader };
+			shieldPane.SetMeta( "no_caustics", true );
+			const float r = 1.05f;
+			shield.AddChild( pane = new MeshInstance3D
+			{
+				Name = "Pane", Mesh = new CylinderMesh { TopRadius = r, BottomRadius = r, Height = 0.02f, RadialSegments = 6, Rings = 1 },
+				MaterialOverride = shieldPane, Basis = face,   // corners at 0, 60, 120... degrees, like the frame CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			} );
+			var frame = Sculpt.Paint( new Color( 0.12f, 0.14f, 0.18f ), 0.25f, 0.85f );
+			var light = Sculpt.Glow( new Color( 0.3f, 1f, 0.95f ), 2.6f );
+			for ( var k = 0; k < 6; k++ )
+			{
+				var a0 = k / 6f * MathF.Tau;
+				var a1 = (k + 1) / 6f * MathF.Tau;
+				var c0 = new Vector3( MathF.Cos( a0 ) * r, MathF.Sin( a0 ) * r, 0f );
+				var c1 = new Vector3( MathF.Cos( a1 ) * r, MathF.Sin( a1 ) * r, 0f );
+				Sculpt.Limb( shield, c0, c1, 0.06f, 0.06f, frame, "Frame" );
+				Sculpt.Limb( shield, c0 * 0.9f + new Vector3( 0f, 0f, -0.04f ), c1 * 0.9f + new Vector3( 0f, 0f, -0.04f ), 0.018f, 0.018f, light, "Strip" );
+				Sculpt.Blob( shield, c0, Vector3.One * 0.16f, gold );   // the corners
+			}
+			Sculpt.Blob( shield, new Vector3( 0f, 0f, -0.04f ), new Vector3( 0.3f, 0.3f, 0.12f ), frame );   // the emitter
+			Sculpt.Blob( shield, new Vector3( 0f, 0f, -0.09f ), new Vector3( 0.16f, 0.16f, 0.05f ), light );
+			Sculpt.Limb( shield, new Vector3( 0f, 0f, 0.06f ), new Vector3( 0f, -0.7f, 0.25f ), 0.05f, 0.05f, frame, "Arm Mount" );
+		}
+
 		weapon = new Node3D { Name = Archer ? "Bow" : "Trident" };
 		if ( Archer )
 		{
@@ -306,6 +378,14 @@ public partial class Mermaid : Creature
 		Hit( head, 0, new Vector3( 0f, 0.25f, 0f ), 0.34f );
 		Hit( chest, 1, new Vector3( 0f, 0.72f, 0f ), 0.5f );
 		Hit( chest, 2, new Vector3( 0f, 0.18f, 0f ), 0.4f );
+		if ( shield is not null )
+		{
+			// The shield's own part: a thin hexagonal slab in front of the body, so shots stop on it first.
+			var guard = CreaturePart.Create( this, ShieldIndex, "Mermaid Shield", 1f );
+			guard.Collider.Shape = new CylinderShape3D { Radius = 1.05f, Height = 0.12f };
+			guard.Collider.Basis = new Basis( Vector3.Right, MathF.PI * 0.5f );
+			shield.AddChild( guard );
+		}
 		for ( var i = 0; i < 3; i++ ) Hit( tail[i * 2], 3 + i, new Vector3( 0f, -0.2f, 0f ), MathX.Lerp( 0.42f, 0.3f, i / 2f ) );
 	}
 
@@ -418,6 +498,7 @@ public partial class Mermaid : Creature
 	{
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
+		shieldPane?.SetShaderParameter( "hit_age", (float)sinceBlock );
 		handSkin.SetShaderParameter( "flash", flash );
 		skin.SetShaderParameter( "centre", body.GlobalPosition );
 		// Leaning into the swim; upright to fight.
@@ -457,8 +538,9 @@ public partial class Mermaid : Creature
 		}
 		else
 		{
-			lArm = new Vector3( 0.25f, 0f, -0.35f + MathF.Sin( t * 2f ) * 0.08f );
-			lFore = new Vector3( 0.7f, 0f, 0f );
+			// The shield arm across the chest, forearm up behind the shield.
+			lArm = new Vector3( 0.9f, 0f, -0.15f + MathF.Sin( t * 2f ) * 0.04f );
+			lFore = new Vector3( 1.1f, 0f, 0f );
 			rArm = new Vector3( 0.1f, 0f, 0.5f );
 			rFore = new Vector3( 1.3f, 0f, 0f );
 			if ( mode == Mode.WindUp ) { rArm = rArm.Lerp( new Vector3( -0.6f, 0f, 0.45f ), u ); rFore = rFore.Lerp( new Vector3( 1.8f, 0f, 0f ), u ); }
@@ -486,6 +568,17 @@ public partial class Mermaid : Creature
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
+		if ( index == ShieldIndex && shield is not null )
+		{
+			// Turned by the shield: sparks, a ripple across the pane, a ping. No damage.
+			Blocked++;
+			sinceBlock = 0f;
+			shieldPane.SetShaderParameter( "hit_at", pane.GlobalTransform.AffineInverse() * position );
+			Fx.ImpactWorld( position, -direction.SafeNormal() );
+			Sfx.Play( "glass_hit", position, 0.6f, Rng.Float( 1.5f, 1.8f ) );
+			velocity += direction.SafeNormal() * 0.4f;
+			return;
+		}
 		NoteShot( direction, position, origin );
 		sinceHit = 0f;
 		velocity += direction.SafeNormal() * 1.5f;
@@ -514,6 +607,7 @@ public partial class Mermaid : Creature
 			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radius * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 5f );
 		}
 		if ( IsInstanceValid( weapon ) && weapon.GetParent() == this ) Fling( weapon, 0.25f, 6f );
+		if ( shield is not null && IsInstanceValid( shield ) ) Fling( shield, 0.3f, 6f );
 		if ( tail.Count > 4 ) Fling( tail[4], 0.2f, 6f );
 		Fling( head, 0.2f, 8f );
 		Fling( Rng.Float() < 0.5f ? armL : armR, 0.15f, 7f );

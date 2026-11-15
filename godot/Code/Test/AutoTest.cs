@@ -2768,6 +2768,23 @@ public partial class AutoTest : Node
 			foreach ( var g in guns ) g.Visible = true;
 		}
 
+		// A shot at a trident mermaid's chest from in front stops on its shield and does no harm.
+		{
+			var m = mermaids[1];
+			var front = -m.GlobalBasis.Z.Flat().Normalized();
+			var chest = m.GlobalPosition + Vector3.Up * 0.25f;
+			var from = chest + front * 4f;
+			var hit = Trace.Ray( player, from, chest - front, Layers.Creature );
+			var part = hit.Node as CreaturePart;
+			var before = m.Health.Current;
+			if ( part is not null ) part.ReceiveShot( 50f, part, -front, hit.HitPosition, from, player, true );
+			GD.Print( $"[autotest] mermaid shield: the shot hit {part?.Name ?? "nothing"} (index {part?.Index}), health {before:0} to {m.Health.Current:0}, blocked {m.Blocked}" );
+			Check( part is { Index: Mermaid.ShieldIndex } && m.Health.Current >= before && m.Blocked == 1, "a trident mermaid's shield did not stop a shot from the front" );
+			var head = m.GlobalPosition + Vector3.Up * 0.52f;
+			var headHit = Trace.Ray( player, head + front * 4f, head - front, Layers.Creature ).Node as CreaturePart;
+			Check( headHit is { Index: 0 }, $"a trident mermaid's head is not open over its shield (hit {headHit?.Name ?? "nothing"})" );
+		}
+
 		// The fight.
 		DevFlags.FreezeEnemies = false;
 		survivor.Health.Heal( 999f );

@@ -276,10 +276,11 @@ public partial class AlienBlast : Node3D
 		core = Add( sphere, coreM = Fire( new Color( 1f, 1f, 0.85f ), 6f ) );
 		ball = Add( sphere, ballM = Fire( Green, 3.5f ) );
 		shell = Add( sphere, shellM = Fire( Purple with { A = 0.55f }, 2.5f ) );
-		foreach ( var (colour, tilt, speed) in new[] { (Green, 0.2f, 7f), (Purple, 1.2f, 5.5f), (Yellow, -0.7f, 8.5f) } )
+		shellM.CullMode = BaseMaterial3D.CullModeEnum.Front;   // the far side only: a shell round the fireball, not a lid over it
+		foreach ( var (colour, tilt, speed) in new[] { (Green, 0.2f, 3.2f), (Purple, 1.2f, 2.5f), (Yellow, -0.7f, 3.9f) } )
 		{
 			var material = Fire( colour, 4f );
-			var ring = Add( new TorusMesh { InnerRadius = 0.42f, OuterRadius = 0.5f, Rings = 28, RingSegments = 6 }, material );
+			var ring = Add( new TorusMesh { InnerRadius = 0.465f, OuterRadius = 0.5f, Rings = 36, RingSegments = 6 }, material );
 			ring.Rotation = new Vector3( tilt, Rng.Float( 0f, 3f ), tilt * 0.5f );
 			rings.Add( (ring, material, speed) );
 		}
@@ -322,9 +323,9 @@ public partial class AlienBlast : Node3D
 		// The flash is gone in a blink; the fireball swells and thins; the shell outruns it.
 		core.Scale = Vector3.One * size * MathX.Lerp( 0.6f, 2.2f, MathF.Min( 1f, t * 5f ) );
 		coreM.AlbedoColor = coreM.AlbedoColor with { A = MathX.Clamp( 1f - t * 4f, 0f, 1f ) };
-		ball.Scale = Vector3.One * size * MathX.Lerp( 0.4f, 2.6f, ease );
-		ballM.AlbedoColor = Green.Lerp( Yellow, MathX.Clamp( 1f - t * 3f, 0f, 1f ) ) with { A = MathX.Clamp( 1f - t * 1.5f, 0f, 1f ) * 0.9f };
-		shell.Scale = Vector3.One * size * MathX.Lerp( 0.5f, 3.6f, ease );
+		ball.Scale = Vector3.One * size * MathX.Lerp( 0.4f, 2.2f, ease );
+		ballM.AlbedoColor = Green.Lerp( Yellow, MathX.Clamp( 1f - t * 2.2f, 0f, 1f ) ) with { A = MathX.Clamp( 1.2f - t * 1.4f, 0f, 1f ) };
+		shell.Scale = Vector3.One * size * MathX.Lerp( 0.5f, 3f, ease );
 		shellM.AlbedoColor = Purple with { A = MathX.Clamp( 1f - t * 1.2f, 0f, 1f ) * 0.5f };
 		foreach ( var (mesh, material, speed) in rings )
 		{

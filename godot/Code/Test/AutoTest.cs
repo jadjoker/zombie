@@ -2718,8 +2718,8 @@ public partial class AutoTest : Node
 		// Three missiles, let fly for a moment so they bend, then held still for their pictures.
 		var missiles = new List<HomingMissile>();
 		for ( var i = 0; i < 3; i++ )
-			missiles.Add( HomingMissile.Launch( scene, home + new Vector3( (i - 1) * 1.6f, 1.2f + i * 0.3f, -5f ), new Vector3( i - 1, 0f, 0.3f ), null, 30f ) );
-		await Wait( 1.2f );
+			missiles.Add( HomingMissile.Launch( scene, home + new Vector3( (i - 1) * 1.6f, 1.2f + i * 0.3f, -5f ), new Vector3( i - 1, 0f, 0.3f ), null, 0.5f ) );
+		await Wait( 1.15f );   // just tipped over toward the player, still bent from the turn
 		DevFlags.FreezeEnemies = true;
 		await Wait( 0.2f );
 		if ( shots is not null )
@@ -2730,7 +2730,9 @@ public partial class AutoTest : Node
 			var guns = GetTree().Root.FindChildren( "*", "", true, false ).OfType<Node3D>().Where( n => n.Visible && (n is ViewModel || n is ViewModelAxe) ).ToList();
 			foreach ( var g in guns ) g.Visible = false;
 			var mid = missiles[1].GlobalPosition;
-			foreach ( var (name, from) in new[] { ("missiles", mid + new Vector3( 0.4f, 0.1f, 3.4f )), ("missile_close", mid + new Vector3( 0.9f, 0.5f, -1.5f )), ("missile_side", mid + new Vector3( 1.7f, 0.1f, 0.3f )) } )
+			var toPlayer = (home + Vector3.Up * 1f - mid).Normalized();
+			var across = Vector3.Up.Cross( toPlayer ).Normalized();
+			foreach ( var (name, from) in new[] { ("missiles", mid + toPlayer * 3.6f + across * 0.5f), ("missile_close", mid + toPlayer * 1.5f + across * 0.35f + Vector3.Up * 0.1f), ("missile_side", mid + across * 1.9f + toPlayer * 0.5f) } )
 			{
 				var at = new Transform3D( Basis.LookingAt( (mid - from).Normalized(), Vector3.Up ), from );
 				player.CameraOverride = _ => at;

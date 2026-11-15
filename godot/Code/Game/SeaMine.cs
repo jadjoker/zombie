@@ -76,9 +76,9 @@ public partial class SeaMine : Node3D
 
 	public override void _Ready()
 	{
-		var steel = Sculpt.Paint( new Color( 0.16f, 0.36f, 0.4f ), 0.45f, 0.75f );
-		var dark = Sculpt.Paint( new Color( 0.08f, 0.16f, 0.2f ), 0.5f, 0.8f );
-		var peg = Sculpt.Paint( new Color( 0.3f, 0.5f, 0.52f ), 0.4f, 0.7f );
+		var steel = Sculpt.Paint( new Color( 0.26f, 0.52f, 0.56f ), 0.5f, 0.35f );
+		var dark = Sculpt.Paint( new Color( 0.13f, 0.27f, 0.32f ), 0.55f, 0.4f );
+		var peg = Sculpt.Paint( new Color( 0.42f, 0.66f, 0.66f ), 0.45f, 0.35f );
 		var glow = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 2.2f );
 		var warn = Sculpt.Glow( new Color( 0.66f, 0.22f, 1f ), 2f );
 

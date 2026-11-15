@@ -136,7 +136,7 @@ public partial class GameHud : Control
 			bannerBig.AddThemeColorOverride( "font_color", floatStart ? new Color( "ffb020" ) : isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
 			bannerSmall.Text = d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
 				: floatStart ? $"BALLAST ERROR: the suit cannot grip the ground. Jump to rise, crouch to sink"
-				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC61 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath";
+				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC-51 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath";
 		}
 
 		var k = d?.Kills ?? 0;

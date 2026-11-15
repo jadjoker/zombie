@@ -66,6 +66,7 @@ public partial class Level : Node3D
 		if ( water ) VegetationColliders.Add( this );
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
+		if ( water && SeaTerrain.Active ) SeaMine.Lay( this );
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );

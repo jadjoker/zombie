@@ -372,6 +372,9 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
+		// A sea mine: the shot rings off it.
+		if ( tr.Node is SeaMineShell ) { if ( hitThisShot.Add( tr.Node ) ) SeaMine.Tink( tr.HitPosition, tr.Normal ); return; }
+
 		// Loose physics props just get shoved.
 		if ( tr.Node is RigidBody3D body && !body.Freeze )
 		{

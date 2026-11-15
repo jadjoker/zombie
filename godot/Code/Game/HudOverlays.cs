@@ -257,7 +257,7 @@ public partial class HudOverlays : Control
 			var width = Size.X * 0.4f;
 			DrawRect( new Rect2( at, new Vector2( width, 14f ) ), new Color( 0, 0, 0, 0.55f ) );
 			DrawRect( new Rect2( at, new Vector2( width * b.HealthFraction, 14f ) ), new Color( "ff4fd8" ) );
-			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 22f ), "M C 6 1", HorizontalAlignment.Center, width, 22, new Color( "ff4fd8" ) );
+			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 22f ), "M C - 5 1", HorizontalAlignment.Center, width, 22, new Color( "ff4fd8" ) );
 		}
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
 		{

@@ -63,6 +63,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
+		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
@@ -2695,6 +2696,122 @@ public partial class AutoTest : Node
 	/// out of his whirlpool, throw a trident that hurts, summon seahorses into the wave, catch the player in a thrown
 	/// whirlpool and stab them, vanish to a spot near the player inside the map, and die.
 	/// </summary>
+	/// <summary>
+	/// MC-51's missiles and the sea mines. Missiles: pictures of them hanging in the water; one shot down bursts and
+	/// hurts no one; one left alone climbs, dives and hits the player for 15. Mines: eight laid, none near the middle
+	/// or a spawn point; a shot rings off one; walking into one costs 45.
+	/// </summary>
+	async Task MissileTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var scene = GetTree().CurrentScene;
+		WaveDirector.Current.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.4f );
+
+		// Three missiles, let fly for a moment so they bend, then held still for their pictures.
+		var missiles = new List<HomingMissile>();
+		for ( var i = 0; i < 3; i++ )
+			missiles.Add( HomingMissile.Launch( scene, home + new Vector3( (i - 1) * 1.6f, 1.2f + i * 0.3f, -5f ), new Vector3( i - 1, 0f, 0.3f ), null, 30f ) );
+		await Wait( 1.2f );
+		DevFlags.FreezeEnemies = true;
+		await Wait( 0.2f );
+		if ( shots is not null )
+		{
+			var hidden = new List<CanvasLayer>();
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl && cl.Visible ) { cl.Visible = false; hidden.Add( cl ); }
+			var guns = GetTree().Root.FindChildren( "*", "", true, false ).OfType<Node3D>().Where( n => n.Visible && (n is ViewModel || n is ViewModelAxe) ).ToList();
+			foreach ( var g in guns ) g.Visible = false;
+			var mid = missiles[1].GlobalPosition;
+			foreach ( var (name, from) in new[] { ("missiles", mid + new Vector3( 0.4f, 0.1f, 3.4f )), ("missile_close", mid + new Vector3( 0.9f, 0.5f, -1.5f )), ("missile_side", mid + new Vector3( 1.7f, 0.1f, 0.3f )) } )
+			{
+				var at = new Transform3D( Basis.LookingAt( (mid - from).Normalized(), Vector3.Up ), from );
+				player.CameraOverride = _ => at;
+				await Wait( 0.3f );
+				await Shot( name );
+			}
+			// One going off, for the explosion.
+			AlienBlast.Spawn( scene, mid + new Vector3( -1.6f, 0f, 0f ), 1f );
+			var blastFrom = mid + new Vector3( 0.4f, 0.3f, 4.2f );
+			var blastAt = new Transform3D( Basis.LookingAt( (mid - blastFrom).Normalized(), Vector3.Up ), blastFrom );
+			player.CameraOverride = _ => blastAt;
+			await Wait( 0.22f );
+			await Shot( "missile_blast" );
+			var mine = SeaMine.All.FirstOrDefault();
+			if ( mine is not null )
+			{
+				var ballAt = mine.GlobalPosition + Vector3.Up * 1.6f;
+				var mineFrom = ballAt + new Vector3( 2.6f, 0.2f, 2.2f );
+				var mineView = new Transform3D( Basis.LookingAt( (ballAt - mineFrom).Normalized(), Vector3.Up ), mineFrom );
+				player.CameraOverride = _ => mineView;
+				await Wait( 0.3f );
+				await Shot( "sea_mine" );
+			}
+			player.CameraOverride = null;
+			foreach ( var cl in hidden ) cl.Visible = true;
+			foreach ( var g in guns ) g.Visible = true;
+		}
+		DevFlags.FreezeEnemies = false;
+
+		// Shot down: it bursts, and the player is not hurt.
+		survivor.Health.Heal( 999f );
+		var full = survivor.Health.Current;
+		HomingMissile.ShotDown = HomingMissile.PlayerHits = 0;
+		foreach ( var m in missiles ) m.Health.OnDamage( new DamageInfo { Damage = HomingMissile.MaxHealth } );
+		await Wait( 0.4f );
+		GD.Print( $"[autotest] missiles: {HomingMissile.ShotDown} shot down, {HomingMissile.All.Count} left, player health {full:0} to {survivor.Health.Current:0}" );
+		Check( HomingMissile.ShotDown == 3 && HomingMissile.All.Count == 0 && survivor.Health.Current >= full, "missiles shot down did not burst harmlessly" );
+
+		// Left alone: it climbs, tips over, dives and hits for 15.
+		var hunter = HomingMissile.Launch( scene, home + new Vector3( 3f, 1.5f, -4f ), Vector3.Right, null, 1.5f );
+		var before = survivor.Health.Current;
+		var highest = 0f;
+		for ( var t = 0f; t < 9f && HomingMissile.PlayerHits == 0; t += 0.1f )
+		{
+			player.GlobalPosition = home + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			if ( IsInstanceValid( hunter ) ) highest = MathF.Max( highest, hunter.GlobalPosition.Y - home.Y );
+			await Wait( 0.1f );
+		}
+		await Wait( 0.2f );
+		GD.Print( $"[autotest] missile: climbed to {highest:0.0} m, hits {HomingMissile.PlayerHits}, player health {before:0} to {survivor.Health.Current:0}" );
+		Check( HomingMissile.PlayerHits == 1 && MathF.Abs( before - survivor.Health.Current - 15f ) < 0.5f, "a missile left alone did not dive on the player for 15" );
+		Check( highest > 2.5f, "the missile did not climb before it dived" );
+
+		// The mines.
+		var spawns = GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>().Select( n => n.GlobalPosition ).ToList();
+		var nearestToMiddle = SeaMine.All.Count > 0 ? SeaMine.All.Min( m => m.GlobalPosition.Flat().Length() ) : 0f;
+		var nearestToSpawn = SeaMine.All.Count > 0 && spawns.Count > 0 ? SeaMine.All.Min( m => spawns.Min( s => s.Flat().DistanceTo( m.GlobalPosition.Flat() ) ) ) : 99f;
+		GD.Print( $"[autotest] mines: {SeaMine.All.Count} laid, nearest {nearestToMiddle:0.0} m from the middle, {nearestToSpawn:0.0} m from a spawn point" );
+		Check( SeaMine.All.Count == SeaMine.PerArea, $"there are {SeaMine.All.Count} sea mines, not {SeaMine.PerArea}" );
+		Check( nearestToMiddle > 34f && nearestToSpawn > 7f, "a sea mine is in the middle or by a spawn point" );
+		if ( SeaMine.All.Count > 0 )
+		{
+			var mine = SeaMine.All[0];
+			var ballAt = mine.GlobalPosition + Vector3.Up * 1.8f;
+			var ray = Trace.Ray( player, ballAt + new Vector3( 3f, 0.3f, 0f ), ballAt, Layers.World | Layers.Creature | Layers.Gib );
+			GD.Print( $"[autotest] mine: a shot at it hits {ray.Node?.Name ?? "nothing"}" );
+			Check( ray.Node is SeaMineShell, "a shot at a sea mine does not hit its shell" );
+			survivor.Health.Heal( 999f );
+			var whole = survivor.Health.Current;
+			SeaMine.Exploded = 0;
+			player.GlobalPosition = mine.GlobalPosition + new Vector3( 0.3f, 0.4f, 0f );
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.5f );
+			GD.Print( $"[autotest] mine: walked into it: exploded {SeaMine.Exploded}, health {whole:0} to {survivor.Health.Current:0}, {SeaMine.All.Count} mines left" );
+			Check( SeaMine.Exploded == 1 && MathF.Abs( whole - survivor.Health.Current - SeaMine.Damage ) < 0.5f && SeaMine.All.Count == SeaMine.PerArea - 1, "walking into a sea mine did not set it off for 45" );
+		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	/// <summary>
 	/// Mermaids: one of each (woman and man, trident and bow) come up round the player. Pictures of each; then they
 	/// fight: the trident ones must swim in and stab, the archers keep away and their arrows must land; one is killed

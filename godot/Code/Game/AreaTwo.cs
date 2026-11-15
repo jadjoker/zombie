@@ -76,6 +76,7 @@ public static class AreaTwo
 			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
 		}, ArrivalFlat, p => SeaTerrain.HeightAt( p ) );
 		Nav.Bake( level );
+		SeaMine.Lay( level );
 
 		// The arrival pad, and the player on it looking at the wreck.
 		var arrive = ArrivalFlat with { Y = SeaTerrain.HeightAt( ArrivalFlat ) };

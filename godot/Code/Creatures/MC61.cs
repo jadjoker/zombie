@@ -23,6 +23,9 @@ public partial class MC61 : PartCreature, MC61Marker
 	public int CardRings = 2;
 	public float CardSpeed = 520f;
 	public float CardDamage = 6f;
+	/// <summary> His spin attack (it used to be rings of cards): this many homing missiles, 15 damage each. </summary>
+	public int MissilesMin = 5, MissilesMax = 8;
+	int missilesThisAttack = 6;
 	public Vector2 AttackGap = new( 2f, 4.5f );
 	public float DanceChance = 0.1f;
 	public float DanceTime = 4.5f;
@@ -754,20 +757,17 @@ public partial class MC61 : PartCreature, MC61Marker
 			{
 				velocity *= MathF.Exp( -6f * dt );
 				Move( dt );
-				var due = (int)MathF.Floor( ((float)stateTime - 0.6f) / 0.35f ) + 1;
-				while ( hasCase && cardRingsThrown < Math.Min( due, CardRings ) )
+				// Missiles out of his hand, one after another, fanned round him: they climb, then dive on the player.
+				var due = (int)MathF.Floor( ((float)stateTime - 0.5f) / 0.18f ) + 1;
+				while ( hasCase && cardRingsThrown < Math.Min( due, missilesThisAttack ) )
 				{
 					var origin = parts[Has( HandR ) ? HandR : HandL].Go.GlobalPosition;
-					var slope = 0f;
-					if ( target is not null )
-					{
-						var toTarget = target.WorldPosition + Vector3.Up * (50f - cardRingsThrown * 25f) * U.In - origin;
-						slope = toTarget.Y / MathF.Max( 100f * U.In, toTarget.Flat().Length() );
-					}
-					ThrowCards( origin, cardRingsThrown * 360f / CardsPerRing * 0.5f, slope );
+					var yaw = cardRingsThrown * MathF.Tau / missilesThisAttack + Rng.Float( -0.3f, 0.3f );
+					var outward = new Vector3( MathF.Cos( yaw ), 0f, MathF.Sin( yaw ) );
+					HomingMissile.Launch( GetTree().CurrentScene, origin + outward * 0.4f + Vector3.Up * 0.3f, outward, this );
 					cardRingsThrown++;
 				}
-				if ( stateTime > 1.9f || !hasCase ) EndAttack();
+				if ( stateTime > 0.5f + missilesThisAttack * 0.18f + 0.4f || !hasCase ) EndAttack();
 				break;
 			}
 			case Mode.Dance:
@@ -792,7 +792,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	{
 		var options = new List<Mode>();
 		if ( hasEye && CanSee( target ) ) options.Add( Mode.Beam );
-		if ( hasCase ) options.Add( Mode.Cards );
+		if ( hasCase && HomingMissile.All.Count < 9 ) options.Add( Mode.Cards );   // not while the last lot is still up
 		if ( Rng.Float() < DanceChance || (options.Count == 0 && Rng.Float() < 0.3f) )
 		{
 			Say( "*breaks out the worm*" );
@@ -811,8 +811,9 @@ public partial class MC61 : PartCreature, MC61Marker
 		}
 		else
 		{
-			Say( "Pick any card!" );
+			Say( "FETCH!" );
 			cardRingsThrown = 0;
+			missilesThisAttack = Rng.Int( MissilesMin, MissilesMax );
 			SetState( Mode.Cards );
 		}
 	}
@@ -930,18 +931,6 @@ public partial class MC61 : PartCreature, MC61Marker
 	{
 		Line = line;
 		TimeSinceLine = 0f;
-	}
-
-	void ThrowCards( Vector3 origin, float angleOffset, float slope )
-	{
-		Sfx.Play( "card_throw", origin, 0.9f, Rng.Float( 0.95f, 1.1f ) );
-		var count = Math.Max( 1, CardsPerRing );
-		for ( var i = 0; i < count; i++ )
-		{
-			var yaw = angleOffset + i * 360f / count;
-			var dir = (new Angles( 0f, yaw, 0f ).Forward + Vector3.Up * (slope + Rng.Float( -0.03f, 0.03f ))).Normalized();
-			Card.Spawn( origin + dir * 12f * U.In, dir * CardSpeed, (CardKind)Rng.Int( 0, 3 ), CardDamage, this );
-		}
 	}
 
 	void CardConfetti( Vector3 at )

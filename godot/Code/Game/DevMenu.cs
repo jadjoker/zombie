@@ -431,9 +431,9 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Enemy debug", "show hitboxes" ) ) Chip( "Show hitboxes", DevFlags.ShowHitboxes, () => DevFlags.ShowHitboxes = !DevFlags.ShowHitboxes );
 		}
 
-		if ( Sec( "Enemies", "MC61 boss", "boss mc61 float charge beam cards dance 10% hp teleport" ) )
+		if ( Sec( "Enemies", "MC-51 boss", "boss mc61 mc51 mc-51 float charge beam missiles dance 10% hp teleport" ) )
 		{
-			Section( "MC61 boss" );
+			Section( "MC-51 boss" );
 			Row( "Force move" );
 			foreach ( var mode in Enum.GetValues<MC61.Mode>() )
 			{
@@ -442,7 +442,7 @@ public partial class DevMenu : CanvasLayer
 			}
 			Row();
 			Action( "Boss to 10% HP", () => { foreach ( var b in MC61.All ) if ( !b.IsDead && b.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
-			Action( "Teleport to MC61", TeleportToBoss );
+			Action( "Teleport to MC-51", TeleportToBoss );
 		}
 
 		if ( Sec( "Enemies", "Kraken", "kraken boss dome helmet brain tentacle 10% hp slam ink spit" ) )
@@ -624,7 +624,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Junk Crab", WaveDirector.EnemyKind.Crab ),
 		new( "Sea Spider", WaveDirector.EnemyKind.Spider ),
 		new( "Rocky Shark", WaveDirector.EnemyKind.RockyShark ),
-		new( "MC61 boss", WaveDirector.EnemyKind.Boss ),
+		new( "MC-51 boss", WaveDirector.EnemyKind.Boss ),
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
 		new( "Seahorse", WaveDirector.EnemyKind.Seahorse ),
 		new( "Poseidon", WaveDirector.EnemyKind.Poseidon ),

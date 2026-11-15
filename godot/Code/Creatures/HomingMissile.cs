@@ -1,0 +1,349 @@
+using Godot;
+
+/// <summary>
+/// MC-51's homing missiles (they took the place of his cards): fat cartoon rockets in the game's colours (a green nose
+/// with his one red eye in the middle of its face and a toothy grin, a purple body with yellow bands and fins, a
+/// green and yellow flame). Launched from his hand, each drifts slowly upward for 5 to 8 seconds, then tips over and
+/// dives after the nearest player, turning only so fast (they can be dodged). The body is a chain of sections that
+/// bends toward where it is turning, wobbling a little. They have little health: shoot one and it bursts harmlessly;
+/// one that reaches a player explodes on them. Built in code (Sculpt), metres, flying along -Z.
+/// </summary>
+public partial class HomingMissile : Creature
+{
+	public static readonly List<HomingMissile> All = new();
+
+	public float RiseSpeed = 1.3f;
+	public float DiveSpeed = 11f;
+	public float TurnRate = 2.1f;          // radians per second while diving
+	public float Damage = 15f;
+	public float HitRadius = 1f;           // from a player's middle
+	/// <summary> How long it climbs before it dives (5 to 8 seconds unless set). </summary>
+	public float RiseTime = -1f;
+	public const float MaxHealth = 70f;
+	/// <summary> Tests: how many have hit a player, and how many were shot down. </summary>
+	public static int PlayerHits, ShotDown;
+
+	static readonly Color Nose = new( 0.3f, 0.9f, 0.3f );
+	static readonly Color Body = new( 0.5f, 0.18f, 0.8f );
+	static readonly Color Trim = new( 1f, 0.82f, 0.15f );
+	static readonly Color Iris = new( 1f, 0.12f, 0.08f );
+
+	readonly List<Node3D> joints = new();
+	Node3D flame;
+	Node3D owner;
+	Vector3 velocity;
+	Vector3 heading = Vector3.Up;      // where it points
+	Vector3 trail = Vector3.Up;        // where it was pointing a moment ago (the bend follows the difference)
+	Vector3 drift;
+	TimeSince age;
+	float phase;
+	bool diving, done;
+
+	public static HomingMissile Launch( Node parent, Vector3 from, Vector3 outward, Node3D owner, float riseTime = -1f )
+	{
+		var m = new HomingMissile { Name = "Missile", owner = owner, RiseTime = riseTime };
+		m.drift = outward.Flat().SafeNormal() * Rng.Float( 1.2f, 2.4f );
+		return Place( m, parent, from, MaxHealth );
+	}
+
+	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+
+	protected override void Setup()
+	{
+		BeginSetup( MaxHealth );
+		if ( RiseTime <= 0f ) RiseTime = Rng.Float( 5f, 8f );
+		phase = Rng.Float( 0f, MathF.Tau );
+		age = 0f;
+		heading = trail = (Vector3.Up + drift * 0.3f).Normalized();
+		Build();
+		Sfx.Play( "missile_launch", GlobalPosition, 0.7f, Rng.Float( 0.9f, 1.15f ) );
+	}
+
+	void Build()
+	{
+		var nose = Sculpt.Paint( Nose, 0.35f, 0.1f );
+		var body = Sculpt.Paint( Body, 0.3f, 0.3f );
+		var trim = Sculpt.Paint( Trim, 0.3f, 0.4f );
+		var white = Sculpt.Paint( new Color( 0.97f, 0.97f, 0.95f ), 0.25f );
+		var dark = Sculpt.Paint( new Color( 0.05f, 0.03f, 0.08f ), 0.4f );
+		var iris = Sculpt.Glow( Iris, 2.2f );
+		const float r = 0.17f;
+
+		// The nose section (the root): a fat rounded head with the face on its front.
+		var head = Sculpt.Joint( this, Vector3.Zero, "Nose" );
+		joints.Add( head );
+		Sculpt.Blob( head, new Vector3( 0f, 0f, -0.12f ), new Vector3( r * 2.3f, r * 2.3f, 0.5f ), nose );
+		Sculpt.Blob( head, new Vector3( 0f, 0f, 0.02f ), new Vector3( r * 2.35f, r * 2.35f, 0.16f ), trim );   // the collar
+		// His one eye, in the middle of its face: white ball, red iris, black pupil, an angry brow over it.
+		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.33f ), new Vector3( 0.15f, 0.15f, 0.1f ), white );
+		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.375f ), new Vector3( 0.085f, 0.085f, 0.03f ), iris );
+		Sculpt.Blob( head, new Vector3( 0f, 0.035f, -0.39f ), new Vector3( 0.04f, 0.04f, 0.015f ), dark );
+		foreach ( var s in new[] { -1f, 1f } )
+			Sculpt.Block( head, new Vector3( s * 0.04f, 0.115f, -0.34f ), new Vector3( 0.1f, 0.03f, 0.05f ), dark, new Basis( Vector3.Back, -s * 0.45f ) );
+		// The grin: a dark mouth with a row of teeth.
+		Sculpt.Blob( head, new Vector3( 0f, -0.08f, -0.3f ), new Vector3( 0.2f, 0.07f, 0.1f ), dark );
+		for ( var k = 0; k < 5; k++ )
+			Sculpt.Block( head, new Vector3( (k - 2) * 0.034f, -0.075f, -0.345f + MathF.Abs( k - 2 ) * 0.012f ), new Vector3( 0.028f, 0.04f, 0.02f ), white );
+
+		// Three body sections behind it, each a joint that bends, then the tail with its fins and flame.
+		var parent = head;
+		for ( var i = 0; i < 3; i++ )
+		{
+			var joint = Sculpt.Joint( parent, new Vector3( 0f, 0f, i == 0 ? 0.1f : 0.22f ), $"Section {i}" );
+			joints.Add( joint );
+			Sculpt.Limb( joint, new Vector3( 0f, 0f, -0.02f ), new Vector3( 0f, 0f, 0.24f ), r, r * (i == 2 ? 0.8f : 1f), body );
+			Sculpt.Limb( joint, new Vector3( 0f, 0f, 0.19f ), new Vector3( 0f, 0f, 0.235f ), r * 1.06f, r * 1.06f, i == 1 ? nose : trim );   // a band
+			parent = joint;
+		}
+		for ( var k = 0; k < 4; k++ )   // fins
+		{
+			var turn = new Basis( Vector3.Back, k * MathF.PI * 0.5f + MathF.PI * 0.25f );
+			Sculpt.Block( parent, turn * new Vector3( 0f, r + 0.08f, 0.16f ), new Vector3( 0.03f, 0.22f, 0.22f ), trim, turn * new Basis( Vector3.Right, -0.5f ) );
+		}
+		Sculpt.Limb( parent, new Vector3( 0f, 0f, 0.22f ), new Vector3( 0f, 0f, 0.3f ), r * 0.7f, r * 0.9f, dark, "Nozzle" );
+		flame = Sculpt.Joint( parent, new Vector3( 0f, 0f, 0.3f ), "Flame" );
+		Sculpt.Cone( flame, Vector3.Zero, new Vector3( 0f, 0f, 0.5f ), r * 0.8f, Sculpt.Glow( Trim, 3f ) );
+		Sculpt.Cone( flame, Vector3.Zero, new Vector3( 0f, 0f, 0.32f ), r * 0.5f, Sculpt.Glow( new Color( 0.6f, 1f, 0.5f ), 4f ) );
+		flame.AddChild( new OmniLight3D { LightColor = new Color( 0.7f, 1f, 0.4f ), LightEnergy = 1.2f, OmniRange = 3f, ShadowEnabled = false } );
+
+		var part = CreaturePart.Create( this, 0, "Missile", 0.3f );
+		AddChild( part );
+		part.Position = new Vector3( 0f, 0f, 0.15f );
+		var tailPart = CreaturePart.Create( this, 1, "Missile Tail", 0.24f );
+		AddChild( tailPart );
+		tailPart.Position = new Vector3( 0f, 0f, 0.6f );
+	}
+
+	public override void _Process( double delta )
+	{
+		if ( health is null || joints.Count == 0 || done ) return;
+		var dt = (float)delta;
+		var t = (float)age + phase;
+		// The flame flickers; the body bends toward its turn and wobbles like a cartoon rocket.
+		flame.Scale = new Vector3( 1f, 1f, 0.8f + MathF.Sin( t * 31f ) * 0.2f + MathF.Sin( t * 47f ) * 0.12f );
+		trail = trail.Slerp( heading, 1f - MathF.Exp( -2.2f * dt ) ).SafeNormal();
+		if ( trail == Vector3.Zero ) trail = heading;
+		var local = GlobalBasis.Inverse() * trail;
+		var yaw = MathX.Clamp( MathF.Atan2( -local.X, -local.Z ), -0.5f, 0.5f );
+		var pitch = MathX.Clamp( MathF.Atan2( local.Y, MathF.Sqrt( local.X * local.X + local.Z * local.Z ) ), -0.5f, 0.5f );
+		for ( var i = 1; i < joints.Count; i++ )
+			joints[i].Rotation = new Vector3( pitch * 0.75f + MathF.Sin( t * 7f - i * 1.1f ) * 0.07f, yaw * 0.75f + MathF.Cos( t * 6f - i * 1.3f ) * 0.07f, 0f );
+		if ( DevFlags.FreezeEnemies ) return;
+
+		var prey = PlayerSurvivor.FindNearestAlive( GlobalPosition );
+		if ( !diving )
+		{
+			// Climbing slowly, drifting out from him and weaving, nose up. Not through a roof or out of the sea.
+			var rise = RiseSpeed;
+			var roof = Trace.Ray( this, GlobalPosition, GlobalPosition + Vector3.Up * 2f, Layers.World );
+			if ( roof.Hit || (Sea.SurfaceY is float top && GlobalPosition.Y > top - 2f) ) rise = 0f;
+			drift *= MathF.Exp( -0.5f * dt );
+			var weave = new Vector3( MathF.Sin( t * 1.7f ), 0f, MathF.Cos( t * 1.3f ) ) * 0.5f;
+			velocity = velocity.Lerp( Vector3.Up * rise + drift + weave, 1f - MathF.Exp( -3f * dt ) );
+			var wantUp = (Vector3.Up + (drift + weave) * 0.35f).Normalized();
+			heading = heading.Slerp( wantUp, 1f - MathF.Exp( -3f * dt ) ).SafeNormal();
+			if ( age > RiseTime && prey is not null ) { diving = true; Sfx.Play( "missile_launch", GlobalPosition, 0.8f, 1.5f ); }
+		}
+		else
+		{
+			// Tipped over and after them: turning only so fast, speeding up.
+			if ( prey is not null )
+			{
+				var want = (prey.WorldPosition + Vector3.Up * 1f - GlobalPosition).SafeNormal();
+				var angle = heading.AngleTo( want );
+				if ( angle > 0.001f ) heading = heading.Slerp( want, MathF.Min( 1f, TurnRate * dt / angle ) ).SafeNormal();
+			}
+			var speed = MathX.Lerp( velocity.Length(), DiveSpeed, 1f - MathF.Exp( -1.6f * dt ) );
+			velocity = heading * speed;
+			if ( age > RiseTime + 9f ) { Explode( false ); return; }   // lost: it gives up
+		}
+		if ( heading == Vector3.Zero ) heading = Vector3.Up;
+		GlobalBasis = Shapes.LookAt( heading );
+
+		var from = GlobalPosition;
+		var to = from + velocity * dt;
+		foreach ( var player in PlayerSurvivor.All )
+		{
+			if ( !player.IsAlive ) continue;
+			var middle = player.WorldPosition + Vector3.Up * 1f;
+			if ( Geometry3D.GetClosestPointToSegment( middle, from, to + heading * 0.4f ).DistanceTo( middle ) > HitRadius ) continue;
+			GlobalPosition = to;
+			Explode( false, player );
+			return;
+		}
+		if ( diving )
+		{
+			var wall = Trace.Ray( this, from, to + heading * 0.4f, Layers.World );
+			if ( wall.Hit ) { GlobalPosition = wall.HitPosition - heading * 0.2f; Explode( false ); return; }
+		}
+		GlobalPosition = Sculpt.InBounds( to );
+		if ( TridentBolt.UnderWater( to ) && Rng.Float() < 0.5f )
+			WaterBubble.Create( joints[^1].GlobalPosition + Rng.InSphere( 0.08f ), Rng.Float( 0.15f, 0.4f ), 0f, Rng.Float( 0.5f, 1.1f ) );
+	}
+
+	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	{
+		if ( IsDead || done ) return;
+		NoteShot( direction, position, origin );
+		velocity += direction.SafeNormal() * 1.5f;
+		var wasAlive = !IsDead;
+		health.OnDamage( new DamageInfo { Damage = damage, Position = position, Origin = origin, Attacker = shooter } );
+		if ( wasAlive && shooter is not null ) shooter.RewardHit( IsDead, false, scoreHit );
+	}
+
+	/// <summary> Shot out of the sky: it bursts where it is, hurting no one. </summary>
+	protected override void OnDied()
+	{
+		if ( done ) return;
+		ShotDown++;
+		Explode( true );
+	}
+
+	void Explode( bool shotDown, PlayerSurvivor direct = null )
+	{
+		if ( done ) return;
+		done = true;
+		var at = GlobalPosition;
+		AlienBlast.Spawn( GetTree().CurrentScene, at, 1f );
+		if ( !shotDown )
+			foreach ( var player in PlayerSurvivor.All )
+			{
+				if ( !player.IsAlive ) continue;
+				var hit = player == direct || (player.WorldPosition + Vector3.Up * 1f).DistanceTo( at ) < 1.8f;
+				if ( !hit ) continue;
+				PlayerHits++;
+				player.Health?.OnDamage( new DamageInfo { Damage = Damage, Attacker = owner is not null && IsInstanceValid( owner ) ? owner : this, Position = at, Origin = at } );
+				if ( player.Controller is { } c ) c.Velocity += ((c.GlobalPosition - at).Flat().SafeNormal() + Vector3.Up * 0.4f) * 4f;
+			}
+		RaiseKilled();
+		QueueFree();
+	}
+}
+
+/// <summary>
+/// An alien explosion in green, purple and yellow: a white-yellow flash, a green fireball swelling inside a purple
+/// shell, two shock rings, a spray of glowing shards, smoke puffs that rise, a flash of light, bubbles, a boom, and a
+/// shake for players near it. `size` 1 is a missile; a sea mine is bigger.
+/// </summary>
+public partial class AlienBlast : Node3D
+{
+	const float Life = 0.9f;
+	float size = 1f;
+	TimeSince age;
+	MeshInstance3D core, ball, shell;
+	StandardMaterial3D coreM, ballM, shellM;
+	readonly List<(MeshInstance3D Mesh, StandardMaterial3D Material, float Speed)> rings = new();
+	readonly List<(MeshInstance3D Mesh, Vector3 Velocity, StandardMaterial3D Material)> shards = new();
+	readonly List<(MeshInstance3D Mesh, Vector3 Velocity, StandardMaterial3D Material)> smoke = new();
+	OmniLight3D light;
+
+	static readonly Color Yellow = new( 1f, 0.9f, 0.3f );
+	static readonly Color Green = new( 0.35f, 1f, 0.3f );
+	static readonly Color Purple = new( 0.66f, 0.22f, 1f );
+
+	public static void Spawn( Node parent, Vector3 at, float size )
+	{
+		var b = new AlienBlast { Name = "Alien Blast", size = size };
+		parent.AddChild( b );
+		b.GlobalPosition = at;
+	}
+
+	static StandardMaterial3D Fire( Color c, float energy )
+	{
+		var m = new StandardMaterial3D
+		{
+			AlbedoColor = c, Transparency = BaseMaterial3D.TransparencyEnum.Alpha, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
+			EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = energy, CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+		};
+		m.SetMeta( "no_caustics", true );
+		return m;
+	}
+
+	MeshInstance3D Add( Mesh mesh, StandardMaterial3D material )
+	{
+		var mi = new MeshInstance3D { Mesh = mesh, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		AddChild( mi );
+		return mi;
+	}
+
+	public override void _Ready()
+	{
+		age = 0f;
+		var sphere = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 20, Rings = 10 };
+		core = Add( sphere, coreM = Fire( new Color( 1f, 1f, 0.85f ), 6f ) );
+		ball = Add( sphere, ballM = Fire( Green, 3.5f ) );
+		shell = Add( sphere, shellM = Fire( Purple with { A = 0.55f }, 2.5f ) );
+		foreach ( var (colour, tilt, speed) in new[] { (Green, 0.2f, 7f), (Purple, 1.2f, 5.5f), (Yellow, -0.7f, 8.5f) } )
+		{
+			var material = Fire( colour, 4f );
+			var ring = Add( new TorusMesh { InnerRadius = 0.42f, OuterRadius = 0.5f, Rings = 28, RingSegments = 6 }, material );
+			ring.Rotation = new Vector3( tilt, Rng.Float( 0f, 3f ), tilt * 0.5f );
+			rings.Add( (ring, material, speed) );
+		}
+		var shardMesh = new PrismMesh { Size = new Vector3( 0.07f, 0.3f, 0.07f ) };
+		for ( var i = 0; i < 20; i++ )
+		{
+			var colour = i % 3 == 0 ? Yellow : i % 3 == 1 ? Green : Purple;
+			var material = Fire( colour, 5f );
+			var dir = Rng.OnSphere();
+			var shard = Add( shardMesh, material );
+			shard.Basis = new Basis( new Quaternion( Vector3.Up, MathF.Abs( dir.Dot( Vector3.Down ) ) > 0.99f ? Vector3.Up : dir ) );
+			shards.Add( (shard, dir * Rng.Float( 5f, 11f ) * size, material) );
+		}
+		for ( var i = 0; i < 7; i++ )
+		{
+			var material = Fire( (i % 2 == 0 ? Purple : Green).Darkened( 0.55f ) with { A = 0.5f }, 0.6f );
+			var puff = Add( sphere, material );
+			puff.Position = Rng.InSphere( 0.3f * size );
+			smoke.Add( (puff, Rng.InSphere( 1.2f ) * size + Vector3.Up * Rng.Float( 0.8f, 1.8f ), material) );
+		}
+		light = new OmniLight3D { LightColor = Green, LightEnergy = 6f * size, OmniRange = 9f * size, ShadowEnabled = false };
+		AddChild( light );
+
+		Sfx.Play( "missile_boom", GlobalPosition, MathX.Clamp( 0.8f + size * 0.2f, 0f, 1.3f ), Rng.Float( 0.9f, 1.1f ) / MathF.Sqrt( size ) );
+		if ( TridentBolt.UnderWater( GlobalPosition ) )
+			for ( var i = 0; i < 26; i++ ) WaterBubble.Create( GlobalPosition + Rng.InSphere( 1.1f * size ), Rng.Float( 0.3f, 1.1f ), Rng.Float( 0f, 0.15f ), Rng.Float( 0.6f, 1.6f ) );
+		foreach ( var player in PlayerSurvivor.All )
+		{
+			if ( player.Controller is not { } c ) continue;
+			var d = c.GlobalPosition.DistanceTo( GlobalPosition );
+			if ( d < 18f * size ) c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( MathX.Clamp( 1f - d / (18f * size), 0.1f, 1f ) * size );
+		}
+	}
+
+	public override void _Process( double delta )
+	{
+		var dt = (float)delta;
+		var t = MathX.Clamp( (float)age / Life, 0f, 1f );
+		var ease = 1f - (1f - t) * (1f - t);
+		// The flash is gone in a blink; the fireball swells and thins; the shell outruns it.
+		core.Scale = Vector3.One * size * MathX.Lerp( 0.6f, 2.2f, MathF.Min( 1f, t * 5f ) );
+		coreM.AlbedoColor = coreM.AlbedoColor with { A = MathX.Clamp( 1f - t * 4f, 0f, 1f ) };
+		ball.Scale = Vector3.One * size * MathX.Lerp( 0.4f, 2.6f, ease );
+		ballM.AlbedoColor = Green.Lerp( Yellow, MathX.Clamp( 1f - t * 3f, 0f, 1f ) ) with { A = MathX.Clamp( 1f - t * 1.5f, 0f, 1f ) * 0.9f };
+		shell.Scale = Vector3.One * size * MathX.Lerp( 0.5f, 3.6f, ease );
+		shellM.AlbedoColor = Purple with { A = MathX.Clamp( 1f - t * 1.2f, 0f, 1f ) * 0.5f };
+		foreach ( var (mesh, material, speed) in rings )
+		{
+			mesh.Scale = Vector3.One * size * (0.5f + ease * speed);
+			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( 1f - t * 1.3f, 0f, 1f ) };
+		}
+		for ( var i = 0; i < shards.Count; i++ )
+		{
+			var (mesh, velocity, material) = shards[i];
+			mesh.Position += velocity * dt;
+			shards[i] = (mesh, velocity * MathF.Exp( -3.5f * dt ) + Vector3.Down * 1.5f * dt, material);
+			mesh.Scale = Vector3.One * size * (1f - t * 0.7f);
+			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( 1f - t * 1.1f, 0f, 1f ) };
+		}
+		foreach ( var (mesh, velocity, material) in smoke )
+		{
+			mesh.Position += velocity * dt * (1f - t * 0.5f);
+			mesh.Scale = Vector3.One * size * MathX.Lerp( 0.5f, 1.8f, ease );
+			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( MathF.Min( t * 6f, 1f - t ), 0f, 1f ) * 0.5f };
+		}
+		light.LightEnergy = 6f * size * (1f - t) * (1f - t);
+		light.LightColor = Green.Lerp( Purple, t );
+		if ( t >= 1f ) QueueFree();
+	}
+}

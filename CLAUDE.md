@@ -123,6 +123,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   through the hole, `ShotThrough`; head and tail stay open); about a third are archers that keep away and
   shoot `MermaidArrow`s. Slower, 30% more health than a Bloober. Dev menu: Enemies, Spawn an enemy, Mermaid. Test:
   `--mermaids` (shots need a window).
+- MC-51 is MC61's name in the game (the class and files keep `MC61`). His spin attack launches 5 to 8 `HomingMissile`s
+  (`Code/Creatures/HomingMissile.cs`: bendy one-eyed rockets, 70 health, climb 5 to 8 s then dive, 15 damage) instead
+  of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`
+  after each area is built): 8 per area on the outskirts, chained and drifting, shots tink off, touching one costs 45.
+  Test: `--missiles` (shots need a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

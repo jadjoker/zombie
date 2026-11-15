@@ -173,6 +173,7 @@ public partial class TridentBolt : Node3D
 		{
 			gib.TakeHit( tr.HitPosition, direction, damage, 260f );
 		}
+		else if ( tr.Node is SeaMineShell ) SeaMine.Tink( tr.HitPosition, tr.Normal );
 		else
 		{
 			Fx.ImpactWorld( tr.HitPosition, tr.Normal );

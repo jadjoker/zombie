@@ -360,6 +360,11 @@ def build():
     s["trident_flesh"] = reverb(mix((squelch(0.45, 180, 1100, 2.0), 0.01, 1.0), (thump(0.12, 150, 60, 0.05), 0, 0.6), (blub(360, 1200, 0.07), 0.18, 0.5), (blub(300, 900, 0.06), 0.27, 0.35)), room=0.12, wet=0.1)
     s["trident_charge"] = mix((spectral(tone(1.0, 180, 720, "saw"), hi=2600) * bell(int(SR * 1.0), 0.92) * 0.5, 0, 1.0), (tone(1.0, 360, 1440) * bell(int(SR * 1.0), 0.95) * 0.35, 0, 1.0), (chime((1568, 2093), 0.05, 0.2), 0.97, 0.7))
     s["bubble_pop"] = mix((blub(900, 2600, 0.03), 0, 1.0), (click(5000, 0.012, 0.004), 0.022, 0.35))
+    # MC-51's missiles and the sea mines: a fizzing launch, a deep alien boom with a ringing tail, a tink off steel.
+    s["missile_launch"] = mix((whoosh(0.5, 500, 2600, 0.25), 0, 0.9), (spectral(noise(0.5), lo=2500, hi=8000) * bell(int(SR * 0.5), 0.2) * 0.25, 0, 1.0), (tone(0.45, 180, 520) * bell(int(SR * 0.45), 0.3) * 0.3, 0, 1.0))
+    boom = mix((thump(0.9, 110, 28, 0.55), 0, 1.0), (sweep_lp(noise(0.9), 5000, 200) * env(int(SR * 0.9), 0.002, 0.5), 0, 0.7), (zap(0.5, 1400, 160, 0.3) * 0.35, 0.02, 1.0), (chime((392, 587, 880), 0.03, 0.5), 0.05, 0.25))
+    s["missile_boom"] = reverb(drive(boom, 1.6), room=0.7, wet=0.3)
+    s["mine_tink"] = reverb(mix((click(6200, 0.03, 0.01), 0, 1.0), (tone(0.5, 3100) * env(int(SR * 0.5), 0.001, 0.3) * 0.5, 0, 1.0), (tone(0.4, 4650) * env(int(SR * 0.4), 0.001, 0.2) * 0.25, 0, 1.0)), room=0.3, wet=0.2)
     # The suit failing: a klaxon, and the suit coming back.
     siren = mix(*[(tone(0.24, 880 if i % 2 == 0 else 640, shape="square") * env(int(SR * 0.24), 0.004, 0.14), i * 0.26, 0.35) for i in range(6)], (tone(1.6, 55, 38) * bell(int(SR * 1.6), 0.3) * 0.5, 0, 1.0))
     s["suit_alarm"] = reverb(spectral(siren, lo=60, hi=3500), room=0.5, wet=0.25)

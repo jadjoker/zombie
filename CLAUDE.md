@@ -116,8 +116,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Mermaids (`Code/Creatures/Mermaid.cs`, `EnemyKind.Mermaid`): Atlantis only (`WaveDirector.MermaidChance` of each wave
   there), about player height (`Mermaid.Scale` of Poseidon's units), Poseidon's tail (`Poseidon.BuildTail`) and drifting
   skin, a coral-grown scallop shell mask with glowing eyes and spiky teeth, fin hands. Women have red, blonde or black
-  hair and shell tops; men gold helmets. Trident ones swim in and stab behind a hexagonal energy shield (part
-  `Mermaid.ShieldIndex`, blocks shots; head and tail stay open); about a third are archers that keep away and
+  hair and shell tops; men gold helmets. Trident ones swim in and stab behind a honeycomb energy shield held in
+  the left fist (part `Mermaid.ShieldIndex`; each hex cell stops shots until it shatters at `CellHealth`, then shots go
+  through the hole, `ShotThrough`; head and tail stay open); about a third are archers that keep away and
   shoot `MermaidArrow`s. Slower, 30% more health than a Bloober. Dev menu: Enemies, Spawn an enemy, Mermaid. Test:
   `--mermaids` (shots need a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`

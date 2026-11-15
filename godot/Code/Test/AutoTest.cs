@@ -2783,6 +2783,15 @@ public partial class AutoTest : Node
 			var head = m.GlobalPosition + Vector3.Up * 0.52f;
 			var headHit = Trace.Ray( player, head + front * 4f, head - front, Layers.Creature ).Node as CreaturePart;
 			Check( headHit is { Index: 0 }, $"a trident mermaid's head is not open over its shield (hit {headHit?.Name ?? "nothing"})" );
+			// Keep shooting the same spot: the cell cracks and shatters, then shots go through the hole.
+			if ( part is not null )
+			{
+				for ( var k = 0; k < 2; k++ ) part.ReceiveShot( 50f, part, -front, hit.HitPosition, from, player, true );
+				var whole = m.Health.Current;
+				part.ReceiveShot( 50f, part, -front, hit.HitPosition, from, player, true );
+				GD.Print( $"[autotest] mermaid shield: {m.CellsBroken} cell(s) broken, a shot through the hole took health {whole:0} to {m.Health.Current:0}" );
+				Check( m.CellsBroken >= 1 && m.Health.Current < whole, "a broken shield cell did not let a shot through to the mermaid" );
+			}
 		}
 
 		// The fight.

@@ -5,7 +5,8 @@ using Godot;
 /// drifting purple, blue and green skin. The women's faces, after the user's reference photo: a pale mask of scallop
 /// shells with spiked cheek flares; all have black eyes and a mouth stretched open on long needle teeth. Fin hands like the Rocky Shark's fins. Women have long
 /// red, blonde or black hair and shell tops; men are broader and wear gold helmets. Most carry a trident and swim in to
-/// stab behind futuristic energy shields that stop bullets (the head and tail are open); about one in three carries a bow and keeps its distance, shooting arrows. Slower than the other enemies, with
+/// stab behind futuristic honeycomb energy shields held in the left fist (cells stop bullets until they shatter; the
+/// head and tail are open); about one in three carries a bow and keeps its distance, shooting arrows. Slower than the other enemies, with
 /// about 30% more health. Built in code (Sculpt) in Poseidon's model units, drawn at `Scale` of them. Head is the weak spot.
 /// </summary>
 public partial class Mermaid : Creature
@@ -25,47 +26,61 @@ public partial class Mermaid : Creature
 	public float KeepAway = 13f;            // archers circle at about this distance
 	public float HeadMultiplier = 2f;
 	public float TailMultiplier = 0.7f;
-	/// <summary> The trident carriers' shield: its part index. Shots that hit it do nothing. </summary>
+	/// <summary> The trident carriers' shield: its part index. Shots that hit a whole cell (or the frame) do nothing. </summary>
 	public const int ShieldIndex = 9;
 	const float ShieldRadius = 0.95f;   // model units
-	/// <summary> Tests: shots the shield has turned. </summary>
+	/// <summary> The shield is a honeycomb of hexagon cells (this is each one's radius, model units). </summary>
+	const float CellSize = 0.19f;
+	/// <summary> What it takes to break a cell; a broken cell lets shots through to the mermaid behind it. </summary>
+	public float CellHealth = 60f;
+	/// <summary> Tests: shots the shield has stopped, and how many of its cells are broken. </summary>
 	public int Blocked { get; private set; }
+	public int CellsBroken => cells.Count( c => c.Health <= 0f );
 
 	/// <summary>
-	/// The shield's energy pane: a hexagon grid of light over a deep teal glass, brighter at the edges, rippling out
-	/// from the last hit (hit_at, in the pane's own space; hit_age from when it landed).
+	/// One cell of the shield's energy honeycomb: teal glass, bright at its rim, flashing when hit, cracking and going
+	/// red as it weakens (hurt 0 to 1), its cracks placed by its own seed.
 	/// </summary>
-	static readonly Shader ShieldShader = new()
+	static readonly Shader CellShader = new()
 	{
 		Code = @"shader_type spatial;
 render_mode cull_disabled, depth_draw_never, unshaded;
 uniform vec3 tint : source_color = vec3(0.25, 0.95, 1.0);
-uniform vec3 hit_at = vec3(0.0);
-uniform float hit_age = 9.0;
+uniform float cell_r = 0.17;
+uniform float hurt = 0.0;
+uniform float flash = 0.0;
+uniform float seed = 0.0;
 varying vec3 p;
-vec2 hex_cell(vec2 v) {
-	vec2 r = vec2(1.0, 1.732);
-	vec2 h = r * 0.5;
-	vec2 a = mod(v, r) - h;
-	vec2 b = mod(v - h, r) - h;
-	return dot(a, a) < dot(b, b) ? a : b;
-}
 void vertex() { p = VERTEX; }
 void fragment() {
-	vec2 cell = hex_cell(p.xz * 7.0);
-	float edge = smoothstep(0.36, 0.46, max(abs(cell.x) * 0.866 + abs(cell.y) * 0.5, abs(cell.y)));
-	float rim = smoothstep(0.38, 0.5, length(p.xz));
-	float pulse = 0.5 + 0.5 * sin(TIME * 3.0 - length(p.xz) * 12.0);
-	float ring = hit_age < 0.6 ? (1.0 - smoothstep(0.0, 0.05, abs(distance(p.xz, hit_at.xz) - hit_age * 1.2))) * (1.0 - hit_age / 0.6) : 0.0;
-	float flash = hit_age < 0.15 ? 1.0 - hit_age / 0.15 : 0.0;
-	ALBEDO = tint * (0.25 + edge * 0.9 + rim * 0.8 + ring * 2.0 + flash * 0.8 + pulse * 0.08);
-	ALPHA = clamp(0.18 + edge * 0.45 + rim * 0.5 + ring + flash * 0.4, 0.0, 0.95);
+	vec2 v = p.xz / cell_r;
+	float d = max(abs(v.y), abs(v.x) * 0.866 + abs(v.y) * 0.5) / 0.866;
+	float rim = smoothstep(0.72, 0.97, d);
+	float crack = 0.0;
+	for (int i = 0; i < 3; i++) {
+		float a = fract(seed * (3.1 + float(i) * 1.7)) * 3.14159;
+		vec2 n = vec2(cos(a), sin(a));
+		vec2 o = vec2(fract(seed * 5.3) - 0.5, fract(seed * 7.9) - 0.5) * 0.5;
+		crack = max(crack, (1.0 - smoothstep(0.0, 0.05, abs(dot(v - o, n)))) * step(0.25 + float(i) * 0.25, hurt));
+	}
+	float pulse = 0.5 + 0.5 * sin(TIME * 3.0 + seed * 20.0);
+	vec3 c = mix(tint, vec3(1.0, 0.4, 0.35), hurt * 0.7);
+	ALBEDO = c * (0.35 + rim * 1.2 + flash * 1.6 + pulse * 0.1) + vec3(1.0) * crack;
+	ALPHA = clamp(0.22 + rim * 0.55 + flash * 0.5 + crack * 0.7, 0.0, 0.95);
 }",
 	};
+	sealed class Cell
+	{
+		public Vector2 At;
+		public float Health;
+		public MeshInstance3D Mesh;
+		public ShaderMaterial Material;
+		public TimeSince SinceHit = 99f;
+		public bool Lit;
+	}
+	readonly List<Cell> cells = new();
 	Node3D shield;
-	MeshInstance3D pane;
-	ShaderMaterial shieldPane;
-	TimeSince sinceBlock = 99f;
+	CreaturePart guard;
 
 	/// <summary> A man (gold helmet, broad chest) rather than a woman (long hair, shell top). </summary>
 	public bool Male;
@@ -318,19 +333,34 @@ void fragment() {
 
 		if ( !Archer )
 		{
-			// A futuristic shield on the left forearm, held across the chest: a hexagon of glowing energy in a dark
-			// metal frame with gold corners, an emitter in the middle and light strips round it. It stops bullets;
-			// the head and the tail are still open.
-			shield = Sculpt.Joint( chest, new Vector3( -0.18f, 0.3f, -0.62f ), "Shield" );   // its top under the chin
-			var face = new Basis( Vector3.Right, MathF.PI * 0.5f );   // the pane's plane faces -Z
-			shieldPane = new ShaderMaterial { Shader = ShieldShader };
-			shieldPane.SetMeta( "no_caustics", true );
+			// A futuristic shield gripped in the left hand: a honeycomb of glowing energy cells in a dark metal frame
+			// with gold corners and light strips. Whole cells stop bullets; shoot one enough and it shatters, and
+			// shots go through the hole. Placed each frame at the hand (Animate), facing the way the mermaid faces.
+			shield = new Node3D { Name = "Shield" };
+			AddChild( shield );
 			const float r = ShieldRadius;
-			shield.AddChild( pane = new MeshInstance3D
-			{
-				Name = "Pane", Mesh = new CylinderMesh { TopRadius = r, BottomRadius = r, Height = 0.02f, RadialSegments = 6, Rings = 1 },
-				MaterialOverride = shieldPane, Basis = face,   // corners at 0, 60, 120... degrees, like the frame CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-			} );
+			var face = new Basis( Vector3.Right, MathF.PI * 0.5f );   // a cylinder's flat face turned to -Z
+			var cellMesh = new CylinderMesh { TopRadius = CellSize * 0.9f, BottomRadius = CellSize * 0.9f, Height = 0.02f, RadialSegments = 6, Rings = 1 };
+			var apothem = r * 0.866f - 0.05f;
+			float HexDistance( Vector2 v ) => MathF.Max( MathF.Abs( v.Y ), MathF.Abs( v.X ) * 0.866f + MathF.Abs( v.Y ) * 0.5f );
+			var seedBase = Rng.Float( 0f, 10f );
+			for ( var q = -3; q <= 3; q++ )
+				for ( var rr = -3; rr <= 3; rr++ )
+				{
+					var at = new Vector2( CellSize * 1.5f * q, CellSize * 1.7320508f * (rr + q * 0.5f) );
+					// Only cells wholly inside the frame (each corner of the cell inside the frame's hexagon).
+					var inside = true;
+					for ( var k = 0; k < 6 && inside; k++ )
+						inside = HexDistance( at + new Vector2( MathF.Cos( k * MathF.Tau / 6f ), MathF.Sin( k * MathF.Tau / 6f ) ) * CellSize ) <= apothem;
+					if ( !inside ) continue;
+					var material = new ShaderMaterial { Shader = CellShader };
+					material.SetShaderParameter( "cell_r", CellSize * 0.9f );
+					material.SetShaderParameter( "seed", (seedBase + cells.Count * 0.6180339f) % 1f );
+					material.SetMeta( "no_caustics", true );
+					var mesh = new MeshInstance3D { Name = "Cell", Mesh = cellMesh, MaterialOverride = material, Transform = new Transform3D( face, new Vector3( at.X, at.Y, 0f ) ), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+					shield.AddChild( mesh );
+					cells.Add( new Cell { At = at, Health = CellHealth, Mesh = mesh, Material = material } );
+				}
 			var frame = Sculpt.Paint( new Color( 0.12f, 0.14f, 0.18f ), 0.25f, 0.85f );
 			var light = Sculpt.Glow( new Color( 0.3f, 1f, 0.95f ), 2.6f );
 			for ( var k = 0; k < 6; k++ )
@@ -340,12 +370,12 @@ void fragment() {
 				var c0 = new Vector3( MathF.Cos( a0 ) * r, MathF.Sin( a0 ) * r, 0f );
 				var c1 = new Vector3( MathF.Cos( a1 ) * r, MathF.Sin( a1 ) * r, 0f );
 				Sculpt.Limb( shield, c0, c1, 0.06f, 0.06f, frame, "Frame" );
-				Sculpt.Limb( shield, c0 * 0.9f + new Vector3( 0f, 0f, -0.04f ), c1 * 0.9f + new Vector3( 0f, 0f, -0.04f ), 0.018f, 0.018f, light, "Strip" );
+				Sculpt.Limb( shield, c0 * 0.93f + new Vector3( 0f, 0f, -0.04f ), c1 * 0.93f + new Vector3( 0f, 0f, -0.04f ), 0.018f, 0.018f, light, "Strip" );
 				Sculpt.Blob( shield, c0, Vector3.One * 0.16f, gold );   // the corners
 			}
-			Sculpt.Blob( shield, new Vector3( 0f, 0f, -0.04f ), new Vector3( 0.3f, 0.3f, 0.12f ), frame );   // the emitter
-			Sculpt.Blob( shield, new Vector3( 0f, 0f, -0.09f ), new Vector3( 0.16f, 0.16f, 0.05f ), light );
-			Sculpt.Limb( shield, new Vector3( 0f, 0f, 0.06f ), new Vector3( 0f, -0.7f, 0.25f ), 0.05f, 0.05f, frame, "Arm Mount" );
+			// The grip behind the middle, where the hand holds it, and the emitter bar it hangs from.
+			Sculpt.Limb( shield, new Vector3( 0f, -0.25f, 0.12f ), new Vector3( 0f, 0.25f, 0.12f ), 0.05f, 0.05f, frame, "Grip" );
+			Sculpt.Limb( shield, new Vector3( 0f, -r * 0.8f, 0.05f ), new Vector3( 0f, r * 0.8f, 0.05f ), 0.025f, 0.025f, frame, "Spine" );
 		}
 
 		weapon = new Node3D { Name = Archer ? "Bow" : "Trident" };
@@ -381,8 +411,8 @@ void fragment() {
 		Hit( chest, 2, new Vector3( 0f, 0.18f, 0f ), 0.4f );
 		if ( shield is not null )
 		{
-			// The shield's own part: a thin hexagonal slab in front of the body, so shots stop on it first.
-			var guard = CreaturePart.Create( this, ShieldIndex, "Mermaid Shield", 1f );
+			// The shield's own part: a hexagon-wide slab, so shots stop on it before the body.
+			guard = CreaturePart.Create( this, ShieldIndex, "Mermaid Shield", 1f );
 			guard.Collider.Shape = new CylinderShape3D { Radius = ShieldRadius * 0.95f, Height = 0.4f };   // thick enough for the physics engine at this scale
 			guard.Collider.Basis = new Basis( Vector3.Right, MathF.PI * 0.5f );
 			shield.AddChild( guard );
@@ -499,7 +529,6 @@ void fragment() {
 	{
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
-		shieldPane?.SetShaderParameter( "hit_age", (float)sinceBlock );
 		handSkin.SetShaderParameter( "flash", flash );
 		skin.SetShaderParameter( "centre", body.GlobalPosition );
 		// Leaning into the swim; upright to fight.
@@ -539,9 +568,9 @@ void fragment() {
 		}
 		else
 		{
-			// The shield arm across the chest, forearm up behind the shield.
-			lArm = new Vector3( 0.9f, 0f, -0.15f + MathF.Sin( t * 2f ) * 0.04f );
-			lFore = new Vector3( 1.1f, 0f, 0f );
+			// The shield arm out in front, forearm forward, the shield gripped in the fist.
+			lArm = new Vector3( 0.6f, 0f, -0.12f + MathF.Sin( t * 2f ) * 0.04f );
+			lFore = new Vector3( 1.0f, 0f, 0f );
 			rArm = new Vector3( 0.1f, 0f, 0.5f );
 			rFore = new Vector3( 1.3f, 0f, 0f );
 			if ( mode == Mode.WindUp ) { rArm = rArm.Lerp( new Vector3( -0.6f, 0f, 0.45f ), u ); rFore = rFore.Lerp( new Vector3( 1.8f, 0f, 0f ), u ); }
@@ -551,6 +580,19 @@ void fragment() {
 		foreR.Rotation = foreR.Rotation.Lerp( rFore, k );
 		armL.Rotation = armL.Rotation.Lerp( lArm, k );
 		foreL.Rotation = foreL.Rotation.Lerp( lFore, k );
+
+		if ( shield is not null && IsInstanceValid( shield ) && shield.GetParent() == this )
+		{
+			// In the left fist, upright, facing the way the body faces.
+			var bodyBasis = body.GlobalBasis;
+			shield.GlobalTransform = new Transform3D( bodyBasis, handL.GlobalPosition - bodyBasis.Z.Normalized() * 0.04f );
+			foreach ( var cell in cells )
+			{
+				if ( cell.SinceHit > 0.35f ) { if ( cell.Lit ) { cell.Lit = false; cell.Material.SetShaderParameter( "flash", 0f ); } continue; }
+				cell.Lit = true;
+				cell.Material.SetShaderParameter( "flash", MathX.Clamp( 1f - (float)cell.SinceHit / 0.3f, 0f, 1f ) );
+			}
+		}
 
 		if ( !Archer && IsInstanceValid( weapon ) && weapon.GetParent() == this )
 		{
@@ -571,13 +613,32 @@ void fragment() {
 		if ( IsDead ) return;
 		if ( index == ShieldIndex && shield is not null )
 		{
-			// Turned by the shield: sparks, a ripple across the pane, a ping. No damage.
+			// Which cell it hit (in the shield's own units): a whole one takes the hit and may break; a broken one
+			// lets the shot through to whatever is behind it; the frame just stops it.
+			var local = shield.GlobalTransform.AffineInverse() * position;
+			var spot = new Vector2( local.X, local.Y );
+			Cell hit = null;
+			foreach ( var c in cells )
+				if ( c.At.DistanceTo( spot ) < CellSize * 1.05f && (hit is null || c.At.DistanceSquaredTo( spot ) < hit.At.DistanceSquaredTo( spot )) ) hit = c;
+			if ( hit is { Health: <= 0f } )
+			{
+				ShotThrough( damage, direction, position, origin, shooter, scoreHit );
+				return;
+			}
 			Blocked++;
-			sinceBlock = 0f;
-			shieldPane.SetShaderParameter( "hit_at", pane.GlobalTransform.AffineInverse() * position );
-			Fx.ImpactWorld( position, -direction.SafeNormal() );
-			Sfx.Play( "glass_hit", position, 0.6f, Rng.Float( 1.5f, 1.8f ) );
 			velocity += direction.SafeNormal() * 0.4f;
+			Fx.ImpactWorld( position, -direction.SafeNormal() );
+			if ( hit is null ) { Sfx.Play( "hit_world", position, 0.5f, 1.4f ); return; }
+			hit.Health -= damage;
+			hit.SinceHit = 0f;
+			hit.Material.SetShaderParameter( "hurt", MathX.Clamp( 1f - hit.Health / CellHealth, 0f, 1f ) );
+			if ( hit.Health > 0f ) { Sfx.Play( "glass_hit", position, 0.6f, Rng.Float( 1.5f, 1.8f ) ); return; }
+			// Shattered: the cell goes, with a burst of glowing shards.
+			hit.Mesh.Visible = false;
+			Sfx.Play( "glass_break", position, 0.7f, Rng.Float( 1.3f, 1.6f ) );
+			for ( var n = 0; n < 4; n++ )
+				gore?.ThrowBlob( position + Rng.InSphere( 0.05f ), -direction.SafeNormal() * 0.5f + Rng.InSphere( 1f ), new Color( 0.3f, 1f, 0.95f ), new Color( 0.3f, 1f, 0.95f ), Rng.Float( 0.6f, 1.2f ) );
+			if ( cells.All( c => c.Health <= 0f ) ) guard.Collider.Disabled = true;   // nothing left to stop anything
 			return;
 		}
 		NoteShot( direction, position, origin );
@@ -589,6 +650,15 @@ void fragment() {
 		gore?.GooBurst( position, -direction, GooColor, 2, 140f, 0.5f );
 		var killed = wasAlive && IsDead;
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, index == 0, scoreHit );
+	}
+
+	/// <summary> A shot through a broken shield cell: on to the first thing behind the shield (the mermaid, most likely). </summary>
+	void ShotThrough( float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	{
+		var dir = direction.SafeNormal();
+		var behind = Trace.Ray( this, position + dir * 0.01f, position + dir * 8f, Layers.Creature, new Godot.Collections.Array<Rid> { guard.GetRid() } );
+		if ( behind.Node is CreaturePart part && part != guard )
+			part.ReceiveShot( damage, part, direction, behind.HitPosition, origin, shooter, scoreHit );
 	}
 
 	protected override void OnDied()

@@ -12,13 +12,15 @@ public static class AlienReef
 	public const float ReefInner = 23f;
 	public const float ReefOuter = 33f;
 
+	// The clutter pass: no neon green on the scenery (that is the enemies' colour, their eyes and weak points). Dark,
+	// muted alien tones; only the violet and teal glow, and softly.
 	static readonly Color[] AlienColours =
 	{
-		new( 0.35f, 1f, 0.28f ),     // neon green
 		new( 0.04f, 0.04f, 0.06f ),  // black
-		new( 0.36f, 0.08f, 0.55f ),  // deep purple
-		new( 0.62f, 0.2f, 0.95f ),   // violet
-		new( 0.1f, 0.22f, 0.08f ),   // black-green
+		new( 0.26f, 0.07f, 0.4f ),   // deep purple
+		new( 0.42f, 0.16f, 0.66f ),  // dim violet
+		new( 0.07f, 0.3f, 0.33f ),   // dark teal
+		new( 0.08f, 0.14f, 0.1f ),   // black-green
 	};
 
 	public static void Add( Node3D level, List<(Vector3 Position, float Radius)> taken )
@@ -108,7 +110,45 @@ public static class AlienReef
 			var at = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
 			floaters.SpawnFern( random, at, SeaTerrain.HeightAt( at ) );
 		}
+		// Plants right in front of the camera dither away, so a kelp stalk never fills the view.
+		foreach ( var plant in level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>()
+			.Where( n => n.GetParent() is { } par && Level.Kind( par ) == "Dressing" && (Level.Kind( n ).StartsWith( "Kelp" ) || Level.Kind( n ).StartsWith( "Coral" )) ) )
+			foreach ( var mesh in plant.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+				FadeNear( mesh );
 		GD.Print( $"[reef] {reef.Count} reef pieces, {recoloured} plants recoloured alien, {floaters.Count} glow bulbs and ferns" );
+	}
+
+	/// <summary> Dithers a material away within about 2 m of the camera. </summary>
+	public static void NearFade( BaseMaterial3D m )
+	{
+		m.DistanceFadeMode = BaseMaterial3D.DistanceFadeModeEnum.PixelDither;
+		m.DistanceFadeMinDistance = 0.7f;
+		m.DistanceFadeMaxDistance = 2.2f;
+	}
+
+	static readonly Dictionary<Material, Material> faded = new();
+
+	/// <summary> Gives each of a mesh's surfaces a near-fading copy of its material (shared between meshes). </summary>
+	public static void FadeNear( MeshInstance3D mesh )
+	{
+		if ( mesh.MaterialOverride is BaseMaterial3D over )
+		{
+			if ( over.DistanceFadeMode == BaseMaterial3D.DistanceFadeModeEnum.Disabled ) mesh.MaterialOverride = Faded( over );
+			return;
+		}
+		if ( mesh.Mesh is null ) return;
+		for ( var i = 0; i < mesh.Mesh.GetSurfaceCount(); i++ )
+			if ( mesh.GetActiveMaterial( i ) is BaseMaterial3D m && m.DistanceFadeMode == BaseMaterial3D.DistanceFadeModeEnum.Disabled )
+				mesh.SetSurfaceOverrideMaterial( i, Faded( m ) );
+	}
+
+	static Material Faded( BaseMaterial3D m )
+	{
+		if ( faded.TryGetValue( m, out var f ) ) return f;
+		var copy = (BaseMaterial3D)m.Duplicate();
+		NearFade( copy );
+		faded[m] = copy;
+		return copy;
 	}
 
 	static readonly Dictionary<(StandardMaterial3D, Color), StandardMaterial3D> recolours = new();
@@ -121,13 +161,13 @@ public static class AlienReef
 		m = (StandardMaterial3D)source.Duplicate();
 		m.AlbedoColor = colour;
 		m.NextPass = null;
-		var bright = colour.Luminance > 0.3f;
-		if ( bright )
+		if ( colour.Luminance > 0.2f )
 		{
 			m.EmissionEnabled = true;
 			m.Emission = colour;
-			m.EmissionEnergyMultiplier = colour.G > 0.8f ? 0.9f : 0.6f;
+			m.EmissionEnergyMultiplier = 0.35f;
 		}
+		NearFade( m );
 		recolours[(source, colour)] = m;
 		return m;
 	}

@@ -261,21 +261,6 @@ public static class SeaTerrain
 		}
 		GD.Print( $"[terrain] moved {moved} plants and stones out of the basin" );
 
-		// More life over the new ground: copies of the kelp, coral, pebbles and boulders, out past the basin.
-		foreach ( var (prefix, count) in new[] { ("Kelp", 150), ("Coral", 80), ("Pebbles", 80), ("Boulder", 34) } )
-		{
-			var sources = dressing.Where( n => Level.Kind( n ).StartsWith( prefix ) ).ToList();
-			if ( sources.Count == 0 ) continue;
-			for ( var k = 0; k < count; k++ )
-			{
-				var source = sources[k % sources.Count];
-				var copy = (Node3D)source.Duplicate();
-				source.GetParent().AddChild( copy );
-				var at = OuterSpot( Range, 10f );
-				copy.GlobalTransform = new Transform3D( new Basis( Vector3.Up, Range( 0f, MathF.Tau ) ) * source.GlobalBasis, at with { Y = HeightAt( at ) + (source.GlobalPosition.Y - HeightAt( source.GlobalPosition )) } );
-			}
-		}
-
 		// Enemy spawn points: out in the hills round the basin, so they come over the rises.
 		var spawns = dressing.Where( n => n.IsInGroup( "spawn_point" ) ).ToList();
 		for ( var k = 0; k < spawns.Count; k++ )
@@ -285,6 +270,48 @@ public static class SeaTerrain
 			var at = new Vector3( MathF.Cos( angle ) * radius, 0f, MathF.Sin( angle ) * radius );
 			spawns[k].GlobalPosition = at with { Y = HeightAt( at ) };
 		}
+
+		// More life over the new ground (the clutter pass): kelp and coral grow in groves with open sand between them,
+		// none on the lanes the enemies take from their spawn points in to the basin, so they can be seen coming.
+		// Pebbles and boulders stay scattered (they are low).
+		var lanes = spawns.Select( n => n.GlobalPosition.Flat() ).ToList();
+		bool OnLane( Vector3 p ) => lanes.Any( s0 =>
+		{
+			var t = MathX.Clamp( p.Flat().Dot( s0 ) / MathF.Max( 0.01f, s0.LengthSquared() ), 0f, 1.2f );
+			return p.Flat().DistanceTo( s0 * t ) < 7f;
+		} );
+		var groves = new List<Vector3>();
+		for ( var tries = 0; groves.Count < 24 && tries < 400; tries++ )
+		{
+			var at = OuterSpot( Range, 14f );
+			if ( OnLane( at ) || groves.Any( g => g.DistanceTo( at ) < 16f ) ) continue;
+			groves.Add( at );
+		}
+		foreach ( var (prefix, count, grove) in new[] { ("Kelp", 110, true), ("Coral", 70, true), ("Pebbles", 80, false), ("Boulder", 34, false) } )
+		{
+			var sources = dressing.Where( n => Level.Kind( n ).StartsWith( prefix ) ).ToList();
+			if ( sources.Count == 0 ) continue;
+			for ( var k = 0; k < count; k++ )
+			{
+				var source = sources[k % sources.Count];
+				var copy = (Node3D)source.Duplicate();
+				source.GetParent().AddChild( copy );
+				Vector3 at;
+				if ( grove && groves.Count > 0 )
+				{
+					var g = groves[k % groves.Count];
+					var a0 = Range( 0f, MathF.Tau );
+					at = g + new Vector3( MathF.Cos( a0 ), 0f, MathF.Sin( a0 ) ) * MathF.Sqrt( Range( 0f, 1f ) ) * 6.5f;
+				}
+				else
+				{
+					at = OuterSpot( Range, 10f );
+					for ( var i = 0; i < 6 && OnLane( at ); i++ ) at = OuterSpot( Range, 10f );
+				}
+				copy.GlobalTransform = new Transform3D( new Basis( Vector3.Up, Range( 0f, MathF.Tau ) ) * source.GlobalBasis, at with { Y = HeightAt( at ) + (source.GlobalPosition.Y - HeightAt( source.GlobalPosition )) } );
+			}
+		}
+		GD.Print( $"[terrain] {groves.Count} groves of kelp and coral, {lanes.Count} clear lanes in from the spawn points" );
 	}
 
 	/// <summary> A random spot out past the basin and inside the rim. </summary>

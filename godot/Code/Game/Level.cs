@@ -70,6 +70,7 @@ public partial class Level : Node3D
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );
+		AddChild( new EnemyRim { Name = "Enemy Rim" } );   // enemies stand off the scenery (the clutter pass)
 		if ( settings.TryGetProperty( "stylize", out var sty ) )
 		{
 			var ink = sty.GetProperty( "ink" );

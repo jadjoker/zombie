@@ -179,13 +179,22 @@ public partial class DevMenu : CanvasLayer
 		}
 	}
 
+	float scrollCarry;
+
 	public override void _Process( double delta )
 	{
 		if ( !Allowed ) return;
 		var dt = (float)(delta / MathF.Max( 0.0001f, (float)Engine.TimeScale ));
 		// The right stick scrolls the menu.
+		// Real time (the menu slows the game), with the fraction of a pixel carried so a slow frame still moves it.
 		if ( open && Controls.IsController && Input.GetAxis( "look_up", "look_down" ) is var scrolling && MathF.Abs( scrolling ) > 0.05f )
-			scroll.ScrollVertical += (int)(scrolling * 1100f * (float)delta);
+		{
+			scrollCarry += scrolling * 1100f * dt;
+			var whole = (int)scrollCarry;
+			scrollCarry -= whole;
+			scroll.ScrollVertical += whole;
+		}
+		else scrollCarry = 0f;
 		UpdateNoclip( dt );
 		UpdateFreeCam( dt );
 		UpdatePlacing();
@@ -335,6 +344,8 @@ public partial class DevMenu : CanvasLayer
 	public string Tab => tab;
 	/// <summary> For tests: how far down the menu is scrolled. </summary>
 	public int ScrollPosition => scroll.ScrollVertical;
+	/// <summary> The tab is longer than the view (a tall window can show it all, with nothing to scroll). </summary>
+	public bool CanScroll => scroll.GetVScrollBar().MaxValue > scroll.GetVScrollBar().Page + 1;
 
 	void Rebuild()
 	{

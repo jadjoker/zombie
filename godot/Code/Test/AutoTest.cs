@@ -1194,6 +1194,7 @@ public partial class AutoTest : Node
 		Check( dressing is not null, "the water level has no sea dressing" );
 		if ( dressing is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
 		GD.Print( $"[autotest] sea: {dressing.GetChildCount()} things placed, schools {dressing.GetChildren().OfType<FishSchool>().Count()}" );
+		await WaitForNav();
 		foreach ( var name in new[] { "Anchor", "Rowboat" } )
 		{
 			var prop = dressing.GetNodeOrNull<Node3D>( name );
@@ -1528,8 +1529,12 @@ public partial class AutoTest : Node
 		DevFlags.FreezeEnemies = true;   // slams only when the test asks for one
 		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
 		DockHouse.Current?.SkipDive();
-		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
-		var stand = Nav.Closest( player, ground + new Vector3( 11f, 0f, 11f ) ) + Vector3.Up * 0.1f;
+		// The player on open sand with the Kraken 15 m off along a clear lane (solid rocks and plants stand about).
+		await WaitForNav();
+		var (open, openYaw) = OpenLane( 18f );
+		var lane = new Vector3( -MathF.Sin( MathX.Rad( openYaw ) ), 0f, -MathF.Cos( MathX.Rad( openYaw ) ) );
+		var ground = Nav.Closest( player, open + lane * 15f );
+		var stand = open + Vector3.Up * 0.1f;
 		player.GlobalPosition = stand;
 		player.Velocity = Vector3.Zero;
 		await Wait( 0.5f );
@@ -1647,8 +1652,12 @@ public partial class AutoTest : Node
 		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
 		var afflictions = survivor.Afflictions;
 		DockHouse.Current?.SkipDive();
-		var ground = Nav.Closest( player, new Vector3( -8f, 0f, 12f ) );
-		var stand = Nav.Closest( player, ground + new Vector3( 11f, 0f, 11f ) ) + Vector3.Up * 0.1f;
+		// Open sand with the Kraken 15 m off along a clear lane, once the navmesh is ready (as the slam test).
+		await WaitForNav();
+		var (open, openYaw) = OpenLane( 18f );
+		var lane = new Vector3( -MathF.Sin( MathX.Rad( openYaw ) ), 0f, -MathF.Cos( MathX.Rad( openYaw ) ) );
+		var ground = Nav.Closest( player, open + lane * 15f );
+		var stand = open + Vector3.Up * 0.1f;
 		player.GlobalPosition = stand;
 		player.Velocity = Vector3.Zero;
 		await Wait( 0.5f );
@@ -2149,6 +2158,43 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary> Controller support (issue #33), driven with injected pad events: bindings, device switching, sticks, triggers, buttons, menus, rumble. </summary>
+	/// <summary>
+	/// A navmesh spot near the basin's middle and a facing with nothing solid (world or plant) for `length` metres
+	/// ahead at knee and chest height, so a test can walk or look that way.
+	/// </summary>
+	/// <summary> The navmesh is baked on load, and the map takes a moment to sync: queries before then give nothing. </summary>
+	async Task WaitForNav()
+	{
+		for ( var waited = 0f; waited < 10f && Nav.Closest( player, player.GlobalPosition ) == Vector3.Zero; waited += 0.2f ) await Wait( 0.2f );
+	}
+
+	(Vector3 Spot, float Yaw) OpenLane( float length )
+	{
+		var space = player.GetWorld3D().DirectSpaceState;
+		foreach ( var r in new[] { 2f, 6f, 10f, 14f } )
+			for ( var i = 0; i < 12; i++ )
+			{
+				var a = i / 12f * MathF.Tau;
+				var spot = Nav.Closest( player, new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r ) );
+				for ( var k = 0; k < 16; k++ )
+				{
+					var yaw = k * 22.5f;
+					var dir = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+					var side = new Vector3( -dir.Z, 0f, dir.X ) * 0.5f;
+					var clear = true;
+					foreach ( var o in new[] { Vector3.Zero, side, -side } )
+						foreach ( var h in new[] { 0.4f, 1.2f } )
+						{
+							var from = spot + o + Vector3.Up * h;
+							var q = PhysicsRayQueryParameters3D.Create( from, from + dir * length, Layers.World | Layers.Plant );
+							if ( space.IntersectRay( q ).Count > 0 ) clear = false;
+						}
+					if ( clear ) return (spot, yaw);
+				}
+			}
+		return (Nav.Closest( player, Vector3.Zero ), 0f);
+	}
+
 	async Task PadTest()
 	{
 		DevFlags.FreezeEnemies = true;
@@ -2158,8 +2204,10 @@ public partial class AutoTest : Node
 		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
 		var weapon = inventory.Weapons[0];
 		inventory.Select( weapon, force: true );
-		player.GlobalPosition = Nav.Closest( player, new Vector3( 3f, 0f, 3f ) ) + Vector3.Up * 0.1f;
-		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		// A spot in the basin with a long clear run ahead (stations, rocks and solid plants stand about).
+		var (padStart, padYaw) = OpenLane( 14f );
+		player.GlobalPosition = padStart + Vector3.Up * 0.1f;
+		player.EyeAngles = new Angles( 0f, padYaw, 0f );
 		await Wait( 0.6f );
 		void Axis( JoyAxis axis, float value ) => Input.ParseInputEvent( new InputEventJoypadMotion { Axis = axis, AxisValue = value } );
 		void Pad( JoyButton button, bool down ) => Input.ParseInputEvent( new InputEventJoypadButton { ButtonIndex = button, Pressed = down } );
@@ -2194,8 +2242,8 @@ public partial class AutoTest : Node
 		Controls.Force( Scheme.Controller );
 
 		// Moving: the left stick, analogue, with a dead zone.
-		player.EyeAngles = new Angles( 0f, 0f, 0f );
-		player.GlobalPosition = Nav.Closest( player, player.GlobalPosition ) + Vector3.Up * 0.1f;   // the A press above made it jump
+		player.EyeAngles = new Angles( 0f, padYaw, 0f );
+		player.GlobalPosition = padStart + Vector3.Up * 0.1f;   // the A press above made it jump
 		player.Velocity = Vector3.Zero;
 		await Wait( 1.5f );
 		Axis( JoyAxis.LeftY, 0.1f );
@@ -2350,9 +2398,9 @@ public partial class AutoTest : Node
 		async Task Tap( JoyButton button ) { Pad( button, true ); await Wait( 0.12f ); Pad( button, false ); await Wait( 0.25f ); }
 
 		// ---- aim assist ----
-		var ground = Nav.Closest( player, new Vector3( 2f, 0f, 2f ) );
+		var (ground, aimYaw) = OpenLane( 16f );   // the crab goes 14 m ahead, in plain sight
 		player.GlobalPosition = ground + Vector3.Up * 0.1f;
-		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		player.EyeAngles = new Angles( 0f, aimYaw, 0f );
 		await Wait( 0.6f );
 		var forward = -player.Camera.GlobalBasis.Z.Flat().Normalized();
 		var crab = director.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, ground + forward * 14f ), ground ) as JunkCrab;
@@ -2491,7 +2539,9 @@ public partial class AutoTest : Node
 		await Wait( 0.5f );
 		Axis( JoyAxis.RightY, 0f );
 		GD.Print( $"[autotest] menu: the right stick scrolled the menu from {scrolled0} to {menu.ScrollPosition}" );
-		Check( menu.ScrollPosition > scrolled0, "the right stick does not scroll the dev menu" );
+		// Headless runs get a tall window that shows the whole tab: then there is nothing to scroll.
+		if ( menu.CanScroll ) Check( menu.ScrollPosition > scrolled0, "the right stick does not scroll the dev menu" );
+		else GD.Print( "[autotest] menu: the whole tab fits this window, so the scroll check is skipped" );
 
 		// B closes it and the game carries on.
 		await Tap( JoyButton.B );

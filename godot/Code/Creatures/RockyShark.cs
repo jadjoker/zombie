@@ -33,6 +33,8 @@ public partial class RockyShark : PartCreature
 	public float SegmentHealth = 45f;
 	public float EyeHealth = 25f;
 	public float ArmorMultiplier = 0.55f;
+	/// <summary> Blasts and shocks land on the rock plates. </summary>
+	public override float AreaDamageScale => ArmorMultiplier;
 	public float EyeMultiplier = 2.2f;
 	public float HoleMultiplier = 2.6f;
 	public float HoleRadius = 5f;

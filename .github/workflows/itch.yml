@@ -1,4 +1,5 @@
-# Publishes the Godot game to itch.io on every push (what Tools/godot/release.sh does on the Windows PC):
+# Publishes the Godot game to itch.io on every push to main (what Tools/godot/release.sh does on the Windows PC); pushes
+# to claude/** branches run the same build and tests without uploading:
 # builds, exports for Windows, smoke-tests a Linux export of the same commit (the headless wave flow: dive in,
 # enemies must come), then pushes the Windows build with butler. Players with the itch app update automatically.
 #
@@ -71,7 +72,7 @@ jobs:
         run: |
           chmod +x build/linux/RiskOfCopyright.x86_64
           failed=0
-          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51"; do
+          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51" "--terrain" "--shark" "--stations" "--pad" "--padmenus" "--slam" "--bite" "--sea"; do
             name=$(echo "$flags" | tr -d '-' | tr ' ' '_')
             log="$PWD/build/test_$name.log"
             timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > "$log.out" 2>&1 || true
@@ -91,7 +92,9 @@ jobs:
           done
           exit $failed
 
+      # Only main goes to players; a work branch is built and tested (and gets its screenshots) but not uploaded.
       - name: Push to itch.io
+        if: github.ref == 'refs/heads/main'
         env:
           BUTLER_API_KEY: ${{ secrets.BUTLER_API_KEY }}
           ITCH_TARGET: ${{ vars.ITCH_TARGET }}

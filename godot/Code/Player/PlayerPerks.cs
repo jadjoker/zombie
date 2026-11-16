@@ -182,13 +182,14 @@ public partial class PlayerPerks : Node
 	}
 
 	/// <summary>
-	/// Straight damage to a creature's health (no part multipliers: a blast or a shock does what it says), with the
-	/// points for the hit or the kill going to the shooter.
+	/// Straight damage to a creature's health (no part multipliers: a blast or a shock does what it says), less what
+	/// its armour turns (<see cref="Creature.AreaDamageScale"/>: the Rocky Shark's plates), with the points for the
+	/// hit or the kill going to the shooter.
 	/// </summary>
 	public static void Hurt( Creature creature, float damage, Vector3 where, Vector3 from, PlayerController shooter )
 	{
 		if ( creature?.Health is not { } health || creature.IsDead ) return;
-		health.OnDamage( new DamageInfo { Damage = damage, Position = where, Origin = from, Attacker = shooter } );
+		health.OnDamage( new DamageInfo { Damage = damage * creature.AreaDamageScale, Position = where, Origin = from, Attacker = shooter } );
 		shooter?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.RewardHit( creature.IsDead, false, true );
 	}
 

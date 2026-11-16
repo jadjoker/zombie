@@ -15,6 +15,10 @@ public abstract partial class Creature : Node3D, ICreature
 	public Health Health => health;
 	/// <summary> Allies are left alone by the things that hunt creatures (the jetpack ram, the ally spider). </summary>
 	public virtual bool IsEnemy => true;
+	/// <summary>
+	/// How much of a blast or shock (pickups, straight to health) gets through: 1 for most, less for armoured ones.
+	/// </summary>
+	public virtual float AreaDamageScale => 1f;
 	public event Action<Creature> Killed;
 
 	protected Health health;

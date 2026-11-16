@@ -212,7 +212,7 @@ public partial class WaveDirector : Node3D
 
 	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid }
 
-	/// <summary> Mermaids: only in Atlantis (area 3), about a third of the mix there. Health about 30% over a Bloober's. </summary>
+	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
 	public float MermaidChance = 0.5f;
 	public float MermaidBaseHealth = 208f;
@@ -395,8 +395,11 @@ public partial class WaveDirector : Node3D
 		{
 			if ( !SpawningPaused )
 			{
+				noSpotLastTry = false;
 				if ( TrySpawnEnemy() ) { toSpawn--; failedSpawns = 0; }
-				else if ( ++failedSpawns >= MaxFailedSpawns )
+				// No free spot is usually brief (players standing by every spawn point): keep trying far longer than
+				// when nothing at all can spawn (every kind for this round switched off).
+				else if ( ++failedSpawns >= (noSpotLastTry ? MaxFailedSpotTries : MaxFailedSpawns) )
 				{
 					// Nothing can spawn (every kind that fits this round is off, or no spot was found): end the
 					// wave's spawning instead of waiting forever.
@@ -510,6 +513,9 @@ public partial class WaveDirector : Node3D
 	/// <summary> Spawn tries in a row that failed; after <see cref="MaxFailedSpawns"/> the wave stops spawning. </summary>
 	int failedSpawns;
 	const int MaxFailedSpawns = 10;
+	/// <summary> Tries in a row with no free spawn spot before the wave stops spawning (about two minutes). </summary>
+	const int MaxFailedSpotTries = 120;
+	bool noSpotLastTry;
 
 	/// <summary> A kill outside the wave's own spawns (the dive's Bloobers): counts toward the current or first wave. </summary>
 	public void CreditKill()
@@ -541,7 +547,8 @@ public partial class WaveDirector : Node3D
 	public bool Spawn( EnemyKind kind )
 	{
 		if ( !Spawners.TryGetValue( kind, out var make ) || make is null ) return false;
-		if ( !TryFindSpawnPosition( out var position ) ) return false;
+		if ( !TryFindSpawnPosition( out var position ) ) { noSpotLastTry = true; return false; }
+		noSpotLastTry = false;
 		var health = kind switch
 		{
 			EnemyKind.Bloober => BlooberBaseHealth + BlooberHealthPerWave * (Wave - 1),

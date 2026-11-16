@@ -12,6 +12,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `--boss`, `--robot`, `--float`, `--devmenu`, `--stations`, `--playtest1`, `--dive-edge`, `--devclick` and `--pause` (both need a window), and
   `--waves --waveflow` (the real start of a run: dive in, enemies must come), `--sea` (the sea floor dressing). `--hitframes` (on `test_range.tscn`)
   and `--flash` need a window, so no `--headless`. `--shots <dir>` saves screenshots.
+- Tests that place the player or a creature wait for the navmesh (`WaitForNav`) and pick open sand with `OpenLane`
+  (stations, rocks and solid plants stand about the basin), never a fixed spot.
 - Under `--autotest` the wave director's spawning is paused unless `--waves` is passed, so tests spawn what they
   need. A test that sets up state the real game doesn't can hide bugs: keep `--waveflow` unassisted.
 - Checks that must hold use `Check( ok, what )` in `AutoTest.cs`, which prints `[autotest] FAIL`. The release
@@ -150,8 +152,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
-  Every push to `main` or a `claude/**` branch also publishes: `.github/workflows/itch.yml` builds, exports, runs the
-  headless wave-flow smoke test and `butler push`es the Windows build (needs the `BUTLER_API_KEY` repo secret; the
+  Every push to `main` also publishes (a push to a `claude/**` branch is built and tested, not uploaded):
+  `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (needs the `BUTLER_API_KEY` repo secret; the
   page is `Tools/godot/itch_target.txt` unless the `ITCH_TARGET` repo variable is set).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).

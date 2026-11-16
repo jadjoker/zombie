@@ -6,8 +6,8 @@ render_mode cull_disabled;
 
 uniform vec4 tint : source_color = vec4( 1.0 );
 uniform vec3 deep : source_color = vec3( 0.06, 0.24, 0.48 );
-uniform vec3 teal : source_color = vec3( 0.07, 0.55, 0.56 );
-uniform vec3 aqua : source_color = vec3( 0.42, 0.9, 0.84 );
+uniform vec3 teal : source_color = vec3( 0.1, 0.66, 0.66 );
+uniform vec3 aqua : source_color = vec3( 0.5, 0.96, 0.88 );
 uniform vec3 line_color : source_color = vec3( 1.0, 0.8, 0.2 );
 /// Size of a cell, in the mesh's own units.
 uniform float cell = 0.045;
@@ -42,9 +42,9 @@ void fragment() {
 	float edge = sqrt( d2 ) - sqrt( d1 );
 	vec3 h = hash3( id * 1.7 + 3.1 );
 	vec3 c = mix( teal, aqua, h.x * h.x );
-	c = mix( c, deep, step( 0.8, h.y ) * 0.85 );
+	c = mix( c, deep, step( 0.88, h.y ) * 0.8 );
 	// A gem: brighter in its middle, darker where it meets the leading.
-	c *= 0.72 + 0.5 * ( 1.0 - smoothstep( 0.0, 0.85, sqrt( d1 ) ) );
+	c *= 0.82 + 0.45 * ( 1.0 - smoothstep( 0.0, 0.85, sqrt( d1 ) ) );
 	float line = 1.0 - smoothstep( line_width * 0.55, line_width, edge );
 	ALBEDO = mix( c * tint.rgb, line_color * min( tint.rgb, vec3( 1.6 ) ), line );
 	METALLIC = line * 0.7;

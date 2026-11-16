@@ -13,6 +13,8 @@ uniform vec3 line_color : source_color = vec3( 1.0, 0.8, 0.2 );
 uniform float cell = 0.045;
 /// How wide the leading is, as a share of a cell.
 uniform float line_width = 0.11;
+/// How far the leading stands proud of the cells, in metres (a bump: it shades as raised, the mesh is not moved).
+uniform float bead_height = 0.014;
 
 varying vec3 local_pos;
 
@@ -46,6 +48,18 @@ void fragment() {
 	// A gem: brighter in its middle, darker where it meets the leading.
 	c *= 0.82 + 0.45 * ( 1.0 - smoothstep( 0.0, 0.85, sqrt( d1 ) ) );
 	float line = 1.0 - smoothstep( line_width * 0.55, line_width, edge );
+	// The leading is a raised bead: a rounded ridge along each seam, bump-mapped onto the normal (Mikkelsen's
+	// surface gradient), and the cell darkens where it dips under the bead.
+	float ridge = 1.0 - smoothstep( 0.0, line_width * 1.7, edge );
+	float h = ridge * ridge * ( 3.0 - 2.0 * ridge ) * bead_height;
+	vec3 dpdx = dFdx( VERTEX );
+	vec3 dpdy = dFdy( VERTEX );
+	vec3 r1 = cross( dpdy, NORMAL );
+	vec3 r2 = cross( NORMAL, dpdx );
+	float det = dot( dpdx, r1 );
+	vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
+	NORMAL = normalize( abs( det ) * NORMAL - grad );
+	c *= 1.0 - 0.35 * smoothstep( line_width * 0.8, line_width * 1.7, edge ) * ( 1.0 - smoothstep( line_width * 1.7, line_width * 2.6, edge ) );
 	ALBEDO = mix( c * tint.rgb, line_color * min( tint.rgb, vec3( 1.6 ) ), line );
 	METALLIC = line * 0.7;
 	ROUGHNESS = mix( 0.15, 0.32, line );

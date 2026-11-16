@@ -168,11 +168,12 @@ public partial class MC61 : PartCreature, MC61Marker
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 
 		var torso = AddPart( Torso, -1, rig, "Torso", Vector3.Zero, Basis.Identity, TorsoHealth );
-		Sculpt( torso, "body", GhostBody, ghost: true );
+		var bodyModel = Sculpt( torso, "body", GhostBody, ghost: true );
 		Sculpt( torso, "jacket", Tux );
 		Sculpt( torso, "bow", Tux );
 		Sculpt( torso, "front", Tux );
 		Trigger( torso, new Vector3( 0, 0, -16 ), new Vector3( 0, 0, 24 ), 19f );
+		BackSpikes( torso, bodyModel );
 
 		var head = AddPart( Head, Torso, torso.Go, "Head", HeadPivot, Basis.Identity, 0f );
 		Trigger( head, new Vector3( 0, 0, -2 ), new Vector3( 0, 0, 5 ), 19f );
@@ -226,20 +227,21 @@ public partial class MC61 : PartCreature, MC61Marker
 	{
 		var at = U.Sbox( 0f, 0f, -TailSegment );
 		var dir = SDir( new Vector3( 0f, 0f, -1f ) );
-		var length = 4.4f;
-		var radius = 3.2f;
+		// Many short links turning a little at a time, a ball at every joint, so it rolls up smoothly.
+		var length = 2.3f;
+		var radius = 3.3f;
 		var material = FxMaterials.Mosaic( 2.6f * U.In );
-		for ( var k = 0; k < 10; k++ )
+		for ( var k = 0; k < 22; k++ )
 		{
-			dir = (Ax( SLeft, 34f + k * 5f ) * dir).Normalized();
+			dir = (Ax( SLeft, 15f + k * 1.6f ) * dir).Normalized();
 			var next = at + dir * length * U.In;
-			var link = global::Sculpt.Limb( tail.Go, at, next, radius * U.In, radius * 0.86f * U.In, material, "Curl" );
+			var link = global::Sculpt.Limb( tail.Go, at, next, radius * U.In, radius * 0.94f * U.In, material, "Curl" );
 			tail.Renderers.Add( (link, Colors.White) );
 			var knuckle = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Joint" );
 			tail.Renderers.Add( (knuckle, Colors.White) );
 			at = next;
-			length *= 0.84f;
-			radius *= 0.86f;
+			length *= 0.93f;
+			radius *= 0.94f;
 		}
 		var tip = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
 		tail.Renderers.Add( (tip, Colors.White) );
@@ -382,7 +384,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		spawnDone = true;
 	}
 
-	void Sculpt( Part part, string model, Color color, bool ghost = false, StandardMaterial3D material = null )
+	Node3D Sculpt( Part part, string model, Color color, bool ghost = false, StandardMaterial3D material = null )
 	{
 		if ( !sculpts.TryGetValue( model, out var scene ) )
 			sculpts[model] = scene = GD.Load<PackedScene>( $"res://assets/models/creatures/mc61g/{model}.fbx" );
@@ -395,6 +397,52 @@ public partial class MC61 : PartCreature, MC61Marker
 			mesh.MaterialOverride = ghost ? LookMaterial( color ) : material ?? Shapes.Material( color, "smooth" );
 			if ( ghost ) styleRenderers.Add( mesh );
 			part.Renderers.Add( (mesh, ghost && Look == Surface.Mosaic ? Colors.White : color) );
+		}
+		return node;
+	}
+
+	/// <summary>
+	/// A seahorse's crest: a row of small navy spikes up the middle of his back, from below the jacket to the crown of
+	/// his head (through the suit). Found on the body model itself: at each height, the back-most point on its middle line.
+	/// </summary>
+	void BackSpikes( Part torso, Node3D model )
+	{
+		var toPart = torso.Go.GlobalTransform.AffineInverse();
+		var middle = new List<Vector3>();
+		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			if ( mesh.Mesh is null ) continue;
+			var into = toPart * mesh.GlobalTransform;
+			for ( var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++ )
+				foreach ( var v in mesh.Mesh.SurfaceGetArrays( surface )[(int)Mesh.ArrayType.Vertex].AsVector3Array() )
+				{
+					var p = into * v;
+					if ( MathF.Abs( p.X ) < 1.2f * U.In ) middle.Add( p );
+				}
+		}
+		if ( middle.Count < 10 ) return;
+		var bottom = middle.Min( p => p.Y );
+		var top = middle.Max( p => p.Y );
+		var navy = new Color( 0.08f, 0.16f, 0.42f );
+		var edge = new Color( 0.3f, 0.75f, 0.8f );
+		var material = Shapes.Material( navy, "smooth" );
+		var tipMaterial = Shapes.Material( edge, "smooth" );
+		const int count = 13;
+		for ( var k = 0; k < count; k++ )
+		{
+			// From a third of the way up (above the tail) to just short of the top of the head (the hat sits there).
+			var y = MathX.Lerp( bottom + (top - bottom) * 0.3f, top - (top - bottom) * 0.04f, k / (float)(count - 1) );
+			var band = middle.Where( p => MathF.Abs( p.Y - y ) < 1.5f * U.In ).ToList();
+			if ( band.Count == 0 ) continue;
+			var back = band.MaxBy( p => p.Z );   // his back is +Z (he faces -Z)
+			var lean = (Vector3.Back * 0.75f + Vector3.Up * (0.35f + 0.4f * k / count)).Normalized();
+			var size = 2.2f + 1.6f * MathF.Sin( MathF.PI * (k + 0.5f) / count );   // biggest in the middle of the row
+			var foot = back - lean * 0.6f * U.In;
+			var tip = back + lean * size * U.In;
+			var spike = global::Sculpt.Cone( torso.Go, foot, tip, 1.1f * U.In * (0.7f + 0.3f * size / 3.8f), material, 6, "Back Spike" );
+			torso.Renderers.Add( (spike, navy) );
+			var glint = global::Sculpt.Cone( torso.Go, back + lean * size * 0.62f * U.In, tip + lean * 0.05f * U.In, 0.42f * U.In, tipMaterial, 6, "Spike Tip" );
+			torso.Renderers.Add( (glint, edge) );
 		}
 	}
 
@@ -683,7 +731,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			if ( tail is null || tail.Gone ) break;
 			var drag = 1f + i * 0.35f;
 			// Curled like a seahorse's: each segment bends further than the one before it.
-			var targetPitch = (i == 0 ? 42f : 18f + 12f * i) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
+			var targetPitch = (i == 0 ? 38f : 16f + 8f * i) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
 			var targetRoll = -14f + MathX.Clamp( -local.Y * 0.05f, -22f, 22f ) * drag + MathF.Cos( t * 1.7f - i * 0.8f ) * (4f + 3f * i) * wiggle;
 			tailPitchVel[i] += (targetPitch - tailPitch[i]) * 38f * dt;
 			tailPitchVel[i] *= MathF.Exp( -4f * dt );

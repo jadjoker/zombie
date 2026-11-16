@@ -89,29 +89,26 @@ public static class AlienReef
 			recoloured++;
 		}
 
-		// Floating alien plants: thick round the reef and in the basin, scattered over the hills.
+		// Glow bulbs (the clutter pass): small schools drifting round the reef and over the hills, open water between
+		// them and none crowding the basin's middle where the fighting is; spiky star ferns low on the sand.
 		var floaters = new AlienFloaters { Name = "Alien Floaters" };
 		level.AddChild( floaters );
-		for ( var k = 0; k < 230; k++ )
+		for ( var k = 0; k < 16; k++ )
 		{
-			Vector3 at;
-			var roll = random.NextDouble();
-			if ( roll < 0.3 )
-			{
-				var a = Range( 0f, MathF.Tau );
-				var r = Range( ReefInner - 2f, ReefOuter + 3f );
-				at = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
-			}
-			else if ( roll < 0.45 )
-			{
-				var a = Range( 0f, MathF.Tau );
-				at = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ) * Range( 7f, ReefInner );
-			}
-			else at = new Vector3( Range( -SeaTerrain.HalfSize + 14f, SeaTerrain.HalfSize - 14f ), 0f, Range( -SeaTerrain.HalfSize + 14f, SeaTerrain.HalfSize - 14f ) );
-			at.Y = SeaTerrain.HeightAt( at ) + Range( 1.6f, 6.5f );
-			floaters.Spawn( random, at, SeaTerrain.HeightAt( at ) );
+			var a = Range( 0f, MathF.Tau );
+			var r = k < 10 ? Range( ReefInner, ReefOuter + 6f ) : Range( ReefOuter + 12f, SeaTerrain.HalfSize - 20f );
+			var centre = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
+			centre.Y = SeaTerrain.HeightAt( centre ) + Range( 2.6f, 5.5f );
+			floaters.SpawnSchool( random, centre, random.Next( 3, 7 ) );
 		}
-		GD.Print( $"[reef] {reef.Count} reef pieces, {recoloured} plants recoloured alien, {floaters.Count} floating plants" );
+		for ( var k = 0; k < 28; k++ )
+		{
+			var a = Range( 0f, MathF.Tau );
+			var r = k < 14 ? Range( ReefInner - 2f, ReefOuter + 2f ) : Range( ReefOuter + 6f, SeaTerrain.HalfSize - 16f );
+			var at = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
+			floaters.SpawnFern( random, at, SeaTerrain.HeightAt( at ) );
+		}
+		GD.Print( $"[reef] {reef.Count} reef pieces, {recoloured} plants recoloured alien, {floaters.Count} glow bulbs and ferns" );
 	}
 
 	static readonly Dictionary<(StandardMaterial3D, Color), StandardMaterial3D> recolours = new();
@@ -136,123 +133,3 @@ public static class AlienReef
 	}
 }
 
-/// <summary> Glowing alien plants that float in the water, bobbing, drifting in slow loops and turning. </summary>
-public partial class AlienFloaters : Node3D
-{
-	sealed class Floater
-	{
-		public Node3D Node;
-		public Vector3 Home;
-		public float Phase, Bob, Drift, Rate, Spin, Lift;
-		/// <summary> A star fern sitting near the sand: it only bobs a little and keeps its blades up. </summary>
-		public bool Low;
-	}
-
-	readonly List<Floater> all = new();
-	public int Count => all.Count;
-
-	static StandardMaterial3D Glow( Color c, float energy ) => new() { AlbedoColor = c, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = energy, Roughness = 0.3f, RimEnabled = true, Rim = 0.5f };
-	static StandardMaterial3D Frond( Color c ) => new() { AlbedoColor = c, Roughness = 0.45f, RimEnabled = true, Rim = 0.6f, RimTint = 0.8f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
-
-	static readonly StandardMaterial3D[] Bulbs = { Glow( new Color( 0.35f, 1f, 0.25f ), 2.4f ), Glow( new Color( 0.7f, 0.25f, 1f ), 2.2f ), Glow( new Color( 0.2f, 1f, 0.7f ), 2f ) };
-	static readonly StandardMaterial3D[] Fronds = { Frond( new Color( 0.03f, 0.03f, 0.05f ) ), Frond( new Color( 0.22f, 0.05f, 0.34f ) ), Frond( new Color( 0.05f, 0.14f, 0.05f ) ) };
-
-	/// <summary>
-	/// A floating plant at a spot. Given the ground's height there, the spiky star ferns sit just above the sand
-	/// instead (playtest: they hung too high), blades fanned upward, barely moving so they never dip into it.
-	/// </summary>
-	public void Spawn( Random random, Vector3 at, float? ground = null )
-	{
-		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
-		var bulb = Bulbs[random.Next( Bulbs.Length )];
-		var frond = Fronds[random.Next( Fronds.Length )];
-		var shape = random.Next( 3 );
-		var low = shape == 2 && ground is not null;
-		if ( low ) at.Y = ground.Value + R( 0.3f, 0.6f );
-		var node = new Node3D { Name = "Floater" };
-		AddChild( node );
-		node.GlobalPosition = at;
-		MeshInstance3D Part( Mesh mesh, Material material, Vector3 position, Basis basis )
-		{
-			var m = new MeshInstance3D { Mesh = mesh, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-			node.AddChild( m );
-			m.Transform = new Transform3D( basis, position );
-			return m;
-		}
-
-		switch ( shape )
-		{
-			case 0:
-			{
-				// Lantern: a glowing bulb with a dark cap, trailing black or purple fronds.
-				var r = R( 0.18f, 0.42f );
-				Part( new SphereMesh { Radius = r, Height = r * 2.2f, RadialSegments = 14, Rings = 8 }, bulb, Vector3.Zero, Basis.Identity );
-				Part( new SphereMesh { Radius = r * 1.15f, Height = r * 1.1f, RadialSegments = 14, Rings = 6, IsHemisphere = true }, frond, Vector3.Up * r * 0.35f, Basis.Identity );
-				for ( var i = random.Next( 3, 6 ); i > 0; i-- )
-				{
-					var len = R( 0.8f, 2.2f ) * (r / 0.3f);
-					var a = R( 0f, MathF.Tau );
-					var tilt = new Basis( new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) ), R( 0.05f, 0.35f ) );
-					Part( new CylinderMesh { TopRadius = r * 0.12f, BottomRadius = 0.01f, Height = len, RadialSegments = 5, Rings = 1 }, frond, tilt * (Vector3.Down * (r * 0.6f + len * 0.5f)), tilt );
-				}
-				break;
-			}
-			case 1:
-			{
-				// Spore cluster: a dark core studded with glowing orbs.
-				var r = R( 0.15f, 0.3f );
-				Part( new SphereMesh { Radius = r, Height = r * 2f, RadialSegments = 10, Rings = 6 }, frond, Vector3.Zero, Basis.Identity );
-				for ( var i = random.Next( 5, 10 ); i > 0; i-- )
-				{
-					var d = new Vector3( R( -1f, 1f ), R( -1f, 1f ), R( -1f, 1f ) ).Normalized();
-					var orb = R( 0.06f, 0.14f );
-					Part( new SphereMesh { Radius = orb, Height = orb * 2f, RadialSegments = 8, Rings = 4 }, bulb, d * (r + orb * 0.6f), Basis.Identity );
-				}
-				break;
-			}
-			default:
-			{
-				// Star fern: spiky black and purple blades with glowing tips, splayed from a centre.
-				for ( var i = random.Next( 5, 9 ); i > 0; i-- )
-				{
-					var dir = new Vector3( R( -1f, 1f ), low ? R( 0.25f, 1f ) : R( -0.4f, 1f ), R( -1f, 1f ) ).Normalized();
-					var len = R( 0.5f, 1.3f );
-					var basis = new Basis( new Quaternion( Vector3.Up, dir ) );
-					Part( new BoxMesh { Size = new Vector3( 0.16f, len, 0.02f ) }, frond, dir * len * 0.5f, basis );
-					Part( new SphereMesh { Radius = 0.05f, Height = 0.1f, RadialSegments = 6, Rings = 3 }, bulb, dir * len, Basis.Identity );
-				}
-				break;
-			}
-		}
-		all.Add( new Floater
-		{
-			Node = node, Home = at, Lift = at.Y - (SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f), Phase = R( 0f, MathF.Tau ),
-			Bob = low ? R( 0.03f, 0.08f ) : R( 0.25f, 0.7f ), Drift = low ? R( 0.03f, 0.1f ) : R( 0.4f, 1.6f ), Rate = R( 0.12f, 0.3f ), Spin = R( -0.25f, 0.25f ),
-			Low = low,
-		} );
-	}
-
-	/// <summary> After the ground changes (the wreck site): drops the ones where `remove` says, sets the rest at the
-	/// same height above the new ground. </summary>
-	public void Resettle( Func<Vector3, bool> remove )
-	{
-		foreach ( var f in all.ToList() )
-		{
-			if ( remove( f.Home ) ) { f.Node.QueueFree(); all.Remove( f ); continue; }
-			f.Home = f.Home with { Y = SeaTerrain.HeightAt( f.Home ) + f.Lift };
-		}
-	}
-
-	public override void _Process( double delta )
-	{
-		var t = (float)Clock.Now;
-		foreach ( var f in all )
-		{
-			var a = t * f.Rate + f.Phase;
-			var offset = new Vector3( MathF.Cos( a ) * f.Drift, MathF.Sin( a * 2.3f ) * f.Bob, MathF.Sin( a * 0.8f ) * f.Drift );
-			var tilt = f.Low ? 0.3f : 1f;
-			var sway = new Basis( Vector3.Right, MathF.Sin( a * 1.7f ) * 0.18f * tilt ) * new Basis( Vector3.Forward, MathF.Cos( a * 1.3f ) * 0.15f * tilt );
-			f.Node.GlobalTransform = new Transform3D( new Basis( Vector3.Up, t * f.Spin + f.Phase ) * sway, f.Home + offset );
-		}
-	}
-}

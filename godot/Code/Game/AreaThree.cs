@@ -69,11 +69,11 @@ public static class AreaThree
 		{
 			var random = new Random( 2121 );
 			float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
-			for ( var i = 0; i < 70; i++ )
+			for ( var i = 0; i < 10; i++ )
 			{
 				var a = R( 0f, MathF.Tau );
-				var r = MathF.Sqrt( R( 0.02f, 1f ) ) * 80f;
-				floaters.Spawn( random, new Vector3( MathF.Cos( a ) * r, R( 26f, 58f ), MathF.Sin( a ) * r ) );
+				var r = MathF.Sqrt( R( 0.05f, 1f ) ) * 78f;
+				floaters.SpawnSchool( random, new Vector3( MathF.Cos( a ) * r, R( 26f, 50f ), MathF.Sin( a ) * r ), random.Next( 3, 6 ) );
 			}
 		}
 

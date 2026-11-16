@@ -365,6 +365,12 @@ public partial class PlayerWeapon : Node
 	void HandleHit( TraceResult tr, Vector3 start, Vector3 direction )
 	{
 		var shootable = Shootables.Find( tr.Node );
+		// A glow bulb pops (its own burst and sound; no blood).
+		if ( shootable is GlowBulb bulb )
+		{
+			if ( !bulb.IsDead ) { TimeSinceHit = 0f; bulb.ReceiveShot( CurrentDamage, tr.Node, direction, tr.HitPosition, start, controller, true ); }
+			return;
+		}
 		if ( shootable is not null && shootable.ShotOwner is not null )
 		{
 			var firstPellet = hitThisShot.Add( shootable.ShotOwner );

@@ -68,6 +68,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--mc51" ) ) { await Mc51LookTest(); return; }
 		if ( args.Contains( "--pickups" ) ) { await PickupTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
+		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
+		if ( args.Contains( "--bulbs" ) ) { await BulbTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }
 

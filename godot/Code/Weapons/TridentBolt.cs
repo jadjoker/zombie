@@ -141,6 +141,14 @@ public partial class TridentBolt : Node3D
 	{
 		var direction = velocity.SafeNormal();
 		var shootable = Shootables.Find( tr.Node );
+		// A glow bulb pops and the trident flies on through it.
+		if ( shootable is GlowBulb bulb )
+		{
+			if ( IsInstanceValid( shooter ) ) bulb.ReceiveShot( damage, tr.Node, direction, tr.HitPosition, cameraStart, shooter, true );
+			if ( tr.Node is CollisionObject3D through ) exclude.Add( through.GetRid() );
+			GlobalPosition = tr.HitPosition + direction * 0.05f;
+			return;
+		}
 		if ( shootable is not null && shootable.ShotOwner is not null )
 		{
 			var wasAlive = !shootable.IsDead;

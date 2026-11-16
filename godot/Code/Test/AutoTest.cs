@@ -2961,14 +2961,18 @@ public partial class AutoTest : Node
 				await Wait( 0.3f );
 				await Shot( name );
 			}
-			// Straight at its face, for the grin.
-			var nose = missiles[1].GlobalPosition;
-			var ahead = -missiles[1].GlobalBasis.Z.Normalized();
-			var faceFrom = nose + ahead * 1.05f + Vector3.Up * 0.04f;
-			var faceAt = new Transform3D( Basis.LookingAt( (nose + ahead * 0.3f - faceFrom).Normalized(), Mathf.Abs( ahead.Y ) > 0.9f ? Vector3.Forward : Vector3.Up ), faceFrom );
-			player.CameraOverride = _ => faceAt;
-			await Wait( 0.3f );
-			await Shot( "missile_face" );
+			// Straight at its face, for the grin (any one still flying: one can go off against something first).
+			var poser = missiles.FirstOrDefault( m => IsInstanceValid( m ) && !m.IsDead );
+			if ( poser is not null )
+			{
+				var nose = poser.GlobalPosition;
+				var ahead = -poser.GlobalBasis.Z.Normalized();
+				var faceFrom = nose + ahead * 1.05f + Vector3.Up * 0.04f;
+				var faceAt = new Transform3D( Basis.LookingAt( (nose + ahead * 0.3f - faceFrom).Normalized(), Mathf.Abs( ahead.Y ) > 0.9f ? Vector3.Forward : Vector3.Up ), faceFrom );
+				player.CameraOverride = _ => faceAt;
+				await Wait( 0.3f );
+				await Shot( "missile_face" );
+			}
 			// One going off, for the explosion.
 			AlienBlast.Spawn( scene, mid + new Vector3( -1.6f, 0f, 0f ), 1f );
 			var blastFrom = mid + new Vector3( 0.4f, 0.3f, 4.2f );
@@ -2996,10 +3000,12 @@ public partial class AutoTest : Node
 		survivor.Health.Heal( 999f );
 		var full = survivor.Health.Current;
 		HomingMissile.ShotDown = HomingMissile.PlayerHits = 0;
-		foreach ( var m in missiles ) m.Health.OnDamage( new DamageInfo { Damage = HomingMissile.MaxHealth } );
+		// Only the ones still flying (one can have gone off against a rock already, and been freed).
+		var flying = missiles.Where( m => IsInstanceValid( m ) && !m.IsDead ).ToList();
+		foreach ( var m in flying ) m.Health.OnDamage( new DamageInfo { Damage = HomingMissile.MaxHealth } );
 		await Wait( 0.4f );
-		GD.Print( $"[autotest] missiles: {HomingMissile.ShotDown} shot down, {HomingMissile.All.Count} left, player health {full:0} to {survivor.Health.Current:0}" );
-		Check( HomingMissile.ShotDown == 3 && HomingMissile.All.Count == 0 && survivor.Health.Current >= full, "missiles shot down did not burst harmlessly" );
+		GD.Print( $"[autotest] missiles: {HomingMissile.ShotDown} of {flying.Count} shot down, {HomingMissile.All.Count} left, player health {full:0} to {survivor.Health.Current:0}" );
+		Check( flying.Count > 0 && HomingMissile.ShotDown == flying.Count && HomingMissile.All.Count == 0 && survivor.Health.Current >= full, "missiles shot down did not burst harmlessly" );
 
 		// Left alone: it climbs, tips over, dives and hits for 15.
 		var hunter = HomingMissile.Launch( scene, home + new Vector3( 3f, 1.5f, -4f ), Vector3.Right, null, 1.5f );

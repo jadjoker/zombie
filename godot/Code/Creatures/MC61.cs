@@ -672,7 +672,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		var feet = new List<Vector3>();
 		for ( var k = 0; k < rays; k++ )
 		{
-			var y = MathX.Lerp( -24f, -9f, k / (float)(rays - 1) ) * U.In;
+			var y = MathX.Lerp( -23f, -5f, k / (float)(rays - 1) ) * U.In;
 			var band = middle.Where( p => MathF.Abs( p.Y - y ) < 1.5f * U.In ).ToList();
 			if ( band.Count == 0 ) return;
 			feet.Add( band.MaxBy( p => p.Z ) + Vector3.Back * -0.5f * U.In );
@@ -686,7 +686,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			var u = k / (float)(rays - 1);
 			// Out behind him and fanning up toward the top; longest in the middle.
 			var dir = (Vector3.Back + Vector3.Up * MathX.Lerp( -0.15f, 0.7f, u )).Normalized();
-			var length = (5.5f + 3f * MathF.Sin( MathF.PI * u )) * U.In;
+			var length = (9f + 5f * MathF.Sin( MathF.PI * u )) * U.In;
 			tips.Add( feet[k] - root + dir * length );
 		}
 		var st = new SurfaceTool();

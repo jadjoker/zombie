@@ -2908,7 +2908,10 @@ public partial class AutoTest : Node
 			{
 				var at = new Transform3D( Basis.LookingAt( (look - from).Normalized(), Vector3.Up ), from );
 				player.CameraOverride = _ => at;
-				await Wait( 0.35f );
+				// Stand the player just behind the camera, so the eyes look into it.
+				player.GlobalPosition = Nav.Closest( player, from + (from - look).Flat().Normalized() * 0.5f ) + Vector3.Up * 0.1f;
+				player.Velocity = Vector3.Zero;
+				await Wait( 0.6f );
 				await Shot( name );
 			}
 			player.CameraOverride = null;
@@ -3410,7 +3413,7 @@ public partial class AutoTest : Node
 				// The villa nearest the arrival, from its street: doorstep, scallop, planters, the porch lantern.
 				var (door, facing, _) = Atlantis.Fronts.MinBy( f => f.Door.DistanceTo( arrival ) );
 				views = views.Append( ("atlantis_villa", door + facing * 6.5f + Vector3.Up * 2.2f, door + Vector3.Up * 2f) )
-					.Append( ("atlantis_villa_close", door + facing * 2.6f + facing.Cross( Vector3.Up ) * 1.2f + Vector3.Up * 1.8f, door + Vector3.Up * 2.1f) ).ToArray();
+					.Append( ("atlantis_villa_close", door + facing * 4.2f + Vector3.Up * 1.7f, door + Vector3.Up * 2.3f) ).ToArray();
 			}
 			foreach ( var (name, at, look) in views )
 			{

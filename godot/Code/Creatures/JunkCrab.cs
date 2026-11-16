@@ -56,7 +56,7 @@ public partial class JunkCrab : PartCreature
 	}
 
 	const float EyeRadius = 3.4f;
-	const float LidRadius = EyeRadius * 1.07f;
+	const float LidRadius = EyeRadius * 1.16f;   // room for the big almond eye under the lids
 	readonly List<CrabEye> eyes = new();
 	TimeUntil nextBlink = 2f;
 	TimeUntil nextGlance = 1f;
@@ -129,8 +129,8 @@ public partial class JunkCrab : PartCreature
 			var eye = AddPart( index, Body, body.Go, side > 0 ? "Eye L" : "Eye R", new Vector3( 11f, side * 5f, 5f ), new Angles( -10, 0, -side * 12 ).ToBasis(), EyeHealth );
 			var elbow = BuildAntenna( eye, side );
 			BuildEye( eye, side, elbow, ElbowToTip( side ) );
-			Trigger( eye, new Vector3( 0, 0, 2 ), new Vector3( 1, side * 2.5f, 10 ), 3f );
-			Trigger( eye, new Vector3( 1, side * 2.5f, 10 ), new Vector3( 8f, side * 5.5f, 13f ), 4.5f );
+			Trigger( eye, new Vector3( 0, 0, 2 ), new Vector3( 1, side * 2.5f, 12 ), 3f );
+			Trigger( eye, new Vector3( 1, side * 2.5f, 12 ), new Vector3( 12f, side * 7.5f, 15f ), 4.5f );
 		}
 
 		foreach ( var (arm, pincer, side) in new[] { (ArmL, PincerL, 1f), (ArmR, PincerR, -1f) } )
@@ -183,7 +183,7 @@ public partial class JunkCrab : PartCreature
 	static readonly Color AlienSkin = new( 0.27f, 0.72f, 0.3f ), AlienEye = new( 0.02f, 0.3f, 0.15f );
 
 	/// <summary> Where the eye sits from the antenna's elbow (s&box inches): forward, out and a little up. </summary>
-	static Vector3 ElbowToTip( float side ) => new( 7f, side * 3f, 3f );
+	static Vector3 ElbowToTip( float side ) => new( 11f, side * 5f, 3f );
 
 	/// <summary>
 	/// An ant's elbowed antenna on the eye part: a stiff shaft up from the shell, then a beaded whip bent forward from
@@ -193,7 +193,7 @@ public partial class JunkCrab : PartCreature
 	{
 		var stalk = shellColor.Lerp( Colors.Black, 0.35f );
 		var mat = Shapes.Material( stalk, "chitin" );
-		var top = U.Sbox( 1f, side * 2.5f, 10f );
+		var top = U.Sbox( 1f, side * 2.5f, 12f );
 		part.Renderers.Add( (global::Sculpt.Limb( part.Go, Vector3.Zero, top, 0.95f * U.In, 0.6f * U.In, mat, "Shaft" ), stalk) );
 		part.Renderers.Add( (Shapes.Part( part.Go, "Socket", Vector3.Zero, Shapes.Ellipsoid( 1.8f ), stalk, skin: "chitin" ), stalk) );
 		var elbow = new Node3D { Name = "Elbow" };
@@ -234,8 +234,8 @@ public partial class JunkCrab : PartCreature
 		gaze.AddChild( pupil );
 		var almond = new Node3D { Name = "Almond", Basis = new Basis( Vector3.Back, side * 0.38f ) };
 		pupil.AddChild( almond );
-		Sphere( almond, part, new Vector3( EyeRadius * 0.6f, 0, 0 ), new Vector3( EyeRadius * 0.44f, EyeRadius * 0.64f, EyeRadius * 0.38f ), AlienEye );
-		Sphere( almond, part, new Vector3( EyeRadius * 0.95f, 0.55f * side, 0.42f ), new Vector3( 0.22f, 0.6f, 0.32f ), Colors.White );
+		Sphere( almond, part, new Vector3( EyeRadius * 0.58f, 0, 0 ), new Vector3( EyeRadius * 0.52f, EyeRadius * 0.8f, EyeRadius * 0.5f ), AlienEye );
+		Sphere( almond, part, new Vector3( EyeRadius * 1.02f, 0.85f * side, 0.6f ), new Vector3( 0.22f, 0.62f, 0.36f ), Colors.White );
 
 		var upper = Lid( ball, part, "Upper Lid", AlienSkin );
 		var lower = Lid( ball, part, "Lower Lid", AlienSkin );

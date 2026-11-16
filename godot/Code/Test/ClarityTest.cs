@@ -9,45 +9,63 @@ using Godot;
 public partial class AutoTest
 {
 	/// <summary>
-	/// The glow bulbs: about 60 to 100 out (not 230), in schools; one flees from a player who walks up to it; a shot pops
-	/// it for points; a gold one drops a pickup; popped ones grow back.
+	/// The glow bulbs and star ferns as hazards: about 60 to 100 bulbs out (not 230), in schools; walking up to one sets
+	/// it off (it swells, then bursts and hurts); a shot bursts one at once for points, and hurts an enemy beside it; a
+	/// gold one drops a pickup; walking up to a fern gets you stuck by its spikes.
 	/// </summary>
 	async Task BulbTest()
 	{
 		DevFlags.FreezeEnemies = true;
 		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
-		survivor.Health.Invulnerable = true;
 		DockHouse.Current?.SkipDive();
 		await WaitForNav();
 		await Wait( 0.5f );
+		survivor.Health.ResetTo( 1000f );
 		var level = GetTree().CurrentScene as Node3D;
-		var floaters = level.GetNodeOrNull<AlienFloaters>( "Alien Floaters" );
+		var floaters = level.FindChild( "Alien Floaters", true, false ) as AlienFloaters;
 		Check( floaters is not null, "no glow bulbs" );
 		if ( floaters is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
 		var bulbs = floaters.Bulbs.Count();
 		GD.Print( $"[autotest] bulbs: {bulbs} bulbs, {floaters.Count} with the ferns" );
 		Check( bulbs >= 40 && bulbs <= 110, $"expected about 60 to 100 bulbs, not {bulbs}" );
 
-		// Walk up to one: it shies away.
-		var target = floaters.NearestBulb( new Vector3( 28f, 0f, 0f ) );
-		var start = target.GlobalPosition;
-		var near = Nav.Closest( player, start );
-		player.GlobalPosition = near + Vector3.Up * 0.1f;
+		// Walk up to one: it swells, then bursts and hurts.
+		var target = floaters.NearestBulb( new Vector3( 28f, 0f, 0f ), gold: false );
+		var under = Nav.Closest( player, target.GlobalPosition );
+		player.GlobalPosition = under + Vector3.Up * 0.1f;
 		player.Velocity = Vector3.Zero;
-		await Wait( 2f );
-		var fled = target.GlobalPosition.DistanceTo( start );
-		var gap = target.GlobalPosition.DistanceTo( player.GlobalPosition + Vector3.Up );
-		GD.Print( $"[autotest] bulbs: one {start.DistanceTo( near ):0.0} m from the player moved {fled:0.0} m away, now {gap:0.0} m off" );
-		Check( fled > 1.5f, "a bulb did not flee from a player standing by it" );
+		// Hold it within reach (it may sit a little high over the sand).
+		var health = survivor.Health.Current;
+		var puffed = AlienFloaters.Puffed;
+		for ( var i = 0; i < 40 && AlienFloaters.Puffed == puffed; i++ )
+		{
+			player.GlobalPosition = Nav.Closest( player, target.GlobalPosition ) + Vector3.Up * 0.1f;
+			if ( target.GlobalPosition.Y - player.GlobalPosition.Y > 2.5f ) player.GlobalPosition = target.GlobalPosition + Vector3.Down * 1.6f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.05f );
+			if ( i == 12 && shots is not null )
+			{
+				var side = new Transform3D( Basis.Identity, target.GlobalPosition + new Vector3( 3.5f, 0.6f, 2.5f ) );
+				var view = side.LookingAt( target.GlobalPosition, Vector3.Up );
+				player.CameraOverride = _ => view;
+				await Shot( "hazard_bulb_puffing" );
+				player.CameraOverride = null;
+			}
+		}
+		await Wait( 0.2f );
+		GD.Print( $"[autotest] bulbs: walked up to one: burst {AlienFloaters.Puffed > puffed}, health {health:0} -> {survivor.Health.Current:0}" );
+		Check( AlienFloaters.Puffed > puffed && survivor.Health.Current < health, "walking up to a bulb did not set it off and hurt" );
+		Check( health - survivor.Health.Current <= AlienFloaters.BlastDamage * 1.5f, "a school of bulbs going off hurt more than once" );
+		survivor.Health.ResetTo( 1000f );
 
-		// Shoot one: it pops for points.
+		// Shoot one beside a crab: it bursts for points and hurts the crab.
 		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
 		var weapon = inventory.Weapons[0];
 		inventory.Select( weapon, force: true );
 		weapon.SpreadDegrees = 0f;
 		async Task<bool> ShootAt( Node3D bulb )
 		{
-			// Stand off a little (it would flee) and fire straight at it.
+			// Stand well off (close by it would go off, and the burst would hurt) and fire straight at it.
 			var spot = Nav.Closest( player, bulb.GlobalPosition + new Vector3( 9f, 0f, 0f ) );
 			player.GlobalPosition = spot + Vector3.Up * 0.1f;
 			player.Velocity = Vector3.Zero;
@@ -64,19 +82,50 @@ public partial class AutoTest
 		}
 		var points = survivor.Points;
 		var plain = floaters.NearestBulb( new Vector3( -28f, 0f, 0f ), gold: false );
+		var crab = JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, plain.GlobalPosition ) + Vector3.Up * 0.2f, 5000f );
+		await Wait( 0.6f );
+		crab.GlobalPosition = plain.GlobalPosition + Vector3.Down * 1.2f;   // held up beside it (enemies are frozen)
+		await Wait( 0.1f );
+		var crabBefore = crab.Health.Current;
 		var popped = await ShootAt( plain );
-		GD.Print( $"[autotest] bulbs: shot one, popped {popped}, points {points} -> {survivor.Points}" );
-		Check( popped && survivor.Points - points >= AlienFloaters.BulbPoints, "shooting a bulb did not pop it for points" );
+		await Wait( 0.2f );
+		GD.Print( $"[autotest] bulbs: shot one, burst {popped}, points {points} -> {survivor.Points}, the crab beside it {crabBefore:0} -> {crab.Health.Current:0}" );
+		Check( popped && survivor.Points - points >= AlienFloaters.BulbPoints, "shooting a bulb did not burst it for points" );
+		Check( crab.Health.Current < crabBefore, "a bulb shot beside an enemy did not hurt it" );
+		crab.QueueFree();
 
 		// A gold one drops a pickup.
-		var pickups = level.FindChildren( "*", "Node3D", true, false ).OfType<PerkPickup>().Count();
+		var pickups = GetTree().CurrentScene.FindChildren( "*", "Node3D", true, false ).OfType<PerkPickup>().Count();
 		var gold = floaters.NearestBulb( new Vector3( 0f, 0f, 28f ), gold: true );
 		points = survivor.Points;
 		var goldPopped = await ShootAt( gold );
 		await Wait( 0.2f );
 		var after = GetTree().CurrentScene.FindChildren( "*", "Node3D", true, false ).OfType<PerkPickup>().Count();
-		GD.Print( $"[autotest] bulbs: gold popped {goldPopped}, points +{survivor.Points - points}, pickups {pickups} -> {after}" );
+		GD.Print( $"[autotest] bulbs: gold burst {goldPopped}, points +{survivor.Points - points}, pickups {pickups} -> {after}" );
 		Check( goldPopped && after > pickups && survivor.Points - points >= AlienFloaters.GoldPoints, "a gold bulb did not pay out and drop a pickup" );
+
+		// A fern: step up to it and it sticks you.
+		survivor.Health.ResetTo( 1000f );
+		var fern = floaters.NearestFern( new Vector3( 26f, 0f, 10f ) );
+		var stabs = AlienFloaters.Stabs;
+		health = survivor.Health.Current;
+		for ( var i = 0; i < 30 && AlienFloaters.Stabs == stabs; i++ )
+		{
+			player.GlobalPosition = Nav.Closest( player, fern.GlobalPosition + new Vector3( 2.0f, 0f, 0f ) ) + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			LookAt( fern.GlobalPosition );
+			await Wait( 0.05f );
+		}
+		if ( shots is not null )
+		{
+			var view = new Transform3D( Basis.Identity, fern.GlobalPosition + new Vector3( -2.5f, 1.4f, 2.5f ) ).LookingAt( fern.GlobalPosition, Vector3.Up );
+			player.CameraOverride = _ => view;
+			await Shot( "hazard_fern_stab" );
+			player.CameraOverride = null;
+		}
+		await Wait( 0.1f );
+		GD.Print( $"[autotest] bulbs: stood by a fern ({player.GlobalPosition.DistanceTo( fern.GlobalPosition ):0.0} m): stabs {AlienFloaters.Stabs - stabs}, health {health:0} -> {survivor.Health.Current:0}" );
+		Check( AlienFloaters.Stabs > stabs && survivor.Health.Current < health, "standing by a star fern did not get the player stuck" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
@@ -161,6 +210,39 @@ public partial class AutoTest
 		await View( "a1_basin", new Vector3( 0f, 0f, 6f ), new Vector3( 0f, 0f, -30f ) );
 		await View( "a1_reef", new Vector3( 18f, 0f, 0f ), new Vector3( 60f, 0f, 10f ) );
 		await View( "a1_hills", new Vector3( -45f, 0f, 30f ), new Vector3( -80f, 0f, 60f ) );
+
+		// The backdrop: from the reef looking out and up, the light shafts and the leviathans past the rim.
+		player.GlobalPosition = Nav.Closest( player, new Vector3( 0f, 0f, 24f ) ) + Vector3.Up * 0.1f;
+		await Wait( 0.3f );
+		LookAt( player.GlobalPosition + new Vector3( 0f, 22f, 90f ) );
+		await Wait( 0.3f );
+		await Shot( "clarity_a1_backdrop" );
+		LookAt( player.GlobalPosition + new Vector3( 60f, 10f, 40f ) );
+		await Wait( 0.3f );
+		await Shot( "clarity_a1_backdrop2" );
+		if ( level.FindChild( "Backdrop", true, false ) is Node3D atmos )
+		{
+			var shaft = atmos.GetChildren().OfType<MeshInstance3D>().FirstOrDefault( m => m.Name.ToString().StartsWith( "Light Shaft" ) );
+			var whale = atmos.GetChildren().OfType<Node3D>().FirstOrDefault( m => m.Name.ToString().StartsWith( "Leviathan" ) );
+			if ( shaft is not null )
+			{
+				var foot = shaft.GlobalPosition with { Y = SeaTerrain.HeightAt( shaft.GlobalPosition ) };
+				var from = Nav.Closest( player, foot + (Vector3.Zero - foot).Flat().Normalized() * 22f );
+				player.GlobalPosition = from + Vector3.Up * 0.1f;
+				await Wait( 0.3f );
+				LookAt( shaft.GlobalPosition );
+				await Wait( 0.3f );
+				GD.Print( $"[autotest] clarity: a shaft at {shaft.GlobalPosition} seen from {from}" );
+				await Shot( "clarity_a1_shaft" );
+			}
+			if ( whale is not null )
+			{
+				LookAt( whale.GlobalPosition );
+				await Wait( 0.2f );
+				GD.Print( $"[autotest] clarity: a leviathan at {whale.GlobalPosition}, {whale.GlobalPosition.DistanceTo( player.GlobalPosition ):0} m off" );
+				await Shot( "clarity_a1_leviathan" );
+			}
+		}
 
 		// Area 2: the arrival, looking at the wreck, and along the plain.
 		AreaTwo.Go( level, player );

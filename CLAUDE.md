@@ -149,9 +149,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   it has small details on their own seed (`Atlantis.detail`, so the layout never shifts): doorsteps, scallops, planters,
   lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals
   (`AtlantisVents`). Test: `--crab` (shots need a window); `--atlantis` checks standing on an arch and a porch roof.
-- The clutter pass (visual clarity): `AlienFloaters.cs` is now glow bulbs, about 76 in drifting schools (teal, violet; 1 in
-  40 gold) plus star ferns on the sand. They flee a player within 6 m (trail of light) and drift home, pop when shot
-  (`GlowBulb`, an `IShootable` on the creature layer: 25 points, gold 150 and a pickup) and grow back after 45 s.
+- The clutter pass (visual clarity): `AlienFloaters.cs` is glow bulbs, about 80 in drifting schools (teal, violet; 1 in
+  40 gold) plus star ferns on the sand, both hazards. A bulb a player comes within 3.5 m of swells and flashes for
+  `PuffTime`, then bursts (20 to players within 3.2 m, once per school thanks to `BlastGrace`; 80 to enemies there); a
+  shot bursts it at once (`GlowBulb`, an `IShootable` on the creature layer: 25 points, gold 150 and a pickup). They grow
+  back after 45 s. None inside the wreck (too tight to step back). A star fern shudders when a player is within 2.2 m,
+  then its spikes shoot out (12 damage) and it rests 3 s.
   Scenery keeps off neon green (that is for enemies, weak points and pickups); `AlienReef.FadeNear` dithers plants away
   within 2 m of the camera. `SeaTerrain.Fit` grows kelp and coral in groves with open sand between and keeps the lanes
   from the spawn points clear. `EnemyRim.cs` puts `fx_enemy_rim.gdshader` on every enemy mesh as a material overlay (a

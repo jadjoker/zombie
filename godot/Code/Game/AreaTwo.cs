@@ -59,14 +59,7 @@ public static class AreaTwo
 
 		SeaTerrain.Build( level );
 		ShipWreck.Build( level );
-		// A few glowing plants drift through the ship too.
-		if ( level.GetNodeOrNull<AlienFloaters>( "Alien Floaters" ) is { } inside )
-		{
-			var random = new Random( 11 );
-			foreach ( var (_, local) in ShipWreck.Rooms )
-				for ( var k = 0; k < 2; k++ )
-					inside.Spawn( random, ShipWreck.World( local + new Vector3( (float)random.NextDouble() * 4f - 2f, 1.8f, (float)random.NextDouble() * 3f - 1.5f ) ) );
-		}
+		// No glow bulbs inside the ship: they burst when walked up to, and the rooms are too tight to step back.
 		Caustics.AddTo( level );
 		PlaceStations( level, new Dictionary<BuyStationKind, Vector3>
 		{

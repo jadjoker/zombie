@@ -436,12 +436,12 @@ public partial class MC61 : PartCreature, MC61Marker
 			if ( band.Count == 0 ) continue;
 			var back = band.MaxBy( p => p.Z );   // his back is +Z (he faces -Z)
 			var lean = (Vector3.Back * 0.75f + Vector3.Up * (0.35f + 0.4f * k / count)).Normalized();
-			var size = 2.2f + 1.6f * MathF.Sin( MathF.PI * (k + 0.5f) / count );   // biggest in the middle of the row
+			var size = 4.2f + 3f * MathF.Sin( MathF.PI * (k + 0.5f) / count );   // biggest in the middle of the row
 			var foot = back - lean * 0.6f * U.In;
 			var tip = back + lean * size * U.In;
-			var spike = global::Sculpt.Cone( torso.Go, foot, tip, 1.1f * U.In * (0.7f + 0.3f * size / 3.8f), material, 6, "Back Spike" );
+			var spike = global::Sculpt.Cone( torso.Go, foot, tip, 1.7f * U.In * (0.7f + 0.3f * size / 7.2f), material, 6, "Back Spike" );
 			torso.Renderers.Add( (spike, navy) );
-			var glint = global::Sculpt.Cone( torso.Go, back + lean * size * 0.62f * U.In, tip + lean * 0.05f * U.In, 0.42f * U.In, tipMaterial, 6, "Spike Tip" );
+			var glint = global::Sculpt.Cone( torso.Go, back + lean * size * 0.62f * U.In, tip + lean * 0.05f * U.In, 0.6f * U.In, tipMaterial, 6, "Spike Tip" );
 			torso.Renderers.Add( (glint, edge) );
 		}
 	}

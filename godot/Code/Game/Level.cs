@@ -67,6 +67,7 @@ public partial class Level : Node3D
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
 		if ( water && SeaTerrain.Active ) SeaMine.Lay( this );
+		if ( water && SeaTerrain.Active ) Atmosphere.Add( this );   // light shafts and far leviathans (the clutter pass)
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );

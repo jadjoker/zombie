@@ -196,7 +196,7 @@ public partial class MarineSnow : GpuParticles3D
 {
 	public override void _Ready()
 	{
-		Amount = 1500;
+		Amount = 1100;
 		Lifetime = 12f;
 		Preprocess = 12f;
 		VisibilityAabb = new Aabb( -Vector3.One * 15f, Vector3.One * 30f );
@@ -218,15 +218,28 @@ public partial class MarineSnow : GpuParticles3D
 		DrawPass1 = new QuadMesh
 		{
 			Size = Vector2.One * 0.6f * U.In * 2f,
+			// Round, soft flakes (they were hard squares), and none right in the camera's face.
 			Material = new StandardMaterial3D
 			{
 				ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
 				BillboardMode = BaseMaterial3D.BillboardModeEnum.Particles,
-				AlbedoColor = new Color( 0.85f, 0.95f, 1f, 0.55f ),
+				AlbedoColor = new Color( 0.85f, 0.95f, 1f, 0.45f ),
+				AlbedoTexture = SoftDot(),
 				Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+				DistanceFadeMode = BaseMaterial3D.DistanceFadeModeEnum.PixelAlpha,
+				DistanceFadeMinDistance = 0.4f,
+				DistanceFadeMaxDistance = 1.6f,
 			},
 		};
 		LocalCoords = false;
+	}
+
+	static Texture2D SoftDot()
+	{
+		var gradient = new Gradient();
+		gradient.SetColor( 0, Colors.White );
+		gradient.SetColor( 1, new Color( 1f, 1f, 1f, 0f ) );
+		return new GradientTexture2D { Gradient = gradient, Fill = GradientTexture2D.FillEnum.Radial, FillFrom = new Vector2( 0.5f, 0.5f ), FillTo = new Vector2( 0.5f, 0f ), Width = 32, Height = 32 };
 	}
 
 	public override void _Process( double delta )

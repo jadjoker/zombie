@@ -149,6 +149,16 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   it has small details on their own seed (`Atlantis.detail`, so the layout never shifts): doorsteps, scallops, planters,
   lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals
   (`AtlantisVents`). Test: `--crab` (shots need a window); `--atlantis` checks standing on an arch and a porch roof.
+- The clutter pass (visual clarity): `AlienFloaters.cs` is now glow bulbs, about 76 in drifting schools (teal, violet; 1 in
+  40 gold) plus star ferns on the sand. They flee a player within 6 m (trail of light) and drift home, pop when shot
+  (`GlowBulb`, an `IShootable` on the creature layer: 25 points, gold 150 and a pickup) and grow back after 45 s.
+  Scenery keeps off neon green (that is for enemies, weak points and pickups); `AlienReef.FadeNear` dithers plants away
+  within 2 m of the camera. `SeaTerrain.Fit` grows kelp and coral in groves with open sand between and keeps the lanes
+  from the spawn points clear. `EnemyRim.cs` puts `fx_enemy_rim.gdshader` on every enemy mesh as a material overlay (a
+  warm rim, stronger far off, and a faint silhouette through cover). `Atmosphere.cs` (node "Backdrop"): light shafts
+  (`fx_light_shaft.gdshader`) out past the basin and leviathan silhouettes (`fx_silhouette.gdshader`, no fog) circling
+  high over the rim. Marine snow is round and fades near the camera. Mood goes far away or high up, never between the
+  player and the enemies. Tests: `--bulbs`, `--clarity` (shots need a window: before and after views of each area).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

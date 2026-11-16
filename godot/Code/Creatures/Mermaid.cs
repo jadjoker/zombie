@@ -452,6 +452,9 @@ void fragment() {
 				var spot = prey.WorldPosition + new Vector3( MathF.Cos( orbit ), 0f, MathF.Sin( orbit ) ) * KeepAway;
 				var toSpot = (spot - GlobalPosition).Flat();
 				if ( mode == Mode.Swim ) wish = toSpot.Length() > 1f ? toSpot.Normalized() * Speed : Vector3.Zero;
+				// Too close (the spot can lie across the player): go round, backing away, never through them.
+				if ( mode == Mode.Swim && distance < KeepAway * 0.7f )
+					wish = (toSpot.Normalized() - dir * 1.6f).Normalized() * Speed;
 				if ( mode == Mode.Swim && sinceAttack > ShootEvery && distance < KeepAway * 2.2f ) SetMode( Mode.Draw );
 				if ( mode == Mode.Draw && inMode > 0.7f )
 				{

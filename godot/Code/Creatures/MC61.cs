@@ -93,7 +93,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	// Layout numbers from Tools/blender/mc61_ghost.py (s&box local, inches).
 	static readonly Vector3 HeadPivot = new( 0, 0, 38f );
 	// His seahorse head (smaller than the old ghost's): the one eye on the brow above the snout, the hat on the coronet.
-	static readonly Vector3 EyeFromHead = new( 7.6f, 0, 6.8f );
+	static readonly Vector3 EyeFromHead = new( 10.4f, 0, 6.2f );   // out in front of the skull, under the brow
 	const float EyeScale = 0.38f;
 	static readonly Vector3 HatFromHead = new( -1.5f, 0, 14.5f );
 	// s&box quaternion (-0.16307, -0.19920, -0.61210, 0.74771) with its axis turned into Godot space.
@@ -446,7 +446,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		head.Go.AddChild( holder );
 		Put( head, holder, "Skull", Lump( S( 0.5f, 0f, 4f ), 9.5f, 7f, 8.5f ) );
 		Put( head, holder, "Cheek", Lump( S( 3f, 0f, -2.5f ), 7.5f, 7.6f, 5.5f ) );
-		Put( head, holder, "Brow", Lump( S( 5f, 0f, 8f ), 5.5f, 6f, 3.5f ) );
+		Put( head, holder, "Brow", Lump( S( 4f, 0f, 9.8f ), 5.5f, 6f, 3f ) );
 		// The snout: a tapering tube, then the flared tip with the mouth.
 		var snout = new[] { S( 6f, 0f, 0f ), S( 14f, 0f, -2.5f ), S( 22f, 0f, -5.2f ), S( 28f, 0f, -7f ) };
 		Put( head, holder, "Snout", Sweep( snout, new[] { 4.6f * U.In, 3.2f * U.In, 2.7f * U.In, 2.6f * U.In }, new[] { 4.2f * U.In, 2.9f * U.In, 2.4f * U.In, 2.3f * U.In }, SDir( SLeft ).Normalized(), 6, 14 ) );

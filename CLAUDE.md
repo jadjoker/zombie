@@ -134,7 +134,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   yellow leading is bump-shaded as a raised bead (`bead_height`), and the gloved hands are fins (`BuildFin`, flapped by `FlapFins`; the old hand rig code stands aside).
   No suit: the body and head are built in code side on like a seahorse (`SeahorseBody`, `SeahorseHead`: swept
   mosaic tubes and `Lump`s, a long snout, a coronet), the one eye smaller on the brow (`EyeScale`), the hat on the
-  coronet. Test: `--mc51` (shots need a window).
+  coronet, a rippling dorsal fin above the tail (`DorsalFin`), the pectoral fins tucked in at the neck (`FinAnchor`, `Tuck`). Test: `--mc51` (shots need a window).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
   chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,

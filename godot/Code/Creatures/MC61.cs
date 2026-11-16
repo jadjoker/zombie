@@ -38,7 +38,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	public float HatHealth = 40f;
 	public float HandHealth = 130f;
 	public float TailHealth = 60f;
-	public float HandScale = 1.2f;
+	public float HandScale = 0.85f;   // seahorse-sized pectoral fins, tucked in at the neck
 	public float EyeHealth = 350f;
 	public enum Surface { Plain, RimGlow, Sheen, Mosaic }
 	/// <summary>
@@ -93,8 +93,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	// Layout numbers from Tools/blender/mc61_ghost.py (s&box local, inches).
 	static readonly Vector3 HeadPivot = new( 0, 0, 38f );
 	// His seahorse head (smaller than the old ghost's): the one eye on the brow above the snout, the hat on the coronet.
-	static readonly Vector3 EyeFromHead = new( 8.2f, 0, 6.5f );
-	const float EyeScale = 0.5f;
+	static readonly Vector3 EyeFromHead = new( 7.6f, 0, 6.8f );
+	const float EyeScale = 0.38f;
 	static readonly Vector3 HatFromHead = new( -1.5f, 0, 14.5f );
 	// s&box quaternion (-0.16307, -0.19920, -0.61210, 0.74771) with its axis turned into Godot space.
 	static readonly Quaternion HatRotation = new( 0.19920f, -0.61210f, 0.16307f, 0.74771f );
@@ -176,6 +176,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		var bodyModel = SeahorseBody( torso );
 		Trigger( torso, new Vector3( -3, 0, -18 ), new Vector3( -3, 0, 20 ), 15f );
 		BackSpikes( torso, bodyModel );
+		DorsalFin( torso, bodyModel );
 
 		var head = AddPart( Head, Torso, torso.Go, "Head", HeadPivot, Basis.Identity, 0f );
 		SeahorseHead( head );
@@ -215,7 +216,7 @@ public partial class MC61 : PartCreature, MC61Marker
 
 	void BuildHand( int index, float side )
 	{
-		var part = AddPart( index, Torso, parts[Torso].Go, side > 0 ? "Hand L" : "Hand R", new Vector3( 6f, side * 36f, 18f ), Basis.Identity, HandHealth );
+		var part = AddPart( index, Torso, parts[Torso].Go, side > 0 ? "Hand L" : "Hand R", FinAnchor( side ), Basis.Identity, HandHealth );
 		Trigger( part, Vector3.Zero, new Vector3( 0, 0, 13 * HandScale ), 8f * HandScale );
 		Trigger( part, Vector3.Zero, new Vector3( 0, side * 11f, 5f ) * HandScale, 7f * HandScale );
 		fins[index == HandL ? 0 : 1] = BuildFin( part, side );
@@ -416,20 +417,20 @@ public partial class MC61 : PartCreature, MC61Marker
 		// The centre line (forward, up, in inches) with its depth and width at each point.
 		var line = new (float X, float Z, float Deep, float Wide)[]
 		{
-			(-14f, -28f, 8f, 7f), (-8f, -19f, 13f, 10.5f), (-1f, -7f, 16.5f, 12.5f), (0f, 5f, 15.5f, 12f),
-			(-3f, 16f, 12f, 9.5f), (-7f, 25f, 9f, 7.5f), (-7.5f, 32f, 8f, 6.8f), (-3.5f, 39f, 7.5f, 6.5f),
+			(-14f, -28f, 8f, 6.5f), (-8f, -19f, 13f, 8.6f), (-1f, -7f, 16f, 9.8f), (0f, 5f, 15f, 9.6f),
+			(-3f, 16f, 11.5f, 8.2f), (-7f, 25f, 9f, 7f), (-7.5f, 32f, 8f, 6.5f), (-3.5f, 39f, 7.5f, 6.3f),
 		};
 		var points = line.Select( p => S( p.X, 0f, p.Z ) ).ToArray();
 		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 8 );
 		Put( torso, holder, "Body", mesh );
 		// Rounded off at the bottom, where the tail comes out.
-		Put( torso, holder, "Hips", Lump( S( -13f, 0f, -27f ), 8f, 7f, 7f ) );
+		Put( torso, holder, "Hips", Lump( S( -13f, 0f, -27f ), 8f, 6.2f, 7f ) );
 		// The bony rings across the belly, as on a real seahorse: low ridges of the same mosaic.
 		for ( var k = 0; k < 6; k++ )
 		{
 			var z = -16f + k * 5.5f;
 			var x = MathX.Lerp( 13f, 10f, k / 5f ) + (k < 3 ? k * 1.2f : (5 - k) * 1.2f);
-			Put( torso, holder, "Belly Ring", Lump( S( x, 0f, z ), 2.2f, 9.5f - MathF.Abs( k - 2.5f ) * 0.8f, 1.6f ) );
+			Put( torso, holder, "Belly Ring", Lump( S( x, 0f, z ), 2.2f, 7.6f - MathF.Abs( k - 2.5f ) * 0.65f, 1.6f ) );
 		}
 		return holder;
 	}
@@ -472,6 +473,12 @@ public partial class MC61 : PartCreature, MC61Marker
 			head.Renderers.Add( (spike, navy) );
 		}
 	}
+
+	/// <summary> Where a pectoral fin sits at rest: just behind the cheek on the neck, as a seahorse's does (inches). </summary>
+	static Vector3 FinAnchor( float side ) => new( -2f, side * 8.5f, 30f );
+
+	/// <summary> A hand pose from the old ghost (out at his sides) brought in close: its offset from the old rest, shrunk, about the anchor. </summary>
+	static Vector3 Tuck( Vector3 pose, float side ) => FinAnchor( side ) + (pose - new Vector3( 8f, side * 36f, 13f )) * 0.3f;
 
 	/// <summary> His fins (instead of gloved hands), to flap: the left, then the right. </summary>
 	readonly Node3D[] fins = new Node3D[2];
@@ -631,7 +638,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	/// A seahorse's crest: a row of small navy spikes up the middle of his back, from below the jacket to the crown of
 	/// his head (through the suit). Found on the body model itself: at each height, the back-most point on its middle line.
 	/// </summary>
-	void BackSpikes( Part torso, Node3D model )
+	/// <summary> The body model's vertices on its middle line (side to side), in the torso's space. </summary>
+	static List<Vector3> MiddleLine( Part torso, Node3D model )
 	{
 		var toPart = torso.Go.GlobalTransform.AffineInverse();
 		var middle = new List<Vector3>();
@@ -646,6 +654,69 @@ public partial class MC61 : PartCreature, MC61Marker
 					if ( MathF.Abs( p.X ) < 1.2f * U.In ) middle.Add( p );
 				}
 		}
+		return middle;
+	}
+
+	/// <summary> The dorsal fin, to ripple. </summary>
+	Node3D dorsal;
+
+	/// <summary>
+	/// A seahorse's dorsal fin on his back just above the tail: a fan of fine pale rays standing out behind him with a
+	/// mosaic membrane between, its edge scalloped, rooted along the back line found on the body mesh.
+	/// </summary>
+	void DorsalFin( Part torso, Node3D model )
+	{
+		var middle = MiddleLine( torso, model );
+		if ( middle.Count < 10 ) return;
+		const int rays = 9;
+		var feet = new List<Vector3>();
+		for ( var k = 0; k < rays; k++ )
+		{
+			var y = MathX.Lerp( -24f, -9f, k / (float)(rays - 1) ) * U.In;
+			var band = middle.Where( p => MathF.Abs( p.Y - y ) < 1.5f * U.In ).ToList();
+			if ( band.Count == 0 ) return;
+			feet.Add( band.MaxBy( p => p.Z ) + Vector3.Back * -0.5f * U.In );
+		}
+		var root = feet.Aggregate( Vector3.Zero, ( a, b ) => a + b ) / feet.Count;
+		dorsal = new Node3D { Name = "Dorsal Fin", Position = root };
+		torso.Go.AddChild( dorsal );
+		var tips = new List<Vector3>();
+		for ( var k = 0; k < rays; k++ )
+		{
+			var u = k / (float)(rays - 1);
+			// Out behind him and fanning up toward the top; longest in the middle.
+			var dir = (Vector3.Back + Vector3.Up * MathX.Lerp( -0.15f, 0.7f, u )).Normalized();
+			var length = (5.5f + 3f * MathF.Sin( MathF.PI * u )) * U.In;
+			tips.Add( feet[k] - root + dir * length );
+		}
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		for ( var k = 0; k < rays - 1; k++ )
+		{
+			// Between two rays, the edge dips a little: a scallop.
+			var a0 = feet[k] - root;
+			var a1 = feet[k + 1] - root;
+			var dip = (tips[k] + tips[k + 1]) * 0.5f;
+			var mid0 = (a0 + a1) * 0.5f;
+			dip = mid0 + (dip - mid0) * 0.85f;
+			foreach ( var v in new[] { a0, tips[k], dip, a0, dip, a1, a1, dip, tips[k + 1] } ) st.AddVertex( v );
+		}
+		st.GenerateNormals();
+		var membrane = new MeshInstance3D { Name = "Membrane", Mesh = st.Commit(), MaterialOverride = FxMaterials.Mosaic( 2.4f * U.In ) };
+		dorsal.AddChild( membrane );
+		torso.Renderers.Add( (membrane, Colors.White) );
+		var rayColor = new Color( 0.62f, 0.97f, 0.9f );
+		var rayMaterial = Shapes.Material( rayColor, "smooth" );
+		for ( var k = 0; k < rays; k++ )
+		{
+			var ray = global::Sculpt.Limb( dorsal, feet[k] - root, tips[k] + (tips[k] - (feet[k] - root)).Normalized() * 0.6f * U.In, 0.4f * U.In, 0.08f * U.In, rayMaterial, "Ray" );
+			torso.Renderers.Add( (ray, rayColor) );
+		}
+	}
+
+	void BackSpikes( Part torso, Node3D model )
+	{
+		var middle = MiddleLine( torso, model );
 		if ( middle.Count < 10 ) return;
 		var bottom = middle.Min( p => p.Y );
 		var top = middle.Max( p => p.Y );
@@ -936,11 +1007,18 @@ public partial class MC61 : PartCreature, MC61Marker
 		lastHandRigPosition = GlobalPosition;
 		var lag = -ToS( GlobalBasis.Orthonormalized().Inverse() * rigMove ) * 0.06f;
 		lag = lag.Clamp( new Vector3( -14f, -14f, -14f ), new Vector3( 14f, 14f, 14f ) );
+		// The fins stay tucked in behind his cheeks: every pose is shrunk toward the anchor at the neck.
+		posL = Tuck( posL, 1f );
+		posR = Tuck( posR, -1f );
+		lag *= 0.35f;
 		MoveHand( HandL, posL, rotL, lag, frame );
 		MoveHand( HandR, posR, rotR, lag, frame );
 		CurlHand( hands[0], poseL, 10f, tremble, fan, thumbSplay, ripple, frame );
 		CurlHand( hands[1], poseR, 10f, tremble, fan, thumbSplay, ripple, frame );
 		FlapFins( t, fan, ripple, tremble );
+		// The dorsal fin ripples fast, as a seahorse's does when it swims.
+		if ( dorsal is not null && IsInstanceValid( dorsal ) )
+			dorsal.Basis = new Basis( Vector3.Up, MathF.Sin( t * 9f ) * 0.18f ) * new Basis( Vector3.Right, MathF.Sin( t * 4.5f + 1f ) * 0.06f );
 
 		AnimateTail( t, dt, tailWiggle );
 		AnimateEye( t, dt, eyeGlow );

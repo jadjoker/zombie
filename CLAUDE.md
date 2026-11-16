@@ -91,8 +91,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   plants out over the hills; star ferns sit near the sand. Severed pieces (`Gib`) float up under water. `EnemyBars.cs`
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
-  the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). Hold the trigger 1 s (`PlayerWeapon.ChargeTime`)
-  for a charged trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
+  the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). A pull fires at once; keep holding 1 s after it (`PlayerWeapon.ChargeTime`)
+  for a charged next trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
@@ -137,8 +137,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   coronet, a rippling dorsal fin above the tail (`DorsalFin`), the pectoral fins tucked in at the neck (`FinAnchor`, `Tuck`). Test: `--mc51` (shots need a window).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
   chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
-  explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,
-  movement buff, the Biden Blast on the `blast` action: G (RB on a pad, which fires it instead of the axe only while it is
+  explosive round `ThrownClip` (heat seeking, `SeekSpeed`), electric bullets `LightningArc` (25% chance, +5% per extra pickup), pirate chest, shield through `Health.Absorb`,
+  movement buff, the Biden Blast on the `blast` action (one a wave per pickup, up to `MaxBlastsPerWave` 3): G (RB on a pad, which fires it instead of the axe only while it is
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Quality of life batch: `Creatures/Blinker.cs` blinks eyes on creatures with no lids of their own (Bloober, Rocky Shark,
   Kraken, Poseidon, mermaids, seahorses, missiles: it squashes each eye's meshes shut). The Junk Crab's eyes are on ant

@@ -20,6 +20,8 @@ public partial class HomingMissile : Creature
 	/// <summary> How long it climbs before it dives (6.7 to 10.7 seconds unless set). </summary>
 	public float RiseTime = -1f;
 	public const float MaxHealth = 30f;
+	/// <summary> Its size against the first cut: 15% longer, and 15% times 10% wider. </summary>
+	public const float Length = 1.15f, Girth = 1.15f * 1.1f;
 	/// <summary> Tests: how many have hit a player, and how many were shot down. </summary>
 	public static int PlayerHits, ShotDown;
 
@@ -132,12 +134,15 @@ public partial class HomingMissile : Creature
 		Sculpt.Cone( flame, Vector3.Zero, new Vector3( 0f, 0f, 0.32f ), r * 0.5f, Sculpt.Glow( new Color( 0.6f, 1f, 0.5f ), 4f ) );
 		flame.AddChild( new OmniLight3D { LightColor = new Color( 0.7f, 1f, 0.4f ), LightEnergy = 1.2f, OmniRange = 3f, ShadowEnabled = false } );
 
-		var part = CreaturePart.Create( this, 0, "Missile", 0.26f );   // a little wider than it looks, so it can be shot
+		// 15% bigger than the first cut and 10% thicker on top of that: the whole body scales from the nose joint.
+		head.Scale = new Vector3( Girth, Girth, Length );
+
+		var part = CreaturePart.Create( this, 0, "Missile", 0.26f * Girth );   // a little wider than it looks, so it can be shot
 		AddChild( part );
-		part.Position = new Vector3( 0f, 0f, 0.15f );
-		var tailPart = CreaturePart.Create( this, 1, "Missile Tail", 0.24f );
+		part.Position = new Vector3( 0f, 0f, 0.15f * Length );
+		var tailPart = CreaturePart.Create( this, 1, "Missile Tail", 0.24f * Girth );
 		AddChild( tailPart );
-		tailPart.Position = new Vector3( 0f, 0f, 0.6f );
+		tailPart.Position = new Vector3( 0f, 0f, 0.6f * Length );
 	}
 
 	public override void _Process( double delta )

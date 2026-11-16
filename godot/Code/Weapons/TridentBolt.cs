@@ -9,7 +9,7 @@ using Godot;
 /// </summary>
 public partial class TridentBolt : Node3D
 {
-	public const float Speed = 40f;           // m/s
+	public const float Speed = 65f;           // m/s (40 at first: it felt slow to land)
 	public const float Drop = 1.5f;           // m/s² downward (the water carries it, but not all the way)
 	public const float MaxFlight = 2.5f;      // seconds before an unspent trident sinks away
 	const float StuckFor = 4f;                // seconds a trident stays where it hit

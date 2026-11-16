@@ -28,6 +28,8 @@ public partial class PlayerWeapon : Node
 	/// <summary> How charged the held shot is, 0 to 1 (for the HUD). </summary>
 	public float ChargeAmount => charging && ChargeTime > 0f ? MathX.Clamp( (float)sinceChargeStart / ChargeTime, 0f, 1f ) : 0f;
 	bool charging, chargeFull, chargedShot;
+	/// <summary> The trigger has stayed down since the last shot (holding on charges the next trident). </summary>
+	bool heldSinceShot;
 	TimeSince sinceChargeStart;
 	ulong chargeFrame;
 	public bool ShellReload;
@@ -221,7 +223,8 @@ public partial class PlayerWeapon : Node
 
 		if ( ChargeTime > 0f )
 		{
-			// Hold to charge, let go to fire. (A charge the gun was put away during is dropped, not fired.)
+			// A pull fires at once. Keep holding after the shot and the next trident charges; let go with it full to
+			// fire it charged (let go early and it stays loaded). A charge the gun was put away during is dropped.
 			var frame = Engine.GetProcessFrames();
 			if ( charging && frame - chargeFrame > 3 ) charging = false;
 			chargeFrame = frame;
@@ -231,10 +234,16 @@ public partial class PlayerWeapon : Node
 			{
 				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
-					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
+					if ( Ammo > 0 ) { Shoot(); heldSinceShot = true; }
 					else if ( Reserve > 0 ) StartReload();
 					else Sfx.Play2D( "dry_fire" );
 				}
+				else if ( held && heldSinceShot && Ammo > 0 && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				{
+					charging = true; chargeFull = false; sinceChargeStart = 0f;
+					Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus );
+				}
+				if ( !held ) heldSinceShot = false;
 			}
 			else
 			{
@@ -242,9 +251,8 @@ public partial class PlayerWeapon : Node
 				if ( !held )
 				{
 					charging = false;
-					chargedShot = chargeFull;
-					Shoot();
-					chargedShot = false;
+					heldSinceShot = false;
+					if ( chargeFull ) { chargedShot = true; Shoot(); chargedShot = false; }
 				}
 			}
 			return;

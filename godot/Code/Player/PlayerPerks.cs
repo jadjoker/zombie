@@ -10,13 +10,13 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Fire Rate: each one adds 2% to every gun's rate of fire.
 /// - Explosive Round: an emptied magazine is thrown and explodes on what it hits (100 damage to creatures round it,
 ///   none to players, +50 for each more).
-/// - Electric Bullets: a rifle hit has a 25% chance to shock for 20 more; the shock has a 70% chance to jump to the
+/// - Electric Bullets: a rifle hit has a 25% chance (5% more for each pickup after the first) to shock for 20 more; the shock has a 70% chance to jump to the
 ///   next creature near by, up to 8 jumps (+10 damage for each more).
 /// - Pirate Chest: 4000 points, there and then (does not stack).
 /// - Shield: 25 shield (a blue bar over the health bar), +10 for each more. It takes hits before health does, comes
 ///   back in half the time health does, but after being emptied it waits twice as long as health.
 /// - Movement Buff: the first adds 0.5 m/s and 10% more stamina; each more adds 5% stamina.
-/// - Biden Blast: once a wave, G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
+/// - Biden Blast: once a wave per pickup (up to three a wave), G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
 ///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
@@ -39,6 +39,11 @@ public partial class PlayerPerks : Node
 	public const float ClipDamage = 100f, ClipDamagePerStack = 50f, ClipRadius = 4.5f;
 	public const float ShockChance = 0.25f, ShockDamage = 20f, ShockDamagePerStack = 10f, ShockJumpChance = 0.7f, ShockJumpRange = 7f;
 	public const int ShockMaxJumps = 8;
+	/// <summary> Each Electric Bullets pickup after the first adds this to the shock chance. </summary>
+	public const float ShockChancePerStack = 0.05f;
+	public float CurrentShockChance => Count( PerkKind.Electric ) == 0 ? 0f : MathF.Min( 1f, ShockChance + ShockChancePerStack * (Count( PerkKind.Electric ) - 1) );
+	/// <summary> Blasts a wave: one per Biden Blast picked up, up to this many. </summary>
+	public const int MaxBlastsPerWave = 3;
 	public const int ChestPoints = 4000;
 	public const float ShieldFirst = 25f, ShieldPerStack = 10f;
 	public const float MoveSpeedBonus = 0.5f;   // metres per second
@@ -59,8 +64,13 @@ public partial class PlayerPerks : Node
 
 	// ---- Biden Blast ----
 	int blastWave = -1;
+	int blastsUsed;
 	ulong blastFrame;
-	public bool BlastReady => Count( PerkKind.Blast ) > 0 && blastWave != (WaveDirector.Current?.Wave ?? 0);
+	/// <summary> How many blasts this wave allows: one per pickup, up to three. </summary>
+	public int BlastsPerWave => Math.Min( Count( PerkKind.Blast ), MaxBlastsPerWave );
+	/// <summary> Blasts still to let off this wave. </summary>
+	public int BlastsLeft => BlastsPerWave - (blastWave == (WaveDirector.Current?.Wave ?? 0) ? blastsUsed : 0);
+	public bool BlastReady => BlastsLeft > 0;
 
 	// ---- What the stacks come to ----
 	public float ReloadScale => MathF.Pow( 1f - ReloadPerStack, Count( PerkKind.Reload ) );
@@ -159,7 +169,9 @@ public partial class PlayerPerks : Node
 	/// <summary> The Biden Blast: a blue ring out from the player, 500 to every creature within 8 m. Once a wave. </summary>
 	public void LetOffBlast()
 	{
-		blastWave = WaveDirector.Current?.Wave ?? 0;
+		var wave = WaveDirector.Current?.Wave ?? 0;
+		if ( blastWave != wave ) { blastWave = wave; blastsUsed = 0; }
+		blastsUsed++;
 		blastFrame = Engine.GetProcessFrames();
 		Blasts++;
 		var at = controller.GlobalPosition + Vector3.Up * 1f;
@@ -207,7 +219,7 @@ public partial class PlayerPerks : Node
 	/// </summary>
 	public void RifleHit( Node3D hitPart, Vector3 at )
 	{
-		if ( Count( PerkKind.Electric ) == 0 || Rng.Float() > ShockChance ) return;
+		if ( Count( PerkKind.Electric ) == 0 || Rng.Float() > CurrentShockChance ) return;
 		var first = (Shootables.Find( hitPart ) as CreaturePart)?.Creature as Creature;
 		if ( first is null ) return;
 		var damage = ShockDamage + ShockDamagePerStack * (Count( PerkKind.Electric ) - 1);
@@ -244,13 +256,45 @@ public partial class PlayerPerks : Node
 	}
 }
 
-/// <summary> An emptied magazine thrown by the player (Explosive Round): tumbles, drops, and explodes on what it hits. </summary>
+/// <summary>
+/// An emptied magazine thrown by the player (Explosive Round): it seeks the enemy nearest the way it was thrown (no
+/// climb first, unlike MC-51's missiles: it turns onto them at once), tumbling, and explodes on what it hits. With no
+/// enemy about it arcs and drops as a plain throw.
+/// </summary>
 public partial class ThrownClip : Node3D
 {
 	Vector3 velocity;
 	float damage;
 	PlayerController thrower;
 	TimeSince age;
+	Creature target;
+	TimeSince sinceLook = 99f;
+	/// <summary> How fast it flies once it has a target, and how quickly it turns onto it (radians a second). </summary>
+	public const float SeekSpeed = 18f, SeekTurn = 7f, SeekRange = 45f;
+	public static int Seeking;
+
+	/// <summary> The enemy it goes for: the nearest one within reach and roughly the way it is flying. </summary>
+	Creature PickTarget()
+	{
+		var at = GlobalPosition;
+		var heading = velocity.SafeNormal();
+		Creature best = null;
+		var bestScore = float.MaxValue;
+		foreach ( var c in Creature.Everyone )
+		{
+			if ( !c.IsEnemy || c.IsDead || !IsInstanceValid( c ) ) continue;
+			var to = Aim( c ) - at;
+			var distance = to.Length();
+			if ( distance > SeekRange ) continue;
+			var along = heading.Dot( to / MathF.Max( distance, 0.01f ) );
+			if ( along < 0.2f ) continue;   // not behind the thrower
+			var score = distance * (2f - along);
+			if ( score < bestScore ) { bestScore = score; best = c; }
+		}
+		return best;
+	}
+
+	static Vector3 Aim( Creature c ) => c.GlobalPosition + Vector3.Up * 0.5f;
 
 	public static void Throw( Node parent, Vector3 from, Vector3 velocity, float damage, PlayerController thrower )
 	{
@@ -267,7 +311,25 @@ public partial class ThrownClip : Node3D
 	{
 		var dt = (float)delta;
 		var from = GlobalPosition;
-		velocity += Vector3.Down * 7f * dt;
+		if ( (target is null || !IsInstanceValid( target ) || target.IsDead) && sinceLook > 0.15f )
+		{
+			sinceLook = 0f;
+			var picked = PickTarget();
+			if ( picked is not null && target is null ) Seeking++;
+			target = picked;
+		}
+		if ( target is not null && IsInstanceValid( target ) && !target.IsDead )
+		{
+			// Heat seeking: swing the heading onto the target and speed up to seeking speed.
+			var want = (Aim( target ) - from).SafeNormal();
+			var heading = velocity.SafeNormal();
+			var angle = heading.AngleTo( want );
+			var turn = MathF.Min( 1f, SeekTurn * dt / MathF.Max( angle, 0.001f ) );
+			heading = heading.Slerp( want, turn ).Normalized();
+			var speed = MathX.Lerp( velocity.Length(), SeekSpeed, 1f - MathF.Exp( -3f * dt ) );
+			velocity = heading * speed;
+		}
+		else velocity += Vector3.Down * 7f * dt;
 		var to = from + velocity * dt;
 		var exclude = thrower is not null && IsInstanceValid( thrower ) ? new Godot.Collections.Array<Rid> { thrower.GetRid() } : null;
 		var hit = Trace.Ray( this, from, to, Layers.World | Layers.Creature, exclude );

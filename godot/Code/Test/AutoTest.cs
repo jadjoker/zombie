@@ -2821,15 +2821,26 @@ public partial class AutoTest : Node
 		Check( MathF.Abs( Lost() - 4f * PlayerPerks.BlastDamage ) < 1f && !perks.BlastReady && survivor.Health.Current >= mid, "the blast did not do 500 to each creature near, or is not once a wave" );
 		director.Wave++;
 		Check( perks.BlastReady, "the blast did not come back on the next wave" );
+		// A second pickup gives two blasts a wave; past three it stops adding.
+		perks.Give( PerkKind.Blast );
+		perks.LetOffBlast();
+		Check( perks.BlastReady && perks.BlastsLeft == 1, $"two Biden Blasts picked up do not give two blasts a wave ({perks.BlastsLeft} left after one)" );
+		perks.LetOffBlast();
+		Check( !perks.BlastReady, "two Biden Blasts gave more than two blasts a wave" );
+		perks.Give( PerkKind.Blast );
+		perks.Give( PerkKind.Blast );
+		Check( perks.BlastsPerWave == 3, $"four Biden Blasts give {perks.BlastsPerWave} blasts a wave, not three" );
 		director.Wave--;
 
 		// The thrown magazine: 100 to creatures round where it lands, none to the player.
 		var before = Lost();
 		var shield = perks.Shield;
+		ThrownClip.Seeking = 0;
 		ThrownClip.Throw( scene, home + new Vector3( 0f, 1.4f, -1f ), new Vector3( 0f, 1f, -9f ), perks.ClipBlastDamage, player );
 		await Wait( 1.6f );
 		GD.Print( $"[autotest] pickups: thrown magazine took {Lost() - before:0} off the crabs (100 each it reaches), shield {shield:0} to {perks.Shield:0}" );
 		Check( Lost() - before >= 100f && perks.Shield >= shield && survivor.Health.Current >= mid, "the thrown magazine did not hurt creatures, or hurt the player" );
+		Check( ThrownClip.Seeking > 0, "the thrown magazine did not seek a creature" );
 
 		// The shock: forced through the chances a few times, it must hit and jump between the crabs.
 		PlayerPerks.Shocks = PlayerPerks.ShockJumps = 0;

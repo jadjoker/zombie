@@ -62,6 +62,9 @@ public partial class WeaponHud : Control
 		return label;
 	}
 
+	bool chargeWasFull;
+	float chargeFullAt;
+
 	public override void _Process( double delta )
 	{
 		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no ammo counter on the death screen
@@ -124,14 +127,40 @@ public partial class WeaponHud : Control
 			DrawLine( c + new Vector2( 0f, -half ), c + new Vector2( 0f, half ), line, 1.5f );
 		}
 
-		// A charging shot: a thin bar under the crosshair, filling, green when full.
-		if ( weapon is { ChargeAmount: > 0.02f } )
+		// A charging shot (the trident's 1 s hold): a ring round the crosshair fills clockwise from the top, white to
+		// sea green, while three trident prongs close in on the middle. Full, it flashes a ring outward and the
+		// prongs and ring pulse green until it is let go.
+		var charge = weapon?.ChargeAmount ?? 0f;
+		if ( charge > 0.02f && dotAlpha > 0f )
 		{
-			var full = weapon.ChargeAmount >= 1f;
-			var at = c + new Vector2( -16f, 14f );
-			DrawRect( new Rect2( at, new Vector2( 32f, 3f ) ), new Color( 0f, 0f, 0f, 0.45f ) );
-			DrawRect( new Rect2( at, new Vector2( 32f * weapon.ChargeAmount, 3f ) ), full ? new Color( 0.45f, 1f, 0.55f ) : Colors.White );
+			var now = (float)Clock.Now;
+			var full = charge >= 1f;
+			if ( full && !chargeWasFull ) chargeFullAt = now;
+			chargeWasFull = full;
+			var green = new Color( 0.45f, 1f, 0.55f );
+			var pulse = full ? 0.5f + 0.5f * MathF.Sin( (now - chargeFullAt) * 14f ) : 0f;
+			var colour = full ? green.Lerp( Colors.White, pulse * 0.45f ) : Colors.White.Lerp( new Color( 0.55f, 1f, 0.85f ), charge );
+			const float radius = 17f;
+			const float top = -MathF.PI * 0.5f;
+			DrawArc( c, radius, 0f, MathF.Tau, 48, new Color( 0f, 0f, 0f, 0.4f ), 3.5f, true );
+			DrawArc( c, radius, top, top + MathF.Tau * charge, 48, colour, full ? 3.5f + pulse : 2.5f, true );
+			// The prongs: from up and the two lower sides, sliding in as it charges.
+			var reach = MathX.Lerp( 36f, radius + 4f, charge * charge * (3f - 2f * charge) );
+			foreach ( var degrees in new[] { -90f, 30f, 150f } )
+			{
+				var dir = Vector2.FromAngle( MathX.Rad( degrees ) );
+				var side = new Vector2( -dir.Y, dir.X );
+				var tip = c + dir * reach;
+				var back = tip + dir * 9f;
+				DrawLine( tip, back, colour, 2f, true );
+				DrawColoredPolygon( new[] { tip - dir * 3.5f, tip + side * 3f, tip - side * 3f }, colour );
+			}
+			// The moment it fills: a ring bursting outward and fading.
+			var since = now - chargeFullAt;
+			if ( full && since < 0.3f )
+				DrawArc( c, radius + since * 90f, 0f, MathF.Tau, 48, green with { A = 1f - since / 0.3f }, 2f, true );
 		}
+		else chargeWasFull = false;
 
 		// Hitmarker.
 		if ( weapon is not null )

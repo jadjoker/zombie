@@ -2902,7 +2902,7 @@ public partial class AutoTest : Node
 			foreach ( var (name, from, look) in new[]
 			{
 				("crab_antennas", middle + ahead * 1.7f + right * 0.5f + Vector3.Up * 0.35f, middle + Vector3.Up * 0.1f),
-				("crab_eye", eye + ahead * 0.55f + right * 0.15f + Vector3.Up * 0.05f, eye),
+				("crab_eye", eye + ahead * 0.5f + Vector3.Up * 0.22f, eye),
 				("crab_side_antennas", middle + right * 1.8f + ahead * 0.4f + Vector3.Up * 0.3f, middle + Vector3.Up * 0.1f),
 			} )
 			{

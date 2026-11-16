@@ -180,7 +180,7 @@ public partial class JunkCrab : PartCreature
 	}
 
 	/// <summary> The alien green of the eye bulbs and their lids, and the big dark almond eye. </summary>
-	static readonly Color AlienSkin = new( 0.27f, 0.72f, 0.3f ), AlienEye = new( 0.02f, 0.3f, 0.15f );
+	static readonly Color AlienSkin = new( 0.24f, 0.46f, 0.42f ), AlienEye = new( 0.01f, 0.01f, 0.015f ), EyeRim = new( 0.3f, 1f, 0.35f );
 
 	/// <summary> Where the eye sits from the antenna's elbow (s&box inches): forward, out and a little up. </summary>
 	static Vector3 ElbowToTip( float side ) => new( 11f, side * 5f, 3f );
@@ -217,8 +217,8 @@ public partial class JunkCrab : PartCreature
 	}
 
 	/// <summary>
-	/// A classic alien eye on the tip of an antenna: a green egg of a bulb with one big dark almond eye slanted up and
-	/// out, a white glint, and green lids that blink over it. The almond turns to follow the player.
+	/// An eye on the tip of an antenna, made like the Kraken's: a teal egg of a bulb with a tall glossy black almond
+	/// slanted out at the top on a glowing green rim, and teal lids that blink over it. The almond turns to follow the player.
 	/// </summary>
 	void BuildEye( Part part, float side, Node3D holder, Vector3 at )
 	{
@@ -232,10 +232,21 @@ public partial class JunkCrab : PartCreature
 		ball.AddChild( gaze );
 		var pupil = new Node3D { Name = "Pupil" };
 		gaze.AddChild( pupil );
-		var almond = new Node3D { Name = "Almond", Basis = new Basis( Vector3.Back, side * 0.38f ) };
+		// The Kraken's eye, to the crab's scale: a tall glossy black almond slanted 38 degrees out at the top, on a thin
+		// glowing green rim, set into a bulb of the Kraken's teal skin.
+		var almond = new Node3D { Name = "Almond", Basis = new Basis( Vector3.Back, side * MathX.Rad( 38f ) ) };
 		pupil.AddChild( almond );
-		Sphere( almond, part, new Vector3( EyeRadius * 0.58f, 0, 0 ), new Vector3( EyeRadius * 0.52f, EyeRadius * 0.8f, EyeRadius * 0.5f ), AlienEye );
-		Sphere( almond, part, new Vector3( EyeRadius * 1.02f, 0.85f * side, 0.6f ), new Vector3( 0.22f, 0.62f, 0.36f ), Colors.White );
+		var rim = Shapes.Part( almond, "Rim", new Vector3( EyeRadius * 0.7f, 0, 0 ), Shapes.Ellipsoid( EyeRadius * 0.4f, EyeRadius * 0.42f, EyeRadius * 0.69f ), EyeRim, glow: true, shadow: false );
+		part.Renderers.Add( (rim, EyeRim) );
+		var black = Shapes.Part( almond, "Eye", new Vector3( EyeRadius * 0.72f, 0, 0 ), Shapes.Ellipsoid( EyeRadius * 0.4f, EyeRadius * 0.35f, EyeRadius * 0.62f ), AlienEye, shadow: false );
+		if ( black.MaterialOverride is StandardMaterial3D gloss )
+		{
+			gloss.Roughness = 0.08f;
+			gloss.ClearcoatEnabled = true;
+			gloss.Clearcoat = 1f;
+			gloss.ClearcoatRoughness = 0.05f;
+		}
+		part.Renderers.Add( (black, AlienEye) );
 
 		var upper = Lid( ball, part, "Upper Lid", AlienSkin );
 		var lower = Lid( ball, part, "Lower Lid", AlienSkin );

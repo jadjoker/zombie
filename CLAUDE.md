@@ -135,7 +135,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Quality of life batch: `Creatures/Blinker.cs` blinks eyes on creatures with no lids of their own (Bloober, Rocky Shark,
   Kraken, Poseidon, mermaids, seahorses, missiles: it squashes each eye's meshes shut). The Junk Crab's eyes are on ant
-  antennas (`BuildAntenna`, `WaveAntennas`: a waving shaft and a springy whip) with a green alien bulb and almond eye.
+  antennas (`BuildAntenna`, `WaveAntennas`: a waving shaft and a springy whip) with the Kraken's eye on the tip (teal bulb, glossy black almond slanted 38 degrees, glowing green rim).
   Atlantis overhangs are solid (roof slabs, porch roofs, shrine roofs, arch caps, the base rim, the market awnings), and
   it has small details on their own seed (`Atlantis.detail`, so the layout never shifts): doorsteps, scallops, planters,
   lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals

@@ -51,13 +51,13 @@ void fragment() {
 	// The leading is a raised bead: a rounded ridge along each seam, bump-mapped onto the normal (Mikkelsen's
 	// surface gradient), and the cell darkens where it dips under the bead.
 	float ridge = 1.0 - smoothstep( 0.0, line_width * 1.7, edge );
-	float h = ridge * ridge * ( 3.0 - 2.0 * ridge ) * bead_height;
+	float bead = ridge * ridge * ( 3.0 - 2.0 * ridge ) * bead_height;
 	vec3 dpdx = dFdx( VERTEX );
 	vec3 dpdy = dFdy( VERTEX );
 	vec3 r1 = cross( dpdy, NORMAL );
 	vec3 r2 = cross( NORMAL, dpdx );
 	float det = dot( dpdx, r1 );
-	vec3 grad = sign( det ) * ( dFdx( h ) * r1 + dFdy( h ) * r2 );
+	vec3 grad = sign( det ) * ( dFdx( bead ) * r1 + dFdy( bead ) * r2 );
 	NORMAL = normalize( abs( det ) * NORMAL - grad );
 	c *= 1.0 - 0.35 * smoothstep( line_width * 0.8, line_width * 1.7, edge ) * ( 1.0 - smoothstep( line_width * 1.7, line_width * 2.6, edge ) );
 	ALBEDO = mix( c * tint.rgb, line_color * min( tint.rgb, vec3( 1.6 ) ), line );

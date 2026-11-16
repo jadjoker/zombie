@@ -13,13 +13,13 @@ public partial class HomingMissile : Creature
 	public static readonly List<HomingMissile> All = new();
 
 	public float RiseSpeed = 0.975f;   // 25% slower than the first cut (1.3)
-	public float DiveSpeed = 8.25f;   // 25% slower than the first cut (11)
+	public float DiveSpeed = 6.6f;   // 11 at first, then 25% slower (8.25), then 20% slower again
 	public float TurnRate = 2.6f;          // radians per second while diving
 	public float Damage = 15f;
 	public float HitRadius = 1f;           // from a player's middle
 	/// <summary> How long it climbs before it dives (6.7 to 10.7 seconds unless set). </summary>
 	public float RiseTime = -1f;
-	public const float MaxHealth = 60f;
+	public const float MaxHealth = 30f;
 	/// <summary> Tests: how many have hit a player, and how many were shot down. </summary>
 	public static int PlayerHits, ShotDown;
 

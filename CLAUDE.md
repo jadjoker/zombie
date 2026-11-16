@@ -124,7 +124,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   shoot `MermaidArrow`s. Slower, 30% more health than a Bloober. Dev menu: Enemies, Spawn an enemy, Mermaid. Test:
   `--mermaids` (shots need a window).
 - MC-51 is MC61's name in the game (the class and files keep `MC61`). His spin attack launches 5 to 8 `HomingMissile`s
-  (`Code/Creatures/HomingMissile.cs`: slim bendy one-eyed rockets, black face, silver, rust and black body, 60 health, 25% slower since playtest, climb 6.7 to 10.7 s (as high as before) then dive, 15 damage) instead
+  (`Code/Creatures/HomingMissile.cs`: slim bendy one-eyed rockets, black face, silver, rust and black body, 30 health, slower since playtest (dive 6.6 m/s), climb 6.7 to 10.7 s (as high as before) then dive, 15 damage) instead
   of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`
   after each area is built): 8 per area on the outskirts, chained and drifting, shots tink off, touching one costs 45.
   Test: `--missiles` (shots need a window).

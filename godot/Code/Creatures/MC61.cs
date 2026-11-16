@@ -26,7 +26,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	/// <summary> His spin attack (it used to be rings of cards): this many homing missiles, 15 damage each. </summary>
 	public int MissilesMin = 5, MissilesMax = 8;
 	int missilesThisAttack = 6;
-	public Vector2 AttackGap = new( 3f, 6f );   // seconds between attacks (was 2 to 4.5)
+	public Vector2 AttackGap = new( 4f, 7.5f );   // seconds between attacks (was 3 to 6, and 2 to 4.5 before that)
 	public float DanceChance = 0.1f;
 	public float DanceTime = 4.5f;
 	public float DanceDamageScale = 1.6f;
@@ -155,7 +155,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	protected override void Setup()
 	{
 		BeginSetup( 2000f );
-		nextAttack = 3f;
+		nextAttack = 4f;
 		orbitSign = Rng.Float() < 0.5f ? -1f : 1f;
 		seenState = State;
 		lastRigPosition = lastHandRigPosition = GlobalPosition;

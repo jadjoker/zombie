@@ -17,7 +17,7 @@ public partial class HomingMissile : Creature
 	public float TurnRate = 2.6f;          // radians per second while diving
 	public float Damage = 15f;
 	public float HitRadius = 1f;           // from a player's middle
-	/// <summary> How long it climbs before it dives (5 to 8 seconds unless set). </summary>
+	/// <summary> How long it climbs before it dives (6.7 to 10.7 seconds unless set). </summary>
 	public float RiseTime = -1f;
 	public const float MaxHealth = 60f;
 	/// <summary> Tests: how many have hit a player, and how many were shot down. </summary>
@@ -51,7 +51,8 @@ public partial class HomingMissile : Creature
 	protected override void Setup()
 	{
 		BeginSetup( MaxHealth );
-		if ( RiseTime <= 0f ) RiseTime = Rng.Float( 5f, 8f );
+		// Climbs as high as before at 75% of the speed, so for a third longer (6.7 to 10.7 s).
+		if ( RiseTime <= 0f ) RiseTime = Rng.Float( 5f, 8f ) / 0.75f;
 		phase = Rng.Float( 0f, MathF.Tau );
 		age = 0f;
 		heading = trail = (Vector3.Up + drift * 0.3f).Normalized();

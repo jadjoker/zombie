@@ -67,6 +67,8 @@ public partial class MC61 : PartCreature, MC61Marker
 
 	static readonly Color Tux = new( 0.06f, 0.06f, 0.09f );
 	static readonly Color GhostBody = new( 0.7f, 0.78f, 0.93f );
+	/// <summary> The eye picture's lid, in his mosaic's teal. </summary>
+	static readonly Color LidTeal = new( 0.12f, 0.6f, 0.62f );
 	static readonly Color Skin = new( 0.42f, 0.47f, 0.4f );
 	static readonly Color Glove = new( 0.97f, 0.97f, 1f );
 	static readonly Color Iris = new( 1f, 0.12f, 0.08f );
@@ -90,8 +92,10 @@ public partial class MC61 : PartCreature, MC61Marker
 
 	// Layout numbers from Tools/blender/mc61_ghost.py (s&box local, inches).
 	static readonly Vector3 HeadPivot = new( 0, 0, 38f );
-	static readonly Vector3 EyeFromHead = new( 20.68f, 0, 0 );
-	static readonly Vector3 HatFromHead = new( -2.13f, 11.63f, 17.92f );
+	// His seahorse head (smaller than the old ghost's): the one eye on the brow above the snout, the hat on the coronet.
+	static readonly Vector3 EyeFromHead = new( 8.2f, 0, 6.5f );
+	const float EyeScale = 0.5f;
+	static readonly Vector3 HatFromHead = new( -1.5f, 0, 14.5f );
 	// s&box quaternion (-0.16307, -0.19920, -0.61210, 0.74771) with its axis turned into Godot space.
 	static readonly Quaternion HatRotation = new( 0.19920f, -0.61210f, 0.16307f, 0.74771f );
 	const float HatTilt = 14f;
@@ -168,24 +172,24 @@ public partial class MC61 : PartCreature, MC61Marker
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 
 		var torso = AddPart( Torso, -1, rig, "Torso", Vector3.Zero, Basis.Identity, TorsoHealth );
-		var bodyModel = Sculpt( torso, "body", GhostBody, ghost: true );
-		Sculpt( torso, "jacket", Tux );
-		Sculpt( torso, "bow", Tux );
-		Sculpt( torso, "front", Tux );
-		Trigger( torso, new Vector3( 0, 0, -16 ), new Vector3( 0, 0, 24 ), 19f );
+		// No suit any more: a seahorse's body, built in code (the old ghost body model and tux are not loaded).
+		var bodyModel = SeahorseBody( torso );
+		Trigger( torso, new Vector3( -3, 0, -18 ), new Vector3( -3, 0, 20 ), 15f );
 		BackSpikes( torso, bodyModel );
 
 		var head = AddPart( Head, Torso, torso.Go, "Head", HeadPivot, Basis.Identity, 0f );
-		Trigger( head, new Vector3( 0, 0, -2 ), new Vector3( 0, 0, 5 ), 19f );
+		SeahorseHead( head );
+		Trigger( head, new Vector3( -3, 0, 4 ), new Vector3( 7, 0, 4 ), 9f );
+		Trigger( head, new Vector3( 9, 0, -2 ), new Vector3( 29, 0, -7.5f ), 3.8f );
 
 		var eye = AddPart( Eye, Head, head.Go, "Eye", EyeFromHead, Basis.Identity, EyeHealth );
 		MakeEyePicture();
 		var eyeMaterial = new StandardMaterial3D { AlbedoTexture = eyeTexture, AlbedoColor = Colors.White, Roughness = 0.25f, EmissionEnabled = true, Emission = Colors.Black };
-		Sculpt( eye, "eyeball", Colors.White, material: eyeMaterial );
-		Sculpt( eye, "lids", Colors.Black );
-		Trigger( eye, new Vector3( 0, -5, 0 ), new Vector3( 0, 5, 0 ), 9f );
+		Sculpt( eye, "eyeball", Colors.White, material: eyeMaterial, scale: EyeScale );
+		Sculpt( eye, "lids", Colors.Black, scale: EyeScale );
+		Trigger( eye, new Vector3( 0, -5, 0 ) * EyeScale, new Vector3( 0, 5, 0 ) * EyeScale, 9f * EyeScale );
 
-		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, Ax( SForward, HatTilt ) * new Basis( HatRotation ), HatHealth );
+		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, Ax( SForward, HatTilt ) * Ax( SLeft, -8f ), HatHealth );
 		Sculpt( hat, "hat", Tux );
 		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 10 ), 8.5f );
 
@@ -302,6 +306,171 @@ public partial class MC61 : PartCreature, MC61Marker
 		// A rounded tip.
 		var tip = global::Sculpt.Blob( tail.Go, points[steps], Vector3.One * radii[steps] * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
 		tail.Renderers.Add( (tip, Colors.White) );
+	}
+
+	// ---- The seahorse: body and head built in code ----
+
+	/// <summary> The mosaic for the parts built in code (cells about 3.6 inches, in metres). </summary>
+	static ShaderMaterial CodeMosaic() => FxMaterials.Mosaic( 3.6f * U.In );
+
+	/// <summary> A point in a part's space from s&box inches. </summary>
+	static Vector3 S( float x, float y, float z ) => U.Sbox( x, y, z );
+
+	/// <summary>
+	/// A tube swept along a smooth line through points (Catmull-Rom), its cross-section an ellipse: `deep` front to
+	/// back (in the plane of the line) and `wide` side to side. The line lies in the plane across `across`. Godot space.
+	/// </summary>
+	static ArrayMesh Sweep( Vector3[] points, float[] deep, float[] wide, Vector3 across, int perSpan = 8, int sides = 18 )
+	{
+		var line = new List<(Vector3 P, float D, float W)>();
+		for ( var i = 0; i < points.Length - 1; i++ )
+		{
+			var p0 = points[Math.Max( 0, i - 1 )];
+			var p1 = points[i];
+			var p2 = points[i + 1];
+			var p3 = points[Math.Min( points.Length - 1, i + 2 )];
+			for ( var k = 0; k < perSpan; k++ )
+			{
+				var t = k / (float)perSpan;
+				var t2 = t * t;
+				var t3 = t2 * t;
+				var p = 0.5f * (2f * p1 + (-p0 + p2) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (-p0 + 3f * p1 - 3f * p2 + p3) * t3);
+				var e = t * t * (3f - 2f * t);
+				line.Add( (p, MathX.Lerp( deep[i], deep[i + 1], e ), MathX.Lerp( wide[i], wide[i + 1], e )) );
+			}
+		}
+		line.Add( (points[^1], deep[^1], wide[^1]) );
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		for ( var i = 0; i < line.Count; i++ )
+		{
+			var tangent = (line[Math.Min( line.Count - 1, i + 1 )].P - line[Math.Max( 0, i - 1 )].P).Normalized();
+			var normal = tangent.Cross( across ).Normalized();
+			for ( var k = 0; k <= sides; k++ )
+			{
+				var a = k / (float)sides * MathF.Tau;
+				var (c, sn) = (MathF.Cos( a ), MathF.Sin( a ));
+				st.SetNormal( (across * c / line[i].W + normal * sn / line[i].D).Normalized() );
+				st.AddVertex( line[i].P + across * c * line[i].W + normal * sn * line[i].D );
+			}
+		}
+		for ( var i = 0; i < line.Count - 1; i++ )
+			for ( var k = 0; k < sides; k++ )
+			{
+				var a = i * (sides + 1) + k;
+				var b = a + sides + 1;
+				st.AddIndex( a ); st.AddIndex( b ); st.AddIndex( a + 1 );
+				st.AddIndex( a + 1 ); st.AddIndex( b ); st.AddIndex( b + 1 );
+			}
+		return st.Commit();
+	}
+
+	/// <summary> An ellipsoid built at its real size (so the mosaic cells keep their size): radii in s&box inches, forward, left, up. </summary>
+	static ArrayMesh Lump( Vector3 centre, float forward, float left, float up, Basis? turn = null )
+	{
+		var radii = new Vector3( left, up, forward ) * U.In;
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		const int rings = 12, segs = 18;
+		var b = turn ?? Basis.Identity;
+		for ( var r = 0; r <= rings; r++ )
+		{
+			var v = r / (float)rings * MathF.PI;
+			for ( var k = 0; k <= segs; k++ )
+			{
+				var u = k / (float)segs * MathF.Tau;
+				var unit = new Vector3( MathF.Sin( v ) * MathF.Cos( u ), MathF.Cos( v ), MathF.Sin( v ) * MathF.Sin( u ) );
+				st.SetNormal( (b * (unit / radii)).Normalized() );
+				st.AddVertex( centre + b * (unit * radii) );
+			}
+		}
+		for ( var r = 0; r < rings; r++ )
+			for ( var k = 0; k < segs; k++ )
+			{
+				var a = r * (segs + 1) + k;
+				var c = a + segs + 1;
+				st.AddIndex( a ); st.AddIndex( c ); st.AddIndex( a + 1 );   // wound to face outward (checked against the sweep)
+				st.AddIndex( a + 1 ); st.AddIndex( c ); st.AddIndex( c + 1 );
+			}
+		return st.Commit();
+	}
+
+	MeshInstance3D Put( Part part, Node3D under, string name, Mesh mesh, Material material = null, Color? tint = null )
+	{
+		var m = new MeshInstance3D { Name = name, Mesh = mesh, MaterialOverride = material ?? CodeMosaic() };
+		under.AddChild( m );
+		part.Renderers.Add( (m, tint ?? Colors.White) );
+		if ( material is null ) styleRenderers.Add( m );
+		return m;
+	}
+
+	/// <summary>
+	/// His body, side on like a seahorse's: a fat belly bulging forward, the back curving in, a slim neck bending back
+	/// and up into the head. One swept mosaic tube; the tail hangs from its bottom at the back. Returns its holder, for
+	/// the back spikes to find.
+	/// </summary>
+	Node3D SeahorseBody( Part torso )
+	{
+		var holder = new Node3D { Name = "Seahorse Body" };
+		torso.Go.AddChild( holder );
+		// The centre line (forward, up, in inches) with its depth and width at each point.
+		var line = new (float X, float Z, float Deep, float Wide)[]
+		{
+			(-14f, -28f, 8f, 7f), (-8f, -19f, 13f, 10.5f), (-1f, -7f, 16.5f, 12.5f), (0f, 5f, 15.5f, 12f),
+			(-3f, 16f, 12f, 9.5f), (-7f, 25f, 9f, 7.5f), (-7.5f, 32f, 8f, 6.8f), (-3.5f, 39f, 7.5f, 6.5f),
+		};
+		var points = line.Select( p => S( p.X, 0f, p.Z ) ).ToArray();
+		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 8 );
+		Put( torso, holder, "Body", mesh );
+		// Rounded off at the bottom, where the tail comes out.
+		Put( torso, holder, "Hips", Lump( S( -13f, 0f, -27f ), 8f, 7f, 7f ) );
+		// The bony rings across the belly, as on a real seahorse: low ridges of the same mosaic.
+		for ( var k = 0; k < 6; k++ )
+		{
+			var z = -16f + k * 5.5f;
+			var x = MathX.Lerp( 13f, 10f, k / 5f ) + (k < 3 ? k * 1.2f : (5 - k) * 1.2f);
+			Put( torso, holder, "Belly Ring", Lump( S( x, 0f, z ), 2.2f, 9.5f - MathF.Abs( k - 2.5f ) * 0.8f, 1.6f ) );
+		}
+		return holder;
+	}
+
+	/// <summary>
+	/// His head side on like a seahorse's: a short deep skull, the long tube of a snout reaching forward and a little
+	/// down with a flared end and a small dark mouth, a cheek plate, and a coronet of navy spikes on top (the hat sits
+	/// on it). His one big eye sits on the brow above the snout.
+	/// </summary>
+	void SeahorseHead( Part head )
+	{
+		var holder = new Node3D { Name = "Seahorse Head" };
+		head.Go.AddChild( holder );
+		Put( head, holder, "Skull", Lump( S( 0.5f, 0f, 4f ), 9.5f, 7f, 8.5f ) );
+		Put( head, holder, "Cheek", Lump( S( 3f, 0f, -2.5f ), 7.5f, 7.6f, 5.5f ) );
+		Put( head, holder, "Brow", Lump( S( 5f, 0f, 8f ), 5.5f, 6f, 3.5f ) );
+		// The snout: a tapering tube, then the flared tip with the mouth.
+		var snout = new[] { S( 6f, 0f, 0f ), S( 14f, 0f, -2.5f ), S( 22f, 0f, -5.2f ), S( 28f, 0f, -7f ) };
+		Put( head, holder, "Snout", Sweep( snout, new[] { 4.6f * U.In, 3.2f * U.In, 2.7f * U.In, 2.6f * U.In }, new[] { 4.2f * U.In, 2.9f * U.In, 2.4f * U.In, 2.3f * U.In }, SDir( SLeft ).Normalized(), 6, 14 ) );
+		Put( head, holder, "Snout Tip", Lump( S( 28.5f, 0f, -7.2f ), 2.2f, 3.3f, 3.7f ) );
+		var mouth = new Color( 0.05f, 0.03f, 0.08f );
+		Put( head, holder, "Mouth", Lump( S( 30.4f, 0f, -7.4f ), 0.7f, 1.9f, 1.5f ), Shapes.Material( mouth, "smooth" ), mouth );
+		// The coronet: a ring of small navy spikes on the crown, leaning out.
+		var navy = new Color( 0.08f, 0.16f, 0.42f );
+		var spikeMaterial = Shapes.Material( navy, "smooth" );
+		for ( var k = 0; k < 6; k++ )
+		{
+			var a = k / 6f * MathF.Tau;
+			var foot = S( -1.5f + MathF.Cos( a ) * 3.2f, MathF.Sin( a ) * 3.2f, 11.2f );
+			var lean = (S( MathF.Cos( a ), MathF.Sin( a ), 0f ).Normalized() * 0.45f + Vector3.Up).Normalized();
+			var spike = global::Sculpt.Cone( holder, foot, foot + lean * 3.8f * U.In, 1.1f * U.In, spikeMaterial, 6, "Coronet" );
+			head.Renderers.Add( (spike, navy) );
+		}
+		// A few small spines down the back of the head, carrying on the row on his back.
+		for ( var k = 0; k < 3; k++ )
+		{
+			var foot = S( -8.5f + k * 0.6f, 0f, 8f - k * 4f );
+			var lean = (S( -1f, 0f, 0.5f ).Normalized());
+			var spike = global::Sculpt.Cone( holder, foot, foot + lean * (3.2f - k * 0.5f) * U.In, 1.1f * U.In, spikeMaterial, 6, "Head Spine" );
+			head.Renderers.Add( (spike, navy) );
+		}
 	}
 
 	/// <summary> His fins (instead of gloved hands), to flap: the left, then the right. </summary>
@@ -441,12 +610,12 @@ public partial class MC61 : PartCreature, MC61Marker
 		spawnDone = true;
 	}
 
-	Node3D Sculpt( Part part, string model, Color color, bool ghost = false, StandardMaterial3D material = null )
+	Node3D Sculpt( Part part, string model, Color color, bool ghost = false, StandardMaterial3D material = null, float scale = 1f )
 	{
 		if ( !sculpts.TryGetValue( model, out var scene ) )
 			sculpts[model] = scene = GD.Load<PackedScene>( $"res://assets/models/creatures/mc61g/{model}.fbx" );
 		var node = scene.Instantiate<Node3D>();
-		node.Basis = new Basis( Vector3.Up, MathF.PI * 0.5f ) * Basis.FromScale( Vector3.One * 2.54f );
+		node.Basis = new Basis( Vector3.Up, MathF.PI * 0.5f ) * Basis.FromScale( Vector3.One * 2.54f * scale );
 		part.Go.AddChild( node );
 		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
@@ -553,7 +722,7 @@ public partial class MC61 : PartCreature, MC61Marker
 				if ( hx * hx + hy * hy < 1f ) { r = g = b = 1f; }
 				if ( lid > 0.02f )
 				{
-					if ( ny > lidEdge ) { r = GhostBody.R; g = GhostBody.G; b = GhostBody.B; }
+					if ( ny > lidEdge ) { r = LidTeal.R; g = LidTeal.G; b = LidTeal.B; }
 					else if ( ny > lidEdge - 0.06f ) { r = g = b = 0.02f; }
 				}
 				var o = (y * EyeW + x) * 4;

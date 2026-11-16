@@ -2958,6 +2958,7 @@ public partial class AutoTest : Node
 				("mc51_front", centre + ahead * 5.5f + Vector3.Up * 0.4f, centre),
 				("mc51_side", centre + right * 5.5f + ahead * 1f, centre + Vector3.Down * 0.5f),
 				("mc51_back", centre - ahead * 5f + right * 2f, centre + Vector3.Down * 0.6f),
+				("mc51_head", HeadAt( boss ) + right * 2.6f + ahead * 0.5f + Vector3.Up * 0.15f, HeadAt( boss ) + ahead * 0.35f),
 				("mc51_fin", (finL?.GlobalPosition ?? centre) + ahead * 2.2f + right * 0.6f + Vector3.Up * 0.3f, (finL?.GlobalPosition ?? centre) + Vector3.Up * 0.3f),
 			} )
 			{
@@ -2972,6 +2973,8 @@ public partial class AutoTest : Node
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
+
+	static Vector3 HeadAt( MC61 boss ) => CreaturePart.All.FirstOrDefault( p => p.Creature == boss && p.Name.ToString().EndsWith( "Head" ) )?.GlobalPosition ?? boss.GlobalPosition;
 
 	async Task MissileTest()
 	{

@@ -197,9 +197,9 @@ public partial class MC61 : PartCreature, MC61Marker
 		for ( var i = 0; i < TailCount; i++ )
 		{
 			var tail = AddPart( Tail0 + i, parentIndex, parentGo, $"Tail {i}", i == 0 ? TailRoot : new Vector3( 0, 0, -TailSegment ), Basis.Identity, TailHealth );
-			Sculpt( tail, $"tail{i}", GhostBody, ghost: true );
+			var tailModel = Sculpt( tail, $"tail{i}", GhostBody, ghost: true );
 			Trigger( tail, Vector3.Zero, new Vector3( 0, 0, -TailSegment ), TailRadius[i] * 0.9f );
-			if ( i == TailCount - 1 ) BuildCurl( tail );
+			if ( i == TailCount - 1 ) BuildCurl( tail, tailModel );
 			parentIndex = Tail0 + i;
 			parentGo = tail.Go;
 		}
@@ -220,30 +220,87 @@ public partial class MC61 : PartCreature, MC61Marker
 	}
 
 	/// <summary>
-	/// The end of his tail rolled up like a seahorse's: a spiral of shrinking mosaic links past the last segment,
-	/// turning the way the tail already curls, tighter at each link.
+	/// The end of his tail rolled up like a seahorse's: the last segment's model is swapped for one smooth tube that
+	/// starts exactly where and as wide as that segment did, runs on straight a little, then curls tighter and tighter
+	/// into a spiral as it tapers to a point. One mesh, so there is no seam between the tail and its curl.
 	/// </summary>
-	void BuildCurl( Part tail )
+	void BuildCurl( Part tail, Node3D model )
 	{
-		var at = U.Sbox( 0f, 0f, -TailSegment );
-		var dir = SDir( new Vector3( 0f, 0f, -1f ) );
-		// Many short links turning a little at a time, a ball at every joint, so it rolls up smoothly.
-		var length = 2.3f;
-		var radius = 3.3f;
-		var material = FxMaterials.Mosaic( 2.6f * U.In );
-		for ( var k = 0; k < 22; k++ )
+		// Where the last segment's model starts, and how wide it is there, measured from its own vertices.
+		var toPart = tail.Go.GlobalTransform.AffineInverse();
+		var baseRing = new List<Vector3>();
+		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
-			dir = (Ax( SLeft, 15f + k * 1.6f ) * dir).Normalized();
-			var next = at + dir * length * U.In;
-			var link = global::Sculpt.Limb( tail.Go, at, next, radius * U.In, radius * 0.94f * U.In, material, "Curl" );
-			tail.Renderers.Add( (link, Colors.White) );
-			var knuckle = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Joint" );
-			tail.Renderers.Add( (knuckle, Colors.White) );
-			at = next;
-			length *= 0.93f;
-			radius *= 0.94f;
+			if ( mesh.Mesh is null ) continue;
+			var into = toPart * mesh.GlobalTransform;
+			for ( var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++ )
+				foreach ( var v in mesh.Mesh.SurfaceGetArrays( surface )[(int)Mesh.ArrayType.Vertex].AsVector3Array() )
+				{
+					var p = into * v;
+					if ( p.Y > -1.2f * U.In && p.Y < 0.6f * U.In ) baseRing.Add( p );
+				}
+			mesh.Visible = false;   // the tube below takes its place
 		}
-		var tip = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
+		var start = Vector3.Zero;
+		var r0 = TailRadius[TailCount - 1];
+		if ( baseRing.Count > 6 )
+		{
+			var centre = baseRing.Aggregate( Vector3.Zero, ( a, b ) => a + b ) / baseRing.Count;
+			start = centre with { Y = 0f };
+			r0 = baseRing.Max( p => new Vector2( p.X - centre.X, p.Z - centre.Z ).Length() ) / U.In;
+		}
+		r0 = MathX.Clamp( r0, 2f, 9f );
+
+		// The centre line: down from the joint, then bending about his left axis (the way the tail curls), the turn
+		// per step growing so it winds into a spiral. Steps shorten as it thins.
+		const int steps = 64;
+		const int sides = 14;
+		var axis = SDir( SLeft ).Normalized();
+		var points = new Vector3[steps + 1];
+		var tangents = new Vector3[steps + 1];
+		var radii = new float[steps + 1];
+		var at = start;
+		var dir = SDir( new Vector3( 0f, 0f, -1f ) );
+		var step = 1.15f;
+		for ( var i = 0; i <= steps; i++ )
+		{
+			var u = i / (float)steps;
+			points[i] = at;
+			tangents[i] = dir;
+			radii[i] = r0 * MathF.Max( 0.07f, 1f - MathF.Pow( u, 0.85f ) * 0.93f );
+			var bend = MathX.Clamp( (u - 0.12f) / 0.88f, 0f, 1f );
+			dir = (Ax( SLeft, bend * bend * 26f + bend * 6f ) * dir).Normalized();
+			at += dir * step * U.In;
+			step *= 0.985f;
+		}
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		for ( var i = 0; i <= steps; i++ )
+		{
+			// The ring's frame: the bend axis across, and the normal in the plane of the curl.
+			var across = axis;
+			var normal = tangents[i].Cross( across ).Normalized();
+			for ( var k = 0; k <= sides; k++ )
+			{
+				var a = k / (float)sides * MathF.Tau;
+				var outward = across * MathF.Cos( a ) + normal * MathF.Sin( a );
+				st.SetNormal( outward );
+				st.AddVertex( points[i] + outward * radii[i] * U.In );
+			}
+		}
+		for ( var i = 0; i < steps; i++ )
+			for ( var k = 0; k < sides; k++ )
+			{
+				var a = i * (sides + 1) + k;
+				var b = a + sides + 1;
+				st.AddIndex( a ); st.AddIndex( b ); st.AddIndex( a + 1 );
+				st.AddIndex( a + 1 ); st.AddIndex( b ); st.AddIndex( b + 1 );
+			}
+		var tube = new MeshInstance3D { Name = "Tail Curl", Mesh = st.Commit(), MaterialOverride = FxMaterials.Mosaic( 3.6f * U.In ) };
+		tail.Go.AddChild( tube );
+		tail.Renderers.Add( (tube, Colors.White) );
+		// A rounded tip.
+		var tip = global::Sculpt.Blob( tail.Go, points[steps], Vector3.One * radii[steps] * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
 		tail.Renderers.Add( (tip, Colors.White) );
 	}
 

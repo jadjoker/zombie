@@ -2940,10 +2940,10 @@ public partial class AutoTest : Node
 		var boss = MC61.Spawn( GetTree().CurrentScene, home + new Vector3( 0f, 2.6f, -8f ), 2000f );
 		await Wait( 3f );   // past the hologram scan-in
 		var fins = CreaturePart.All.Where( p => p.Creature == boss && p.Name.ToString().Contains( "Hand" ) ).Select( p => p.FindChild( "Membrane", true, false ) ).Count( m => m is not null );
-		var curl = CreaturePart.All.Where( p => p.Creature == boss && p.Name.ToString().Contains( "Tail 3" ) ).Sum( p => p.FindChildren( "*", "MeshInstance3D", true, false ).Count );
+		var curl = CreaturePart.All.Count( p => p.Creature == boss && p.Name.ToString().Contains( "Tail 3" ) && p.FindChild( "Tail Curl", true, false ) is not null );
 		GD.Print( $"[autotest] mc51 look: {fins} fins, {curl} tail curl pieces, look {boss.Look}" );
 		Check( fins == 2, "MC-51 does not have two fins for hands" );
-		Check( curl > 15, "MC-51's tail has no curl" );
+		Check( curl == 1, "MC-51's tail has no curl" );
 		if ( shots is not null )
 		{
 			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )

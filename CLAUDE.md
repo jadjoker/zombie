@@ -130,7 +130,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Test: `--missiles` (shots need a window).
   MC-51's seahorse look: the body and tail wear `fx_mosaic.gdshader` (`FxMaterials.Mosaic`: teal, aqua and deep blue
   stained-glass cells in yellow leading; `MC61.Look` is `Surface.Mosaic`), the tail curls tighter and ends in a spiral
-  (`BuildCurl`, many short links), navy spikes run up his back (`BackSpikes`, placed from the body mesh), the
+  (`BuildCurl`: one swept tube replacing the last segment, so no seam), navy spikes run up his back (`BackSpikes`, placed from the body mesh), the
   yellow leading is bump-shaded as a raised bead (`bead_height`), and the gloved hands are fins (`BuildFin`, flapped by `FlapFins`; the old hand rig code stands aside).
   Suit, hat and eye are unchanged. Test: `--mc51` (shots need a window).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s

@@ -65,6 +65,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
 		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
 		if ( args.Contains( "--crab" ) ) { await CrabTest(); return; }
+		if ( args.Contains( "--mc51" ) ) { await Mc51LookTest(); return; }
 		if ( args.Contains( "--pickups" ) ) { await PickupTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
@@ -2917,6 +2918,55 @@ public partial class AutoTest : Node
 			player.CameraOverride = null;
 			foreach ( var cl in hidden ) cl.Visible = true;
 			foreach ( var g in guns ) g.Visible = true;
+		}
+		DevFlags.FreezeEnemies = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> MC-51's seahorse look: the teal mosaic body, the fins for hands and the curled tail, from the front, side and close. </summary>
+	async Task Mc51LookTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		WaveDirector.Current.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		DevFlags.FreezeEnemies = true;
+		var boss = MC61.Spawn( GetTree().CurrentScene, home + new Vector3( 0f, 2.6f, -8f ), 2000f );
+		await Wait( 3f );   // past the hologram scan-in
+		var fins = CreaturePart.All.Where( p => p.Creature == boss && p.Name.ToString().Contains( "Hand" ) ).Select( p => p.FindChild( "Membrane", true, false ) ).Count( m => m is not null );
+		var curl = CreaturePart.All.Where( p => p.Creature == boss && p.Name.ToString().Contains( "Tail 3" ) ).Sum( p => p.FindChildren( "*", "MeshInstance3D", true, false ).Count );
+		GD.Print( $"[autotest] mc51 look: {fins} fins, {curl} tail curl pieces, look {boss.Look}" );
+		Check( fins == 2, "MC-51 does not have two fins for hands" );
+		Check( curl > 15, "MC-51's tail has no curl" );
+		if ( shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+			foreach ( var g in GetTree().Root.FindChildren( "*", "", true, false ).OfType<Node3D>().Where( n => n is ViewModel || n is ViewModelAxe ) ) g.Visible = false;
+			var centre = boss.GlobalPosition + Vector3.Up * 0.5f;
+			var ahead = (-boss.GlobalBasis.Z).Flat().Normalized();
+			var right = ahead.Cross( Vector3.Up );
+			var finL = CreaturePart.All.FirstOrDefault( p => p.Creature == boss && p.Name.ToString().Contains( "Hand L" ) );
+			foreach ( var (name, from, look) in new[]
+			{
+				("mc51_front", centre + ahead * 5.5f + Vector3.Up * 0.4f, centre),
+				("mc51_side", centre + right * 5.5f + ahead * 1f, centre + Vector3.Down * 0.5f),
+				("mc51_back", centre - ahead * 5f + right * 2f, centre + Vector3.Down * 0.6f),
+				("mc51_fin", (finL?.GlobalPosition ?? centre) + ahead * 2.2f + right * 0.6f + Vector3.Up * 0.3f, (finL?.GlobalPosition ?? centre) + Vector3.Up * 0.3f),
+			} )
+			{
+				var at = new Transform3D( Basis.LookingAt( (look - from).Normalized(), Vector3.Up ), from );
+				player.CameraOverride = _ => at;
+				await Wait( 0.4f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
 		}
 		DevFlags.FreezeEnemies = false;
 		GD.Print( "[autotest] done" );

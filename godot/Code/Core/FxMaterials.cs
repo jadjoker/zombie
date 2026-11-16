@@ -31,6 +31,14 @@ public static class FxMaterials
 		return m;
 	}
 
+	/// <summary> fx_mosaic: teal and aqua stained-glass cells in gold-yellow leading (MC-51's body, tail and fins). Cell size in the mesh's units. </summary>
+	public static ShaderMaterial Mosaic( float cell )
+	{
+		var m = Make( "fx_mosaic", Colors.White );
+		m.SetShaderParameter( "cell", cell );
+		return m;
+	}
+
 	public static ShaderMaterial Dissolve( Color? tint = null ) => Make( "fx_dissolve", tint );
 	public static ShaderMaterial Hologram() => Make( "fx_hologram" );
 	public static ShaderMaterial Iridescent( Color? tint = null ) => Make( "fx_iridescent", tint );

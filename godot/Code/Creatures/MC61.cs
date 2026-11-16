@@ -40,9 +40,14 @@ public partial class MC61 : PartCreature, MC61Marker
 	public float TailHealth = 60f;
 	public float HandScale = 1.2f;
 	public float EyeHealth = 350f;
-	public enum Surface { Plain, RimGlow, Sheen }
-	/// <summary> How his ghostly body (and tail) is shaded: plain, a blue rim glow with drifting mist, or a rainbow sheen. </summary>
-	public Surface Look = Surface.RimGlow;
+	public enum Surface { Plain, RimGlow, Sheen, Mosaic }
+	/// <summary>
+	/// How his body (and tail and fins) is shaded: plain, a blue rim glow with drifting mist, a rainbow sheen, or (his
+	/// look now) a teal and aqua stained-glass mosaic in yellow leading, after a jewelled seahorse.
+	/// </summary>
+	public Surface Look = Surface.Mosaic;
+	/// <summary> The mosaic's cell size in the body models' own units (about 4.5 inches), and in metres for the fins. </summary>
+	const float MosaicCell = 0.045f, FinCell = 3.2f * U.In;
 	/// <summary> He scans in from the floor up as a hologram for this long when he appears (0 = off). </summary>
 	public float SpawnInTime = 1.8f;
 	/// <summary> Debug: false leaves the hand rigs in their rest pose. </summary>
@@ -193,6 +198,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			var tail = AddPart( Tail0 + i, parentIndex, parentGo, $"Tail {i}", i == 0 ? TailRoot : new Vector3( 0, 0, -TailSegment ), Basis.Identity, TailHealth );
 			Sculpt( tail, $"tail{i}", GhostBody, ghost: true );
 			Trigger( tail, Vector3.Zero, new Vector3( 0, 0, -TailSegment ), TailRadius[i] * 0.9f );
+			if ( i == TailCount - 1 ) BuildCurl( tail );
 			parentIndex = Tail0 + i;
 			parentGo = tail.Go;
 		}
@@ -206,19 +212,108 @@ public partial class MC61 : PartCreature, MC61Marker
 	{
 		var part = AddPart( index, Torso, parts[Torso].Go, side > 0 ? "Hand L" : "Hand R", new Vector3( 6f, side * 36f, 18f ), Basis.Identity, HandHealth );
 		Trigger( part, Vector3.Zero, new Vector3( 0, 0, 13 * HandScale ), 8f * HandScale );
-		var holder = new Node3D { Name = "Hand Skin", Scale = Vector3.One * HandScale };
-		part.Go.AddChild( holder );
-		var scene = GD.Load<PackedScene>( $"res://assets/models/creatures/mc61g/{(side > 0 ? "hand_l" : "hand_r")}.fbx" );
-		var model = scene.Instantiate<Node3D>();
-		// The hand rig imports already facing the s&box way round (its armature carries the axis turn).
-		model.Basis = Basis.FromScale( Vector3.One * 2.54f );
-		holder.AddChild( model );
-		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		Trigger( part, Vector3.Zero, new Vector3( 0, side * 11f, 5f ) * HandScale, 7f * HandScale );
+		fins[index == HandL ? 0 : 1] = BuildFin( part, side );
+		// No glove rig any more: the hand is a fin (the finger curling below finds no skeleton and stands aside).
+		hands[index == HandL ? 0 : 1] = new Hand { Side = side, Root = part.Go };
+	}
+
+	/// <summary>
+	/// The end of his tail rolled up like a seahorse's: a spiral of shrinking mosaic links past the last segment,
+	/// turning the way the tail already curls, tighter at each link.
+	/// </summary>
+	void BuildCurl( Part tail )
+	{
+		var at = U.Sbox( 0f, 0f, -TailSegment );
+		var dir = SDir( new Vector3( 0f, 0f, -1f ) );
+		var length = 4.4f;
+		var radius = 3.2f;
+		var material = FxMaterials.Mosaic( 2.6f * U.In );
+		for ( var k = 0; k < 10; k++ )
 		{
-			mesh.MaterialOverride = Shapes.Material( Glove, "smooth" );
-			part.Renderers.Add( (mesh, Glove) );
+			dir = (Ax( SLeft, 34f + k * 5f ) * dir).Normalized();
+			var next = at + dir * length * U.In;
+			var link = global::Sculpt.Limb( tail.Go, at, next, radius * U.In, radius * 0.86f * U.In, material, "Curl" );
+			tail.Renderers.Add( (link, Colors.White) );
+			var knuckle = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Joint" );
+			tail.Renderers.Add( (knuckle, Colors.White) );
+			at = next;
+			length *= 0.84f;
+			radius *= 0.86f;
 		}
-		hands[index == HandL ? 0 : 1] = new Hand { Side = side, Root = part.Go, Skeleton = model.FindChildren( "*", "Skeleton3D", true, false ).OfType<Skeleton3D>().FirstOrDefault() };
+		var tip = global::Sculpt.Blob( tail.Go, at, Vector3.One * radius * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
+		tail.Renderers.Add( (tip, Colors.White) );
+	}
+
+	/// <summary> His fins (instead of gloved hands), to flap: the left, then the right. </summary>
+	readonly Node3D[] fins = new Node3D[2];
+
+	/// <summary>
+	/// A seahorse fin in place of a hand: a fan of mosaic membrane in yellow leading, cupped a little, its edge scalloped
+	/// between seven pale ribs whose tips stand out past it as spines, on a round mosaic wrist. It spreads from up to
+	/// out and a little down, on his outer side. Inches, the part's s&box space.
+	/// </summary>
+	Node3D BuildFin( Part part, float side )
+	{
+		var holder = new Node3D { Name = "Fin", Scale = Vector3.One * HandScale };
+		part.Go.AddChild( holder );
+		const int ribs = 7;
+		const float reach = 16f;
+		var a0 = MathX.Rad( -18f );
+		var a1 = MathX.Rad( 100f );
+		// A point of the fan: angle from straight up toward his outer side, distance out, cupped forward in the middle.
+		Vector3 At( float a, float r ) => U.Sbox( MathF.Sin( (a - a0) / (a1 - a0) * MathF.PI ) * r * 0.16f, side * MathF.Sin( a ) * r, MathF.Cos( a ) * r );
+		var st = new SurfaceTool();
+		st.Begin( Mesh.PrimitiveType.Triangles );
+		const int steps = 60;
+		var root = U.Sbox( 0f, 0f, 0f );
+		for ( var k = 0; k < steps; k++ )
+		{
+			float Edge( int i )
+			{
+				var u = i / (float)steps * (ribs - 1);
+				var nearRib = MathF.Abs( u - MathF.Round( u ) );   // 0 at a rib, 0.5 halfway between
+				return reach * (0.8f + 0.2f * MathF.Pow( 1f - nearRib * 2f, 2f ));
+			}
+			var a = MathX.Lerp( a0, a1, k / (float)steps );
+			var b = MathX.Lerp( a0, a1, (k + 1) / (float)steps );
+			// Two rings, so the membrane bends with the cup rather than lying as one flat triangle.
+			var ma = At( a, Edge( k ) * 0.5f );
+			var mb = At( b, Edge( k + 1 ) * 0.5f );
+			var ea = At( a, Edge( k ) );
+			var eb = At( b, Edge( k + 1 ) );
+			foreach ( var v in new[] { root, ma, mb, ma, ea, eb, ma, eb, mb } ) st.AddVertex( v );
+		}
+		st.GenerateNormals();
+		var membrane = new MeshInstance3D { Name = "Membrane", Mesh = st.Commit(), MaterialOverride = FxMaterials.Mosaic( FinCell / HandScale ) };
+		holder.AddChild( membrane );
+		part.Renderers.Add( (membrane, Colors.White) );
+		var ribColor = new Color( 0.62f, 0.97f, 0.9f );
+		var ribMaterial = Shapes.Material( ribColor, "smooth" );
+		for ( var j = 0; j < ribs; j++ )
+		{
+			var a = MathX.Lerp( a0, a1, j / (float)(ribs - 1) );
+			var rib = global::Sculpt.Limb( holder, root, At( a, reach * 1.1f ), 0.75f * U.In, 0.12f * U.In, ribMaterial, "Rib" );
+			part.Renderers.Add( (rib, ribColor) );
+		}
+		var wrist = Shapes.Part( holder, "Wrist", Vector3.Zero, Shapes.Ellipsoid( 4.2f, 3.6f, 3.6f ), Colors.White );
+		wrist.MaterialOverride = FxMaterials.Mosaic( FinCell / HandScale / (4.2f * 2f * U.In) );
+		part.Renderers.Add( (wrist, Colors.White) );
+		return holder;
+	}
+
+	/// <summary> The fins ripple and beat: a slow wave, spread wider with `fan`, shivering with `tremble`. </summary>
+	void FlapFins( float t, float fan, float ripple, float tremble )
+	{
+		for ( var s = 0; s < 2; s++ )
+		{
+			var fin = fins[s];
+			if ( fin is null || !IsInstanceValid( fin ) ) continue;
+			var side = s == 0 ? 1f : -1f;
+			var beat = MathF.Sin( t * 3.1f + s * 1.7f ) * (10f + ripple * 0.6f) + fan * 0.5f + tremble * MathF.Sin( t * 37f + s ) * 0.8f;
+			var sway = MathF.Sin( t * 1.7f + s ) * 8f;
+			fin.Basis = Ax( SForward, side * -beat ) * Ax( SLeft, sway ) * Basis.FromScale( Vector3.One * HandScale );
+		}
 	}
 
 	bool PrepareHand( Hand hand )
@@ -252,6 +347,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	{
 		Surface.RimGlow => FxMaterials.Ghost( color ),
 		Surface.Sheen => FxMaterials.Iridescent( color ),
+		Surface.Mosaic => FxMaterials.Mosaic( MosaicCell ),
 		_ => Shapes.Material( color, "smooth" ),
 	};
 
@@ -298,7 +394,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			// His ghostly body and tail wear the chosen surface look (RimGlow: fx_ghost).
 			mesh.MaterialOverride = ghost ? LookMaterial( color ) : material ?? Shapes.Material( color, "smooth" );
 			if ( ghost ) styleRenderers.Add( mesh );
-			part.Renderers.Add( (mesh, color) );
+			part.Renderers.Add( (mesh, ghost && Look == Surface.Mosaic ? Colors.White : color) );
 		}
 	}
 
@@ -570,6 +666,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		MoveHand( HandR, posR, rotR, lag, frame );
 		CurlHand( hands[0], poseL, 10f, tremble, fan, thumbSplay, ripple, frame );
 		CurlHand( hands[1], poseR, 10f, tremble, fan, thumbSplay, ripple, frame );
+		FlapFins( t, fan, ripple, tremble );
 
 		AnimateTail( t, dt, tailWiggle );
 		AnimateEye( t, dt, eyeGlow );
@@ -585,7 +682,8 @@ public partial class MC61 : PartCreature, MC61Marker
 			var tail = parts[Tail0 + i];
 			if ( tail is null || tail.Gone ) break;
 			var drag = 1f + i * 0.35f;
-			var targetPitch = (i == 0 ? 42f : 12f) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
+			// Curled like a seahorse's: each segment bends further than the one before it.
+			var targetPitch = (i == 0 ? 42f : 18f + 12f * i) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
 			var targetRoll = -14f + MathX.Clamp( -local.Y * 0.05f, -22f, 22f ) * drag + MathF.Cos( t * 1.7f - i * 0.8f ) * (4f + 3f * i) * wiggle;
 			tailPitchVel[i] += (targetPitch - tailPitch[i]) * 38f * dt;
 			tailPitchVel[i] *= MathF.Exp( -4f * dt );

@@ -128,6 +128,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`
   after each area is built): 8 per area on the outskirts, chained and drifting, shots tink off, touching one costs 45.
   Test: `--missiles` (shots need a window).
+  MC-51's seahorse look: the body and tail wear `fx_mosaic.gdshader` (`FxMaterials.Mosaic`: teal, aqua and deep blue
+  stained-glass cells in yellow leading; `MC61.Look` is `Surface.Mosaic`), the tail curls tighter and ends in a spiral
+  (`BuildCurl`), and the gloved hands are fins (`BuildFin`, flapped by `FlapFins`; the old hand rig code stands aside).
+  Suit, hat and eye are unchanged. Test: `--mc51` (shots need a window).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
   chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip`, electric bullets `LightningArc`, pirate chest, shield through `Health.Absorb`,

@@ -283,7 +283,7 @@ public partial class GameHud : Control
 			var x = 40f;
 			// Above everything else in the corner: the bars, the HEALTH caption, the points (bottom at -84) and the
 			// "+points" popup over them (bottom at -128, about 28 tall), with a gap.
-			var y = Size.Y - 128f - 30f - 8f - 40f;
+			var y = Size.Y - 128f - 44f - 12f - 40f;
 			foreach ( var entry in PlayerPerks.Table )
 			{
 				var count = perks.Count( entry.Kind );

@@ -421,7 +421,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			(-3f, 16f, 11.5f, 8.2f), (-7f, 25f, 9f, 7f), (-7.5f, 32f, 8f, 6.5f), (-3.5f, 39f, 7.5f, 6.3f),
 		};
 		var points = line.Select( p => S( p.X, 0f, p.Z ) ).ToArray();
-		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 8 );
+		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 8, 20 );   // 20 sides: a vertex on the middle line front and back, for the spikes and fin
 		Put( torso, holder, "Body", mesh );
 		// Rounded off at the bottom, where the tail comes out.
 		Put( torso, holder, "Hips", Lump( S( -13f, 0f, -27f ), 8f, 6.2f, 7f ) );

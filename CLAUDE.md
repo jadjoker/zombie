@@ -162,6 +162,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   No suit: the body and head are built in code side on like a seahorse (`SeahorseBody`, `SeahorseHead`: swept
   mosaic tubes and `Lump`s, a long snout, a coronet), the one eye smaller on the brow (`EyeScale`), the hat on the
   coronet, a rippling dorsal fin above the tail (`DorsalFin`), the pectoral fins tucked in at the neck (`FinAnchor`, `Tuck`). Test: `--mc51` (shots need a window).
+  Smooth pass: denser lumps and sweeps, 16-sided spikes, the tail sections are code tubes with seahorse ridges
+  (`TailTube`, round tops hide the joints; the old tail models are no longer loaded) into the curl, and the top hat is
+  built in code (`TopHat`, fitted to the old hat model's bounds) with a gold band. Motion: springs lean him into his
+  travel and bank him into turns, his body rocks in a slow S against his head, the fins flutter, the tail uncurls with
+  speed and winds tighter to fire, the beam kicks him back as it fires, each missile snaps his snout up, a hit makes him
+  flinch (at most once a second), and the hat rides on its own spring. `--mc51 --motion` adds frames of each move.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
   chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip` (heat seeking, `SeekSpeed`), electric bullets `LightningArc` (25% chance, +5% per extra pickup), pirate chest, shield through `Health.Absorb`,

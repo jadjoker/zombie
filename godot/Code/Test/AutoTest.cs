@@ -3035,6 +3035,26 @@ public partial class AutoTest : Node
 				await Wait( 0.4f );
 				await Shot( name );
 			}
+			if ( OS.GetCmdlineUserArgs().Contains( "--motion" ) )
+			{
+				// Each move from three-quarter on, frame by frame.
+				DevFlags.FreezeEnemies = false;
+				foreach ( var (mode, frames, gap) in new[] { (MC61.Mode.Charge, 8, 0.3f), (MC61.Mode.Cards, 8, 0.2f), (MC61.Mode.Dance, 6, 0.25f), (MC61.Mode.Float, 6, 0.25f) } )
+				{
+					if ( mode != MC61.Mode.Float ) boss.ForceState( mode );
+					for ( var f = 0; f < frames; f++ )
+					{
+						var c = boss.GlobalPosition + Vector3.Up * 0.3f;
+						var a = (-boss.GlobalBasis.Z).Flat().Normalized();
+						var from = c + (a + a.Cross( Vector3.Up ) * 0.8f).Normalized() * 6.5f + Vector3.Up * 0.6f;
+						var at = new Transform3D( Basis.LookingAt( (c - from).Normalized(), Vector3.Up ), from );
+						player.CameraOverride = _ => at;
+						await Wait( gap );
+						await Shot( $"mc51_{mode.ToString().ToLower()}_{f}" );
+					}
+					await Wait( 1.5f );
+				}
+			}
 			player.CameraOverride = null;
 		}
 		DevFlags.FreezeEnemies = false;

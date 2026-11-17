@@ -99,6 +99,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	// s&box quaternion (-0.16307, -0.19920, -0.61210, 0.74771) with its axis turned into Godot space.
 	static readonly Quaternion HatRotation = new( 0.19920f, -0.61210f, 0.16307f, 0.74771f );
 	const float HatTilt = 14f;
+	static Basis hatRest => Ax( SForward, HatTilt ) * Ax( SLeft, -8f );
 	static readonly Vector3 TailRoot = new( -16.6f, 0, -25f );
 	const float TailSegment = 10f;
 	static readonly float[] TailRadius = { 10.4f, 8.6f, 6.2f, 3.6f };
@@ -192,8 +193,8 @@ public partial class MC61 : PartCreature, MC61Marker
 		Sculpt( eye, "lids", Colors.Black, scale: EyeScale );
 		Trigger( eye, new Vector3( 0, -5, 0 ) * EyeScale, new Vector3( 0, 5, 0 ) * EyeScale, 9f * EyeScale );
 
-		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, Ax( SForward, HatTilt ) * Ax( SLeft, -8f ), HatHealth );
-		Sculpt( hat, "hat", Tux );
+		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, hatRest, HatHealth );
+		TopHat( hat );
 		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 10 ), 8.5f );
 
 		BuildHand( HandL, 1f );
@@ -204,9 +205,9 @@ public partial class MC61 : PartCreature, MC61Marker
 		for ( var i = 0; i < TailCount; i++ )
 		{
 			var tail = AddPart( Tail0 + i, parentIndex, parentGo, $"Tail {i}", i == 0 ? TailRoot : new Vector3( 0, 0, -TailSegment ), Basis.Identity, TailHealth );
-			var tailModel = Sculpt( tail, $"tail{i}", GhostBody, ghost: true );
 			Trigger( tail, Vector3.Zero, new Vector3( 0, 0, -TailSegment ), TailRadius[i] * 0.9f );
-			if ( i == TailCount - 1 ) BuildCurl( tail, tailModel );
+			if ( i == TailCount - 1 ) BuildCurl( tail );
+			else TailTube( tail, i );
 			parentIndex = Tail0 + i;
 			parentGo = tail.Go;
 		}
@@ -231,44 +232,24 @@ public partial class MC61 : PartCreature, MC61Marker
 	/// starts exactly where and as wide as that segment did, runs on straight a little, then curls tighter and tighter
 	/// into a spiral as it tapers to a point. One mesh, so there is no seam between the tail and its curl.
 	/// </summary>
-	void BuildCurl( Part tail, Node3D model )
+	void BuildCurl( Part tail )
 	{
-		// Where the last segment's model starts, and how wide it is there, measured from its own vertices.
-		var toPart = tail.Go.GlobalTransform.AffineInverse();
-		var baseRing = new List<Vector3>();
-		foreach ( var mesh in model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
-		{
-			if ( mesh.Mesh is null ) continue;
-			var into = toPart * mesh.GlobalTransform;
-			for ( var surface = 0; surface < mesh.Mesh.GetSurfaceCount(); surface++ )
-				foreach ( var v in mesh.Mesh.SurfaceGetArrays( surface )[(int)Mesh.ArrayType.Vertex].AsVector3Array() )
-				{
-					var p = into * v;
-					if ( p.Y > -1.2f * U.In && p.Y < 0.6f * U.In ) baseRing.Add( p );
-				}
-			mesh.Visible = false;   // the tube below takes its place
-		}
+		// It starts where the tube above it ends, as wide.
 		var start = Vector3.Zero;
 		var r0 = TailRadius[TailCount - 1];
-		if ( baseRing.Count > 6 )
-		{
-			var centre = baseRing.Aggregate( Vector3.Zero, ( a, b ) => a + b ) / baseRing.Count;
-			start = centre with { Y = 0f };
-			r0 = baseRing.Max( p => new Vector2( p.X - centre.X, p.Z - centre.Z ).Length() ) / U.In;
-		}
-		r0 = MathX.Clamp( r0, 2f, 9f );
 
 		// The centre line: down from the joint, then bending about his left axis (the way the tail curls), the turn
 		// per step growing so it winds into a spiral. Steps shorten as it thins.
-		const int steps = 64;
-		const int sides = 14;
+		const int steps = 96;
+		const int sides = 28;
 		var axis = SDir( SLeft ).Normalized();
 		var points = new Vector3[steps + 1];
 		var tangents = new Vector3[steps + 1];
 		var radii = new float[steps + 1];
 		var at = start;
 		var dir = SDir( new Vector3( 0f, 0f, -1f ) );
-		var step = 1.15f;
+		var per = 64f / steps;   // tuned at 64 steps: the same curl at any count
+		var step = 1.15f * per;
 		for ( var i = 0; i <= steps; i++ )
 		{
 			var u = i / (float)steps;
@@ -276,9 +257,9 @@ public partial class MC61 : PartCreature, MC61Marker
 			tangents[i] = dir;
 			radii[i] = r0 * MathF.Max( 0.07f, 1f - MathF.Pow( u, 0.85f ) * 0.93f );
 			var bend = MathX.Clamp( (u - 0.12f) / 0.88f, 0f, 1f );
-			dir = (Ax( SLeft, bend * bend * 26f + bend * 6f ) * dir).Normalized();
+			dir = (Ax( SLeft, (bend * bend * 26f + bend * 6f) * per ) * dir).Normalized();
 			at += dir * step * U.In;
-			step *= 0.985f;
+			step *= MathF.Pow( 0.985f, per );
 		}
 		var st = new SurfaceTool();
 		st.Begin( Mesh.PrimitiveType.Triangles );
@@ -309,6 +290,93 @@ public partial class MC61 : PartCreature, MC61Marker
 		// A rounded tip.
 		var tip = global::Sculpt.Blob( tail.Go, points[steps], Vector3.One * radii[steps] * 2f * U.In, FxMaterials.Mosaic( 0.6f ), name: "Curl Tip" );
 		tail.Renderers.Add( (tip, Colors.White) );
+	}
+
+	/// <summary>
+	/// A smooth tail section (in place of the old segment models): a round-topped tube from the joint down past the
+	/// next one (so the joint is covered as it bends), tapering from this section's width to the next one's, ringed
+	/// with the low bony ridges a seahorse's tail has.
+	/// </summary>
+	void TailTube( Part tail, int i )
+	{
+		var r0 = TailRadius[i];
+		var r1 = TailRadius[i + 1];
+		var length = TailSegment + r1 * 0.6f;
+		var rings = new List<(float Y, float Rx, float Rz, float Z)>();
+		for ( var j = 0; j <= 6; j++ )
+		{
+			// The round top: a cap inside the section above.
+			var a = MathF.PI * 0.5f * (1f - j / 6f);
+			rings.Add( (MathF.Sin( a ) * r0 * 0.7f * U.In, MathF.Max( 0.02f, MathF.Cos( a ) ) * r0 * U.In, MathF.Max( 0.02f, MathF.Cos( a ) ) * r0 * U.In, 0f) );
+		}
+		const int down = 40;
+		for ( var j = 1; j <= down; j++ )
+		{
+			var u = j / (float)down;
+			var y = -length * u;
+			var ridge = MathF.Pow( MathF.Abs( MathF.Sin( y / 2.6f * MathF.PI ) ), 6f ) * 0.06f;   // a low ring every 2.6 inches
+			var r = MathX.Lerp( r0, r1, MathX.Clamp( -y / TailSegment, 0f, 1f ) ) * (1f + ridge);
+			rings.Add( (y * U.In, r * U.In, r * 0.92f * U.In, 0f) );
+		}
+		var mesh = SmoothKit.Loft( rings, 0f, 1f, 32 );
+		var holder = new Node3D { Name = "Tail Tube" };
+		tail.Go.AddChild( holder );
+		Put( tail, holder, "Tail", mesh );
+	}
+
+	/// <summary> His top hat, smooth: a tall slightly flared crown, a curled brim, a band in the mosaic's yellow. </summary>
+	void TopHat( Part hat )
+	{
+		// The size and place of the old hat model, so it sits where it always did.
+		var bounds = new Aabb();
+		var found = false;
+		if ( !sculpts.TryGetValue( "hat", out var scene ) ) sculpts["hat"] = scene = GD.Load<PackedScene>( "res://assets/models/creatures/mc61g/hat.fbx" );
+		var old = scene.Instantiate<Node3D>();
+		old.Basis = new Basis( Vector3.Up, MathF.PI * 0.5f ) * Basis.FromScale( Vector3.One * 2.54f );
+		hat.Go.AddChild( old );
+		var toHat = hat.Go.GlobalTransform.AffineInverse();
+		foreach ( var m in old.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			var box = toHat * m.GlobalTransform * m.GetAabb();
+			bounds = found ? bounds.Merge( box ) : box;
+			found = true;
+		}
+		hat.Go.RemoveChild( old );
+		old.Free();
+		if ( !found ) bounds = new Aabb( new Vector3( -0.23f, 0f, -0.23f ), new Vector3( 0.46f, 0.36f, 0.46f ) );
+		var centre = bounds.GetCenter();
+		var brimR = MathF.Max( bounds.Size.X, bounds.Size.Z ) * 0.5f;
+		var bottom = bounds.Position.Y;
+		var height = bounds.Size.Y;
+		var crownR = brimR * 0.6f;
+		var crown = new List<(float Y, float Rx, float Rz, float Z)>
+		{
+			(0f, crownR * 0.96f, crownR * 0.9f, 0f),
+			(height * 0.5f, crownR * 0.93f, crownR * 0.87f, 0f),
+			(height * 0.94f, crownR * 1.02f, crownR * 0.95f, 0f),
+			(height * 0.985f, crownR * 0.9f, crownR * 0.84f, 0f),
+			(height, crownR * 0.02f, crownR * 0.02f, 0f),
+		};
+		var tux = Shapes.Material( Tux, "smooth" );
+		var holder = new Node3D { Name = "Top Hat", Position = new Vector3( centre.X, bottom + height * 0.04f, centre.Z ) };
+		hat.Go.AddChild( holder );
+		Put( hat, holder, "Crown", SmoothKit.Loft( SmoothKit.Smooth( crown, 3 ), 0f, 1f, 48 ), tux, Tux );
+		// The brim: a thin disc, its sides curled up.
+		var brim = new List<(float Y, float Rx, float Rz, float Z)>
+		{
+			(-height * 0.02f, brimR * 0.6f, brimR * 0.56f, 0f),
+			(-height * 0.015f, brimR * 0.97f, brimR * 0.88f, 0f),
+			(height * 0.03f, brimR, brimR * 0.9f, 0f),
+			(height * 0.045f, brimR * 0.94f, brimR * 0.84f, 0f),
+			(height * 0.03f, brimR * 0.6f, brimR * 0.56f, 0f),
+		};
+		Put( hat, holder, "Brim", SmoothKit.Loft( brim, 0f, 1f, 48 ), tux, Tux );
+		var gold = new Color( 1f, 0.82f, 0.2f );
+		var band = new MeshInstance3D { Name = "Band", Mesh = new CylinderMesh { TopRadius = crownR * 0.95f, BottomRadius = crownR * 0.98f, Height = height * 0.14f, RadialSegments = 48, Rings = 1 }, MaterialOverride = new StandardMaterial3D { AlbedoColor = gold, Roughness = 0.25f, Metallic = 0.6f, EmissionEnabled = true, Emission = gold, EmissionEnergyMultiplier = 0.35f } };
+		holder.AddChild( band );
+		band.Position = new Vector3( 0f, height * 0.11f, 0f );
+		band.Scale = new Vector3( 1.01f, 1f, 0.95f );
+		hat.Renderers.Add( (band, gold) );
 	}
 
 	// ---- The seahorse: body and head built in code ----
@@ -374,7 +442,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		var radii = new Vector3( left, up, forward ) * U.In;
 		var st = new SurfaceTool();
 		st.Begin( Mesh.PrimitiveType.Triangles );
-		const int rings = 12, segs = 18;
+		const int rings = 24, segs = 40;
 		var b = turn ?? Basis.Identity;
 		for ( var r = 0; r <= rings; r++ )
 		{
@@ -423,7 +491,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			(-3f, 16f, 11.5f, 8.2f), (-7f, 25f, 9f, 7f), (-7.5f, 32f, 8f, 6.5f), (-3.5f, 39f, 7.5f, 6.3f),
 		};
 		var points = line.Select( p => S( p.X, 0f, p.Z ) ).ToArray();
-		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 8, 20 );   // 20 sides: a vertex on the middle line front and back, for the spikes and fin
+		var mesh = Sweep( points, line.Select( p => p.Deep * U.In ).ToArray(), line.Select( p => p.Wide * U.In ).ToArray(), SDir( SLeft ).Normalized(), 14, 40 );   // an even number of sides: a vertex on the middle line front and back, for the spikes and fin
 		Put( torso, holder, "Body", mesh );
 		// Rounded off at the bottom, where the tail comes out.
 		Put( torso, holder, "Hips", Lump( S( -13f, 0f, -27f ), 8f, 6.2f, 7f ) );
@@ -451,7 +519,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		Put( head, holder, "Brow", Lump( S( 4f, 0f, 9.8f ), 5.5f, 6f, 3f ) );
 		// The snout: a tapering tube, then the flared tip with the mouth.
 		var snout = new[] { S( 6f, 0f, 0f ), S( 14f, 0f, -2.5f ), S( 22f, 0f, -5.2f ), S( 28f, 0f, -7f ) };
-		Put( head, holder, "Snout", Sweep( snout, new[] { 4.6f * U.In, 3.2f * U.In, 2.7f * U.In, 2.6f * U.In }, new[] { 4.2f * U.In, 2.9f * U.In, 2.4f * U.In, 2.3f * U.In }, SDir( SLeft ).Normalized(), 6, 14 ) );
+		Put( head, holder, "Snout", Sweep( snout, new[] { 4.6f * U.In, 3.2f * U.In, 2.7f * U.In, 2.6f * U.In }, new[] { 4.2f * U.In, 2.9f * U.In, 2.4f * U.In, 2.3f * U.In }, SDir( SLeft ).Normalized(), 12, 28 ) );
 		Put( head, holder, "Snout Tip", Lump( S( 28.5f, 0f, -7.2f ), 2.2f, 3.3f, 3.7f ) );
 		var mouth = new Color( 0.05f, 0.03f, 0.08f );
 		Put( head, holder, "Mouth", Lump( S( 30.4f, 0f, -7.4f ), 0.7f, 1.9f, 1.5f ), Shapes.Material( mouth, "smooth" ), mouth );
@@ -463,7 +531,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			var a = k / 6f * MathF.Tau;
 			var foot = S( -1.5f + MathF.Cos( a ) * 3.2f, MathF.Sin( a ) * 3.2f, 11.2f );
 			var lean = (S( MathF.Cos( a ), MathF.Sin( a ), 0f ).Normalized() * 0.45f + Vector3.Up).Normalized();
-			var spike = global::Sculpt.Cone( holder, foot, foot + lean * 3.8f * U.In, 1.1f * U.In, spikeMaterial, 6, "Coronet" );
+			var spike = global::Sculpt.Cone( holder, foot, foot + lean * 3.8f * U.In, 1.1f * U.In, spikeMaterial, 16, "Coronet" );
 			head.Renderers.Add( (spike, navy) );
 		}
 		// A few small spines down the back of the head, carrying on the row on his back.
@@ -471,7 +539,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		{
 			var foot = S( -8.5f + k * 0.6f, 0f, 8f - k * 4f );
 			var lean = (S( -1f, 0f, 0.5f ).Normalized());
-			var spike = global::Sculpt.Cone( holder, foot, foot + lean * (3.2f - k * 0.5f) * U.In, 1.1f * U.In, spikeMaterial, 6, "Head Spine" );
+			var spike = global::Sculpt.Cone( holder, foot, foot + lean * (3.2f - k * 0.5f) * U.In, 1.1f * U.In, spikeMaterial, 16, "Head Spine" );
 			head.Renderers.Add( (spike, navy) );
 		}
 	}
@@ -547,7 +615,8 @@ public partial class MC61 : PartCreature, MC61Marker
 			var fin = fins[s];
 			if ( fin is null || !IsInstanceValid( fin ) ) continue;
 			var side = s == 0 ? 1f : -1f;
-			var beat = MathF.Sin( t * 3.1f + s * 1.7f ) * (10f + ripple * 0.6f) + fan * 0.5f + tremble * MathF.Sin( t * 37f + s ) * 0.8f;
+			// A seahorse's fins flutter fast and small, on a slower sweep.
+			var beat = MathF.Sin( t * 3.1f + s * 1.7f ) * (7f + ripple * 0.5f) + MathF.Sin( t * 15f + s * 2.1f ) * 5f + fan * 0.5f + tremble * MathF.Sin( t * 37f + s ) * 0.8f;
 			var sway = MathF.Sin( t * 1.7f + s ) * 8f;
 			fin.Basis = Ax( SForward, side * -beat ) * Ax( SLeft, sway ) * Basis.FromScale( Vector3.One * HandScale );
 		}
@@ -738,9 +807,9 @@ public partial class MC61 : PartCreature, MC61Marker
 			var size = 4.2f + 3f * MathF.Sin( MathF.PI * (k + 0.5f) / count );   // biggest in the middle of the row
 			var foot = back - lean * 0.6f * U.In;
 			var tip = back + lean * size * U.In;
-			var spike = global::Sculpt.Cone( torso.Go, foot, tip, 1.7f * U.In * (0.7f + 0.3f * size / 7.2f), material, 6, "Back Spike" );
+			var spike = global::Sculpt.Cone( torso.Go, foot, tip, 1.7f * U.In * (0.7f + 0.3f * size / 7.2f), material, 16, "Back Spike" );
 			torso.Renderers.Add( (spike, navy) );
-			var glint = global::Sculpt.Cone( torso.Go, back + lean * size * 0.62f * U.In, tip + lean * 0.05f * U.In, 0.6f * U.In, tipMaterial, 6, "Spike Tip" );
+			var glint = global::Sculpt.Cone( torso.Go, back + lean * size * 0.62f * U.In, tip + lean * 0.05f * U.In, 0.6f * U.In, tipMaterial, 16, "Spike Tip" );
 			torso.Renderers.Add( (glint, edge) );
 		}
 	}
@@ -905,6 +974,14 @@ public partial class MC61 : PartCreature, MC61Marker
 		part.Go.Basis = new Basis( q );
 	}
 
+	// The motion pass: springs for his lean and bank, a flinch, a kick per missile, a recoil when the beam fires,
+	// and his hat riding on its own spring.
+	float leanP, leanPV, bankR, bankRV, hatP, hatPV, hatR, hatRV, lastYawAnim, yawRateAnim;
+	bool yawAnimSeeded;
+	Vector3 lastAnimPosition;
+	TimeSince flinchAt = 99f, kickAt = 99f;
+	int kicksSeen;
+
 	void Animate( float frame )
 	{
 		var t = (float)Clock.Now;
@@ -912,8 +989,30 @@ public partial class MC61 : PartCreature, MC61Marker
 		var st = (float)localStateTime;
 		var torso = parts[Torso].Go;
 
-		var torsoAngles = new Angles( MathF.Sin( t * 1.3f ) * 3f, 0, MathF.Sin( t * 0.9f ) * 4f );
-		var headAngles = new Angles( 0, MathF.Sin( t * 0.7f ) * 8f, 0 );
+		// How he is moving, in his own frame (inches a second: X forward, Y left), and how fast he is turning.
+		var moved = (GlobalPosition - lastAnimPosition) / dt;
+		lastAnimPosition = GlobalPosition;
+		var localVel = ToS( GlobalBasis.Orthonormalized().Inverse() * moved );
+		if ( localVel.Length() > 2000f ) localVel = Vector3.Zero;   // a teleport or the first frame
+		var yaw = GlobalRotation.Y;
+		if ( !yawAnimSeeded ) { lastYawAnim = yaw; yawAnimSeeded = true; }
+		var turned = Mathf.Wrap( yaw - lastYawAnim, -MathF.PI, MathF.PI );
+		lastYawAnim = yaw;
+		yawRateAnim = MathX.Lerp( yawRateAnim, MathX.Clamp( turned / dt, -3f, 3f ), MathX.Clamp( dt * 6f, 0f, 1f ) );
+		var moving = MathX.Clamp( localVel.Length() / MoveSpeed, 0f, 1f );
+		// A missile out: a kick (his snout snaps up, the fins punch, the hat jumps).
+		if ( State == Mode.Cards && cardRingsThrown > kicksSeen ) kickAt = 0f;
+		kicksSeen = State == Mode.Cards ? cardRingsThrown : 0;
+		var kick = (float)kickAt < 0.35f ? MathF.Exp( -(float)kickAt * 10f ) * (1f - MathF.Exp( -(float)kickAt * 60f )) * 1.5f : 0f;
+		var fh = (float)flinchAt;
+		var flinch = fh < 0.7f ? MathF.Exp( -fh * 7f ) * (1f - MathF.Exp( -fh * 50f )) * 1.6f : 0f;
+		// The beam's recoil as it fires.
+		var recoil = State == Mode.Beam && st < 0.6f ? MathF.Exp( -st * 6f ) * (1f - MathF.Exp( -st * 50f )) * 1.5f : 0f;
+
+		// A seahorse swims upright, its body rocking in a slow S: the torso one way, the head the other.
+		var sway = MathF.Sin( t * 1.5f );
+		var torsoAngles = new Angles( sway * 3.5f, 0, MathF.Sin( t * 0.9f ) * 3f );
+		var headAngles = new Angles( -sway * 4.5f, MathF.Sin( t * 0.7f ) * 8f, MathF.Sin( t * 0.6f + 1f ) * 3f );
 		var bob = MathF.Sin( t * 1.8f ) * 3f;
 		var spin = 0f;
 		var tailWiggle = 1f;
@@ -1001,9 +1100,24 @@ public partial class MC61 : PartCreature, MC61Marker
 			}
 		}
 
-		torso.Position = U.Sbox( 0, 0, bob );
+		// Leaning into his travel and banking into turns, on springs (not in the worm dance).
+		var dance = State == Mode.Dance;
+		SmoothKit.Spring( ref leanP, ref leanPV, dance ? 0f : MathX.Clamp( localVel.X * 0.05f, -12f, 12f ), 1.1f, 0.6f, dt );
+		SmoothKit.Spring( ref bankR, ref bankRV, dance ? 0f : MathX.Clamp( -yawRateAnim * 14f - localVel.Y * 0.03f, -14f, 14f ), 1f, 0.6f, dt );
+		torsoAngles = new Angles( torsoAngles.Pitch + leanP - flinch * 10f - recoil * 12f, torsoAngles.Yaw, torsoAngles.Roll + bankR );
+		headAngles = new Angles( headAngles.Pitch - kick * 16f + flinch * 8f + recoil * 6f, headAngles.Yaw, headAngles.Roll - bankR * 0.4f );
+		torso.Position = U.Sbox( -flinch * 3f - recoil * 4f, 0, bob );
 		torso.Basis = Ax( SUp, spin ) * torsoAngles.ToBasis();
 		Pose( Head, headAngles, dt );
+
+		// The hat rides on a spring: it rocks back as he bobs up, swings with his turns, jumps with every kick.
+		if ( Has( Hat ) )
+		{
+			var bobSpeed = MathF.Cos( t * 1.8f ) * 1.8f * 3f;
+			SmoothKit.Spring( ref hatP, ref hatPV, -bobSpeed * 0.6f - leanP * 0.5f + kick * 18f + flinch * 12f + recoil * 10f, 2.2f, 0.25f, dt );
+			SmoothKit.Spring( ref hatR, ref hatRV, -bankR * 0.8f + (dance ? MathF.Sin( t * 7f ) * 14f : 0f), 2f, 0.25f, dt );
+			parts[Hat].Go.Basis = hatRest * Ax( SLeft, -hatP ) * Ax( SForward, hatR );
+		}
 
 		var rigMove = (GlobalPosition - lastHandRigPosition) / dt;
 		lastHandRigPosition = GlobalPosition;
@@ -1037,7 +1151,10 @@ public partial class MC61 : PartCreature, MC61Marker
 			if ( tail is null || tail.Gone ) break;
 			var drag = 1f + i * 0.35f;
 			// Curled like a seahorse's: each segment bends further than the one before it.
-			var targetPitch = (i == 0 ? 38f : 16f + 8f * i) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
+			// It uncurls as he swims faster and winds tighter while he braces to fire.
+			var speed = MathX.Clamp( local.Length() / MoveSpeed, 0f, 1f );
+			var brace = State is Mode.Charge or Mode.Beam ? 1f : 0f;
+			var targetPitch = ((i == 0 ? 38f : 16f + 8f * i) * (1f - 0.3f * speed) + brace * (4f + 3f * i)) + MathX.Clamp( local.X * 0.05f, -22f, 22f ) * drag + MathF.Sin( t * 2.2f - i * 0.9f ) * (5f + 4f * i) * wiggle;
 			var targetRoll = -14f + MathX.Clamp( -local.Y * 0.05f, -22f, 22f ) * drag + MathF.Cos( t * 1.7f - i * 0.8f ) * (4f + 3f * i) * wiggle;
 			tailPitchVel[i] += (targetPitch - tailPitch[i]) * 38f * dt;
 			tailPitchVel[i] *= MathF.Exp( -4f * dt );
@@ -1427,6 +1544,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			CutLocal( index, direction );
 		}
 		else Hit( index, position, direction, Rng.Float() < 0.35f, hurt );
+		if ( flinchAt > 1.1f ) flinchAt = 0f;   // at most a flinch a second (he is shot all the time)
 
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );

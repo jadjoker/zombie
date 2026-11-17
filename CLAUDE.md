@@ -125,6 +125,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   through the hole, `ShotThrough`; head and tail stay open); about a third are archers that keep away and
   shoot `MermaidArrow`s. Slower, 30% more health than a Bloober. Dev menu: Enemies, Spawn an enemy, Mermaid. Test:
   `--mermaids` (shots need a window).
+  Rebuilt (the mermaid pass) in `Creatures/MermaidLook.cs`: alien but lightly cartoony. A lofted torso, a tail that is one
+  smooth skinned mesh on a `Skeleton3D` (a bone per tail joint, `PoseTail` copies the joints onto the bones each frame;
+  `TailPieceFrom` gives the flung piece its own mesh on death) painted by the `TailScales` shader (rows of scales, hip
+  colour to tip colour), a two-lobed fluke, hip and ridge fins, a fin frill at the waist; one smooth head with big
+  glossy black almond eyes (glowing iris, glint), pointed ear fins, gill slits, a mouth that is a line until it attacks
+  and then gapes on needle teeth (`maw`); women have long hair, a shell tiara and shell top, men a gold helmet with a fin
+  crest, shoulder plates and belt. Skin is the `BodySkin` shader (one colour, paler front; the head and hands without).
+  Test: `--mermaidgallery` (the four kinds lined up, faces and side; needs a window).
 - MC-51 is MC61's name in the game (the class and files keep `MC61`). His spin attack launches 5 to 8 `HomingMissile`s
   (`Code/Creatures/HomingMissile.cs`: slim bendy one-eyed rockets, black face, silver, rust and black body, 30 health, slower since playtest (dive 6.6 m/s), climb 6.7 to 10.7 s (as high as before) then dive, 15 damage) instead
   of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`

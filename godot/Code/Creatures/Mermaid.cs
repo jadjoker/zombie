@@ -107,7 +107,7 @@ void fragment() {
 	Node3D body, chest, head, armR, foreR, handR, armL, foreL, handL, weapon;
 	readonly List<Node3D> tail = new();
 	readonly List<Node3D> hair = new();
-	ShaderMaterial skin, handSkin;
+	ShaderMaterial skin, handSkin, tailMaterial;
 	Mode mode = Mode.Swim;
 	TimeSince inMode;
 	TimeSince sinceAttack = 99f;
@@ -147,193 +147,7 @@ void fragment() {
 
 	void Build()
 	{
-		skin = new ShaderMaterial { Shader = Poseidon.SkinShader };
-		handSkin = new ShaderMaterial { Shader = Poseidon.SkinShader };
-		handSkin.SetShaderParameter( "pin", new Vector4( 0f, 1.4f, -0.4f, 1f ) );
-		var gold = Sculpt.Paint( Gold, 0.14f, 0.95f );
-		gold.EmissionEnabled = true;
-		gold.Emission = Gold;
-		gold.EmissionEnergyMultiplier = 0.12f;
-		var shell = Sculpt.Paint( Shell, 0.45f );
-		var shellDark = Sculpt.Paint( ShellDark, 0.5f );
-		var fin = Sculpt.Membrane( Male ? new Color( 0.25f, 0.75f, 0.7f ) : new Color( 0.75f, 0.35f, 0.9f ), 0.65f );
-		var dark = Sculpt.Paint( new Color( 0.08f, 0.02f, 0.06f ), 0.5f );
-		var hairPaint = Sculpt.Paint( HairColours[HairColour], 0.6f );
-		var look = new Poseidon.Look
-		{
-			Scales = Sculpt.Paint( Male ? new Color( 0.1f, 0.5f, 0.55f ) : new Color( 0.45f, 0.18f, 0.6f ), 0.35f, 0.2f ),
-			Armour = Male ? gold : shellDark,
-			Fins = fin,
-			ScaleColours = Male
-				? new Material[] { Poseidon.ScaleMaterial( new Color( 0.1f, 0.62f, 0.6f ) ), Poseidon.ScaleMaterial( new Color( 0.3f, 0.85f, 0.3f ) ), Poseidon.ScaleMaterial( Gold, 0.8f, 0.1f ) }
-				: new Material[] { Poseidon.ScaleMaterial( new Color( 0.62f, 0.25f, 0.9f ) ), Poseidon.ScaleMaterial( new Color( 0.95f, 0.45f, 0.7f ) ), Poseidon.ScaleMaterial( new Color( 0.2f, 0.7f, 0.85f ) ) },
-		};
-
-		body = new Node3D { Name = "Body", Scale = Vector3.One * Scale };
-		AddChild( body );
-		Poseidon.BuildTail( body, look, tail );
-		Sculpt.Blob( body, Vector3.Zero, new Vector3( 0.8f, 0.24f, 0.62f ), Male ? gold : shellDark );   // the belt where skin meets scales
-
-		// The torso.
-		chest = Sculpt.Joint( body, new Vector3( 0f, 0.15f, 0f ), "Chest" );
-		var width = Male ? 1.2f : 0.9f;
-		Sculpt.Blob( chest, new Vector3( 0f, 0.22f, 0f ), new Vector3( width * 0.72f, 0.7f, 0.5f ), skin );
-		Sculpt.Blob( chest, new Vector3( 0f, 0.74f, 0f ), new Vector3( width, 0.75f, 0.64f ), skin );
-		Sculpt.Limb( chest, new Vector3( 0f, 1.0f, 0f ), new Vector3( 0f, 1.3f, -0.01f ), Male ? 0.2f : 0.15f, Male ? 0.17f : 0.13f, skin, "Neck" );
-		foreach ( var s in new[] { -1f, 1f } )
-		{
-			if ( Male )
-			{
-				Sculpt.Blob( chest, new Vector3( s * 0.25f, 0.82f, -0.26f ), new Vector3( 0.46f, 0.34f, 0.22f ), skin );   // pecs
-				for ( var k = 0; k < 3; k++ )
-					Sculpt.Blob( chest, new Vector3( s * 0.11f, 0.42f - k * 0.15f, -0.23f ), new Vector3( 0.18f, 0.12f, 0.1f ), skin );   // abs
-				Sculpt.Blob( chest, new Vector3( s * 0.58f, 1.0f, 0f ), new Vector3( 0.48f, 0.34f, 0.5f ), gold );   // gold shoulder plates
-			}
-			else
-			{
-				// A shell top: a scallop over each breast, ridged, on a thin cord.
-				var cup = new Vector3( s * 0.2f, 0.78f, -0.27f );
-				Sculpt.Blob( chest, cup, new Vector3( 0.32f, 0.3f, 0.16f ), shell );
-				for ( var k = -2; k <= 2; k++ )
-					Sculpt.Block( chest, cup + new Vector3( k * 0.05f, 0.02f, -0.075f ), new Vector3( 0.022f, 0.26f, 0.03f ), shellDark, new Basis( Vector3.Back, -k * 0.28f ) );
-				Sculpt.Limb( chest, cup + new Vector3( s * 0.13f, 0.06f, 0.02f ), new Vector3( s * 0.32f, 0.95f, 0.08f ), 0.015f, 0.015f, shellDark, "Cord" );
-			}
-		}
-
-		// The head, after the reference (a shell-mask mermaid): a pale mask of scallop shells over the forehead with a
-		// spiked ridge up the middle, flared ribbed shells on the cheeks bristling with needle spikes, black eyes, pastel
-		// dots round them, and a mouth stretched open on rows of long needle teeth.
-		head = Sculpt.Joint( chest, new Vector3( 0f, 1.32f, -0.02f ), "Head" );
-		Sculpt.Blob( head, new Vector3( 0f, 0.22f, 0f ), new Vector3( 0.44f, 0.52f, 0.46f ), skin );
-		var ivory = Sculpt.Paint( new Color( 0.96f, 0.93f, 0.88f ), 0.4f );
-		var blush = Sculpt.Paint( new Color( 0.95f, 0.78f, 0.78f ), 0.45f );
-		var spike = Sculpt.Paint( new Color( 1f, 0.98f, 0.92f ), 0.3f );
-		var black = Sculpt.Paint( new Color( 0.01f, 0.01f, 0.012f ), 0.08f );
-		var iris = Sculpt.Glow( new Color( 0.55f, 0.28f, 0.08f ), 1.2f );
-		var gums = Sculpt.Paint( new Color( 0.45f, 0.06f, 0.1f ), 0.5f );
-		var throat = Sculpt.Paint( new Color( 0.06f, 0.0f, 0.02f ), 0.6f );
-
-		// A scallop: a flattened fan of ribs from a hinge, its face tilted by `turn`.
-		void Scallop( Vector3 hinge, float size, Basis turn, Material face, Material rib )
-		{
-			Sculpt.Blob( head, hinge + turn * new Vector3( 0f, size * 0.55f, 0f ), new Vector3( size * 0.95f, size * 1.05f, size * 0.22f ), face, turn );
-			for ( var k = -3; k <= 3; k++ )
-			{
-				var a = k * 0.2f;
-				Sculpt.Block( head, hinge + turn * new Vector3( MathF.Sin( a ) * size * 0.3f, size * 0.5f, -size * 0.1f ), new Vector3( size * 0.06f, size * 0.95f, size * 0.06f ), rib, turn * new Basis( Vector3.Back, -a ) );
-			}
-			Sculpt.Blob( head, hinge, new Vector3( size * 0.3f, size * 0.18f, size * 0.15f ), rib, turn );
-		}
-		if ( !Male )   // the women wear the shell mask; the men show their faces under their helmets
-		{
-			// The forehead: five scallops fanned up over the brow.
-			for ( var k = -2; k <= 2; k++ )
-			{
-				var size = k == 0 ? 0.17f : MathF.Abs( k ) == 1 ? 0.15f : 0.16f;
-				var tilt = new Basis( Vector3.Back, -k * 0.32f ) * new Basis( Vector3.Right, 0.3f );
-				Scallop( new Vector3( k * 0.09f, 0.34f, -0.24f + MathF.Abs( k ) * 0.04f ), size, tilt, k % 2 == 0 ? ivory : blush, ivory );
-			}
-			// The ridge up the middle of the brow, with two tall spikes and pearls at its foot.
-			Sculpt.Limb( head, new Vector3( 0f, 0.29f, -0.27f ), new Vector3( 0f, 0.58f, -0.2f ), 0.025f, 0.015f, spike, "Ridge" );
-			foreach ( var s in new[] { -1f, 1f } )
-				Sculpt.Cone( head, new Vector3( s * 0.06f, 0.5f, -0.22f ), new Vector3( s * 0.07f, 0.7f, -0.2f ), 0.014f, spike, 5 );
-			for ( var k = -1; k <= 1; k++ ) Sculpt.Blob( head, new Vector3( k * 0.025f, 0.285f, -0.275f ), Vector3.One * 0.022f, ivory );
-		}
-		else
-		{
-			// A heavy brow and hard cheekbones.
-			Sculpt.Blob( head, new Vector3( 0f, 0.33f, -0.21f ), new Vector3( 0.4f, 0.09f, 0.12f ), skin );
-			foreach ( var s in new[] { -1f, 1f } )
-				Sculpt.Blob( head, new Vector3( s * 0.15f, 0.18f, -0.19f ), new Vector3( 0.12f, 0.08f, 0.1f ), skin );
-		}
-		foreach ( var s in new[] { -1f, 1f } )
-		{
-			// The cheeks: a ribbed shell flaring back past the eye, spikes standing out of its edge.
-			var cheek = new Vector3( s * 0.16f, 0.2f, -0.2f );
-			var flare = new Basis( Vector3.Up, -s * 0.9f ) * new Basis( Vector3.Back, -s * 0.5f );
-			if ( !Male ) Scallop( cheek, 0.2f, flare, blush, ivory );
-			for ( var k = 0; k < (Male ? 0 : 8); k++ )
-			{
-				var a = -0.9f + k * 0.28f;   // round the shell's outer edge, from below the eye to above it
-				var foot = cheek + new Vector3( s * (0.12f + MathF.Cos( a ) * 0.08f), MathF.Sin( a ) * 0.13f, 0.06f + MathF.Cos( a ) * 0.05f );
-				var outward = new Vector3( s * MathF.Cos( a ), MathF.Sin( a ) * 0.8f, 0.25f ).Normalized();
-				Sculpt.Cone( head, foot, foot + outward * (0.1f + (k % 3) * 0.035f), 0.01f, spike, 4 );
-			}
-			if ( !Male ) Sculpt.Cone( head, cheek + new Vector3( s * 0.02f, -0.06f, -0.05f ), cheek + new Vector3( s * 0.1f, -0.1f, -0.1f ), 0.01f, spike, 4 );
-			// Black eyes, a dark amber iris in each.
-			var ball = Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.225f ), new Vector3( 0.12f, 0.065f, 0.05f ), black, new Basis( Vector3.Back, -s * 0.15f ) );
-			var ring = Sculpt.Blob( head, new Vector3( s * 0.1f, 0.26f, -0.248f ), new Vector3( 0.045f, 0.045f, 0.012f ), iris );
-			(blinks ??= Blinker.Add( this )).Eye( ball, ring );
-			// Pastel dots under and beside the eyes.
-			for ( var k = 0; k < (Male ? 0 : 6); k++ )
-			{
-				var dot = new Vector3( s * (0.09f + (k % 3) * 0.04f), 0.2f - (k / 3) * 0.035f, -0.235f + (k % 3) * 0.015f );
-				Sculpt.Blob( head, dot, Vector3.One * (0.018f + (k % 2) * 0.008f), k % 3 == 0 ? Sculpt.Glow( new Color( 1f, 0.5f, 0.65f ), 0.8f ) : k % 3 == 1 ? Sculpt.Glow( new Color( 1f, 0.82f, 0.3f ), 0.8f ) : Sculpt.Glow( new Color( 0.5f, 1f, 0.6f ), 0.8f ) );
-			}
-		}
-		Sculpt.Blob( head, new Vector3( 0f, 0.19f, -0.25f ), new Vector3( 0.07f, 0.09f, 0.07f ), skin );   // the nose
-		// The mouth, stretched open: dark gums and throat, rows of long uneven needle teeth top and bottom.
-		var mouth = new Vector3( 0f, 0.04f, -0.21f );
-		Sculpt.Blob( head, mouth, new Vector3( 0.2f, 0.14f, 0.08f ), gums );
-		Sculpt.Blob( head, mouth + new Vector3( 0f, 0f, 0.015f ), new Vector3( 0.15f, 0.09f, 0.06f ), throat );
-		for ( var k = 0; k < 9; k++ )
-		{
-			var x = (k - 4f) * 0.019f;
-			var curve = MathF.Abs( k - 4f ) * 0.004f;
-			var top = 0.06f + (k % 3) * 0.018f;
-			var bottom = 0.045f + ((k + 1) % 3) * 0.016f;
-			Sculpt.Cone( head, mouth + new Vector3( x, 0.06f - curve, -0.035f + curve ), mouth + new Vector3( x * 0.9f, 0.06f - curve - top, -0.04f + curve ), 0.009f, spike, 4 );
-			Sculpt.Cone( head, mouth + new Vector3( x + 0.009f, -0.06f + curve, -0.035f + curve ), mouth + new Vector3( x * 0.9f + 0.009f, -0.06f + curve + bottom, -0.04f + curve ), 0.008f, spike, 4 );
-		}
-		// Green glitter on the neck.
-		for ( var k = 0; k < 5; k++ )
-			Sculpt.Blob( chest, new Vector3( 0.08f + k * 0.03f, 1.05f + (k % 2) * 0.05f, -0.15f - k * 0.01f ), Vector3.One * 0.025f, Sculpt.Glow( new Color( 0.45f, 1f, 0.55f ), 1.6f ) );
-		if ( Male )
-		{
-			// A gold helmet: a dome, a crest like a fin from brow to nape, cheek guards.
-			Sculpt.Blob( head, new Vector3( 0f, 0.36f, 0.03f ), new Vector3( 0.52f, 0.42f, 0.54f ), gold );
-			Sculpt.Block( head, new Vector3( 0f, 0.58f, 0.05f ), new Vector3( 0.05f, 0.22f, 0.5f ), gold );
-			Sculpt.Block( head, new Vector3( 0f, 0.66f, 0.1f ), new Vector3( 0.03f, 0.16f, 0.36f ), fin );
-			foreach ( var s in new[] { -1f, 1f } )
-				Sculpt.Block( head, new Vector3( s * 0.22f, 0.14f, -0.06f ), new Vector3( 0.05f, 0.26f, 0.2f ), gold, new Basis( Vector3.Up, s * 0.3f ) );
-			Sculpt.Blob( head, new Vector3( 0f, 0.48f, -0.23f ), new Vector3( 0.09f, 0.09f, 0.04f ), Sculpt.Glow( new Color( 0.66f, 0.22f, 1f ), 2f ) );
-		}
-		else
-		{
-			// Long hair: a full crown and strands down her back, swaying.
-			Sculpt.Blob( head, new Vector3( 0f, 0.33f, 0.06f ), new Vector3( 0.54f, 0.5f, 0.52f ), hairPaint );
-			for ( var k = 0; k < 7; k++ )
-			{
-				var x = (k - 3f) * 0.07f;
-				var strand = Sculpt.Joint( head, new Vector3( x, 0.3f, 0.18f ), $"Hair {k}" );
-				var length = 0.9f + (k % 3) * 0.15f;
-				Sculpt.Limb( strand, Vector3.Zero, new Vector3( x * 0.6f, -length, 0.12f ), 0.09f, 0.03f, hairPaint, "Strand" );
-				hair.Add( strand );
-			}
-			foreach ( var s in new[] { -1f, 1f } )
-				Sculpt.Limb( head, new Vector3( s * 0.2f, 0.3f, -0.04f ), new Vector3( s * 0.26f, -0.3f, -0.08f ), 0.07f, 0.03f, hairPaint, "Lock" );
-		}
-
-		// Arms with fin hands: a palm and four webbed fin rays fanned out, like the Rocky Shark's fins.
-		(Node3D Arm, Node3D Fore, Node3D Hand) Arm( float s )
-		{
-			var arm = Sculpt.Joint( chest, new Vector3( s * width * 0.5f, 0.98f, 0f ), s > 0 ? "Right Arm" : "Left Arm" );
-			Sculpt.Limb( arm, Vector3.Zero, new Vector3( 0f, -0.55f, 0f ), Male ? 0.15f : 0.11f, Male ? 0.12f : 0.09f, skin );
-			var fore = Sculpt.Joint( arm, new Vector3( 0f, -0.55f, 0f ), "Elbow" );
-			Sculpt.Limb( fore, Vector3.Zero, new Vector3( 0f, -0.5f, 0f ), Male ? 0.12f : 0.09f, 0.07f, skin );
-			Sculpt.Limb( fore, new Vector3( 0f, -0.32f, 0f ), new Vector3( 0f, -0.46f, 0f ), 0.1f, 0.09f, Male ? gold : shellDark );   // a cuff
-			var hand = Sculpt.Joint( fore, new Vector3( 0f, -0.55f, 0f ), "Hand" );
-			Sculpt.Blob( hand, Vector3.Zero, new Vector3( 0.15f, 0.17f, 0.12f ), handSkin );
-			for ( var k = 0; k < 4; k++ )
-			{
-				var a = (k - 1.5f) * 0.32f;
-				Sculpt.Block( hand, new Vector3( MathF.Sin( a ) * 0.11f, -0.14f, 0f ), new Vector3( 0.07f, 0.24f, 0.012f ), fin, new Basis( Vector3.Back, a ) );
-				Sculpt.Limb( hand, new Vector3( MathF.Sin( a ) * 0.05f, -0.05f, 0f ), new Vector3( MathF.Sin( a ) * 0.17f, -0.25f, 0f ), 0.012f, 0.006f, handSkin, "Ray" );
-			}
-			return (arm, fore, hand);
-		}
-		(armR, foreR, handR) = Arm( 1f );
-		(armL, foreL, handL) = Arm( -1f );
+		var (width, gold, fin) = BuildLook();   // MermaidLook.cs: the body, head, hair or helmet, arms and fins
 
 		if ( !Archer )
 		{
@@ -370,9 +184,9 @@ void fragment() {
 				var a1 = (k + 1) / 6f * MathF.Tau;
 				var c0 = new Vector3( MathF.Cos( a0 ) * r, MathF.Sin( a0 ) * r, 0f );
 				var c1 = new Vector3( MathF.Cos( a1 ) * r, MathF.Sin( a1 ) * r, 0f );
-				Sculpt.Limb( shield, c0, c1, 0.06f, 0.06f, frame, "Frame" );
-				Sculpt.Limb( shield, c0 * 0.93f + new Vector3( 0f, 0f, -0.04f ), c1 * 0.93f + new Vector3( 0f, 0f, -0.04f ), 0.018f, 0.018f, light, "Strip" );
-				Sculpt.Blob( shield, c0, Vector3.One * 0.16f, gold );   // the corners
+				Sculpt.Limb( shield, c0, c1, 0.045f, 0.045f, gold, "Frame" );
+				Sculpt.Limb( shield, c0 * 0.95f + new Vector3( 0f, 0f, 0.03f ), c1 * 0.95f + new Vector3( 0f, 0f, 0.03f ), 0.03f, 0.03f, frame, "Backing" );
+				Sculpt.Limb( shield, c0 * 0.93f + new Vector3( 0f, 0f, -0.03f ), c1 * 0.93f + new Vector3( 0f, 0f, -0.03f ), 0.012f, 0.012f, light, "Strip" );
 			}
 			// The grip behind the middle, where the hand holds it, and the emitter bar it hangs from.
 			Sculpt.Limb( shield, new Vector3( 0f, -0.25f, 0.12f ), new Vector3( 0f, 0.25f, 0.12f ), 0.05f, 0.05f, frame, "Grip" );
@@ -534,6 +348,11 @@ void fragment() {
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
 		handSkin.SetShaderParameter( "flash", flash );
+		tailMaterial?.SetShaderParameter( "flash", flash );
+		// The mouth gapes open on its teeth to attack, and closes to a line after.
+		var gape = mode is Mode.WindUp or Mode.Stab or Mode.Draw ? 1f : 0f;
+		mawOpen = MathX.Lerp( mawOpen, gape, 1f - MathF.Exp( -10f * dt ) );
+		if ( maw is not null ) maw.Scale = new Vector3( 1f, MathX.Lerp( 0.08f, 1f, mawOpen ), 1f );
 		skin.SetShaderParameter( "centre", body.GlobalPosition );
 		// Leaning into the swim; upright to fight.
 		var moving = MathX.Clamp( velocity.Length() / Speed, 0f, 1f );
@@ -554,6 +373,7 @@ void fragment() {
 			var want = MathX.Clamp( (0.3f - room) / 0.45f, 0f, 1f );
 			curl = MathX.Lerp( curl, want, 1f - MathF.Exp( -4f * dt ) );
 		}
+		PoseTail();
 		for ( var i = 0; i < hair.Count; i++ )
 			hair[i].Rotation = new Vector3( 0.35f - lean * 0.6f + MathF.Sin( t * 2.1f + i ) * 0.12f, 0f, MathF.Sin( t * 1.7f + i * 0.8f ) * 0.08f );
 		head.Rotation = new Vector3( -lean * 0.6f + MathF.Sin( t * 0.9f ) * 0.05f, MathF.Sin( t * 0.6f ) * 0.1f, 0f );
@@ -687,7 +507,7 @@ void fragment() {
 		}
 		if ( IsInstanceValid( weapon ) && weapon.GetParent() == this ) Fling( weapon, 0.25f, 6f );
 		if ( shield is not null && IsInstanceValid( shield ) ) Fling( shield, 0.3f, 6f );
-		if ( tail.Count > 4 ) Fling( tail[4], 0.2f, 6f );
+		if ( tail.Count > 4 ) { TailPieceFrom( 4 ); Fling( tail[4], 0.2f, 6f ); }
 		Fling( head, 0.2f, 8f );
 		Fling( Rng.Float() < 0.5f ? armL : armR, 0.15f, 7f );
 		Fling( chest, 0.3f, 4f );

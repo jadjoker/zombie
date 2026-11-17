@@ -95,6 +95,52 @@ public partial class AutoTest
 		GetTree().Quit();
 	}
 
+	/// <summary> The four kinds of mermaid side by side, held still and lit: a front view, a closer face view, and a side view. </summary>
+	async Task MermaidGalleryTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		await WaitForNav();
+		await Wait( 0.5f );
+		var (spot, yaw) = OpenLane( 14f );
+		var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+		var right = ahead.Cross( Vector3.Up );
+		var line = spot + ahead * 7f;
+		var kinds = new (bool Male, bool Archer, int Hair)[] { (false, false, 0), (false, true, 1), (true, false, 0), (false, false, 2) };
+		var all = new List<Mermaid>();
+		for ( var i = 0; i < kinds.Length; i++ )
+		{
+			var at = Nav.Closest( player, line + right * (i - 1.5f) * 1.6f ) + Vector3.Up * 1.3f;
+			var m = Mermaid.Spawn( GetTree().CurrentScene, at, 500f, kinds[i].Male, kinds[i].Archer );
+			m.HairColour = kinds[i].Hair;
+			all.Add( m );
+		}
+		await Wait( 0.6f );
+		foreach ( var m in all ) if ( IsInstanceValid( m ) ) m.GlobalBasis = Shapes.LookAt( -ahead );
+		var light = new OmniLight3D { LightEnergy = 2.5f, OmniRange = 12f };
+		GetTree().CurrentScene.AddChild( light );
+		light.GlobalPosition = line - ahead * 3f + Vector3.Up * 3f;
+		await Wait( 0.4f );
+		var middle = line + Vector3.Up * 1.4f;
+		FreeView( middle - ahead * 6.5f + Vector3.Up * 0.4f, middle + Vector3.Down * 0.4f );
+		await Wait( 0.3f );
+		await Shot( "mermaids_lineup" );
+		var face = middle + Vector3.Up * 0.75f;
+		FreeView( face - ahead * 2.6f, face );
+		var fov = player.FieldOfView;
+		player.FieldOfView = 40f;
+		await Wait( 0.3f );
+		await Shot( "mermaids_faces" );
+		player.FieldOfView = fov;
+		FreeView( middle + right * 6.5f + Vector3.Up * 0.3f - ahead * 1.5f, middle );
+		await Wait( 0.3f );
+		await Shot( "mermaids_side" );
+		DevFlags.FreeCam = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task GibTest()
 	{
 		DevFlags.FreezeEnemies = true;

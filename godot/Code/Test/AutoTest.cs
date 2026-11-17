@@ -71,6 +71,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
 		if ( args.Contains( "--bulbs" ) ) { await BulbTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
+		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--gibs" ) ) { await GibTest(); return; }
 		if ( Level.Current is not null ) { await LevelTest(); return; }
 		if ( args.Contains( "--creatures" ) ) { await CreatureTest(); return; }

@@ -253,6 +253,7 @@ void fragment() {
 		if ( sinceFloor > 0.25f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition + Vector3.Up * 0.5f ); }
 
 		var prey = PlayerSurvivor.FindNearestAlive( GlobalPosition );
+		lookAt = null;
 		var wish = Vector3.Zero;
 		if ( prey is not null )
 		{
@@ -260,6 +261,7 @@ void fragment() {
 			var to = (chestAt - GlobalPosition).Flat();
 			var distance = to.Length();
 			var dir = to / MathF.Max( 0.01f, distance );
+			lookAt = prey.WorldPosition + Vector3.Up * 1.5f;
 			if ( Archer )
 			{
 				// Circle at a distance, closing or backing off to keep it.
@@ -342,95 +344,6 @@ void fragment() {
 
 	/// <summary> Called by its arrows when one hits. </summary>
 	public void ArrowHit() => Hits++;
-
-	void Animate( float t, float dt )
-	{
-		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
-		skin.SetShaderParameter( "flash", flash );
-		handSkin.SetShaderParameter( "flash", flash );
-		tailMaterial?.SetShaderParameter( "flash", flash );
-		// The mouth gapes open on its teeth to attack, and closes to a line after.
-		var gape = mode is Mode.WindUp or Mode.Stab or Mode.Draw ? 1f : 0f;
-		mawOpen = MathX.Lerp( mawOpen, gape, 1f - MathF.Exp( -10f * dt ) );
-		if ( maw is not null ) maw.Scale = new Vector3( 1f, MathX.Lerp( 0.08f, 1f, mawOpen ), 1f );
-		skin.SetShaderParameter( "centre", body.GlobalPosition );
-		// Leaning into the swim; upright to fight.
-		var moving = MathX.Clamp( velocity.Length() / Speed, 0f, 1f );
-		var wantLean = mode == Mode.Swim ? -0.55f * moving : -0.12f;
-		lean = MathX.Lerp( lean, wantLean, 1f - MathF.Exp( -4f * dt ) );
-		body.Rotation = new Vector3( lean, 0f, MathF.Sin( t * 1.3f ) * 0.05f );
-		body.Position = new Vector3( 0f, MathF.Sin( t * 1.9f ) * 0.04f, 0f );
-		// The tail: a wave down it, curling up behind when it would touch the floor.
-		var speed = 1f + moving;
-		for ( var i = 0; i < tail.Count; i++ )
-			tail[i].Rotation = new Vector3( MathF.Sin( t * 3f * speed - i * 0.55f ) * (0.12f + i * 0.025f) * (1f - curl * 0.6f) + 0.06f - curl * 0.21f, 0f, MathF.Sin( t * 1.4f - i * 0.4f ) * 0.05f );
-		if ( tail.Count > 0 )
-		{
-			// From how much room the tail would have hanging straight (not from where the curled tip is now: that fed
-			// back on itself, the tail flicking between curled and straight: the glitch seen in play).
-			var ground = MathF.Max( floorY, Sculpt.GroundAt( GlobalPosition ) );
-			var room = GlobalPosition.Y - 4.2f * Scale * MathF.Cos( lean ) - ground;
-			var want = MathX.Clamp( (0.3f - room) / 0.45f, 0f, 1f );
-			curl = MathX.Lerp( curl, want, 1f - MathF.Exp( -4f * dt ) );
-		}
-		PoseTail();
-		for ( var i = 0; i < hair.Count; i++ )
-			hair[i].Rotation = new Vector3( 0.35f - lean * 0.6f + MathF.Sin( t * 2.1f + i ) * 0.12f, 0f, MathF.Sin( t * 1.7f + i * 0.8f ) * 0.08f );
-		head.Rotation = new Vector3( -lean * 0.6f + MathF.Sin( t * 0.9f ) * 0.05f, MathF.Sin( t * 0.6f ) * 0.1f, 0f );
-
-		// Arms (Euler YXZ like Poseidon's: Z swings an arm out from the side, X forward; elbows bend forward with +X).
-		var k = 1f - MathF.Exp( -12f * dt );
-		Vector3 rArm, rFore, lArm, lFore;
-		var u = MathX.Clamp( (float)inMode / 0.4f, 0f, 1f );
-		if ( Archer )
-		{
-			// The bow held out in the left hand, the right hand drawing the string back to the cheek.
-			lArm = new Vector3( 1.45f, 0f, -0.15f );
-			lFore = new Vector3( 0.05f, 0f, 0f );
-			var draw = mode == Mode.Draw ? MathX.Clamp( (float)inMode / 0.6f, 0f, 1f ) : 0f;
-			rArm = new Vector3( 0.4f, 0f, 0.35f ).Lerp( new Vector3( 1.4f, 0f, 0.2f ), MathF.Max( draw, 0.3f ) );
-			rFore = new Vector3( 0.3f, 0f, 0f ).Lerp( new Vector3( 2.2f, 0f, 0f ), draw );
-			weapon.Rotation = new Vector3( -1.45f, 0f, 0f );   // the bow upright, its back to the target
-		}
-		else
-		{
-			// The shield arm out in front, forearm forward, the shield gripped in the fist.
-			lArm = new Vector3( 0.6f, 0f, -0.12f + MathF.Sin( t * 2f ) * 0.04f );
-			lFore = new Vector3( 1.0f, 0f, 0f );
-			rArm = new Vector3( 0.1f, 0f, 0.5f );
-			rFore = new Vector3( 1.3f, 0f, 0f );
-			if ( mode == Mode.WindUp ) { rArm = rArm.Lerp( new Vector3( -0.6f, 0f, 0.45f ), u ); rFore = rFore.Lerp( new Vector3( 1.8f, 0f, 0f ), u ); }
-			if ( mode == Mode.Stab ) { var thrust = MathX.Clamp( (float)inMode / 0.12f, 0f, 1f ); rArm = new Vector3( -0.6f, 0f, 0.45f ).Lerp( new Vector3( 1.5f, 0f, 0.1f ), thrust ); rFore = new Vector3( 1.8f, 0f, 0f ).Lerp( Vector3.Zero, thrust ); }
-		}
-		armR.Rotation = armR.Rotation.Lerp( rArm, k );
-		foreR.Rotation = foreR.Rotation.Lerp( rFore, k );
-		armL.Rotation = armL.Rotation.Lerp( lArm, k );
-		foreL.Rotation = foreL.Rotation.Lerp( lFore, k );
-
-		if ( shield is not null && IsInstanceValid( shield ) && shield.GetParent() == this )
-		{
-			// In the left fist, upright, facing the way the body faces.
-			var bodyBasis = body.GlobalBasis;
-			shield.GlobalTransform = new Transform3D( bodyBasis, handL.GlobalPosition - bodyBasis.Z.Normalized() * 0.04f );
-			foreach ( var cell in cells )
-			{
-				if ( cell.SinceHit > 0.35f ) { if ( cell.Lit ) { cell.Lit = false; cell.Material.SetShaderParameter( "flash", 0f ); } continue; }
-				cell.Lit = true;
-				cell.Material.SetShaderParameter( "flash", MathX.Clamp( 1f - (float)cell.SinceHit / 0.3f, 0f, 1f ) );
-			}
-		}
-
-		if ( !Archer && IsInstanceValid( weapon ) && weapon.GetParent() == this )
-		{
-			// The trident in the right fist: upright at rest, levelled at the target to stab. Kept off the forearm.
-			var forward = -GlobalBasis.Z.Normalized();
-			var point = mode is Mode.Stab or Mode.WindUp ? (forward + Vector3.Down * 0.15f).Normalized() : (Vector3.Up + forward * 0.15f).Normalized();
-			var forearm = (handR.GlobalPosition - foreR.GlobalPosition).SafeNormal();
-			var side = point - forearm * point.Dot( forearm );
-			if ( side.Length() < 0.5f ) point = (point + GlobalBasis.X.Normalized() * 0.5f).Normalized();
-			weapon.GlobalTransform = new Transform3D( Shapes.LookAt( point, GlobalBasis.Z ).Scaled( Vector3.One * 0.95f ), handR.GlobalPosition + forward * 0.05f );
-		}
-	}
 
 	// ---- Hits and death ----
 

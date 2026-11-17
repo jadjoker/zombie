@@ -136,6 +136,102 @@ public partial class AutoTest
 		FreeView( middle + right * 6.5f + Vector3.Up * 0.3f - ahead * 1.5f, middle );
 		await Wait( 0.3f );
 		await Shot( "mermaids_side" );
+		// Each one close up: the whole body, then the head and shoulders, then three-quarter on.
+		for ( var i = 0; i < all.Count; i++ )
+		{
+			if ( !IsInstanceValid( all[i] ) ) continue;
+			var at = all[i].GlobalPosition;
+			FreeView( at - ahead * 3.4f + Vector3.Up * 0.1f, at + Vector3.Down * 0.35f );
+			await Wait( 0.2f );
+			await Shot( $"mermaid_{i}_body" );
+			var top = at + Vector3.Up * 0.55f;
+			FreeView( top - ahead * 1.3f + right * 0.15f, top );
+			await Wait( 0.2f );
+			await Shot( $"mermaid_{i}_head" );
+			FreeView( at + (right * 0.8f - ahead).Normalized() * 2.6f + Vector3.Up * 0.3f, at + Vector3.Down * 0.2f );
+			await Wait( 0.2f );
+			await Shot( $"mermaid_{i}_three" );
+		}
+		// In motion: let them go and watch the first one from the side as it swims in and attacks.
+		if ( OS.GetCmdlineUserArgs().Contains( "--motion" ) )
+		{
+			DevFlags.FreezeEnemies = false;
+			for ( var f = 0; f < 12; f++ )
+			{
+				if ( !IsInstanceValid( all[0] ) ) break;
+				var at = all[0].GlobalPosition;
+				var side = all[0].GlobalBasis.X.Normalized();
+				FreeView( at + side * 3.2f + Vector3.Up * 0.2f, at + Vector3.Down * 0.3f );
+				await Wait( 0.25f );
+				await Shot( $"mermaid_motion_{f:00}" );
+			}
+		}
+		DevFlags.FreeCam = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary> Poseidon up close: whole, face, three-quarter, side; `--motion` adds frames of each attack. </summary>
+	async Task PoseidonGalleryTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		await WaitForNav();
+		await Wait( 0.5f );
+		var (spot, yaw) = OpenLane( 20f );
+		var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+		var right = ahead.Cross( Vector3.Up );
+		var floor = Nav.Closest( player, spot + ahead * 14f );
+		var god = Poseidon.Spawn( GetTree().CurrentScene, floor + Vector3.Up * 4.5f, 18000f );
+		god.OnlyWhenTold = true;
+		await Wait( 1.4f );
+		god.GlobalBasis = Shapes.LookAt( -ahead );
+		var light = new OmniLight3D { LightEnergy = 3f, OmniRange = 20f };
+		GetTree().CurrentScene.AddChild( light );
+		light.GlobalPosition = god.GlobalPosition - ahead * 6f + Vector3.Up * 4f;
+		await Wait( 0.3f );
+		var waist = god.GlobalPosition;
+		var face = waist + Vector3.Up * 2.55f;
+		FreeView( waist - ahead * 13f + Vector3.Up * 0.5f, waist + Vector3.Down * 1f );
+		await Wait( 0.3f );
+		await Shot( "poseidon_body" );
+		FreeView( face - ahead * 2.6f, face + Vector3.Down * 0.1f );
+		await Wait( 0.3f );
+		await Shot( "poseidon_face" );
+		FreeView( face + (right * 0.9f - ahead).Normalized() * 2.6f, face + Vector3.Down * 0.1f );
+		await Wait( 0.3f );
+		await Shot( "poseidon_face_three" );
+		FreeView( waist + (right * 0.8f - ahead).Normalized() * 9f + Vector3.Up * 1.5f, waist + Vector3.Up * 0.5f );
+		await Wait( 0.3f );
+		await Shot( "poseidon_three" );
+		FreeView( waist + right * 10f + Vector3.Up * 0.5f, waist + Vector3.Down * 0.5f );
+		await Wait( 0.3f );
+		await Shot( "poseidon_side" );
+		if ( OS.GetCmdlineUserArgs().Contains( "--motion" ) )
+		{
+			// Each attack from three-quarter on: frames through the wind-up and the release.
+			DevFlags.FreezeEnemies = false;
+			var cam = waist + (right * 0.8f - ahead).Normalized() * 11f + Vector3.Up * 1.5f;
+			foreach ( var what in new[] { "trident", "seahorses" } )
+			{
+				god.ForceAttack( what );
+				for ( var f = 0; f < 8; f++ )
+				{
+					if ( !IsInstanceValid( god ) ) break;
+					FreeView( cam, god.GlobalPosition + Vector3.Up * 0.8f );
+					await Wait( what == "trident" ? 0.15f : 0.2f );
+					await Shot( $"poseidon_{what}_{f}" );
+				}
+				await Wait( 1.5f );
+			}
+			for ( var f = 0; f < 8; f++ )
+			{
+				FreeView( god.GlobalPosition + god.GlobalBasis.X.Normalized() * 11f + Vector3.Up * 0.5f, god.GlobalPosition );
+				await Wait( 0.2f );
+				await Shot( $"poseidon_swim_{f}" );
+			}
+		}
 		DevFlags.FreeCam = false;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();

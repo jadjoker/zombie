@@ -187,7 +187,6 @@ public partial class AutoTest
 			var plants = level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>()
 				.Count( n => n.GetParent() is { } par && (Level.Kind( par ) == "Dressing" || par.Name.ToString() == "Sea Dressing") && InView( n.GlobalPosition ) );
 			var mean = seen.Count > 0 ? seen.Average() : 0f;
-			GD.Print( $"[autotest] clarity: rim overlays so far {EnemyRim.Applied}" );
 			seenAll.AddRange( seen );
 			GD.Print( $"[autotest] clarity {name}: enemies seen {mean:P0} (worst {(seen.Count > 0 ? seen.Min() : 0f):P0}, {seen.Count} enemies), in view: {floaters} floaters, {plants} props, {lights} lights" );
 			await Shot( "clarity_" + name );

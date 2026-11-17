@@ -157,11 +157,21 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   then its spikes shoot out (12 damage) and it rests 3 s.
   Scenery keeps off neon green (that is for enemies, weak points and pickups); `AlienReef.FadeNear` dithers plants away
   within 2 m of the camera. `SeaTerrain.Fit` grows kelp and coral in groves with open sand between and keeps the lanes
-  from the spawn points clear. `EnemyRim.cs` puts `fx_enemy_rim.gdshader` on every enemy mesh as a material overlay (a
-  warm rim, stronger far off, and a faint silhouette through cover). `Atmosphere.cs` (node "Backdrop"): light shafts
+  from the spawn points clear. (A warm rim overlay on enemies was tried and removed: they keep their own look.) `Atmosphere.cs` (node "Backdrop"): light shafts
   (`fx_light_shaft.gdshader`) out past the basin and leviathan silhouettes (`fx_silhouette.gdshader`, no fog) circling
   high over the rim. Marine snow is round and fades near the camera. Mood goes far away or high up, never between the
   player and the enemies. Tests: `--bulbs`, `--clarity` (shots need a window: before and after views of each area).
+- Gibs (the chunking pass): `Gore/GibKit.cs` builds detailed pieces in code (curved shell shards with a pale underside,
+  faceted rocks with fresh broken faces, flesh chunks with skin, fat and meat, smooth jelly lumps, torn ends with a skin
+  rim, meat, bone and sinew) and throws them with a hull collider. `Gore/GibRecipes.cs` says what each creature is made
+  of and its special pieces (crab claws, legs, gills; jelly tentacle tips and cores; shark crater stones, teeth, fins;
+  MC-51 mosaic cells, spikes, fins; Kraken sucker strips and teeth; mermaid scales, fins, shell mask; seahorse rings;
+  Poseidon's gold plates). A creature's `Gibs` recipe drives `GibKit.Chips` (shot), `GibKit.Burst` (death) and torn
+  stumps (`CreatureGore.AddStump(..., recipe)`). `Gib.Stuff` makes stone, armour and glass sink, shell drift down, jelly
+  and flesh float, with their own landing sounds. Each recipe builds a few template variants once (in a hidden node,
+  warmed a frame at a time for the shark, MC-51 and Kraken) and copies them; random creature colours are snapped to a
+  few shades so recipes are shared. Tests: `--gibs` (each creature blown apart, shots need a window), `--gibgallery`
+  (each recipe's pieces up close, and the burst build time).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

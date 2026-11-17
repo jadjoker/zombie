@@ -100,6 +100,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	static readonly Quaternion HatRotation = new( 0.19920f, -0.61210f, 0.16307f, 0.74771f );
 	const float HatTilt = 14f;
 	static Basis hatRest => Ax( SForward, HatTilt ) * Ax( SLeft, -8f );
+	/// <summary> Where the hat sits on his head, in the hat part's space: it rocks about this point. </summary>
+	Vector3 hatSeat;
 	static readonly Vector3 TailRoot = new( -16.6f, 0, -25f );
 	const float TailSegment = 10f;
 	static readonly float[] TailRadius = { 10.4f, 8.6f, 6.2f, 3.6f };
@@ -195,7 +197,8 @@ public partial class MC61 : PartCreature, MC61Marker
 
 		var hat = AddPart( Hat, Head, head.Go, "Hat", HatFromHead, hatRest, HatHealth );
 		TopHat( hat );
-		Trigger( hat, new Vector3( 0, 0, 2 ), new Vector3( 0, 0, 10 ), 8.5f );
+		var seat = new Vector3( -hatSeat.Z, -hatSeat.X, hatSeat.Y ) / U.In;   // the seat in the hat's s&box space
+		Trigger( hat, seat + new Vector3( 0, 0, 2 ), seat + new Vector3( 0, 0, 10 ), 8.5f );
 
 		BuildHand( HandL, 1f );
 		BuildHand( HandR, -1f );
@@ -358,7 +361,11 @@ public partial class MC61 : PartCreature, MC61Marker
 			(height, crownR * 0.02f, crownR * 0.02f, 0f),
 		};
 		var tux = Shapes.Material( Tux, "smooth" );
-		var holder = new Node3D { Name = "Top Hat", Position = new Vector3( centre.X, bottom + height * 0.04f, centre.Z ) };
+		// Seated on his crown over the coronet (the old hat floated above his head), sunk in a little so the tilted brim
+		// rests on the skull.
+		var crownTop = hat.Go.Transform.AffineInverse() * S( -1.2f, 0f, 12.2f );
+		hatSeat = crownTop + Vector3.Down * 1.1f * U.In;
+		var holder = new Node3D { Name = "Top Hat", Position = hatSeat };
 		hat.Go.AddChild( holder );
 		Put( hat, holder, "Crown", SmoothKit.Loft( SmoothKit.Smooth( crown, 3 ), 0f, 1f, 48 ), tux, Tux );
 		// The brim: a thin disc, its sides curled up.
@@ -530,8 +537,8 @@ public partial class MC61 : PartCreature, MC61Marker
 		{
 			var a = k / 6f * MathF.Tau;
 			var foot = S( -1.5f + MathF.Cos( a ) * 3.2f, MathF.Sin( a ) * 3.2f, 11.2f );
-			var lean = (S( MathF.Cos( a ), MathF.Sin( a ), 0f ).Normalized() * 0.45f + Vector3.Up).Normalized();
-			var spike = global::Sculpt.Cone( holder, foot, foot + lean * 3.8f * U.In, 1.1f * U.In, spikeMaterial, 16, "Coronet" );
+			var lean = (S( MathF.Cos( a ), MathF.Sin( a ), 0f ).Normalized() * 0.15f + Vector3.Up).Normalized();
+			var spike = global::Sculpt.Cone( holder, foot, foot + lean * 2.6f * U.In, 1.0f * U.In, spikeMaterial, 16, "Coronet" );
 			head.Renderers.Add( (spike, navy) );
 		}
 		// A few small spines down the back of the head, carrying on the row on his back.
@@ -1116,7 +1123,9 @@ public partial class MC61 : PartCreature, MC61Marker
 			var bobSpeed = MathF.Cos( t * 1.8f ) * 1.8f * 3f;
 			SmoothKit.Spring( ref hatP, ref hatPV, -bobSpeed * 0.6f - leanP * 0.5f + kick * 18f + flinch * 12f + recoil * 10f, 2.2f, 0.25f, dt );
 			SmoothKit.Spring( ref hatR, ref hatRV, -bankR * 0.8f + (dance ? MathF.Sin( t * 7f ) * 14f : 0f), 2f, 0.25f, dt );
-			parts[Hat].Go.Basis = hatRest * Ax( SLeft, -hatP ) * Ax( SForward, hatR );
+			// Rocking about where it sits on his head, so the brim stays on it.
+			var hatTurn = hatRest * Ax( SLeft, -hatP ) * Ax( SForward, hatR );
+			parts[Hat].Go.Transform = new Transform3D( hatTurn, U.Sbox( HatFromHead ) + hatRest * hatSeat - hatTurn * hatSeat );
 		}
 
 		var rigMove = (GlobalPosition - lastHandRigPosition) / dt;

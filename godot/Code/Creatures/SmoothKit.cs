@@ -92,10 +92,10 @@ void fragment() {
 		for ( var r = 0; r < rings.Count - 1; r++ )
 			for ( var k = 0; k < sides; k++ )
 			{
-				// Rings go downward or upward: wind so the faces point out either way.
+				// Rings go downward or upward: wind clockwise seen from outside (Godot's front faces) either way.
 				var q = down
-					? new[] { (r, k), (r + 1, k + 1), (r + 1, k), (r, k), (r, k + 1), (r + 1, k + 1) }
-					: new[] { (r, k), (r + 1, k), (r + 1, k + 1), (r, k), (r + 1, k + 1), (r, k + 1) };
+					? new[] { (r, k), (r + 1, k), (r + 1, k + 1), (r, k), (r + 1, k + 1), (r, k + 1) }
+					: new[] { (r, k), (r + 1, k + 1), (r + 1, k), (r, k), (r, k + 1), (r + 1, k + 1) };
 				foreach ( var (rr, kk) in q ) { st.SetUV( Uv( rr, kk ) ); st.AddVertex( At( rr, kk ) ); }
 			}
 		foreach ( var (r, outward) in new[] { (0, -1f), (rings.Count - 1, 1f) } )
@@ -103,7 +103,7 @@ void fragment() {
 			var centre = new Vector3( 0f, rings[r].Y, rings[r].Z );
 			for ( var k = 0; k < sides; k++ )
 			{
-				var flip = (outward > 0f) == down;
+				var flip = (outward > 0f) != down;
 				foreach ( var v in flip ? new[] { centre, At( r, k ), At( r, k + 1 ) } : new[] { centre, At( r, k + 1 ), At( r, k ) } )
 				{ st.SetUV( Uv( r, 0 ) ); st.AddVertex( v ); }
 			}
@@ -262,8 +262,8 @@ void fragment() {
 				var y1 = MathX.Lerp( top, bottom, (r + 1f) / rings );
 				for ( var k = 0; k < sides; k++ )
 				{
-					Vertex( y0, k ); Vertex( y1, k + 1 ); Vertex( y1, k );
-					Vertex( y0, k ); Vertex( y0, k + 1 ); Vertex( y1, k + 1 );
+					Vertex( y0, k ); Vertex( y1, k ); Vertex( y1, k + 1 );
+					Vertex( y0, k ); Vertex( y1, k + 1 ); Vertex( y0, k + 1 );
 				}
 			}
 			st.GenerateNormals();

@@ -116,7 +116,17 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   wave). Test: `--poseidon`. Looks: gold armour and collar, veins (`Veins` in `BuildRig`), tail scales baked into meshes with
   `ScaleShader` (hex lines), hands pinned to the chest's colour. His whirlpool sweeps the player up and carries them back
   to him (`Grab` with the vortex); on death he swells and bursts into loose pieces (`Burst`). The held trident is leant
-  off the forearm in `Animate` so it never passes through his arm. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
+  off the forearm in `Animate` so it never passes through his arm.
+  Smooth pass (like the mermaids, on `SmoothKit`): `PoseidonLook.cs` builds him from a lofted torso, round-ended limbs,
+  smooth balls and fans; a stern sea god's face (white eyes with glowing green irises and lids, brow ridge, nose, fin
+  ears, knitting brows on pivots, moustache, a beard on a `Jaw` that drops when he roars), skinned hair and beard locks,
+  a crown with rims, one skinned tail painted by `GodTail` (jewel scales, gold bands). The statue uses the same rig
+  (`Rig.Pose` after posing). On the burst `TailPiece` gives each flung tail section its own mesh. `PoseidonMotion.cs`:
+  springs for lean, twist, rise, bank, head look; dolphin kick; a coiled throw with an aiming fist and follow-through; a
+  rearing, roaring summon; a coiled lunge for the stab; hair and beard flung out in a whirlpool spin; a capped flinch.
+  Test: `--poseidongallery` (body, face, three-quarter, side; `--motion` adds throw, summon and swim frames; needs a window).
+  `SmoothKit` lofts and skinned tubes wind clockwise from outside (Godot's front faces); before this fix they were
+  inside out and the far wall showed through. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
 - Mermaids (`Code/Creatures/Mermaid.cs`, `EnemyKind.Mermaid`): Atlantis only (`WaveDirector.MermaidChance` of each wave
   there), about player height (`Mermaid.Scale` of Poseidon's units), Poseidon's tail (`Poseidon.BuildTail`) and drifting
   skin, a coral-grown scallop shell mask with glowing eyes and spiky teeth, fin hands. Women have red, blonde or black

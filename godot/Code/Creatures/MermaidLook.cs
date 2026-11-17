@@ -260,7 +260,7 @@ void fragment() {
 		{
 			// Long hair: a full crown, seven locks down her back (skinned, three joints each so they flow), two locks
 			// forward over the shoulders, a shell tiara.
-			Ball( head, new Vector3( 0f, 0.46f, 0.12f ), new Vector3( 0.68f, 0.56f, 0.6f ), hairPaint, null, "Crown" );
+			Ball( head, new Vector3( 0f, 0.5f, 0.06f ), new Vector3( 0.7f, 0.5f, 0.66f ), hairPaint, null, "Crown" );
 			for ( var k = 0; k < 7; k++ )
 			{
 				var x = (k - 3f) * 0.075f;

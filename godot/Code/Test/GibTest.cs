@@ -192,7 +192,7 @@ public partial class AutoTest
 		light.GlobalPosition = god.GlobalPosition - ahead * 6f + Vector3.Up * 4f;
 		await Wait( 0.3f );
 		var waist = god.GlobalPosition;
-		var face = waist + Vector3.Up * 2.55f;
+		var face = waist + Vector3.Up * 2.95f;
 		FreeView( waist - ahead * 13f + Vector3.Up * 0.5f, waist + Vector3.Down * 1f );
 		await Wait( 0.3f );
 		await Shot( "poseidon_body" );
@@ -202,6 +202,17 @@ public partial class AutoTest
 		FreeView( face + (right * 0.9f - ahead).Normalized() * 2.6f, face + Vector3.Down * 0.1f );
 		await Wait( 0.3f );
 		await Shot( "poseidon_face_three" );
+		if ( OS.GetCmdlineUserArgs().Contains( "--debugface" ) )
+		{
+			var headNode = god.FindChild( "Head", true, false ) as Node3D;
+			foreach ( var n in headNode.GetChildren() )
+				if ( n is MeshInstance3D mi ) GD.Print( $"[face] {mi.Name} {mi.MaterialOverride?.GetType().Name} {mi.Mesh?.GetType().Name} aabb {mi.GetAabb()}" );
+			if ( god.FindChild( "Hair", true, false ) is Node3D h ) { h.Visible = false; GD.Print( $"[face] hid {h.GetPath()} at {h.Position} scale {h.Scale}" ); }
+			if ( god.FindChild( "Beard", true, false ) is Node3D b ) GD.Print( $"[face] beard {b.GetPath()} global {b.GlobalPosition} head {headNode.GlobalPosition} jaw rot {b.GetParent<Node3D>().Rotation}" );
+			FreeView( face - ahead * 2.6f, face + Vector3.Down * 0.1f );
+			await Wait( 0.3f );
+			await Shot( "poseidon_face_bald" );
+		}
 		FreeView( waist + (right * 0.8f - ahead).Normalized() * 9f + Vector3.Up * 1.5f, waist + Vector3.Up * 0.5f );
 		await Wait( 0.3f );
 		await Shot( "poseidon_three" );

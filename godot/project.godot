@@ -32,6 +32,10 @@ project/assembly_name="RiskOfCopyright"
 dev_menu_in_builds=true
 look="Flat"
 
+[gui]
+
+theme/custom_font="res://assets/fonts/ChakraPetch-SemiBold.ttf"
+
 [input]
 
 forward={

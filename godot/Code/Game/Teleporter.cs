@@ -136,7 +136,7 @@ public partial class Teleporter : Node3D
 			Add( new TorusMesh { InnerRadius = 0.95f, OuterRadius = 1.05f, Rings = 32, RingSegments = 6 }, Glow( i % 2 == 0 ? Green : Purple, 3f ), new Vector3( 0f, 0.4f + i, 0f ), rings );
 		glow = new OmniLight3D { LightColor = Green, LightEnergy = 1.5f, OmniRange = 7f, ShadowEnabled = false, Position = new Vector3( 0f, 1.5f, 0f ) };
 		AddChild( glow );
-		var label = new Label3D { Text = Arrival ? "" : "TELEPORTER", Modulate = Green, FontSize = 48, PixelSize = 0.01f, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3( 0f, 3.8f, 0f ), OutlineSize = 8, OutlineModulate = new Color( 0f, 0f, 0f, 0.7f ) };
+		var label = new Label3D { Text = Arrival ? "" : "TELEPORTER", Modulate = Green, FontSize = 48, PixelSize = 0.01f, Font = UiStyle.Display, Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, Position = new Vector3( 0f, 3.8f, 0f ), OutlineSize = 10, OutlineModulate = UiStyle.Ink };
 		AddChild( label );
 		// Solid pylons, so nothing walks through them; the pad itself is walked onto.
 		var body = new StaticBody3D { CollisionLayer = Layers.World, CollisionMask = 0 };

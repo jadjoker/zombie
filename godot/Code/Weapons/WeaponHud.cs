@@ -37,30 +37,28 @@ public partial class WeaponHud : Control
 		scopeMask.SetAnchorsPreset( LayoutPreset.FullRect );
 		AddChild( scopeMask );
 
-		var box = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
-		box.SetAnchorsPreset( LayoutPreset.BottomRight );
-		box.GrowHorizontal = GrowDirection.Begin;
-		box.GrowVertical = GrowDirection.Begin;
-		box.OffsetRight = -40; box.OffsetBottom = -36;
-		AddChild( box );
-		weaponName = Text( 16, 0.75f, HorizontalAlignment.Right );
-		box.AddChild( weaponName );
-		var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End };
+		// The ammo panel (bottom right): a suit frame with the weapon's name as a caption, the magazine big and the
+		// reserve as a small readout.
+		ammoPanel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
+		ammoPanel.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 16 ) );
+		ammoPanel.SetAnchorsPreset( LayoutPreset.BottomRight );
+		ammoPanel.GrowHorizontal = GrowDirection.Begin;
+		ammoPanel.GrowVertical = GrowDirection.Begin;
+		ammoPanel.OffsetRight = -32; ammoPanel.OffsetBottom = -32;
+		AddChild( ammoPanel );
+		var box = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End, MouseFilter = MouseFilterEnum.Ignore };
+		box.AddThemeConstantOverride( "separation", -6 );
+		ammoPanel.AddChild( box );
+		weaponName = UiStyle.Tag( box, 14, null, HorizontalAlignment.Right );
+		var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End, MouseFilter = MouseFilterEnum.Ignore };
+		row.AddThemeConstantOverride( "separation", 8 );
 		box.AddChild( row );
-		mag = Text( 48, 1f, HorizontalAlignment.Right );
-		reserve = Text( 24, 0.7f, HorizontalAlignment.Left );
-		row.AddChild( mag );
-		row.AddChild( reserve );
+		mag = UiStyle.Big( row, 52, Colors.White, HorizontalAlignment.Right );
+		reserve = UiStyle.Text( row, 22, UiStyle.Readout, HorizontalAlignment.Left, mono: true );
+		reserve.SizeFlagsVertical = SizeFlags.ShrinkEnd;
 	}
 
-	static Label Text( int size, float alpha, HorizontalAlignment align )
-	{
-		var label = new Label { HorizontalAlignment = align, Modulate = new Color( 1, 1, 1, alpha ) };
-		label.AddThemeFontSizeOverride( "font_size", size );
-		label.AddThemeColorOverride( "font_outline_color", new Color( 0, 0, 0, 0.6f ) );
-		label.AddThemeConstantOverride( "outline_size", 4 );
-		return label;
-	}
+	PanelContainer ammoPanel;
 
 	bool chargeWasFull;
 	float chargeFullAt;
@@ -71,9 +69,10 @@ public partial class WeaponHud : Control
 		var weapon = Weapon;
 		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant();
 		mag.Text = (weapon?.Ammo ?? 0).ToString();
-		reserve.Text = "/ " + (weapon?.Reserve ?? 0);
+		reserve.Text = "/" + (weapon?.Reserve ?? 0);
 		var low = weapon is not null && !weapon.IsReloading && weapon.Ammo <= weapon.MagazineSize / 4;
 		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : Colors.White );
+		ammoPanel.Visible = weapon is not null;
 
 		// The scope's shadow lags a little behind fast turns.
 		var look = player.EyeAngles;
@@ -94,6 +93,7 @@ public partial class WeaponHud : Control
 		var weapon = Weapon;
 		var c = Size * 0.5f;
 		var scope = weapon?.ScopeAmount ?? 0f;
+		if ( ammoPanel.Visible ) DrawStyleBox( UiStyle.FrameLine(), ammoPanel.GetRect().Grow( -5f ) );
 
 		if ( scope > 0.01f )
 		{
@@ -115,16 +115,16 @@ public partial class WeaponHud : Control
 			DrawCircle( c, 2.5f, new Color( "ff3b2e" ) with { A = scope } );
 		}
 
-		// The crosshair: two thin lines, one across and one up and down, small. It stays while you aim down the
-		// sights (issue #37) and only gives way to the scope's own reticle.
+		// The crosshair: a small glowing suit ring with a dot in the middle, ink-edged so it reads on anything. It
+		// stays while you aim down the sights (issue #37) and only gives way to the scope's own reticle.
 		var dotAlpha = PlayerSurvivor.LocalDead ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
 		DotAlpha = dotAlpha;
 		if ( dotAlpha > 0f )
 		{
-			const float half = 6f;
-			var line = new Color( 1f, 1f, 1f, 0.9f * dotAlpha );
-			DrawLine( c + new Vector2( -half, 0f ), c + new Vector2( half, 0f ), line, 1.5f );
-			DrawLine( c + new Vector2( 0f, -half ), c + new Vector2( 0f, half ), line, 1.5f );
+			DrawArc( c, 9f, 0f, MathF.Tau, 40, UiStyle.Ink with { A = 0.75f * dotAlpha }, 4f, true );
+			DrawArc( c, 9f, 0f, MathF.Tau, 40, UiStyle.Teal with { A = 0.85f * dotAlpha }, 1.6f, true );
+			DrawCircle( c, 2.6f, UiStyle.Ink with { A = 0.8f * dotAlpha } );
+			DrawCircle( c, 1.6f, Colors.White with { A = dotAlpha } );
 		}
 
 		// A charging shot (the trident's 1 s hold): a ring round the crosshair fills clockwise from the top, white to
@@ -180,12 +180,11 @@ public partial class WeaponHud : Control
 				DrawSetTransform( Vector2.Zero, 0f, Vector2.One );
 			}
 
-			// Reload bar under the ammo.
+			// Reload: a row of pills filling just over the ammo panel.
 			if ( weapon.IsReloading )
 			{
-				var at = new Vector2( Size.X - 40 - 160, Size.Y - 30 );
-				DrawRect( new Rect2( at, new Vector2( 160, 6 ) ), new Color( 0, 0, 0, 0.5f ) );
-				DrawRect( new Rect2( at, new Vector2( 160 * weapon.ReloadProgress, 6 ) ), Colors.White );
+				var panel = ammoPanel.GetRect();
+				UiStyle.DrawPills( this, new Rect2( panel.Position.X + 10f, panel.Position.Y - 16f, panel.Size.X - 20f, 9f ), 8, weapon.ReloadProgress, UiStyle.Teal, Colors.White, 1f, -1f, 3f );
 			}
 		}
 	}

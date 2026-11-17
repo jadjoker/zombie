@@ -35,16 +35,7 @@ public partial class HudOverlays : Control
 		return rect;
 	}
 
-	static Label Text( Control parent, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Center )
-	{
-		var label = new Label { HorizontalAlignment = align, MouseFilter = MouseFilterEnum.Ignore };
-		label.AddThemeFontSizeOverride( "font_size", size );
-		label.AddThemeColorOverride( "font_color", color );
-		label.AddThemeColorOverride( "font_outline_color", new Color( 0, 0, 0, 0.7f ) );
-		label.AddThemeConstantOverride( "outline_size", Math.Max( 4, size / 8 ) );
-		parent.AddChild( label );
-		return label;
-	}
+	static Label Text( Control parent, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Center ) => UiStyle.Text( parent, size, color, align );
 
 	public override void _Ready()
 	{
@@ -59,26 +50,35 @@ public partial class HudOverlays : Control
 		boss = new Control { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
 		boss.SetAnchorsPreset( LayoutPreset.FullRect );
 		AddChild( boss );
-		speech = Text( this, 64, new Color( "ff4fd8" ) );
+		speech = UiStyle.Big( this, 66, new Color( "ff7ae3" ) );
 		speech.AnchorLeft = 0f; speech.AnchorRight = 1f; speech.AnchorTop = speech.AnchorBottom = 0.26f;
 		speech.OffsetLeft = speech.OffsetRight = 0f; speech.OffsetBottom = 80f;
-		speech.AddThemeColorOverride( "font_outline_color", new Color( 1f, 0f, 0.67f, 0.6f ) );
-		speech.AddThemeConstantOverride( "outline_size", 14 );
 
+		// The use prompt: a suit frame with the key as a chunky teal button, the title and a line under it.
 		prompt = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
-		prompt.AddThemeStyleboxOverride( "panel", new StyleBoxFlat { BgColor = new Color( 0, 0, 0, 0.55f ), CornerRadiusTopLeft = 8, CornerRadiusTopRight = 8, CornerRadiusBottomLeft = 8, CornerRadiusBottomRight = 8, ContentMarginLeft = 16, ContentMarginRight = 16, ContentMarginTop = 10, ContentMarginBottom = 10 } );
+		prompt.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 16 ) );
 		prompt.SetAnchorsPreset( LayoutPreset.CenterTop );
 		prompt.AnchorTop = prompt.AnchorBottom = 0.58f; prompt.GrowHorizontal = GrowDirection.Both;
 		AddChild( prompt );
 		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		row.AddThemeConstantOverride( "separation", 14 );
 		prompt.AddChild( row );
-		promptKey = Text( row, 26, Colors.White );
-		promptKey.Text = " E ";
+		var keyCap = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
+		keyCap.AddThemeStyleboxOverride( "panel", UiStyle.KeyCap() );
+		row.AddChild( keyCap );
+		promptKey = new Label { HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
+		promptKey.AddThemeFontOverride( "font", UiStyle.Display );
+		promptKey.AddThemeFontSizeOverride( "font_size", 26 );
+		promptKey.AddThemeColorOverride( "font_color", UiStyle.Ink );
+		keyCap.AddChild( promptKey );
+		promptKey.Text = "E";
 		var textBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
+		textBox.AddThemeConstantOverride( "separation", -2 );
 		row.AddChild( textBox );
-		promptTitle = Text( textBox, 22, Colors.White, HorizontalAlignment.Left );
-		promptDesc = Text( textBox, 15, new Color( 1, 1, 1, 0.7f ), HorizontalAlignment.Left );
+		promptTitle = UiStyle.Text( textBox, 22, Colors.White, HorizontalAlignment.Left );
+		promptTitle.AddThemeFontOverride( "font", UiStyle.LabelBold );
+		promptTitle.Uppercase = true;
+		promptDesc = Text( textBox, 15, UiStyle.Readout, HorizontalAlignment.Left );
 	}
 
 	PlayerAfflictions Afflictions => player?.Afflictions;
@@ -153,7 +153,7 @@ public partial class HudOverlays : Control
 		var use = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" );
 		var station = use?.Hovered;
 		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false) || (use?.AtTeleporter ?? false);
-		promptKey.Text = $" {Controls.Label( "use" )} ";   // E on a keyboard, Y or Triangle on a pad
+		promptKey.Text = Controls.Label( "use" );   // E on a keyboard, Y or Triangle on a pad
 		if ( station is null && (use?.AtDivingBoard ?? false) )
 		{
 			promptTitle.Text = "Dive in";
@@ -174,6 +174,7 @@ public partial class HudOverlays : Control
 			promptTitle.Text = $"{station.Title}  {(station.SoldOut ? "Sold out" : station.CurrentCost.ToString())}";
 			promptDesc.Text = station.Description;
 			promptTitle.AddThemeColorOverride( "font_color", afford ? Colors.White : new Color( "ff6a6a" ) );
+			if ( !station.SoldOut ) promptTitle.Text = $"{station.Title}   {station.CurrentCost}";
 		}
 		QueueRedraw();
 	}
@@ -182,6 +183,7 @@ public partial class HudOverlays : Control
 	{
 		var now = (float)Clock.Now;
 		var c = Size * 0.5f;
+		if ( prompt.Visible ) DrawStyleBox( UiStyle.FrameLine(), prompt.GetRect().Grow( -5f ) );
 
 		// Ink blots over the view, fading out over the last second.
 		var a = Afflictions;
@@ -252,39 +254,14 @@ public partial class HudOverlays : Control
 			}
 		}
 
-		// Boss health bar.
+		// Boss health bars: a suit frame across the top with TARGET and the name, the percentage, and a row of pills.
 		var b = Boss;
-		if ( b is not null )
-		{
-			var at = new Vector2( Size.X * 0.3f, 96f + 34f );
-			var width = Size.X * 0.4f;
-			DrawRect( new Rect2( at, new Vector2( width, 14f ) ), new Color( 0, 0, 0, 0.55f ) );
-			DrawRect( new Rect2( at, new Vector2( width * b.HealthFraction, 14f ) ), new Color( "ff4fd8" ) );
-			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 22f ), "M C - 5 1", HorizontalAlignment.Center, width, 22, new Color( "ff4fd8" ) );
-		}
+		if ( b is not null ) BossBar( 0f, "MC-51", b.HealthFraction, UiStyle.Pink, UiStyle.PinkTop );
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
-		{
-			var gold = new Color( "ffd24a" );
-			var at = new Vector2( Size.X * 0.3f, 96f + 34f );
-			var width = Size.X * 0.4f;
-			DrawRect( new Rect2( at, new Vector2( width, 14f ) ), new Color( 0, 0, 0, 0.55f ) );
-			DrawRect( new Rect2( at, new Vector2( width * poseidon.HealthFraction, 14f ) ), new Color( "2fe0c8" ) );
-			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 22f ), "P O S E I D O N", HorizontalAlignment.Center, width, 22, gold );
-		}
+			BossBar( 0f, "POSEIDON", poseidon.HealthFraction, new Color( "2fe0c8" ), new Color( "b8fff4" ) );
 		else if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } kraken )
 		{
-			var green = new Color( "58ff6a" );
-			var at = new Vector2( Size.X * 0.3f, 96f + 62f );
-			var width = Size.X * 0.4f;
-			DrawRect( new Rect2( at, new Vector2( width, 14f ) ), new Color( 0, 0, 0, 0.55f ) );
-			DrawRect( new Rect2( at, new Vector2( width * kraken.Health.Fraction, 14f ) ), green );
-			if ( kraken.HelmetOn )
-			{
-				// The glass dome over its brain.
-				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width, 5f ) ), new Color( 0, 0, 0, 0.55f ) );
-				DrawRect( new Rect2( at + new Vector2( 0f, 17f ), new Vector2( width * kraken.HelmetFraction, 5f ) ), new Color( "bfeaff" ) );
-			}
-			DrawString( ThemeDB.FallbackFont, new Vector2( at.X, 96f + 52f ), "K R A K E N", HorizontalAlignment.Center, width, 22, green );
+			BossBar( 28f, "KRAKEN", kraken.Health.Fraction, new Color( "3fd84f" ), new Color( "c4ffb0" ), kraken.HelmetOn ? kraken.HelmetFraction : -1f );
 		}
 
 		// The radio: the song's name for a few seconds when it changes.
@@ -292,8 +269,7 @@ public partial class HudOverlays : Control
 		{
 			var fade = MathX.Clamp( MathF.Min( (float)Radio.SinceChange / 0.4f, (5f - (float)Radio.SinceChange) / 0.8f ), 0f, 1f );
 			var at = new Vector2( Size.X * 0.2f, Size.Y - 56f );
-			DrawString( ThemeDB.FallbackFont, at + new Vector2( 1f, 2f ), $"Now playing: {song}", HorizontalAlignment.Center, Size.X * 0.6f, 18, new Color( 0, 0, 0, 0.6f * fade ) );
-			DrawString( ThemeDB.FallbackFont, at, $"Now playing: {song}", HorizontalAlignment.Center, Size.X * 0.6f, 18, new Color( 1f, 0.85f, 0.55f, fade ) );
+			UiStyle.DrawTag( this, at, $"Now playing  {song}", 15, UiStyle.Gold with { A = fade }, HorizontalAlignment.Center, Size.X * 0.6f, true, false );
 		}
 
 		// The robot's own readout while the suit is failing.
@@ -303,19 +279,18 @@ public partial class HudOverlays : Control
 			var blink = MathF.Sin( now * 5f ) > -0.2f ? 1f : 0.35f;
 			var amber = new Color( "ffb020" );
 			var at = new Vector2( 28f, Size.Y * 0.2f );
-			DrawRect( new Rect2( at - new Vector2( 10f, 26f ), new Vector2( 330f, 86f ) ), new Color( 0, 0, 0, 0.45f ) );
-			DrawRect( new Rect2( at - new Vector2( 10f, 26f ), new Vector2( 4f, 86f ) ), amber with { A = blink } );
-			DrawString( ThemeDB.FallbackFont, at, "SUIT MALFUNCTION", HorizontalAlignment.Left, -1f, 22, amber with { A = blink } );
-			DrawString( ThemeDB.FallbackFont, at + new Vector2( 0f, 24f ), "BALLAST OFFLINE", HorizontalAlignment.Left, -1f, 16, new Color( 1f, 0.45f, 0.3f ) );
-			DrawString( ThemeDB.FallbackFont, at + new Vector2( 0f, 44f ), "boots cannot grip: you float", HorizontalAlignment.Left, -1f, 14, new Color( 1, 1, 1, 0.7f ) );
+			UiStyle.DrawFrame( this, new Rect2( at - new Vector2( 14f, 34f ), new Vector2( 340f, 96f ) ), 1f, amber with { A = blink } );
+			UiStyle.DrawBig( this, at, "SUIT MALFUNCTION", 26, amber, HorizontalAlignment.Left, -1f, blink );
+			UiStyle.DrawTag( this, at + new Vector2( 0f, 24f ), "BALLAST OFFLINE", 15, new Color( 1f, 0.5f, 0.35f ) );
+			UiStyle.DrawTag( this, at + new Vector2( 0f, 44f ), "boots cannot grip: you float", 14, UiStyle.Readout, HorizontalAlignment.Left, -1f, true, false );
 		}
 
 		// Irradiated by the Kraken: how long is left, and what it is doing to you.
 		if ( player?.Afflictions is { RadiationLeft: > 0f } dose )
 		{
 			var words = dose.RadiationPoisonLeft > 0f ? "poisoned, and stamina recovers slowly" : "stamina recovers slowly";
-			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", HorizontalAlignment.Center, Size.X, 26, new Color( "9dff1a" ) );
-			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, Size.Y * 0.74f + 22f ), words, HorizontalAlignment.Center, Size.X, 16, new Color( 1, 1, 1, 0.8f ) );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", 30, new Color( "9dff1a" ), HorizontalAlignment.Center, Size.X );
+			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.74f + 26f ), words, 15, UiStyle.Readout, HorizontalAlignment.Center, Size.X );
 		}
 
 		// The Kraken's whirlpool: a countdown while the player is outside its ring, then the ride back.
@@ -325,17 +300,27 @@ public partial class HudOverlays : Control
 			var pulse = 0.75f + 0.25f * MathF.Sin( (float)Clock.Now * 10f );
 			var y = Size.Y * 0.3f;
 			var title = left > 0f ? $"WHIRLPOOL IN {MathF.Ceiling( left ):0}" : "WHIRLPOOL";
-			DrawString( ThemeDB.FallbackFont, new Vector2( 3f, y + 3f ), title, HorizontalAlignment.Center, Size.X, 54, new Color( 0, 0, 0, 0.6f ) );
-			DrawString( ThemeDB.FallbackFont, new Vector2( 0f, y ), title, HorizontalAlignment.Center, Size.X, 54, warn with { A = pulse } );
+			UiStyle.DrawBig( this, new Vector2( 0f, y ), title, 58, warn, HorizontalAlignment.Center, Size.X, pulse );
 			if ( left > 0f )
 			{
-				DrawString( ThemeDB.FallbackFont, new Vector2( 0f, y + 34f ), "Get back inside the ring of lights", HorizontalAlignment.Center, Size.X, 22, new Color( 1, 1, 1, 0.9f ) );
+				UiStyle.DrawTag( this, new Vector2( 0f, y + 36f ), "Get back inside the ring of lights", 17, Colors.White, HorizontalAlignment.Center, Size.X );
 				var width = Size.X * 0.24f;
-				var at = new Vector2( (Size.X - width) * 0.5f, y + 46f );
-				DrawRect( new Rect2( at, new Vector2( width, 6f ) ), new Color( 0, 0, 0, 0.55f ) );
-				DrawRect( new Rect2( at, new Vector2( width * MathX.Clamp( left / 5f, 0f, 1f ), 6f ) ), warn );
+				UiStyle.DrawPills( this, new Rect2( (Size.X - width) * 0.5f, y + 50f, width, 10f ), 10, MathX.Clamp( left / 5f, 0f, 1f ), warn, Colors.White );
 			}
 		}
+	}
+
+	/// <summary> A boss bar across the top: TARGET and the name, the percentage, a row of pills (and a thinner second row, the Kraken's dome). </summary>
+	void BossBar( float down, string name, float fraction, Color fill, Color top, float second = -1f )
+	{
+		var width = Size.X * 0.4f;
+		var rect = new Rect2( (Size.X - width) * 0.5f, 136f + down, width, second >= 0f ? 70f : 58f );
+		UiStyle.DrawFrame( this, rect, 1f, fill );
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 18f, 24f ), $"TARGET  {name}", 15, top );
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 24f ), $"{MathF.Ceiling( fraction * 100f ):0}%", 15, top, HorizontalAlignment.Right, width - 18f, true );
+		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 34f ), new Vector2( width - 36f, 12f ) ), 24, fraction, fill, top, 1f, -1f, 3f );
+		if ( second >= 0f )
+			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 52f ), new Vector2( width - 36f, 6f ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

@@ -20,7 +20,7 @@ public partial class PauseMenu : CanvasLayer
 		ProcessMode = ProcessModeEnum.Always;   // it has to work while everything else is stopped
 
 		Controls.Changed += OnSchemeChanged;
-		window = new Control { Visible = false };
+		window = new Control { Visible = false, Theme = UiStyle.Menu };
 		window.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		AddChild( window );
 		var backdrop = new ColorRect { Color = new Color( 0f, 0.02f, 0.05f, 0.6f ) };
@@ -31,22 +31,16 @@ public partial class PauseMenu : CanvasLayer
 		center.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		window.AddChild( center );
 		var panel = new PanelContainer { CustomMinimumSize = new Vector2( 560, 0 ) };
-		panel.AddThemeStyleboxOverride( "panel", new StyleBoxFlat
-		{
-			BgColor = new Color( "10141c" ) with { A = 0.97f }, BorderColor = Accent with { A = 0.5f },
-			BorderWidthBottom = 1, BorderWidthTop = 1, BorderWidthLeft = 1, BorderWidthRight = 1,
-			CornerRadiusBottomLeft = 12, CornerRadiusBottomRight = 12, CornerRadiusTopLeft = 12, CornerRadiusTopRight = 12,
-			ContentMarginLeft = 32, ContentMarginRight = 32, ContentMarginTop = 26, ContentMarginBottom = 26,
-		} );
+		var frame = UiStyle.Frame( 1.6f, UiStyle.PanelDeep, 22 );
+		frame.BorderColor = UiStyle.Teal with { A = 0.75f };
+		panel.AddThemeStyleboxOverride( "panel", frame );
 		center.AddChild( panel );
 		var column = new VBoxContainer();
 		column.AddThemeConstantOverride( "separation", 14 );
 		panel.AddChild( column );
 
-		var title = new Label { Text = "PAUSED", HorizontalAlignment = HorizontalAlignment.Center };
-		title.AddThemeFontSizeOverride( "font_size", 34 );
-		title.AddThemeColorOverride( "font_color", Accent );
-		column.AddChild( title );
+		var title = UiStyle.Big( column, 52, UiStyle.Gold );
+		title.Text = "PAUSED";
 
 		resume = MenuButton( "Resume", () => SetOpen( false ) );
 		column.AddChild( resume );
@@ -77,7 +71,8 @@ public partial class PauseMenu : CanvasLayer
 		column.AddChild( MenuButton( "Quit to desktop", () => { GameSettings.Save(); GetTree().Quit(); } ) );
 
 		hint = new Label { Text = "Esc to resume", HorizontalAlignment = HorizontalAlignment.Center };
-		hint.AddThemeColorOverride( "font_color", new Color( 1, 1, 1, 0.45f ) );
+		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
+		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
 	}
 

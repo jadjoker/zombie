@@ -110,8 +110,8 @@ public partial class BuyStation : Node
 		holo.AddChild( new Spin { Name = "Spin" } );
 		station.AddChild( new Label3D
 		{
-			Name = "Label", Text = "TRIDENT", Modulate = TridentTint, FontSize = 32, PixelSize = 0.12f * U.In,
-			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, OutlineSize = 6, OutlineModulate = new Color( 0, 0, 0, 0.6f ),
+			Name = "Label", Text = "TRIDENT", Modulate = TridentTint, FontSize = 32, PixelSize = 0.12f * U.In, Font = UiStyle.Display,
+			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, OutlineSize = 8, OutlineModulate = UiStyle.Ink,
 			Position = new Vector3( 0f, 2.6f, 0f ),
 		} );
 		return station;

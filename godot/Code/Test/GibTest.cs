@@ -248,6 +248,43 @@ public partial class AutoTest
 		GetTree().Quit();
 	}
 
+	/// <summary> The HUD's look: firing at a crab (damage numbers, enemy bar, hitmarker, ammo), MC-51's bar, the pause menu. </summary>
+	async Task HudShotsTest()
+	{
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		await WaitForNav();
+		await Wait( 0.5f );
+		DevFlags.FreezeEnemies = true;
+		var (spot, yaw) = OpenLane( 12f );
+		player.GlobalPosition = spot + Vector3.Up * 0.1f;
+		player.EyeAngles = new Angles( 4f, yaw, 0f );
+		var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+		var crab = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, spot + ahead * 6f ) + Vector3.Up * 0.3f, spot );
+		await Wait( 1f );
+		if ( crab is Node3D c3 )
+		{
+			var look = (c3.GlobalPosition + Vector3.Up * 0.3f - player.Camera.GlobalPosition).Normalized();
+			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ), 0f );
+		}
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.OnDamage( new DamageInfo { Damage = 380f } );
+		Input.ActionPress( "attack1" );
+		await Wait( 0.35f );
+		await Shot( "hud_firing" );
+		Input.ActionRelease( "attack1" );
+		await Wait( 0.1f );
+		MC61.Spawn( GetTree().CurrentScene, spot + ahead * 14f + Vector3.Up * 2.5f, 2000f );
+		await Wait( 2.5f );
+		await Shot( "hud_boss" );
+		var pause = GetTree().Root.FindChild( "PauseMenu", true, false ) as PauseMenu;
+		pause?.SetOpen( true );
+		await ToSignal( GetTree().CreateTimer( 0.4, true ), SceneTreeTimer.SignalName.Timeout );
+		await Shot( "hud_pause" );
+		pause?.SetOpen( false );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task GibTest()
 	{
 		DevFlags.FreezeEnemies = true;

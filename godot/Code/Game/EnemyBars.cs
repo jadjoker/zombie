@@ -171,20 +171,19 @@ public partial class EnemyBars : Control
 		if ( DevFlags.HideHud || PlayerSurvivor.LocalDead ) return;
 		var camera = GetViewport().GetCamera3D();
 		if ( camera is null ) return;
-		var font = ThemeDB.FallbackFont;
 
 		foreach ( var bar in bars.Values )
 		{
 			if ( !bar.InSight || !OnScreen( camera, bar.Anchor, out var at, out var scale ) ) continue;
-			var width = 54f * scale;
-			var height = MathF.Max( 3f, 6f * scale );
+			// A glossy pill bar with an ink edge (pale where health was just lost), the number over it in the HUD's
+			// chunky outlined numbers.
+			var width = 58f * scale;
+			var height = MathF.Max( 5f, 8f * scale );
 			var rect = new Rect2( at.X - width * 0.5f, at.Y - height, width, height );
 			var max = MathF.Max( 1f, bar.Health.MaxHealth );
-			DrawRect( rect.Grow( 1f ), BarBack );
-			DrawRect( new Rect2( rect.Position, new Vector2( width * MathX.Clamp( bar.Lag / max, 0f, 1f ), height ) ), BarLag );
-			DrawRect( new Rect2( rect.Position, new Vector2( width * MathX.Clamp( bar.Health.Current / max, 0f, 1f ), height ) ), BarFill );
-			var size = (int)MathF.Round( MathX.Clamp( 13f * scale, 9f, 14f ) );
-			Text( font, $"{MathF.Ceiling( bar.Health.Current )}", new Vector2( at.X, rect.Position.Y - 3f ), size, Colors.White );
+			UiStyle.DrawPills( this, rect, 1, MathX.Clamp( bar.Health.Current / max, 0f, 1f ), BarFill, UiStyle.RedTop, 1f, MathX.Clamp( bar.Lag / max, 0f, 1f ) );
+			var size = (int)MathF.Round( MathX.Clamp( 15f * scale, 10f, 16f ) );
+			BigText( $"{MathF.Ceiling( bar.Health.Current )}", new Vector2( at.X, rect.Position.Y - 3f ), size, Colors.White );
 		}
 
 		foreach ( var n in numbers )
@@ -193,9 +192,9 @@ public partial class EnemyBars : Control
 			var t = MathX.Clamp( (float)n.SinceHit / NumberLife, 0f, 1f );
 			// Full for the first 60% of its second, then fading; drifting up as it goes.
 			var alpha = t < 0.6f ? 1f : 1f - (t - 0.6f) / 0.4f;
-			var size = (int)MathF.Round( MathX.Clamp( 20f * scale, 13f, 22f ) );
-			var pop = n.SinceHit < 0.08f ? 1.25f : 1f;   // a small punch on each hit
-			Text( font, $"{MathF.Round( n.Total ):0}", new Vector2( at.X, at.Y - 22f * scale - t * 18f ), (int)(size * pop), DamageColour with { A = alpha } );
+			var size = (int)MathF.Round( MathX.Clamp( 24f * scale, 15f, 26f ) );
+			var pop = n.SinceHit < 0.08f ? 1.3f : 1f;   // a small punch on each hit
+			BigText( $"{MathF.Round( n.Total ):0}", new Vector2( at.X, at.Y - 22f * scale - t * 18f ), (int)(size * pop), UiStyle.Gold, alpha );
 		}
 	}
 
@@ -212,11 +211,9 @@ public partial class EnemyBars : Control
 		return true;
 	}
 
-	void Text( Font font, string text, Vector2 bottomCentre, int size, Color colour )
+	void BigText( string text, Vector2 bottomCentre, int size, Color colour, float alpha = 1f )
 	{
-		var width = font.GetStringSize( text, HorizontalAlignment.Left, -1, size ).X;
-		var at = new Vector2( bottomCentre.X - width * 0.5f, bottomCentre.Y );
-		DrawStringOutline( font, at, text, HorizontalAlignment.Left, -1, size, Math.Max( 3, size / 4 ), new Color( 0f, 0f, 0f, colour.A * 0.85f ) );
-		DrawString( font, at, text, HorizontalAlignment.Left, -1, size, colour );
+		var width = UiStyle.BigWidth( text, size );
+		UiStyle.DrawBig( this, new Vector2( bottomCentre.X - width * 0.5f, bottomCentre.Y ), text, size, colour, HorizontalAlignment.Left, -1f, alpha );
 	}
 }

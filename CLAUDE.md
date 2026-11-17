@@ -203,6 +203,13 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   warmed a frame at a time for the shark, MC-51 and Kraken) and copies them; random creature colours are snapped to a
   few shades so recipes are shared. Tests: `--gibs` (each creature blown apart, shots need a window), `--gibgallery`
   (each recipe's pieces up close, and the burst build time).
+- UI look "Arcade Dive" (`Core/UiStyle.cs`): the robot's suit display (small glowing spaced caps captions, dark framed
+  panels with an ink edge and a teal inner line, glossy pill-segment bars) carrying chunky outlined cartoon numbers.
+  Fonts in `assets/fonts` (SIL OFL, licences beside them): Lilita One (`UiStyle.Display`: numbers, banners, damage,
+  world labels), Chakra Petch (`Label`/`LabelBold`/`Caption`; the project default via `gui/theme/custom_font`), Share
+  Tech Mono (`Mono`: readouts). Use `UiStyle.Big`/`Tag`/`Text` for labels, `DrawBig`/`DrawTag`/`DrawPills`/`DrawFrame`
+  in `_Draw`, `UiStyle.Frame` for panels and `UiStyle.Menu` as a menu's theme; colours are `UiStyle.Teal`, `Gold`,
+  `Ink` and friends, not inline hex. Test: `--hudshots` (firing, a boss bar, the pause menu; needs a window).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

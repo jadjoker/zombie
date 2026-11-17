@@ -59,14 +59,14 @@ public partial class LoadingScreen : Control
 		DrawRect( pic.Grow( 8f * scale ), Colors.White, false, 6f * scale );
 
 		var textTop = pic.End.Y + 54f * scale;
-		DrawString( font, new Vector2( 0f, size.Y * 0.16f - 34f * scale ), "T E L E P O R T I N G", HorizontalAlignment.Center, size.X, Math.Max( 8, (int)(30 * scale) ), new Color( 0.75f, 1f, 0.8f ) );
-		DrawString( font, new Vector2( 0f, textTop ), Destination, HorizontalAlignment.Center, size.X, Math.Max( 8, (int)(36 * scale) ), Colors.White );
+		UiStyle.DrawTag( this, new Vector2( 0f, size.Y * 0.16f - 34f * scale ), "TELEPORTING", Math.Max( 8, (int)(26 * scale) ), UiStyle.TealSoft, HorizontalAlignment.Center, size.X );
+		UiStyle.DrawBig( this, new Vector2( 0f, textTop ), Destination, Math.Max( 8, (int)(44 * scale) ), UiStyle.Gold, HorizontalAlignment.Center, size.X );
 		// The bar.
 		var bw = w * 0.8f;
 		var bar = new Rect2( (size.X - bw) * 0.5f, textTop + 26f * scale, bw, 10f * scale );
 		DrawRect( bar, new Color( 1f, 1f, 1f, 0.15f ) );
 		DrawRect( new Rect2( bar.Position, new Vector2( bar.Size.X * MathX.Clamp( shown, 0f, 1f ), bar.Size.Y ) ), new Color( 0.45f, 1f, 0.55f ) );
-		DrawString( font, new Vector2( 0f, bar.End.Y + 44f * scale ), tip, HorizontalAlignment.Center, size.X, Math.Max( 8, (int)(20 * scale) ), new Color( 0.7f, 0.75f, 0.8f ) );
+		UiStyle.DrawText( this, new Vector2( 0f, bar.End.Y + 44f * scale ), tip, Math.Max( 8, (int)(20 * scale) ), UiStyle.Readout, HorizontalAlignment.Center, size.X );
 	}
 
 	/// <summary> The dock in the afternoon: sky, sun, the sea with its blue hole and reef, the pier, the hut, gulls. </summary>

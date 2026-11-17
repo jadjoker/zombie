@@ -286,6 +286,7 @@ public partial class Level : Node3D
 			var c = Col( text.GetProperty( "color" ) );
 			node.AddChild( new Label3D
 			{
+				Font = UiStyle.Display,
 				Text = words,
 				Modulate = c,
 				FontSize = text.TryGetProperty( "size", out var fs ) ? fs.GetInt32() : 32,

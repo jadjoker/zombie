@@ -251,7 +251,7 @@ public partial class AutoTest
 	/// <summary> The HUD's look: firing at a crab (damage numbers, enemy bar, hitmarker, ammo), MC-51's bar, the pause menu. </summary>
 	async Task HudShotsTest()
 	{
-		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
 		DockHouse.Current?.SkipDive();
 		await WaitForNav();
 		await Wait( 0.5f );
@@ -267,7 +267,8 @@ public partial class AutoTest
 			var look = (c3.GlobalPosition + Vector3.Up * 0.3f - player.Camera.GlobalPosition).Normalized();
 			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ), 0f );
 		}
-		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.OnDamage( new DamageInfo { Damage = 380f } );
+		me.Health.OnDamage( new DamageInfo { Damage = me.Health.MaxHealth * 0.62f } );
+		me.Health.Invulnerable = true;
 		Input.ActionPress( "attack1" );
 		await Wait( 0.35f );
 		await Shot( "hud_firing" );
@@ -276,6 +277,22 @@ public partial class AutoTest
 		MC61.Spawn( GetTree().CurrentScene, spot + ahead * 14f + Vector3.Up * 2.5f, 2000f );
 		await Wait( 2.5f );
 		await Shot( "hud_boss" );
+		// The wave banner as the first wave starts.
+		for ( var i = 0; i < 80 && WaveDirector.Current.State != WaveState.Fighting; i++ ) await Wait( 0.1f );
+		await Wait( 0.35f );
+		await Shot( "hud_banner" );
+		// A buy station's prompt: walk up to the nearest one and look at it.
+		if ( GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().Select( b => b.GetParent() as Node3D ).Where( n => n is not null ).OrderBy( n => n.GlobalPosition.DistanceTo( player.GlobalPosition ) ).FirstOrDefault() is { } station )
+		{
+			var to = (station.GlobalPosition - player.GlobalPosition).Flat().Normalized();
+			player.GlobalPosition = Nav.Closest( player, station.GlobalPosition - to * 1.6f ) + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			await Wait( 0.3f );
+			var look = (station.GlobalPosition + Vector3.Up * 0.8f - player.Camera.GlobalPosition).Normalized();
+			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( look.Y ) ), MathX.Deg( MathF.Atan2( -look.X, -look.Z ) ), 0f );
+			await Wait( 0.5f );
+			await Shot( "hud_prompt" );
+		}
 		var pause = GetTree().Root.FindChild( "PauseMenu", true, false ) as PauseMenu;
 		pause?.SetOpen( true );
 		await ToSignal( GetTree().CreateTimer( 0.4, true ), SceneTreeTimer.SignalName.Timeout );

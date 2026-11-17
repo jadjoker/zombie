@@ -39,7 +39,7 @@ public partial class PauseMenu : CanvasLayer
 		column.AddThemeConstantOverride( "separation", 14 );
 		panel.AddChild( column );
 
-		var title = UiStyle.Big( column, 52, UiStyle.Gold );
+		var title = UiStyle.Big( column, 40, UiStyle.Teal );
 		title.Text = "PAUSED";
 
 		resume = MenuButton( "Resume", () => SetOpen( false ) );

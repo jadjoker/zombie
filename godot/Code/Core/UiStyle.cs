@@ -1,20 +1,24 @@
 using Godot;
 
 /// <summary>
-/// The look of every screen ("Arcade Dive"): the robot's suit display (small glowing tech labels, framed panels,
-/// segmented bars, a faint scanline) carrying chunky outlined cartoon numbers and glossy pill segments. One place for
-/// the fonts, the palette, the panels and the drawing helpers, so the HUD, menus and world labels match.
-/// Fonts (SIL Open Font License, in assets/fonts): Lilita One for numbers and banners, Chakra Petch for labels and
-/// menus (the project's default font), Share Tech Mono for small readouts.
+/// The look of every screen ("Robot Visor"): you read the HUD off the inside of the robot's faceplate. Cyan system
+/// readouts with a slight red/blue colour split, faint see-through panels marked by corner brackets, slanted tick
+/// bars, and a barely-there scanline (VisorOverlay). One place for the fonts, the palette, the panels and the drawing
+/// helpers, so the HUD, menus and world labels match.
+/// Fonts (SIL Open Font License, in assets/fonts): Chakra Petch for HUD numbers, labels and menus (the project's
+/// default font), Share Tech Mono for small readouts, Lilita One for the chunky world labels.
 /// </summary>
 public static class UiStyle
 {
-	public static readonly Color Ink = new( "06202c" );          // outlines, shadows
-	public static readonly Color Panel = new( 0.03f, 0.16f, 0.21f, 0.86f );
-	public static readonly Color PanelDeep = new( 0.016f, 0.086f, 0.125f, 0.92f );
-	public static readonly Color Teal = new( "5fffe0" );         // the suit's glow: frames, labels, keys
-	public static readonly Color TealSoft = new( "7ff5e0" );
-	public static readonly Color Readout = new( "9fe9de" );
+	public static readonly Color Ink = new( "020c14" );          // outlines, shadows
+	public static readonly Color Panel = new( 0.01f, 0.06f, 0.09f, 0.42f );
+	public static readonly Color PanelDeep = new( 0.01f, 0.05f, 0.08f, 0.9f );
+	public static readonly Color Teal = new( "7ff6ff" );         // the visor's glow: brackets, labels, ticks, keys
+	public static readonly Color TealSoft = new( "a6f8ff" );
+	public static readonly Color Readout = new( "8fdcea" );
+	/// <summary> The colour split on visor numbers: a red copy left, a blue copy right. </summary>
+	public static readonly Color SplitRed = new( 1f, 0.23f, 0.42f, 0.5f );
+	public static readonly Color SplitBlue = new( 0.18f, 0.55f, 1f, 0.5f );
 	public static readonly Color Gold = new( "ffe46b" );         // numbers that matter: wave, points, damage
 	public static readonly Color Red = new( "ff3b3b" );
 	public static readonly Color RedTop = new( "ff9a8a" );
@@ -25,10 +29,12 @@ public static class UiStyle
 	public static readonly Color Amber = new( "ffb020" );
 	public static readonly Color Lime = new( "c8ff7a" );
 
-	static Font display, label, labelBold, mono, labelWide, monoWide;
+	static Font display, label, labelBold, mono, labelWide, monoWide, number;
 	static Font Load( string file ) => GD.Load<Font>( $"res://assets/fonts/{file}" ) ?? ThemeDB.FallbackFont;
-	/// <summary> Chunky outlined numbers and banners. </summary>
+	/// <summary> Chunky cartoon letters for signs in the world (station names, the teleporter). </summary>
 	public static Font Display => display ??= Load( "LilitaOne-Regular.ttf" );
+	/// <summary> HUD numbers and banners: the visor's bold tech face. </summary>
+	public static Font Number => number ??= Load( "ChakraPetch-Bold.ttf" );
 	/// <summary> Labels and menus (the project default). </summary>
 	public static Font Label => label ??= Load( "ChakraPetch-SemiBold.ttf" );
 	public static Font LabelBold => labelBold ??= Load( "ChakraPetch-Bold.ttf" );
@@ -51,15 +57,16 @@ public static class UiStyle
 
 	public static void StyleBig( Label l, int size, Color colour )
 	{
-		l.AddThemeFontOverride( "font", Display );
+		l.AddThemeFontOverride( "font", Number );
 		l.AddThemeFontSizeOverride( "font_size", size );
 		l.AddThemeColorOverride( "font_color", colour );
-		l.AddThemeColorOverride( "font_outline_color", Ink );
-		l.AddThemeConstantOverride( "outline_size", Math.Max( 6, size / 6 ) );
-		l.AddThemeColorOverride( "font_shadow_color", Ink );
-		l.AddThemeConstantOverride( "shadow_offset_x", 0 );
-		l.AddThemeConstantOverride( "shadow_offset_y", Math.Max( 2, size / 12 ) );
-		l.AddThemeConstantOverride( "shadow_outline_size", Math.Max( 6, size / 6 ) );
+		l.AddThemeColorOverride( "font_outline_color", Ink with { A = 0.7f } );
+		l.AddThemeConstantOverride( "outline_size", Math.Max( 3, size / 12 ) );
+		// The colour split: a red copy just left of the text.
+		l.AddThemeColorOverride( "font_shadow_color", SplitRed );
+		l.AddThemeConstantOverride( "shadow_offset_x", -Math.Max( 1, size / 22 ) );
+		l.AddThemeConstantOverride( "shadow_offset_y", 0 );
+		l.AddThemeConstantOverride( "shadow_outline_size", 0 );
 	}
 
 	/// <summary> A small glowing spaced caps caption (HULL, MAG, KILLS). </summary>
@@ -90,57 +97,65 @@ public static class UiStyle
 
 	// ---- Panels ----
 
-	/// <summary> The frame: a dark see-through panel with a thick ink edge, rounded on two opposite corners, a drop shadow. </summary>
+	/// <summary> The frame: a faint see-through panel with a hairline cyan edge and square corners (brackets go on top). </summary>
 	public static StyleBoxFlat Frame( float scale = 1f, Color? fill = null, int margin = 14 )
 	{
-		var r = (int)(14 * scale);
-		var s = (int)(4 * scale);
+		var r = Math.Max( 1, (int)(2 * scale) );
 		return new StyleBoxFlat
 		{
 			BgColor = fill ?? Panel,
-			BorderColor = Ink, BorderWidthLeft = (int)(3 * scale), BorderWidthTop = (int)(3 * scale), BorderWidthRight = (int)(3 * scale), BorderWidthBottom = (int)(3 * scale),
-			CornerRadiusTopLeft = r, CornerRadiusBottomRight = r, CornerRadiusTopRight = s, CornerRadiusBottomLeft = s,
-			ShadowColor = Ink with { A = 0.9f }, ShadowSize = 0, ShadowOffset = new Vector2( 0f, 4f * scale ),
-			ContentMarginLeft = margin * scale, ContentMarginRight = margin * scale, ContentMarginTop = margin * 0.7f * scale, ContentMarginBottom = margin * 0.7f * scale,
+			BorderColor = Teal with { A = 0.18f }, BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1,
+			CornerRadiusTopLeft = r, CornerRadiusBottomRight = r, CornerRadiusTopRight = r, CornerRadiusBottomLeft = r,
+			ContentMarginLeft = margin * scale, ContentMarginRight = margin * scale, ContentMarginTop = margin * 0.6f * scale, ContentMarginBottom = margin * 0.6f * scale,
 			AntiAliasing = true,
 		};
 	}
 
-	/// <summary> The teal line just inside a frame. </summary>
+	/// <summary> A thin cyan line just inside a frame (kept for older callers; panels use brackets now). </summary>
 	public static StyleBoxFlat FrameLine( float scale = 1f, Color? colour = null )
 	{
-		var r = (int)(10 * scale);
-		var s = (int)(2 * scale);
-		var w = Math.Max( 1, (int)MathF.Round( 1.5f * scale ) );
+		var w = Math.Max( 1, (int)MathF.Round( scale ) );
 		return new StyleBoxFlat
 		{
-			DrawCenter = false, BorderColor = (colour ?? Teal) with { A = 0.7f },
+			DrawCenter = false, BorderColor = (colour ?? Teal) with { A = 0.35f },
 			BorderWidthLeft = w, BorderWidthTop = w, BorderWidthRight = w, BorderWidthBottom = w,
-			CornerRadiusTopLeft = r, CornerRadiusBottomRight = r, CornerRadiusTopRight = s, CornerRadiusBottomLeft = s,
 			AntiAliasing = true,
 		};
 	}
 
-	/// <summary> A frame drawn in a _Draw: shadow, ink edge, fill, then the teal line inside. </summary>
+	/// <summary> A frame drawn in a _Draw: the faint panel, then cyan corner brackets. </summary>
 	public static void DrawFrame( CanvasItem c, Rect2 rect, float alpha = 1f, Color? line = null, float scale = 1f )
 	{
 		var frame = Frame( scale );
 		frame.BgColor = frame.BgColor with { A = frame.BgColor.A * alpha };
-		frame.BorderColor = frame.BorderColor with { A = alpha };
-		frame.ShadowColor = frame.ShadowColor with { A = 0.9f * alpha };
+		frame.BorderColor = frame.BorderColor with { A = frame.BorderColor.A * alpha };
 		c.DrawStyleBox( frame, rect );
-		var inner = FrameLine( scale, line );
-		inner.BorderColor = inner.BorderColor with { A = inner.BorderColor.A * alpha };
-		c.DrawStyleBox( inner, rect.Grow( -5f * scale ) );
+		DrawBrackets( c, rect, (line ?? Teal) with { A = alpha }, 12f * scale );
 	}
 
-	/// <summary> A keycap chip for prompts: the key in Lilita on a teal button with an ink edge. </summary>
+	/// <summary> Four corner brackets round a rect: the visor marking out a readout. </summary>
+	public static void DrawBrackets( CanvasItem c, Rect2 rect, Color? colour = null, float length = 12f, float width = 2f )
+	{
+		var col = colour ?? Teal;
+		var ink = Ink with { A = 0.45f * col.A };
+		var p = rect.Position;
+		var e = rect.End;
+		var corners = new[] { (p, 1f, 1f), (new Vector2( e.X, p.Y ), -1f, 1f), (new Vector2( p.X, e.Y ), 1f, -1f), (e, -1f, -1f) };
+		foreach ( var pass in new[] { (ink, width + 2f), (col, width) } )
+			foreach ( var (at, sx, sy) in corners )
+			{
+				c.DrawLine( at, at + new Vector2( length * sx, 0f ), pass.Item1, pass.Item2 );
+				c.DrawLine( at, at + new Vector2( 0f, length * sy ), pass.Item1, pass.Item2 );
+			}
+	}
+
+	/// <summary> A keycap chip for prompts: the key dark on a small cyan block. </summary>
 	public static StyleBoxFlat KeyCap( float scale = 1f ) => new()
 	{
-		BgColor = Teal, BorderColor = Ink, BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 3,
-		CornerRadiusTopLeft = (int)(7 * scale), CornerRadiusTopRight = (int)(7 * scale), CornerRadiusBottomLeft = (int)(7 * scale), CornerRadiusBottomRight = (int)(7 * scale),
-		ContentMarginLeft = 10 * scale, ContentMarginRight = 10 * scale, ContentMarginTop = 1 * scale, ContentMarginBottom = 2 * scale,
-		ShadowColor = Ink, ShadowOffset = new Vector2( 0f, 3f * scale ), AntiAliasing = true,
+		BgColor = Teal,
+		CornerRadiusTopLeft = (int)(3 * scale), CornerRadiusTopRight = (int)(3 * scale), CornerRadiusBottomLeft = (int)(3 * scale), CornerRadiusBottomRight = (int)(3 * scale),
+		ContentMarginLeft = 9 * scale, ContentMarginRight = 9 * scale, ContentMarginTop = 1 * scale, ContentMarginBottom = 1 * scale,
+		ShadowColor = Teal with { A = 0.35f }, ShadowSize = (int)(4 * scale), AntiAliasing = true,
 	};
 
 	// ---- Menus ----
@@ -156,20 +171,19 @@ public static class UiStyle
 	{
 		var b = Frame( 0.7f, fill, 14 );
 		b.BorderColor = border;
-		b.BorderWidthBottom = bottom;
-		b.ShadowOffset = new Vector2( 0f, 3f );
+		b.BorderWidthLeft = bottom == 3 ? 1 : 2;
 		return b;
 	}
 
 	static Theme BuildMenu()
 	{
 		var t = new Theme { DefaultFont = Label };
-		t.SetStylebox( "normal", "Button", Button( Panel, Ink ) );
-		t.SetStylebox( "hover", "Button", Button( new Color( 0.06f, 0.3f, 0.36f, 0.95f ), Teal ) );
-		t.SetStylebox( "pressed", "Button", Button( new Color( 0.1f, 0.42f, 0.46f, 1f ), Teal, 2 ) );
-		t.SetStylebox( "hover_pressed", "Button", Button( new Color( 0.1f, 0.42f, 0.46f, 1f ), Teal, 2 ) );
-		t.SetStylebox( "focus", "Button", new StyleBoxFlat { DrawCenter = false, BorderColor = Gold, BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2, CornerRadiusTopLeft = 10, CornerRadiusBottomRight = 10, CornerRadiusTopRight = 3, CornerRadiusBottomLeft = 3, ExpandMarginLeft = 3, ExpandMarginRight = 3, ExpandMarginTop = 3, ExpandMarginBottom = 3 } );
-		t.SetStylebox( "disabled", "Button", Button( PanelDeep with { A = 0.6f }, Ink ) );
+		t.SetStylebox( "normal", "Button", Button( new Color( 0.02f, 0.1f, 0.14f, 0.85f ), Teal with { A = 0.25f } ) );
+		t.SetStylebox( "hover", "Button", Button( new Color( 0.05f, 0.24f, 0.3f, 0.95f ), Teal, 2 ) );
+		t.SetStylebox( "pressed", "Button", Button( new Color( 0.08f, 0.34f, 0.4f, 1f ), Teal, 2 ) );
+		t.SetStylebox( "hover_pressed", "Button", Button( new Color( 0.08f, 0.34f, 0.4f, 1f ), Teal, 2 ) );
+		t.SetStylebox( "focus", "Button", new StyleBoxFlat { DrawCenter = false, BorderColor = Gold, BorderWidthLeft = 1, BorderWidthTop = 1, BorderWidthRight = 1, BorderWidthBottom = 1, CornerRadiusTopLeft = 2, CornerRadiusBottomRight = 2, CornerRadiusTopRight = 2, CornerRadiusBottomLeft = 2, ExpandMarginLeft = 3, ExpandMarginRight = 3, ExpandMarginTop = 3, ExpandMarginBottom = 3 } );
+		t.SetStylebox( "disabled", "Button", Button( PanelDeep with { A = 0.5f }, Teal with { A = 0.1f } ) );
 		t.SetColor( "font_color", "Button", Colors.White );
 		t.SetColor( "font_hover_color", "Button", Teal );
 		t.SetColor( "font_focus_color", "Button", Colors.White );
@@ -180,7 +194,7 @@ public static class UiStyle
 		t.SetFont( "font", "Button", LabelBold );
 		t.SetColor( "font_color", "Label", Colors.White );
 		// Sliders: a dark pill track, a teal fill, a round teal grabber with an ink edge.
-		var track = new StyleBoxFlat { BgColor = new Color( 1f, 1f, 1f, 0.1f ), BorderColor = Ink, BorderWidthLeft = 2, BorderWidthTop = 2, BorderWidthRight = 2, BorderWidthBottom = 2, CornerRadiusTopLeft = 99, CornerRadiusTopRight = 99, CornerRadiusBottomLeft = 99, CornerRadiusBottomRight = 99, ContentMarginTop = 5, ContentMarginBottom = 5 };
+		var track = new StyleBoxFlat { BgColor = new Color( 0.5f, 0.96f, 1f, 0.1f ), ContentMarginTop = 3, ContentMarginBottom = 3 };
 		var fill = (StyleBoxFlat)track.Duplicate();
 		fill.BgColor = Teal;
 		t.SetStylebox( "slider", "HSlider", track );
@@ -212,53 +226,52 @@ public static class UiStyle
 
 	// ---- Bars ----
 
-	static readonly StyleBoxFlat pill = new() { CornerRadiusTopLeft = 99, CornerRadiusTopRight = 99, CornerRadiusBottomLeft = 99, CornerRadiusBottomRight = 99, AntiAliasing = true };
-
 	/// <summary>
-	/// A bar of glossy pill segments filled to `fraction` (the last one part full), dark empty ones after it, and an
-	/// optional pale `lag` behind the fill (health that was just lost).
+	/// A bar of slanted glowing ticks filled to `fraction` (the last one part full), faint empty ones after it, and an
+	/// optional pale `lag` behind the fill (health that was just lost). `top` lights a thin edge along each tick.
 	/// </summary>
 	public static void DrawPills( CanvasItem c, Rect2 rect, int segments, float fraction, Color fill, Color top, float alpha = 1f, float lag = -1f, float gap = 4f )
 	{
 		segments = Math.Max( 1, segments );
 		var w = (rect.Size.X - gap * (segments - 1)) / segments;
 		var h = rect.Size.Y;
+		var skew = MathF.Min( h * 0.35f, w * 0.4f );
 		for ( var i = 0; i < segments; i++ )
 		{
-			var r = new Rect2( rect.Position.X + i * (w + gap), rect.Position.Y, w, h );
+			var x = rect.Position.X + i * (w + gap);
+			var y = rect.Position.Y;
 			var full = MathX.Clamp( fraction * segments - i, 0f, 1f );
 			var lagged = lag >= 0f ? MathX.Clamp( lag * segments - i, 0f, 1f ) : 0f;
-			pill.BgColor = new Color( 1f, 1f, 1f, 0.09f * alpha );
-			pill.BorderColor = Ink with { A = 0.7f * alpha };
-			pill.SetBorderWidthAll( 1 );
-			c.DrawStyleBox( pill, r );
-			pill.SetBorderWidthAll( 0 );
-			if ( lagged > full )
-			{
-				pill.BgColor = new Color( 1f, 1f, 1f, 0.55f * alpha );
-				c.DrawStyleBox( pill, new Rect2( r.Position, new Vector2( MathF.Max( h, w * lagged ), h ) ) );
-			}
+			Tick( c, x, y, w, h, skew, new Color( 0.5f, 0.96f, 1f, 0.1f * alpha ) );
+			if ( lagged > full ) Tick( c, x, y, w * lagged, h, skew, new Color( 1f, 1f, 1f, 0.5f * alpha ) );
 			if ( full <= 0f ) continue;
-			var fw = MathF.Max( MathF.Min( h, w ), w * full );
-			pill.BgColor = fill with { A = alpha };
-			c.DrawStyleBox( pill, new Rect2( r.Position, new Vector2( fw, h ) ) );
-			// The gloss: a lighter band along the top.
-			pill.BgColor = top with { A = 0.85f * alpha };
-			c.DrawStyleBox( pill, new Rect2( r.Position + new Vector2( h * 0.2f, h * 0.12f ), new Vector2( MathF.Max( 0f, fw - h * 0.4f ), h * 0.32f ) ) );
+			var fw = MathF.Max( skew * 1.5f, w * full );
+			Tick( c, x - 1.5f, y - 1.5f, fw + 3f, h + 3f, skew, fill with { A = 0.22f * alpha } );   // glow
+			Tick( c, x, y, fw, h, skew, fill with { A = alpha } );
+			Tick( c, x, y, fw, MathF.Max( 1f, h * 0.22f ), skew * 0.22f, top with { A = 0.8f * alpha } );
 		}
+	}
+
+	static readonly Vector2[] tick = new Vector2[4];
+	static void Tick( CanvasItem c, float x, float y, float w, float h, float skew, Color colour )
+	{
+		tick[0] = new Vector2( x + skew, y );
+		tick[1] = new Vector2( x + w, y );
+		tick[2] = new Vector2( x + w - skew, y + h );
+		tick[3] = new Vector2( x, y + h );
+		c.DrawColoredPolygon( tick, colour );
 	}
 
 	// ---- Text in a _Draw ----
 
-	/// <summary> A big outlined cartoon string in a _Draw (Lilita One with the ink outline and dropped shadow). </summary>
+	/// <summary> A big visor number or banner in a _Draw: a thin dark edge, the red/blue colour split, then the text. </summary>
 	public static void DrawBig( CanvasItem c, Vector2 at, string text, int size, Color colour, HorizontalAlignment align = HorizontalAlignment.Left, float width = -1f, float alpha = 1f )
 	{
-		var f = Display;
-		var outline = Math.Max( 6, size / 6 );
-		var drop = new Vector2( 0f, Math.Max( 2, size / 12 ) );
-		c.DrawStringOutline( f, at + drop, text, align, width, size, outline, Ink with { A = alpha } );
-		c.DrawString( f, at + drop, text, align, width, size, Ink with { A = alpha } );
-		c.DrawStringOutline( f, at, text, align, width, size, outline, Ink with { A = alpha } );
+		var f = Number;
+		var split = new Vector2( Math.Max( 1, size / 22 ) + VisorOverlay.Glitch * 5f, 0f );
+		c.DrawStringOutline( f, at, text, align, width, size, Math.Max( 3, size / 12 ), Ink with { A = 0.7f * alpha } );
+		c.DrawString( f, at - split, text, align, width, size, SplitRed with { A = SplitRed.A * alpha } );
+		c.DrawString( f, at + split, text, align, width, size, SplitBlue with { A = SplitBlue.A * alpha } );
 		c.DrawString( f, at, text, align, width, size, colour with { A = colour.A * alpha } );
 	}
 
@@ -279,6 +292,6 @@ public static class UiStyle
 	}
 
 	/// <summary> Width of a string in the display font. </summary>
-	public static float BigWidth( string text, int size ) => Display.GetStringSize( text, HorizontalAlignment.Left, -1f, size ).X;
+	public static float BigWidth( string text, int size ) => Number.GetStringSize( text, HorizontalAlignment.Left, -1f, size ).X;
 	public static float TagWidth( string text, int size, bool mono = false ) => (mono ? MonoWide : Caption).GetStringSize( text.ToUpperInvariant(), HorizontalAlignment.Left, -1f, size ).X;
 }

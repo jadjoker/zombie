@@ -30,6 +30,7 @@ public static class PlayerFactory
 
 		var hud = new CanvasLayer { Name = "Hud" };
 		parent.AddChild( hud );
+		hud.AddChild( VisorOverlay.Create( survivor ) );   // the faceplate: under every HUD piece
 		hud.AddChild( HudOverlays.Create( survivor ) );
 		hud.AddChild( EnemyBars.Create() );   // health bars and damage numbers over enemies
 		if ( parent.GetTree().Root.FindChild( "DevMenu", true, false ) is null ) parent.AddChild( new DevMenu() );

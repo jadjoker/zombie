@@ -50,35 +50,35 @@ public partial class HudOverlays : Control
 		boss = new Control { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
 		boss.SetAnchorsPreset( LayoutPreset.FullRect );
 		AddChild( boss );
-		speech = UiStyle.Big( this, 66, new Color( "ff7ae3" ) );
+		speech = UiStyle.Big( this, 48, new Color( "ff7ae3" ) );
 		speech.AnchorLeft = 0f; speech.AnchorRight = 1f; speech.AnchorTop = speech.AnchorBottom = 0.26f;
 		speech.OffsetLeft = speech.OffsetRight = 0f; speech.OffsetBottom = 80f;
 
 		// The use prompt: a suit frame with the key as a chunky teal button, the title and a line under it.
 		prompt = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
-		prompt.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 16 ) );
+		prompt.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 14 ) );
 		prompt.SetAnchorsPreset( LayoutPreset.CenterTop );
 		prompt.AnchorTop = prompt.AnchorBottom = 0.58f; prompt.GrowHorizontal = GrowDirection.Both;
 		AddChild( prompt );
 		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-		row.AddThemeConstantOverride( "separation", 14 );
+		row.AddThemeConstantOverride( "separation", 12 );
 		prompt.AddChild( row );
 		var keyCap = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
 		keyCap.AddThemeStyleboxOverride( "panel", UiStyle.KeyCap() );
 		row.AddChild( keyCap );
 		promptKey = new Label { HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
-		promptKey.AddThemeFontOverride( "font", UiStyle.Display );
-		promptKey.AddThemeFontSizeOverride( "font_size", 26 );
+		promptKey.AddThemeFontOverride( "font", UiStyle.Number );
+		promptKey.AddThemeFontSizeOverride( "font_size", 20 );
 		promptKey.AddThemeColorOverride( "font_color", UiStyle.Ink );
 		keyCap.AddChild( promptKey );
 		promptKey.Text = "E";
 		var textBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		textBox.AddThemeConstantOverride( "separation", -2 );
 		row.AddChild( textBox );
-		promptTitle = UiStyle.Text( textBox, 22, Colors.White, HorizontalAlignment.Left );
+		promptTitle = UiStyle.Text( textBox, 18, UiStyle.TealSoft, HorizontalAlignment.Left );
 		promptTitle.AddThemeFontOverride( "font", UiStyle.LabelBold );
 		promptTitle.Uppercase = true;
-		promptDesc = Text( textBox, 15, UiStyle.Readout, HorizontalAlignment.Left );
+		promptDesc = UiStyle.Text( textBox, 13, UiStyle.Readout, HorizontalAlignment.Left, mono: true );
 	}
 
 	PlayerAfflictions Afflictions => player?.Afflictions;
@@ -98,6 +98,7 @@ public partial class HudOverlays : Control
 		var now = (float)Clock.Now;
 		var a = Afflictions;
 		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no HUD on the death screen
+		Position = new Vector2( VisorOverlay.Jitter, 0f );
 
 		var health = player?.Health;
 		var hurtOpacity = 0f;
@@ -183,7 +184,7 @@ public partial class HudOverlays : Control
 	{
 		var now = (float)Clock.Now;
 		var c = Size * 0.5f;
-		if ( prompt.Visible ) DrawStyleBox( UiStyle.FrameLine(), prompt.GetRect().Grow( -5f ) );
+		if ( prompt.Visible ) UiStyle.DrawBrackets( this, prompt.GetRect(), null, 10f );
 
 		// Ink blots over the view, fading out over the last second.
 		var a = Afflictions;
@@ -280,7 +281,7 @@ public partial class HudOverlays : Control
 			var amber = new Color( "ffb020" );
 			var at = new Vector2( 28f, Size.Y * 0.2f );
 			UiStyle.DrawFrame( this, new Rect2( at - new Vector2( 14f, 34f ), new Vector2( 340f, 96f ) ), 1f, amber with { A = blink } );
-			UiStyle.DrawBig( this, at, "SUIT MALFUNCTION", 26, amber, HorizontalAlignment.Left, -1f, blink );
+			UiStyle.DrawBig( this, at, "SUIT MALFUNCTION", 22, amber, HorizontalAlignment.Left, -1f, blink );
 			UiStyle.DrawTag( this, at + new Vector2( 0f, 24f ), "BALLAST OFFLINE", 15, new Color( 1f, 0.5f, 0.35f ) );
 			UiStyle.DrawTag( this, at + new Vector2( 0f, 44f ), "boots cannot grip: you float", 14, UiStyle.Readout, HorizontalAlignment.Left, -1f, true, false );
 		}
@@ -289,7 +290,7 @@ public partial class HudOverlays : Control
 		if ( player?.Afflictions is { RadiationLeft: > 0f } dose )
 		{
 			var words = dose.RadiationPoisonLeft > 0f ? "poisoned, and stamina recovers slowly" : "stamina recovers slowly";
-			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", 30, new Color( "9dff1a" ), HorizontalAlignment.Center, Size.X );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", 24, new Color( "9dff1a" ), HorizontalAlignment.Center, Size.X );
 			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.74f + 26f ), words, 15, UiStyle.Readout, HorizontalAlignment.Center, Size.X );
 		}
 
@@ -300,7 +301,7 @@ public partial class HudOverlays : Control
 			var pulse = 0.75f + 0.25f * MathF.Sin( (float)Clock.Now * 10f );
 			var y = Size.Y * 0.3f;
 			var title = left > 0f ? $"WHIRLPOOL IN {MathF.Ceiling( left ):0}" : "WHIRLPOOL";
-			UiStyle.DrawBig( this, new Vector2( 0f, y ), title, 58, warn, HorizontalAlignment.Center, Size.X, pulse );
+			UiStyle.DrawBig( this, new Vector2( 0f, y ), title, 42, warn, HorizontalAlignment.Center, Size.X, pulse );
 			if ( left > 0f )
 			{
 				UiStyle.DrawTag( this, new Vector2( 0f, y + 36f ), "Get back inside the ring of lights", 17, Colors.White, HorizontalAlignment.Center, Size.X );
@@ -313,14 +314,14 @@ public partial class HudOverlays : Control
 	/// <summary> A boss bar across the top: TARGET and the name, the percentage, a row of pills (and a thinner second row, the Kraken's dome). </summary>
 	void BossBar( float down, string name, float fraction, Color fill, Color top, float second = -1f )
 	{
-		var width = Size.X * 0.4f;
-		var rect = new Rect2( (Size.X - width) * 0.5f, 136f + down, width, second >= 0f ? 70f : 58f );
-		UiStyle.DrawFrame( this, rect, 1f, fill );
-		UiStyle.DrawTag( this, rect.Position + new Vector2( 18f, 24f ), $"TARGET  {name}", 15, top );
-		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 24f ), $"{MathF.Ceiling( fraction * 100f ):0}%", 15, top, HorizontalAlignment.Right, width - 18f, true );
-		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 34f ), new Vector2( width - 36f, 12f ) ), 24, fraction, fill, top, 1f, -1f, 3f );
+		var width = MathF.Min( Size.X * 0.34f, 560f );
+		var rect = new Rect2( (Size.X - width) * 0.5f, 112f + down, width, second >= 0f ? 50f : 42f );
+		UiStyle.DrawFrame( this, rect, 1f, fill, 0.8f );
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 14f, 19f ), $"TARGET LOCK: {name}", 12, top, HorizontalAlignment.Left, -1f, true );
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 19f ), $"{MathF.Ceiling( fraction * 100f ):0}%", 12, top, HorizontalAlignment.Right, width - 14f, true );
+		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 14f, 26f ), new Vector2( width - 28f, 8f ) ), 24, fraction, fill, top, 1f, -1f, 3f );
 		if ( second >= 0f )
-			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 52f ), new Vector2( width - 36f, 6f ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
+			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 14f, 39f ), new Vector2( width - 28f, 4f ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

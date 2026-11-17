@@ -145,9 +145,11 @@ public static class CreatureGore
 	}
 
 	/// <summary> A torn-off joint: a goo-filled stump left on the part it came off, jetting then dripping. </summary>
-	public static Node3D AddStump( Node3D attachTo, Vector3 worldPosition, Vector3 outward, float radius, Color skin, Color goo, float dripSeconds = 6f )
+	public static Node3D AddStump( Node3D attachTo, Vector3 worldPosition, Vector3 outward, float radius, Color skin, Color goo, float dripSeconds = 6f, GibRecipe recipe = null )
 	{
 		if ( attachTo is null || !GodotObject.IsInstanceValid( attachTo ) ) return null;
+		// The chunking pass: a creature with a recipe gets a real torn end (ragged rim, meat, bone, sinew).
+		if ( recipe is not null ) return GibKit.Stump( recipe, attachTo, worldPosition, outward, radius * U.In, dripSeconds );
 		var stump = new Node3D { Name = "Stump" };
 		attachTo.AddChild( stump );
 		stump.GlobalTransform = new Transform3D( Shapes.LookAt( outward == Vector3.Zero ? Vector3.Up : outward ), worldPosition );
@@ -166,17 +168,21 @@ public static class CreatureGore
 	}
 
 	/// <summary> A point-blank kill: a much bigger blast of goo and flesh, and a jolt for anyone close. </summary>
-	public static void Overkill( Vector3 at, Vector3 direction, Color skin, Color goo, float scale = 1f )
+	public static void Overkill( Vector3 at, Vector3 direction, Color skin, Color goo, float scale = 1f, GibRecipe recipe = null )
 	{
 		var gore = GoreSystem.Get();
 		direction = direction == Vector3.Zero ? Vector3.Up : direction.Normalized();
 		for ( var i = 0; i < 3; i++ )
-			gore.GooBurst( at, (direction + Rng.InSphere( 1f ) * 0.7f).SafeNormal(), goo, 12, 420f, 1.4f * scale );
-		gore.GooSpray( at, direction, 14, goo, 520f, 0.9f, 2.4f, sag: 0.15f );
-		gore.GooSpray( at, Vector3.Down, 4, goo, 200f, 1.2f, 2.4f );
-		var blobs = Rng.Int( 3, 5 );
-		for ( var i = 0; i < blobs; i++ )
-			gore.ThrowBlob( at, (direction + Rng.InSphere( 1f ) * 0.9f + Vector3.Up * 0.4f).SafeNormal(), skin, goo, Rng.Float( 2.5f, 4.5f ) * scale );
+			gore.GooBurst( at, (direction + Rng.InSphere( 1f ) * 0.7f).SafeNormal(), goo, 10, 420f, 1f * scale );
+		gore.GooSpray( at, direction, 14, goo, 520f, 0.6f, 1.4f, sag: 0.15f );
+		gore.GooSpray( at, Vector3.Down, 4, goo, 200f, 0.7f, 1.4f );
+		if ( recipe is not null ) GibKit.Burst( recipe, at, direction, 0.16f * scale, Rng.Int( 5, 7 ) );
+		else
+		{
+			var blobs = Rng.Int( 3, 5 );
+			for ( var i = 0; i < blobs; i++ )
+				gore.ThrowBlob( at, (direction + Rng.InSphere( 1f ) * 0.9f + Vector3.Up * 0.4f).SafeNormal(), skin, goo, Rng.Float( 2.5f, 4.5f ) * scale );
+		}
 		gore.Squelch( at, 1.4f, 0.7f );
 		foreach ( var player in PlayerSurvivor.All )
 		{

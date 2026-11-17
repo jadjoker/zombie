@@ -29,6 +29,14 @@ public partial class Gib : RigidBody3D
 	/// </summary>
 	public const float RiseSpeed = 1.6f;
 	const float WaterDrag = 1.1f;
+	/// <summary>
+	/// What it is made of (the chunking pass): stone, armour and glass sink, shell drifts down, jelly and flesh float up;
+	/// each lands with its own sound, and only the soft ones splat goo.
+	/// </summary>
+	public GibKind Stuff = GibKind.Flesh;
+	/// <summary> Metres a second it drifts up through the water (negative: it sinks). </summary>
+	float Rise => Stuff switch { GibKind.Rock or GibKind.Armour => -2.4f, GibKind.Glass => -1.6f, GibKind.Shell => -0.9f, GibKind.Jelly => 1.1f, _ => RiseSpeed };
+	bool Soft => Stuff is GibKind.Flesh or GibKind.Jelly;
 	/// <summary> Is it under water right now (set each physics tick). </summary>
 	public bool Floating { get; private set; }
 
@@ -36,7 +44,7 @@ public partial class Gib : RigidBody3D
 	/// Makes an existing piece loose: puts it in a physics body where it is, with a sphere collider (radius in inches),
 	/// health, mass and a starting velocity (m/s). Returns the gib.
 	/// </summary>
-	static double lastTearSound = -1;
+	static double lastTearSound = -1, lastClack = -1;
 
 	public static Gib Attach( Node3D piece, GoreSystem gore, float radius, float health, float mass, Vector3 velocity, Color gooColor, bool addCollider = true )
 	{
@@ -146,7 +154,7 @@ public partial class Gib : RigidBody3D
 		LinearDamp = WaterDrag;
 		AngularDamp = 1.4f;
 		// Terminal speed under a constant push with linear drag is push / drag.
-		GravityScale = -RiseSpeed * WaterDrag / MathF.Max( 0.1f, gravity );
+		GravityScale = -Rise * WaterDrag / MathF.Max( 0.1f, gravity );
 		if ( surface is float y && GlobalPosition.Y > y - 0.3f )
 		{
 			// At the surface: no more lift, and the climb dies away, so it rides there.
@@ -162,7 +170,7 @@ public partial class Gib : RigidBody3D
 		var speed = LinearVelocity.Length() / U.In;
 
 		// Goo trail while it's flying.
-		if ( age < 2f && speed > 200f && lastDrip > 0.11f )
+		if ( Stuff != GibKind.Rock && age < 2f && speed > 200f && lastDrip > 0.11f )
 		{
 			lastDrip = 0f;
 			if ( goo is Color c ) gore.GooDrip( GlobalPosition, c );
@@ -172,14 +180,30 @@ public partial class Gib : RigidBody3D
 		if ( splats < 3 && lastSpeed > 220f && speed < lastSpeed * 0.55f )
 		{
 			splats++;
-			if ( gore.TraceWorld( GlobalPosition + Vector3.Up * 10f * U.In, GlobalPosition + Vector3.Down * 60f * U.In ) is { } hit && goo is Color c )
-				gore.GooSplat( hit.Position, hit.Normal, Rng.Float( 0.7f, 1.4f ), c );
-			gore.Squelch( GlobalPosition, MathX.Clamp( lastSpeed / 600f, 0.2f, 1f ) * MathX.Clamp( Mass / 6f, 0.4f, 1f ), 1.1f );
-			if ( piece is not null ) CreatureGore.Jiggle( piece, MathX.Clamp( lastSpeed / 400f, 0.4f, 1.6f ) );
+			var loud = MathX.Clamp( lastSpeed / 600f, 0.2f, 1f ) * MathX.Clamp( Mass / 6f, 0.4f, 1f );
+			if ( Soft )
+			{
+				if ( gore.TraceWorld( GlobalPosition + Vector3.Up * 10f * U.In, GlobalPosition + Vector3.Down * 60f * U.In ) is { } hit && goo is Color c )
+					gore.GooSplat( hit.Position, hit.Normal, Rng.Float( 0.7f, 1.4f ), c );
+				gore.Squelch( GlobalPosition, loud, 1.1f );
+				if ( piece is not null ) CreatureGore.Jiggle( piece, MathX.Clamp( lastSpeed / 400f, 0.4f, 1.6f ) * (Stuff == GibKind.Jelly ? 2f : 1f) );
+			}
+			else
+			{
+				// Hard pieces clack, click or chime instead of squelching.
+				var (sound, pitch) = Stuff switch
+				{
+					GibKind.Rock => ("hit_world", Rng.Float( 0.6f, 0.8f )),
+					GibKind.Armour => ("hit_world", Rng.Float( 1.3f, 1.6f )),
+					GibKind.Glass => ("glass_hit", Rng.Float( 1.2f, 1.6f )),
+					_ => ("crab_snap", Rng.Float( 1.2f, 1.5f )),
+				};
+				if ( Clock.Now - lastClack > 0.05 ) { lastClack = Clock.Now; Sfx.Play( sound, GlobalPosition, 0.25f + loud * 0.5f, pitch ); }
+			}
 		}
 
 		// Come to rest: a puddle of its goo underneath (not when it floats: it isn't resting on anything).
-		if ( goo is Color pool && !pooled && !Floating && age > 0.5f && speed < 15f )
+		if ( Soft && goo is Color pool && !pooled && !Floating && age > 0.5f && speed < 15f )
 		{
 			pooled = true;
 			if ( gore.TraceWorld( GlobalPosition + Vector3.Up * 20f * U.In, GlobalPosition + Vector3.Down * 120f * U.In ) is { } hit )

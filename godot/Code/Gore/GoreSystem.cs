@@ -34,6 +34,8 @@ public partial class GoreSystem : Node
 
 	Node Root => GetTree().CurrentScene;
 
+	public override void _Process( double delta ) => GibKit.PrewarmStep();
+
 	public void Register( Gib gib )
 	{
 		gibs.RemoveAll( g => !IsInstanceValid( g ) );

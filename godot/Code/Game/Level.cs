@@ -71,7 +71,14 @@ public partial class Level : Node3D
 
 		var spawn = settings.TryGetProperty( "player_spawn", out var sp ) ? V3( sp ) : Vector3.Zero;
 		Player = PlayerFactory.Create( this, spawn + Vector3.Up * 0.05f );
-		AddChild( new EnemyRim { Name = "Enemy Rim" } );   // enemies stand off the scenery (the clutter pass)
+		// The creatures that come apart the most build their piece templates now, a little each frame.
+		if ( water )
+		{
+			GoreSystem.Get( this );
+			GibKit.Prewarm( GibRecipes.RockyShark( new Color( 0.35f, 1f, 0.28f ) ) );
+			GibKit.Prewarm( MC61.GibsFor );
+			GibKit.Prewarm( Kraken.GibsFor );
+		}   // enemies stand off the scenery (the clutter pass)
 		if ( settings.TryGetProperty( "stylize", out var sty ) )
 		{
 			var ink = sty.GetProperty( "ink" );

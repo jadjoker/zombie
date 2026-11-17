@@ -22,6 +22,7 @@ public partial class Seahorse : Creature
 	static readonly Color Yellow = new( 1f, 0.82f, 0.12f );
 	static readonly Color Black = new( 0.035f, 0.035f, 0.045f );
 	static readonly Color GooColor = new( 0.4f, 1f, 0.35f );
+	public override GibRecipe Gibs => GibRecipes.Seahorse( GooColor, Yellow, Green );
 
 	Node3D body, tail, fin;
 	StandardMaterial3D skin;
@@ -174,7 +175,7 @@ public partial class Seahorse : Creature
 		RaiseKilled();
 		// Pops: goo and a few loose pieces of it.
 		gore?.GooBurst( GlobalPosition, lastShotDirection, GooColor, 12, 260f, 0.8f );
-		for ( var i = 0; i < 3; i++ ) gore?.ThrowBlob( GlobalPosition + Rng.InSphere( 0.2f ), lastShotDirection, i == 0 ? Yellow : Green, GooColor, 3.5f );
+		GibKit.Burst( Gibs, GlobalPosition, lastShotDirection, 0.13f, 4 );
 		QueueFree();
 	}
 }

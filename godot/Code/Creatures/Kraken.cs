@@ -94,6 +94,8 @@ public partial class Kraken : PartCreature
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 	protected override string Kind => "Kraken";
 	protected override Color GibGoo => Goo;
+	public override GibRecipe Gibs => GibRecipes.Kraken( Skin, Goo );
+	public static GibRecipe GibsFor => GibRecipes.Kraken( Skin, Goo );
 
 	protected override void Setup()
 	{
@@ -618,7 +620,7 @@ public partial class Kraken : PartCreature
 			gib.AngularVelocity = Rng.InSphere( 2f );
 			CreatureGore.Twitch( gib, Rng.Float( 2.5f, 4.5f ), 0.2f );
 			gibs[s] = gib;
-			if ( s == j && CreatureGore.AddStump( piece, cutAt, -along, cutRadius * 0.9f, Dark, Goo, 8f ) is { } looseEnd && heavy ) bleeders.Add( (looseEnd, 0f, cutRadius / 26f * 0.6f) );
+			if ( s == j && CreatureGore.AddStump( piece, cutAt, -along, cutRadius * 0.9f, Dark, Goo, 8f, Gibs ) is { } looseEnd && heavy ) bleeders.Add( (looseEnd, 0f, cutRadius / 26f * 0.6f) );
 		}
 		// Pin each piece to the next at the joint between them.
 		for ( var s = j; s < count - 1; s++ )
@@ -644,7 +646,7 @@ public partial class Kraken : PartCreature
 			slamBlend[k] = 0f;
 			part.Go.QueueFree();
 		}
-		if ( CreatureGore.AddStump( keep, cutAt, along, cutRadius * 0.95f, Dark, Goo, 14f ) is { } stump && heavy ) bleeders.Add( (stump, 0f, cutRadius / 26f) );
+		if ( CreatureGore.AddStump( keep, cutAt, along, cutRadius * 0.95f, Dark, Goo, 14f, Gibs ) is { } stump && heavy ) bleeders.Add( (stump, 0f, cutRadius / 26f) );
 		// A lot of goo, sized for something this big: a gush out of the cut, a pool under it, chunks.
 		var big = MathX.Lerp( 3f, 7f, cutRadius / 26f );
 		var bursts = heavy ? 7 : 2;
@@ -652,7 +654,7 @@ public partial class Kraken : PartCreature
 		gore.GooSpray( cutAt, along, heavy ? 10 : 3, Goo, 380f, 1.5f, 3.2f );
 		gore.GooSpray( cutAt, Vector3.Down, heavy ? 6 : 2, Goo, 300f, 2f, 3.6f );
 		if ( gore.TraceWorld( cutAt, cutAt + Vector3.Down * 14f ) is { } floor ) gore.GooSplat( floor.Position, floor.Normal, heavy ? 4.5f : 2.5f, Goo );
-		if ( heavy ) for ( var i = 0; i < 4; i++ ) gore.ThrowBlob( cutAt, along + Rng.OnSphere() * 0.5f, Dark, Goo, MathF.Max( 3f, cutRadius * 0.45f ) );
+		if ( heavy ) GibKit.Burst( Gibs, cutAt, along, MathF.Max( 0.15f, cutRadius * 0.9f * U.In ), 4 );
 		gore.Squelch( cutAt, 1.3f, 0.75f );
 	}
 

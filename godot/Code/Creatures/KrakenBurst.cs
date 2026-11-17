@@ -230,7 +230,7 @@ public partial class Kraken
 				// Seams split and squirt before it goes.
 				var seam = parts[Head].Go.GlobalTransform * (new Vector3( 0f, 1.9f, 0f ) + Rng.OnSphere() * 0.9f);
 				gore.GooBurst( seam, seam - GlobalPosition, Goo, 8, 380f, 3.5f );
-				if ( Rng.Float() < 0.5f ) gore.ThrowBlob( seam, seam - GlobalPosition, Rng.Float() < 0.5f ? Skin : Flesh, Goo, Rng.Float( 3f, 6f ) );
+				if ( Rng.Float() < 0.5f ) GibKit.Chips( Gibs, seam, (seam - GlobalPosition).SafeNormal(), -(seam - GlobalPosition).SafeNormal(), 0.25f, 1, 1.6f );
 			}
 			if ( timeSinceDeath >= SwellTime ) Burst();
 			return;
@@ -340,13 +340,13 @@ public partial class Kraken
 		}
 
 		// Lumps of flesh, hide and brain, thrown wide.
-		for ( var i = 0; i < 30; i++ )
+		GibKit.Burst( Gibs, core, Vector3.Up, 0.5f, 26, 3f );
+		pieces += 26;
+		// And a few lumps of its pink brain.
+		for ( var i = 0; i < 4; i++ )
 		{
-			var color = (i % 4) switch { 0 => Skin, 1 => Flesh, 2 => BrainPink, _ => Dark };
-			var lump = gore.ThrowBlob( core + Rng.InSphere( 1.2f ), Rng.OnSphere() + Vector3.Up * 0.5f, color, Goo, Rng.Float( 3.5f, 10f ) );
-			if ( lump is null ) continue;
-			lump.LinearVelocity *= Rng.Float( 2.5f, 4.5f );
-			pieces++;
+			var lump = gore.ThrowBlob( core + Rng.InSphere( 1.2f ), Rng.OnSphere() + Vector3.Up * 0.5f, BrainPink, Goo, Rng.Float( 4f, 8f ) );
+			if ( lump is not null ) { lump.LinearVelocity *= Rng.Float( 2.5f, 4.5f ); pieces++; }
 		}
 		LastBurstPieces = pieces;
 
@@ -390,11 +390,7 @@ public partial class Kraken
 			if ( !IsInstanceValid( gib ) || gib.IsFading ) return;
 			var at = gib.GetChildren().OfType<CollisionShape3D>().FirstOrDefault()?.GlobalPosition ?? gib.GlobalPosition;
 			var going = gib.LinearVelocity;
-			for ( var i = 0; i < 3; i++ )
-			{
-				var lump = GoreSystem.Get().ThrowBlob( at, going + Rng.InSphere( 3f ), i == 0 ? Skin : Flesh, Goo, Rng.Float( 3f, 6f ) );
-				if ( lump is not null ) lump.LinearVelocity = going * Rng.Float( 0.5f, 1.1f ) + Rng.InSphere( 5f );
-			}
+			GibKit.Burst( Gibs, at, going.SafeNormal(), 0.25f, 3, MathX.Clamp( going.Length() / 5f, 0.6f, 2f ) );
 			gib.Pulverize( at, going.SafeNormal() );
 		};
 	}

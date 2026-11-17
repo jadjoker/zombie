@@ -42,6 +42,7 @@ public partial class Poseidon : Creature
 	static readonly Color JewelGreen = new( 0.35f, 1f, 0.3f );
 	static readonly Color JewelYellow = new( 1f, 0.82f, 0.15f );
 	static readonly Color GooColor = new( 0.3f, 0.95f, 0.85f );
+	public override GibRecipe Gibs => GibRecipes.Poseidon( GooColor, Skin, Scales, Armour );
 
 	enum Mode { Swim, WindUp, Throw, Summon, Vanish, Appear, Stab, Dead }
 
@@ -951,7 +952,7 @@ void fragment() {
 			var velocity = (dir + away * 0.3f + Vector3.Up * 0.5f + Rng.InSphere( 0.35f )).SafeNormal() * speed * Rng.Float( 0.7f, 1.2f );
 			var gib = Gib.Attach( piece, gore, radiusMetres / U.In, 80f, mass, velocity, GooColor );
 			gib.AngularVelocity = Rng.InSphere( 7f );
-			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radiusMetres * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 8f );
+			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radiusMetres * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 8f, Gibs );
 		}
 		// From the tips inward, so each piece takes only what is still joined to it.
 		Loose( heldTrident, 0.5f, 6f, 9f );
@@ -965,10 +966,10 @@ void fragment() {
 		Loose( body, 0.5f * Size, 12f, 5f );
 
 		// Lumps of him, big and small, in his three colours, and his goo everywhere.
-		for ( var i = 0; i < 34; i++ )
-			gore?.ThrowBlob( centre + Rng.InSphere( 1.4f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.6f, Flesh[i % 3], GooColor, i % 5 == 0 ? 16f : Rng.Float( 5f, 11f ) );
+		for ( var i = 0; i < 4; i++ )
+			GibKit.Burst( Gibs, centre + Rng.InSphere( 1.2f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.6f, 0.45f * Size, 8 );
 		for ( var i = 0; i < 5; i++ )
-			CreatureGore.Overkill( centre + Rng.InSphere( 1.2f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.4f, Flesh[i % 3], GooColor, 2.4f );
+			CreatureGore.Overkill( centre + Rng.InSphere( 1.2f * Size ), Rng.InSphere( 1f ) + Vector3.Up * 0.4f, Flesh[i % 3], GooColor, 2.4f, Gibs );
 		gore?.GooBurst( centre, Vector3.Up, GooColor, 70, 620f, 2.6f );
 		gore?.GooBurst( centre, away + Vector3.Up * 0.3f, Flesh[0], 30, 480f, 2f );
 		gore?.GooBurst( centre, -away + Vector3.Up * 0.3f, Flesh[2], 30, 480f, 2f );

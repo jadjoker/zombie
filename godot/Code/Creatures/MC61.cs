@@ -151,6 +151,8 @@ public partial class MC61 : PartCreature, MC61Marker
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 	protected override string Kind => "MC61";
 	protected override Color GibGoo => Goo;
+	public override GibRecipe Gibs => GibRecipes.Mosaic( Goo, CodeMosaic() );
+	public static GibRecipe GibsFor => GibRecipes.Mosaic( Goo, CodeMosaic() );
 
 	protected override void Setup()
 	{
@@ -1449,7 +1451,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		}
 		gore.GooBurst( position, -direction, goo, 7, 240f, 1f );
 		gore.GooSpray( position, direction, 2, goo, 200f, 0.5f, 1f );
-		if ( chip && index is Torso or Head ) gore.ThrowBlob( position, -direction, index == Head ? Skin : Tux, goo, 3.5f * Size );
+		if ( chip && index is Torso or Head ) GibKit.Chips( Gibs, position, -direction, direction, 0.14f * Size, 2 );
 	}
 
 	/// <summary> A piece comes off with everything hanging from it. </summary>
@@ -1487,8 +1489,8 @@ public partial class MC61 : PartCreature, MC61Marker
 		var outward = parent is not null ? (joint - parent.Go.GlobalPosition).SafeNormal() : Vector3.Up;
 		var radius = (part.Index is HandL or HandR ? 5f : 7f) * Size * scale;
 		var skin = part.Renderers.Count > 0 ? part.Renderers[0].Tint : Tux;
-		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, joint, outward, radius, skin, Goo );
-		if ( part.Index != Eye ) CreatureGore.AddStump( part.Go, joint, -outward, radius, skin, Goo, 2f );
+		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, joint, outward, radius, skin, Goo, 6f, Gibs );
+		if ( part.Index != Eye ) CreatureGore.AddStump( part.Go, joint, -outward, radius, skin, Goo, 2f, Gibs );
 	}
 
 	Node3D Detach( Part part, Vector3 push, float spin = 10f ) => Detach( part, push, spin, 8f, 40f, 6f );
@@ -1511,11 +1513,11 @@ public partial class MC61 : PartCreature, MC61Marker
 		if ( rig is null || !IsInstanceValid( rig ) ) return;
 		foreach ( var b in new[] { beam, beamCore, aimLine } ) if ( IsInstanceValid( b ) ) b.QueueFree();
 		var headAt0 = parts[Head].Go.GlobalPosition;
-		if ( overkill ) CreatureGore.Overkill( headAt0, direction, Skin, Goo, 1.6f * Size );
+		if ( overkill ) CreatureGore.Overkill( headAt0, direction, Skin, Goo, 1.6f * Size, Gibs );
 		var headAt = headAt0 + Vector3.Up * 18f * Size * U.In;
 		for ( var k = 0; k < 6; k++ ) gore.GooBurst( headAt, direction + Vector3.Up, Goo, 10, 380f, 1.6f );
 		gore.GooSpray( headAt, Vector3.Down, 8, Goo, 300f, 0.8f, 1.8f );
-		for ( var b = 0; b < 4; b++ ) gore.ThrowBlob( headAt, direction, Skin, Goo, 5f * Size );
+		GibKit.Burst( Gibs, headAt, direction, 0.3f * Size, 12 );
 		CardConfetti( headAt );
 		foreach ( var index in new[] { Hat, HandL, HandR, Tail0 } )
 		{

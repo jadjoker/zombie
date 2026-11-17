@@ -38,6 +38,7 @@ public partial class Squilien : Creature
 	public Color SpotColor { get; private set; }
 	public Color GooColor { get; private set; }
 	public Color InkColor { get; private set; }
+	public override GibRecipe Gibs => GibRecipes.Jelly( BodyColor, SpotColor, GooColor, suckers: true );
 
 	sealed class Piece
 	{
@@ -467,7 +468,7 @@ public partial class Squilien : Creature
 		}
 		gore.GooBurst( position, -direction, GooColor, 6, 220f, 0.8f );
 		gore.GooSpray( position, direction, 2, GooColor, 180f, 0.4f, 0.9f );
-		if ( chip && !piece.Gone ) gore.ThrowBlob( position, -direction, BodyColor, GooColor, MathF.Max( 2.5f, piece.Radius * (piece == bell ? 0.25f : 0.8f) ) );
+		if ( chip && !piece.Gone ) GibKit.Chips( Gibs, position, -direction, direction, MathF.Max( 0.1f, piece.Radius * 0.5f * U.In ), 1 );
 	}
 
 	void CutLocal( int index, Vector3 direction, bool quiet )
@@ -480,8 +481,8 @@ public partial class Squilien : Creature
 				var above = from > 0 ? tentacle.Pieces[from - 1] : null;
 				var joint = above is not null ? above.Position : Anchor( tentacle );
 				var outward = (cut.Position - joint).SafeNormal();
-				if ( above is not null && !above.Gone ) CreatureGore.AddStump( above.Go, joint, outward, above.Radius * 1.2f, BodyColor, GooColor, 4f );
-				else if ( above is null && !bell.Gone ) CreatureGore.AddStump( bell.Go, joint, outward, TentacleRadius * 1.3f, BodyColor, GooColor, 4f );
+				if ( above is not null && !above.Gone ) CreatureGore.AddStump( above.Go, joint, outward, above.Radius * 1.2f, BodyColor, GooColor, 4f, Gibs );
+				else if ( above is null && !bell.Gone ) CreatureGore.AddStump( bell.Go, joint, outward, TentacleRadius * 1.3f, BodyColor, GooColor, 4f, Gibs );
 			}
 			for ( var i = from; i < tentacle.Pieces.Count; i++ )
 			{
@@ -499,7 +500,7 @@ public partial class Squilien : Creature
 	{
 		gore.GooBurst( piece.Position, direction, GooColor, drops, 280f, 1.1f );
 		gore.GooSpray( piece.Position, direction, 3, GooColor, 220f, 0.5f, 1.2f );
-		for ( var b = 0; b < blobs; b++ ) gore.ThrowBlob( piece.Position, direction, BodyColor, GooColor, piece.Radius * Rng.Float( 0.3f, 0.45f ) );
+		if ( blobs > 0 ) GibKit.Burst( Gibs, piece.Position, direction, MathF.Max( 0.08f, piece.Radius * 0.8f * U.In ), blobs + 1 );
 		piece.Go.QueueFree();
 	}
 
@@ -529,7 +530,7 @@ public partial class Squilien : Creature
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
-		if ( overkill ) CreatureGore.Overkill( bell.Position, direction, BodyColor, GooColor, 1.2f );
+		if ( overkill ) CreatureGore.Overkill( bell.Position, direction, BodyColor, GooColor, 1.2f, Gibs );
 		foreach ( var piece in all )
 		{
 			if ( piece.Gone ) continue;

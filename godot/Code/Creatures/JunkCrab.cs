@@ -70,6 +70,7 @@ public partial class JunkCrab : PartCreature
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 	protected override string Kind => "Crab";
 	protected override Color GibGoo => gooColor;
+	public override GibRecipe Gibs => GibRecipes.Crab( shellColor, bellyColor, gooColor );
 
 	protected override void Setup()
 	{
@@ -547,7 +548,7 @@ public partial class JunkCrab : PartCreature
 			CreatureGore.AddWound( part.Go, position, direction, shellColor, gooColor, (index == Body ? 3f : 2f) * Size );
 			CreatureGore.Jiggle( part.Go, index == Body ? 0.7f : 1f );
 		}
-		if ( chip && index == Body ) gore.ThrowBlob( position, -direction, shellColor, gooColor, 3f * Size );
+		if ( chip && index == Body ) GibKit.Chips( Gibs, position, -direction, direction, 0.13f * Size, 2 );
 	}
 
 	void CutLocal( int index, Vector3 direction )
@@ -564,8 +565,8 @@ public partial class JunkCrab : PartCreature
 			var parent = part.Parent >= 0 ? parts[part.Parent] : null;
 			var outward = parent is not null ? (at - parent.Go.GlobalPosition).SafeNormal() : Vector3.Up;
 			var radius = (index is EyeL or EyeR ? 1.8f : index is ArmL or ArmR or PincerL or PincerR ? 4f : 2.8f) * Size;
-			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f );
-			if ( index is not EyeL and not EyeR ) CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f );
+			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f, Gibs );
+			if ( index is not EyeL and not EyeR ) CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f, Gibs );
 		}
 		if ( index == Barrel )
 		{
@@ -607,10 +608,10 @@ public partial class JunkCrab : PartCreature
 		agent.Enabled = false;
 		if ( rig is null || !IsInstanceValid( rig ) ) return;
 		var at = parts[Body].Go.GlobalPosition;
-		if ( overkill ) CreatureGore.Overkill( at, direction, shellColor, gooColor, Size );
+		if ( overkill ) CreatureGore.Overkill( at, direction, shellColor, gooColor, Size, Gibs );
 		for ( var k = 0; k < 2; k++ ) gore.GooBurst( at, direction + Vector3.Up, gooColor, 12, 320f, 1.3f );
 		gore.GooSpray( at, direction, 6, gooColor, 240f, 0.7f, 1.5f );
-		for ( var b = 0; b < 2; b++ ) gore.ThrowBlob( at, direction, shellColor, gooColor, 4f * Size );
+		GibKit.Burst( Gibs, at, direction, 0.17f * Size, 6 );
 
 		foreach ( var index in new[] { Barrel, ArmL, ArmR, EyeL, EyeR }.Concat( Enumerable.Range( FirstLeg, LegCount ) ) )
 		{

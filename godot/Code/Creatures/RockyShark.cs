@@ -129,6 +129,7 @@ public partial class RockyShark : PartCreature
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 	protected override string Kind => "Shark";
 	protected override Color GibGoo => gooColor;
+	public override GibRecipe Gibs => GibRecipes.RockyShark( gooColor );
 
 	protected override void Setup()
 	{
@@ -678,7 +679,7 @@ public partial class RockyShark : PartCreature
 			CreatureGore.AddWound( part.Go, position, direction, rockColor, gooColor, (index == Head ? 2.5f : 2f) * Size );
 			CreatureGore.Jiggle( part.Go, index == Head ? 0.6f : 0.9f );
 		}
-		if ( chip && index == Head ) gore.ThrowBlob( position, -direction, rockColor, gooColor, 2f * Size );
+		if ( chip ) GibKit.Chips( Gibs, position, -direction, direction, 0.12f * Size, index == Head ? 2 : 1 );
 	}
 
 	/// <summary> An eye pops or a body section comes off, taking everything behind it. </summary>
@@ -694,7 +695,7 @@ public partial class RockyShark : PartCreature
 			var outward = (at - parts[Head].Go.GlobalPosition).SafeNormal();
 			gore.GooBurst( at, direction, gooColor, 12, 250f, 0.9f );
 			gore.GooBurst( at, direction, gooColor.Lerp( Colors.White, 0.4f ), 8, 200f, 0.7f );
-			CreatureGore.AddStump( parts[Head].Go, at, outward, 2f, rockColor, gooColor, 4f );
+			CreatureGore.AddStump( parts[Head].Go, at, outward, 2f, rockColor, gooColor, 4f, Gibs );
 			if ( index == EyeL && eyeMeshL is not null && IsInstanceValid( eyeMeshL ) ) eyeMeshL.QueueFree();
 			if ( index == EyeR && eyeMeshR is not null && IsInstanceValid( eyeMeshR ) ) eyeMeshR.QueueFree();
 			part.Go.QueueFree();
@@ -705,7 +706,8 @@ public partial class RockyShark : PartCreature
 		var at2 = part.Go.GlobalPosition;
 		var parent = part.Parent >= 0 ? parts[part.Parent] : null;
 		var outward2 = parent is not null ? (at2 - parent.Go.GlobalPosition).SafeNormal() : direction.SafeNormal();
-		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at2, outward2, radius * 0.55f, rockColor, gooColor, 6f );
+		if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at2, outward2, radius * 0.55f, rockColor, gooColor, 6f, Gibs );
+		CreatureGore.AddStump( part.Go, at2, -outward2, radius * 0.5f, rockColor, gooColor, 1.5f, Gibs );   // the torn end of the piece that comes off
 		gore.GooBurst( at2, direction, gooColor, 14, 270f, 1.1f );
 		gore.GooSpray( at2, direction, 4, gooColor, 220f, 0.5f, 1.3f );
 		var piece = Detach( part, direction * Rng.Float( 80f, 160f ) + Vector3.Up * 120f, 16f, radius * 0.7f, SegmentHealth, 3f );
@@ -729,7 +731,9 @@ public partial class RockyShark : PartCreature
 		timeSinceDeath = 0f;
 		if ( rig is null || !IsInstanceValid( rig ) || parts is null || parts[Head] is null ) return;
 		var at = parts[Head] is { } head ? head.Go.GlobalPosition : GlobalPosition;
-		if ( overkill ) CreatureGore.Overkill( at, direction, rockColor, gooColor, Size );
+		if ( overkill ) CreatureGore.Overkill( at, direction, rockColor, gooColor, Size, Gibs );
+		GibKit.Burst( Gibs, at, direction, 0.22f * Size, 5 );
+		GibKit.Burst( GibRecipes.RockyBelly( gooColor ), at + Vector3.Down * 0.2f * Size, direction, 0.18f * Size, 2 );
 		for ( var k = 0; k < 2; k++ ) gore.GooBurst( at, direction + Vector3.Up, gooColor, 12, 320f, 1.3f );
 		gore.GooSpray( at, direction, 6, gooColor, 240f, 0.7f, 1.5f );
 

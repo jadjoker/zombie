@@ -97,6 +97,7 @@ public partial class Bloober : Creature
 	public Color BodyColor { get; private set; }
 	public Color SpotColor { get; private set; }
 	public Color GooColor { get; private set; }
+	public override GibRecipe Gibs => GibRecipes.Jelly( BodyColor, SpotColor, GooColor, suckers: false );
 
 
 	/// <summary> All live Bloobers (s&box Scene.GetAllComponents). </summary>
@@ -686,7 +687,7 @@ public partial class Bloober : Creature
 		}
 		gore.GooBurst( position, -direction, GooColor, 6, 220f, 0.8f );
 		gore.GooSpray( position, direction, 2, GooColor, 180f, 0.4f, 0.9f );
-		if ( chip && !segment.Gone ) gore.ThrowBlob( position, -direction + direction * 0.3f, BodyColor, GooColor, segment.Radius * 0.35f );
+		if ( chip && !segment.Gone ) GibKit.Chips( Gibs, position, -direction, direction, segment.Radius * 0.6f * U.In, 1 );
 	}
 
 	void CutLocal( int index, Vector3 direction, bool quiet )
@@ -697,12 +698,12 @@ public partial class Bloober : Creature
 			var front = segments[index - 1];
 			var cut = segments[index];
 			var outward = (cut.Position - front.Position).SafeNormal();
-			if ( !front.Gone ) CreatureGore.AddStump( front.Go, front.Position + outward * front.Radius * 0.85f * U.In, outward, front.Radius * 0.8f, BodyColor, GooColor );
+			if ( !front.Gone ) CreatureGore.AddStump( front.Go, front.Position + outward * front.Radius * 0.85f * U.In, outward, front.Radius * 0.8f, BodyColor, GooColor, 6f, Gibs );
 			if ( index + 1 < segments.Count && !segments[index + 1].Gone )
 			{
 				var tail = segments[index + 1];
 				var back = (cut.Position - tail.Position).SafeNormal();
-				CreatureGore.AddStump( tail.Go, tail.Position + back * tail.Radius * 0.85f * U.In, back, tail.Radius * 0.8f, BodyColor, GooColor, 2.5f );
+				CreatureGore.AddStump( tail.Go, tail.Position + back * tail.Radius * 0.85f * U.In, back, tail.Radius * 0.8f, BodyColor, GooColor, 2.5f, Gibs );
 			}
 		}
 		for ( var i = index; i < segments.Count; i++ )
@@ -721,7 +722,7 @@ public partial class Bloober : Creature
 		var position = segment.Position;
 		gore.GooBurst( position, direction, GooColor, drops, 320f, 1.3f );
 		gore.GooSpray( position, direction, 4, GooColor, 220f, 0.6f, 1.4f );
-		for ( var b = 0; b < blobs; b++ ) gore.ThrowBlob( position, direction, BodyColor, GooColor, segment.Radius * Rng.Float( 0.35f, 0.5f ) );
+		if ( blobs > 0 ) GibKit.Burst( Gibs, position, direction, segment.Radius * 0.9f * U.In, blobs + 1 );
 		segment.Go.QueueFree();
 	}
 
@@ -756,7 +757,7 @@ public partial class Bloober : Creature
 		if ( diedLocally ) return;
 		diedLocally = true;
 		timeSinceDeath = 0f;
-		if ( overkill && !quiet ) CreatureGore.Overkill( segments[0].Position, direction, BodyColor, GooColor );
+		if ( overkill && !quiet ) CreatureGore.Overkill( segments[0].Position, direction, BodyColor, GooColor, 1f, Gibs );
 		foreach ( var segment in segments )
 		{
 			if ( segment.Gone ) continue;

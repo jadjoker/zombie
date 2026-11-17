@@ -15,6 +15,8 @@ public abstract partial class Creature : Node3D, ICreature
 	public Health Health => health;
 	/// <summary> Allies are left alone by the things that hunt creatures (the jetpack ram, the ally spider). </summary>
 	public virtual bool IsEnemy => true;
+	/// <summary> What it comes apart into (the chunking pass: <see cref="GibRecipes"/>); null keeps the old round blobs. </summary>
+	public virtual GibRecipe Gibs => null;
 	/// <summary>
 	/// How much of a blast or shock (pickups, straight to health) gets through: 1 for most, less for armoured ones.
 	/// </summary>

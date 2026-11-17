@@ -100,6 +100,7 @@ void fragment() {
 	static readonly Color Gold = new( 1f, 0.76f, 0.26f );
 	static readonly Color GooColor = new( 0.3f, 0.95f, 0.85f );
 	static readonly Color[] Flesh = { new( 0.56f, 0.26f, 0.8f ), new( 0.22f, 0.42f, 0.88f ), new( 0.32f, 0.78f, 0.36f ) };
+	public override GibRecipe Gibs => GibRecipes.Mermaid( GooColor, Flesh[(int)(GetInstanceId() % 3)] );
 
 	enum Mode { Swim, WindUp, Stab, Draw }
 
@@ -682,7 +683,7 @@ void fragment() {
 			if ( dir == Vector3.Zero ) dir = Vector3.Up;
 			var gib = Gib.Attach( piece, gore, radius / U.In, 30f, 2f, (dir + away * 0.4f + Vector3.Up * 0.4f).SafeNormal() * speed * Rng.Float( 0.7f, 1.2f ), GooColor );
 			gib.AngularVelocity = Rng.InSphere( 8f );
-			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radius * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 5f );
+			CreatureGore.AddStump( piece, piece.GlobalPosition, -dir, radius * 0.5f / U.In, Flesh[Rng.Int( 0, 2 )], GooColor, 5f, Gibs );
 		}
 		if ( IsInstanceValid( weapon ) && weapon.GetParent() == this ) Fling( weapon, 0.25f, 6f );
 		if ( shield is not null && IsInstanceValid( shield ) ) Fling( shield, 0.3f, 6f );
@@ -690,8 +691,7 @@ void fragment() {
 		Fling( head, 0.2f, 8f );
 		Fling( Rng.Float() < 0.5f ? armL : armR, 0.15f, 7f );
 		Fling( chest, 0.3f, 4f );
-		for ( var i = 0; i < 6; i++ )
-			gore?.ThrowBlob( centre + Rng.InSphere( 0.4f ), Rng.InSphere( 1f ) + Vector3.Up * 0.5f + away * 0.3f, Flesh[i % 3], GooColor, Rng.Float( 3f, 6f ) );
+		GibKit.Burst( Gibs, centre, away + Vector3.Up * 0.5f, 0.2f, 8 );
 		gore?.GooBurst( centre, away + Vector3.Up * 0.3f, GooColor, 24, 340f, 1.2f );
 		gore?.Squelch( centre, 1f, 1.1f );
 		QueueFree();

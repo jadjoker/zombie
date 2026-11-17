@@ -90,6 +90,7 @@ public partial class SeaSpider : PartCreature
 	protected override uint PartLayer => IsAlly ? 0u : Layers.Creature;
 	public override bool IsEnemy => !IsAlly;
 	protected override Color GibGoo => gooColor;
+	public override GibRecipe Gibs => GibRecipes.Crab( shellColor, darkColor, gooColor );
 
 	protected override void Setup()
 	{
@@ -1058,7 +1059,7 @@ public partial class SeaSpider : PartCreature
 			CreatureGore.AddWound( part.Go, position, direction, shellColor, gooColor, (index == Body ? 3.5f : 2f) * Size );
 			CreatureGore.Jiggle( part.Go, index == Body ? 0.7f : 1f );
 		}
-		if ( chip && index == Body ) gore.ThrowBlob( position, -direction, shellColor, gooColor, 3.5f * Size );
+		if ( chip && index == Body ) GibKit.Chips( Gibs, position, -direction, direction, 0.14f * Size, 2 );
 	}
 
 	void CutLocal( int index, Vector3 direction, bool quiet )
@@ -1073,8 +1074,8 @@ public partial class SeaSpider : PartCreature
 			var parent = part.Parent >= 0 ? parts[part.Parent] : null;
 			var outward = parent is not null ? (at - parent.Go.GlobalPosition).SafeNormal() : Vector3.Up;
 			var radius = (index < FirstShin ? 3.2f : 2.4f) * Size;
-			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f );
-			CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f );
+			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f, Gibs );
+			CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f, Gibs );
 		}
 		if ( index == EyePart )
 		{
@@ -1110,10 +1111,10 @@ public partial class SeaSpider : PartCreature
 		if ( rig is null || !IsInstanceValid( rig ) ) return;
 		if ( quiet ) { rig.QueueFree(); return; }
 		var at = parts[Body].Go.GlobalPosition;
-		if ( overkill ) CreatureGore.Overkill( at, direction, shellColor, gooColor, Size );
+		if ( overkill ) CreatureGore.Overkill( at, direction, shellColor, gooColor, Size, Gibs );
 		for ( var k = 0; k < 2; k++ ) gore.GooBurst( at, direction + Vector3.Up, gooColor, 12, 320f, 1.3f );
 		gore.GooSpray( at, direction, 6, gooColor, 240f, 0.7f, 1.5f );
-		for ( var b = 0; b < 2; b++ ) gore.ThrowBlob( at, direction, shellColor, gooColor, 4.5f * Size );
+		GibKit.Burst( Gibs, at, direction, 0.18f * Size, 6 );
 		if ( Has( EyePart ) )
 		{
 			MarkGone( EyePart );

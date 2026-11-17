@@ -32,8 +32,7 @@ public partial class Kraken
 		var outward = -direction.SafeNormal();
 		if ( Rng.Float() < (big ? 0.45f : 0.3f) )
 		{
-			var lump = gore.ThrowBlob( position, outward + Vector3.Up * 0.4f, Rng.Float() < 0.5f ? skin : Flesh, Goo, Rng.Float( 3f, 6.5f ) );
-			if ( lump is not null ) lump.LinearVelocity *= 1.6f;
+			GibKit.Chips( Gibs, position, outward, direction.SafeNormal(), Rng.Float( 0.15f, 0.3f ), 1, 1.6f );
 		}
 		// A shotgun blast is one mess, not nine holes.
 		if ( sinceHole < 0.07f ) return;
@@ -79,7 +78,7 @@ public partial class Kraken
 			torn.Gib.LinearVelocity = (outward * 2f + Vector3.Up) * Rng.Float( 2.5f, 4.5f );
 			torn.Gib.AngularVelocity = Rng.InSphere( 7f );
 		}
-		for ( var i = 0; i < 3; i++ ) gore.ThrowBlob( at, outward + Rng.OnSphere() * 0.6f, i == 0 ? Skin : Flesh, Goo, Rng.Float( 4f, 7f ) );
+		GibKit.Burst( Gibs, at, outward, 0.35f, 4 );
 		for ( var i = 0; i < 5; i++ ) gore.GooBurst( at, outward + Rng.InSphere( 0.5f ), Goo, 10, 460f, Rng.Float( 3f, 5.5f ) );
 		gore.GooSpray( at, outward, 8, Goo, 420f, 1.6f, 3.4f );
 		gore.Squelch( at, 1.5f, 0.7f );

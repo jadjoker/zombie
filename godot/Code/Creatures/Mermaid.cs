@@ -15,10 +15,10 @@ public partial class Mermaid : Creature
 
 	public static readonly List<Mermaid> All = new();
 
-	/// <summary> Metres per model unit (Poseidon's units): about 1.9 m from the crown to the tip of the tail. </summary>
-	public const float Scale = 0.3f;
+	/// <summary> Metres per model unit (Poseidon's units): about 2.2 m from the crown to the tip of the tail. </summary>
+	public const float Scale = 0.345f;
 	public float Speed = 3.6f;              // m/s: a little slower than the others (about 4 to 5)
-	public float HoverHeight = 1.5f;        // the waist above the floor (the tail hangs about 1.2 m)
+	public float HoverHeight = 1.7f;        // the waist above the floor (the tail hangs about 1.4 m)
 	public float TridentDamage = 18f;
 	public float TridentReach = 2.4f;
 	public float StabCooldown = 1.5f;

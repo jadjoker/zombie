@@ -195,7 +195,10 @@ void fragment() {
 		Put( chest, Cached( "god torso", () => Loft( Smooth( torso ), 0f, 1f, 36 ) ), skin, "Torso" );
 		foreach ( var s in new[] { -1f, 1f } )
 		{
-			Ball( chest, new Vector3( s * 0.29f, 0.86f, -0.27f ), new Vector3( 0.62f, 0.44f, 0.3f ), skin, new Basis( Vector3.Back, s * 0.12f ), "Pec" );
+			// Big, squared-off pecs that jut out over the abs, nipples low on their outer curve.
+			Ball( chest, new Vector3( s * 0.3f, 0.85f, -0.3f ), new Vector3( 0.68f, 0.5f, 0.42f ), skin, new Basis( Vector3.Back, s * 0.16f ), "Pec" );
+			Ball( chest, new Vector3( s * 0.33f, 0.78f, -0.38f ), new Vector3( 0.5f, 0.3f, 0.28f ), skin, new Basis( Vector3.Back, s * 0.2f ), "Pec Under" );
+			Ball( chest, new Vector3( s * 0.34f, 0.76f, -0.515f ), new Vector3( 0.075f, 0.07f, 0.035f ), look.Dark ?? skin, null, "Nipple" );
 			for ( var k = 0; k < 3; k++ )
 				Ball( chest, new Vector3( s * 0.12f, 0.5f - k * 0.16f, -0.33f + k * 0.012f ), new Vector3( 0.2f, 0.14f, 0.08f ), skin, null, "Ab" );
 		}

@@ -36,6 +36,50 @@ public partial class GoreSystem : Node
 
 	public override void _Process( double delta ) => GibKit.PrewarmStep();
 
+	/// <summary> The loose pieces in the level right now (the Gore Vac pulls these in). </summary>
+	public IReadOnlyList<Gib> Gibs
+	{
+		get
+		{
+			gibs.RemoveAll( g => !IsInstanceValid( g ) || g.IsQueuedForDeletion() );
+			return gibs;
+		}
+	}
+
+	/// <summary>
+	/// The Gore Vac slurping goo off the floor: every puddle within `range` of `from` and inside the cone round `dir`
+	/// (`cos` of its half angle) shrinks; the ones gone this frame are returned with their colour, so the gun can
+	/// count them in and draw the goo flying up the nozzle.
+	/// </summary>
+	public List<(Vector3 At, Color Colour)> Slurp( Vector3 from, Vector3 dir, float range, float cos, float dt )
+	{
+		var gone = new List<(Vector3, Color)>();
+		if ( decals.Count == 0 ) return gone;
+		var keep = new Queue<Node3D>();
+		while ( decals.Count > 0 )
+		{
+			var d = decals.Dequeue();
+			if ( !IsInstanceValid( d ) || d.IsQueuedForDeletion() ) continue;
+			var to = d.GlobalPosition - from;
+			var distance = to.Length();
+			if ( distance > range || distance < 0.01f || dir.Dot( to / distance ) < cos || d is not Decal decal ) { keep.Enqueue( d ); continue; }
+			// Nearer puddles go faster.
+			var shrink = dt * MathX.Lerp( 4f, 1.2f, distance / range );
+			var size = decal.Size;
+			var next = size.X - shrink * 24f * U.In * 1.9f;
+			if ( next <= 3f * U.In )
+			{
+				gone.Add( (decal.GlobalPosition, decal.Modulate) );
+				decal.QueueFree();
+				continue;
+			}
+			decal.Size = size with { X = next, Z = next };
+			keep.Enqueue( d );
+		}
+		foreach ( var d in keep ) decals.Enqueue( d );
+		return gone;
+	}
+
 	public void Register( Gib gib )
 	{
 		gibs.RemoveAll( g => !IsInstanceValid( g ) );

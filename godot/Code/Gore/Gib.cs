@@ -9,6 +9,14 @@ using Godot;
 public partial class Gib : RigidBody3D
 {
 	public bool IsFading { get; private set; }
+	/// <summary> The colour of its goo (null: a dry piece, like stone or armour). </summary>
+	public Color? Goo => goo;
+	/// <summary> Spat out by the Gore Vac: sucked up again it is worth only a little (no endless ammo loop). </summary>
+	public bool Recycled;
+	/// <summary> No goo in it (a shell or a stone torn off the floor): it drips and splats nothing. </summary>
+	public void MakeDry() => goo = null;
+	/// <summary> Roughly how big it is (the radius of its collider, metres). </summary>
+	public float Radius => GetChildren().OfType<CollisionShape3D>().FirstOrDefault()?.Shape is SphereShape3D s ? s.Radius : 0.1f;
 
 	GoreSystem gore;
 	Color? goo;

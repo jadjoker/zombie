@@ -39,6 +39,27 @@ public partial class HudOverlays : Control
 
 	public override void _Ready()
 	{
+		Build();
+		UiStyle.Changed += Rebuild;
+	}
+
+	public override void _ExitTree() => UiStyle.Changed -= Rebuild;
+
+	/// <summary> The theme changed: build the glows, the speech and the prompt again in the new look. </summary>
+	void Rebuild()
+	{
+		foreach ( var child in GetChildren() ) { RemoveChild( child ); child.QueueFree(); }
+		Build();
+	}
+
+	static HudTheme Theme => UiStyle.Theme;
+	static float Sc => Theme.Scale;
+	static int S( int size ) => UiStyle.S( size );
+	/// <summary> The prompt's title colour when it is not tinted (white, or dark on a pale panel). </summary>
+	static Color TitleColour => Theme.LightPanel ? Theme.PanelReadout : Colors.White;
+
+	void Build()
+	{
 		hurt = Glow( new Color( "b00000" ) with { A = 0.9f }, 0.4f );
 		venom = Glow( new Color( "3cff20" ) with { A = 0.75f }, 0.45f );
 		radiation = Glow( new Color( "9dff1a" ) with { A = 0.7f }, 0.52f );
@@ -50,35 +71,36 @@ public partial class HudOverlays : Control
 		boss = new Control { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
 		boss.SetAnchorsPreset( LayoutPreset.FullRect );
 		AddChild( boss );
-		speech = UiStyle.Big( this, 48, new Color( "ff7ae3" ) );
+		speech = UiStyle.Big( this, S( 66 ), new Color( "ff7ae3" ) );
 		speech.AnchorLeft = 0f; speech.AnchorRight = 1f; speech.AnchorTop = speech.AnchorBottom = 0.26f;
 		speech.OffsetLeft = speech.OffsetRight = 0f; speech.OffsetBottom = 80f;
 
 		// The use prompt: a suit frame with the key as a chunky teal button, the title and a line under it.
 		prompt = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, Visible = false };
-		prompt.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 14 ) );
+		prompt.AddThemeStyleboxOverride( "panel", UiStyle.Frame( Sc, null, 16 ) );
+		prompt.Draw += () => UiStyle.DrawFrameExtras( prompt, new Rect2( Vector2.Zero, prompt.Size ), 1f, null, Sc );
 		prompt.SetAnchorsPreset( LayoutPreset.CenterTop );
 		prompt.AnchorTop = prompt.AnchorBottom = 0.58f; prompt.GrowHorizontal = GrowDirection.Both;
 		AddChild( prompt );
 		var row = new HBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
-		row.AddThemeConstantOverride( "separation", 12 );
+		row.AddThemeConstantOverride( "separation", S( 14 ) );
 		prompt.AddChild( row );
 		var keyCap = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore, SizeFlagsVertical = SizeFlags.ShrinkCenter };
-		keyCap.AddThemeStyleboxOverride( "panel", UiStyle.KeyCap() );
+		keyCap.AddThemeStyleboxOverride( "panel", UiStyle.KeyCap( Sc ) );
 		row.AddChild( keyCap );
 		promptKey = new Label { HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
 		promptKey.AddThemeFontOverride( "font", UiStyle.Number );
-		promptKey.AddThemeFontSizeOverride( "font_size", 20 );
-		promptKey.AddThemeColorOverride( "font_color", UiStyle.Ink );
+		promptKey.AddThemeFontSizeOverride( "font_size", S( 26 ) );
+		promptKey.AddThemeColorOverride( "font_color", UiStyle.KeyText );
 		keyCap.AddChild( promptKey );
 		promptKey.Text = "E";
 		var textBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		textBox.AddThemeConstantOverride( "separation", -2 );
 		row.AddChild( textBox );
-		promptTitle = UiStyle.Text( textBox, 18, UiStyle.TealSoft, HorizontalAlignment.Left );
+		promptTitle = UiStyle.Text( textBox, S( 22 ), TitleColour, HorizontalAlignment.Left, onPanel: true );
 		promptTitle.AddThemeFontOverride( "font", UiStyle.LabelBold );
 		promptTitle.Uppercase = true;
-		promptDesc = UiStyle.Text( textBox, 13, UiStyle.Readout, HorizontalAlignment.Left, mono: true );
+		promptDesc = UiStyle.Text( textBox, S( 15 ), Theme.PanelReadout, HorizontalAlignment.Left, Theme.MonoSub, onPanel: true );
 	}
 
 	PlayerAfflictions Afflictions => player?.Afflictions;
@@ -159,7 +181,7 @@ public partial class HudOverlays : Control
 		{
 			promptTitle.Text = "Dive in";
 			promptDesc.Text = "Head down to the sea floor";
-			promptTitle.AddThemeColorOverride( "font_color", Colors.White );
+			promptTitle.AddThemeColorOverride( "font_color", TitleColour );
 		}
 		if ( station is null && (use?.AtTeleporter ?? false) )
 		{
@@ -174,7 +196,7 @@ public partial class HudOverlays : Control
 			var afford = !station.SoldOut && (player?.Points ?? 0) >= station.CurrentCost;
 			promptTitle.Text = $"{station.Title}  {(station.SoldOut ? "Sold out" : station.CurrentCost.ToString())}";
 			promptDesc.Text = station.Description;
-			promptTitle.AddThemeColorOverride( "font_color", afford ? Colors.White : new Color( "ff6a6a" ) );
+			promptTitle.AddThemeColorOverride( "font_color", afford ? TitleColour : new Color( "ff6a6a" ) );
 			if ( !station.SoldOut ) promptTitle.Text = $"{station.Title}   {station.CurrentCost}";
 		}
 		QueueRedraw();
@@ -184,7 +206,6 @@ public partial class HudOverlays : Control
 	{
 		var now = (float)Clock.Now;
 		var c = Size * 0.5f;
-		if ( prompt.Visible ) UiStyle.DrawBrackets( this, prompt.GetRect(), null, 10f );
 
 		// Ink blots over the view, fading out over the last second.
 		var a = Afflictions;
@@ -280,17 +301,17 @@ public partial class HudOverlays : Control
 			var blink = MathF.Sin( now * 5f ) > -0.2f ? 1f : 0.35f;
 			var amber = new Color( "ffb020" );
 			var at = new Vector2( 28f, Size.Y * 0.2f );
-			UiStyle.DrawFrame( this, new Rect2( at - new Vector2( 14f, 34f ), new Vector2( 340f, 96f ) ), 1f, amber with { A = blink } );
-			UiStyle.DrawBig( this, at, "SUIT MALFUNCTION", 22, amber, HorizontalAlignment.Left, -1f, blink );
-			UiStyle.DrawTag( this, at + new Vector2( 0f, 24f ), "BALLAST OFFLINE", 15, new Color( 1f, 0.5f, 0.35f ) );
-			UiStyle.DrawTag( this, at + new Vector2( 0f, 44f ), "boots cannot grip: you float", 14, UiStyle.Readout, HorizontalAlignment.Left, -1f, true, false );
+			UiStyle.DrawFrame( this, new Rect2( at - new Vector2( 14f, 34f ) * Sc, new Vector2( 340f, 96f ) * Sc ), 1f, amber with { A = blink }, Sc );
+			UiStyle.DrawBig( this, at, "SUIT MALFUNCTION", S( 26 ), amber, HorizontalAlignment.Left, -1f, blink, true );
+			UiStyle.DrawTag( this, at + new Vector2( 0f, 24f * Sc ), "BALLAST OFFLINE", S( 15 ), Theme.LightPanel ? new Color( "c0301a" ) : new Color( 1f, 0.5f, 0.35f ), onPanel: true );
+			UiStyle.DrawTag( this, at + new Vector2( 0f, 44f * Sc ), "boots cannot grip: you float", S( 14 ), Theme.PanelReadout, HorizontalAlignment.Left, -1f, true, false, true );
 		}
 
 		// Irradiated by the Kraken: how long is left, and what it is doing to you.
 		if ( player?.Afflictions is { RadiationLeft: > 0f } dose )
 		{
 			var words = dose.RadiationPoisonLeft > 0f ? "poisoned, and stamina recovers slowly" : "stamina recovers slowly";
-			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", 24, new Color( "9dff1a" ), HorizontalAlignment.Center, Size.X );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.74f ), $"IRRADIATED {MathF.Ceiling( dose.RadiationLeft ):0}s", S( 30 ), new Color( "9dff1a" ), HorizontalAlignment.Center, Size.X );
 			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.74f + 26f ), words, 15, UiStyle.Readout, HorizontalAlignment.Center, Size.X );
 		}
 
@@ -301,7 +322,7 @@ public partial class HudOverlays : Control
 			var pulse = 0.75f + 0.25f * MathF.Sin( (float)Clock.Now * 10f );
 			var y = Size.Y * 0.3f;
 			var title = left > 0f ? $"WHIRLPOOL IN {MathF.Ceiling( left ):0}" : "WHIRLPOOL";
-			UiStyle.DrawBig( this, new Vector2( 0f, y ), title, 42, warn, HorizontalAlignment.Center, Size.X, pulse );
+			UiStyle.DrawBig( this, new Vector2( 0f, y ), title, S( 58 ), warn, HorizontalAlignment.Center, Size.X, pulse );
 			if ( left > 0f )
 			{
 				UiStyle.DrawTag( this, new Vector2( 0f, y + 36f ), "Get back inside the ring of lights", 17, Colors.White, HorizontalAlignment.Center, Size.X );
@@ -311,17 +332,18 @@ public partial class HudOverlays : Control
 		}
 	}
 
-	/// <summary> A boss bar across the top: TARGET and the name, the percentage, a row of pills (and a thinner second row, the Kraken's dome). </summary>
+	/// <summary> A boss bar across the top: the theme's word and the name, the percentage, a bar (and a thinner second one, the Kraken's dome). </summary>
 	void BossBar( float down, string name, float fraction, Color fill, Color top, float second = -1f )
 	{
-		var width = MathF.Min( Size.X * 0.34f, 560f );
-		var rect = new Rect2( (Size.X - width) * 0.5f, 112f + down, width, second >= 0f ? 50f : 42f );
-		UiStyle.DrawFrame( this, rect, 1f, fill, 0.8f );
-		UiStyle.DrawTag( this, rect.Position + new Vector2( 14f, 19f ), $"TARGET LOCK: {name}", 12, top, HorizontalAlignment.Left, -1f, true );
-		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 19f ), $"{MathF.Ceiling( fraction * 100f ):0}%", 12, top, HorizontalAlignment.Right, width - 14f, true );
-		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 14f, 26f ), new Vector2( width - 28f, 8f ) ), 24, fraction, fill, top, 1f, -1f, 3f );
+		var width = MathF.Min( Size.X * 0.4f * Sc, 760f * Sc );
+		var rect = new Rect2( (Size.X - width) * 0.5f, (136f + down) * Sc, width, (second >= 0f ? 70f : 58f) * Sc );
+		UiStyle.DrawFrame( this, rect, 1f, fill, Sc );
+		var text = Theme.LightPanel ? Theme.PanelReadout : top;
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 18f, 24f ) * Sc, $"{Theme.BossWord}{name}", S( 15 ), text, onPanel: true );
+		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 24f * Sc ), $"{MathF.Ceiling( fraction * 100f ):0}%", S( 15 ), text, HorizontalAlignment.Right, width - 18f * Sc, true, onPanel: true );
+		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 34f ) * Sc, new Vector2( width - 36f * Sc, 12f * Sc ) ), 24, fraction, fill, top, 1f, -1f, 3f );
 		if ( second >= 0f )
-			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 14f, 39f ), new Vector2( width - 28f, 4f ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
+			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 52f ) * Sc, new Vector2( width - 36f * Sc, 6f * Sc ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

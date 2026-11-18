@@ -64,6 +64,8 @@ public partial class Level : Node3D
 		if ( water && SeaTerrain.Active ) AlienReef.Add( this, taken );
 		// Plants and rocks made solid once they are all in place (so the navmesh goes round them too).
 		if ( water ) VegetationColliders.Add( this );
+		// The Gore Vac's station joins the row (on the terrain where there is some).
+		if ( water ) BuyStation.AddGoreVacStation( this, p => SeaTerrain.Active ? SeaTerrain.HeightAt( p ) : p.Y );
 		Nav.Bake( this );
 		if ( water ) Caustics.AddTo( this );
 		if ( water && SeaTerrain.Active ) SeaMine.Lay( this );

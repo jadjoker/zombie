@@ -1013,6 +1013,9 @@ public partial class SeaSpider : PartCreature
 
 	// ---- Getting shot ----
 
+	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
+	public override void Pull( Vector3 delta ) => agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
+
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead || IsAlly ) return;

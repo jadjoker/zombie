@@ -1,7 +1,8 @@
 using Godot;
 
 /// <summary>
-/// The inside of the robot's faceplate, laid over the world under the HUD: a barely-there scanline, a soft dark rim
+/// The inside of the robot's faceplate (themes with a visor: Robot Visor, Diving-Bell Robot), laid over the world
+/// under the HUD: a barely-there scanline, a soft dark rim
 /// round the edges, and a short glitch on big hits (a few tinted bands flicker, the HUD jumps sideways and its colour
 /// split widens). `Glitch` (0..1) and `Jitter` (px) are read by the HUD pieces.
 /// </summary>
@@ -49,7 +50,7 @@ public partial class VisorOverlay : ColorRect
 
 	void OnDamaged( DamageInfo damage )
 	{
-		if ( damage.Damage >= GlitchDamage ) Kick( 0.45f + damage.Damage / 60f );
+		if ( UiStyle.Theme.Glitch && damage.Damage >= GlitchDamage ) Kick( 0.45f + damage.Damage / 60f );
 	}
 
 	public override void _Process( double delta )
@@ -63,25 +64,29 @@ public partial class VisorOverlay : ColorRect
 		}
 		Glitch = MathF.Max( 0f, Glitch - (float)delta / GlitchTime );
 		Jitter = Glitch > 0.05f ? (float)(random.NextDouble() * 2.0 - 1.0) * 7f * Glitch : 0f;
-		Visible = !DevFlags.HideHud && !PlayerSurvivor.LocalDead;
+		var theme = UiStyle.Theme;
+		if ( !theme.Glitch ) { Glitch = 0f; Jitter = 0f; }
+		Visible = !DevFlags.HideHud && !PlayerSurvivor.LocalDead && (theme.Scan > 0f || theme.Rim > 0f);
 		material.SetShaderParameter( "glitch", Glitch );
+		material.SetShaderParameter( "scan", theme.Scan );
+		material.SetShaderParameter( "rim", theme.Rim );
 	}
 
 	const string Code = @"
 shader_type canvas_item;
 uniform float glitch = 0.0;
+uniform float scan = 0.025;
+uniform float rim = 0.38;
 
 float hash(float n) { return fract(sin(n) * 43758.5453); }
 
 void fragment() {
 	vec2 size = 1.0 / SCREEN_PIXEL_SIZE;
-	// Scanlines: one faint dark line every 3 px.
-	float scan = step(2.0, mod(FRAGCOORD.y, 3.0)) * 0.025;
-	// The faceplate rim: a soft dark edge round a rounded rectangle.
+	// Scanlines (one faint dark line every 3 px) and the faceplate rim (a soft dark edge round a rounded rectangle).
 	vec2 p = abs(SCREEN_UV - 0.5) * 2.0;
-	float rim = smoothstep(0.0, 0.45, length(max(p - vec2(0.8, 0.7), 0.0)));
+	float edge = smoothstep(0.0, 0.45, length(max(p - vec2(0.8, 0.7), 0.0)));
 	vec3 col = vec3(0.0, 0.03, 0.05);
-	float a = scan + rim * 0.38;
+	float a = step(2.0, mod(FRAGCOORD.y, 3.0)) * scan + edge * rim;
 	// Glitch: a few horizontal bands tinted cyan or red, changing 30 times a second.
 	float row = floor(FRAGCOORD.y / 14.0);
 	float frame = floor(TIME * 30.0);

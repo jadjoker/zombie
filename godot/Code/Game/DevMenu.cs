@@ -474,7 +474,7 @@ public partial class DevMenu : CanvasLayer
 		// ======== PLAYER
 		var player = Player;
 		var weapons = Controller?.GetChildren().OfType<PlayerWeapon>().ToList() ?? new();
-		if ( Sec( "Player", "Cheats", "god mode infinite ammo heal refill ammo points money +1000" ) )
+		if ( Sec( "Player", "Cheats", "god mode infinite ammo heal refill ammo points money +1000 give gore vac vacuum trident weapon" ) )
 		{
 			Section( "Cheats" );
 			var god = player?.Health?.Invulnerable ?? false;
@@ -484,6 +484,8 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Cheats", "heal health" ) ) Action( "Heal", () => { if ( player?.Health is { } h ) h.Heal( h.MaxHealth ); } );
 			if ( Show( "Cheats", "refill ammo" ) ) Action( "Refill ammo", () => { foreach ( var w in weapons ) w.RefillAmmo(); } );
 			if ( Show( "Cheats", "+1000 points money" ) ) Action( "+1000 points", () => player?.AddPoints( 1000 ) );
+			if ( Show( "Cheats", "give gore vac weapon vacuum" ) ) Action( "Give Gore Vac", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.HasSlot( 4 ) ) inv.Add( PlayerWeapon.GoreVac() ); } );
+			if ( Show( "Cheats", "give trident weapon" ) ) Action( "Give Trident", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.HasSlot( 3 ) ) inv.Add( PlayerWeapon.Trident() ); } );
 		}
 
 		if ( Sec( "Player", "Pickups", "pickups perks drops give " + string.Join( " ", PlayerPerks.Table.Select( e => e.Name ) ) ) )
@@ -549,6 +551,14 @@ public partial class DevMenu : CanvasLayer
 				Row( "Ink" );
 				foreach ( var o in InkLevels ) { var v = o; Pick( v == 0f ? "None" : $"{v}", stylize is not null && MathF.Abs( stylize.Outline - v ) < 0.01f, () => { if ( stylize is not null ) stylize.Outline = v; } ); }
 			}
+		}
+
+		var hudThemes = string.Join( " ", HudTheme.All.Select( t => t.Name ) );
+		if ( Sec( "Look", "HUD theme", "hud theme ui interface look skin style " + hudThemes ) )
+		{
+			Section( "HUD theme" );
+			Row( "HUD" );
+			foreach ( var theme in HudTheme.All ) { var t = theme; Pick( t.Label, UiStyle.Theme == t, () => { UiStyle.Theme = t; GameSettings.Save(); } ); }
 		}
 
 		if ( Sec( "Look", "Lighting and effects", "sun lighting time of day morning noon dusk night skin effect dissolve ghost holo iridescent" ) )

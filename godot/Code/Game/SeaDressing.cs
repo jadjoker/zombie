@@ -51,6 +51,9 @@ public static class SeaDressing
 		}
 	}
 
+	/// <summary> The small loose things on the floor (starfish, shells, urchins) the Gore Vac can tear up and suck in. </summary>
+	public const string LooseGroup = "loose_prop";
+
 	public static void Add( Node3D level, List<(Vector3 Position, float Radius)> taken )
 	{
 		var random = new Random( 4711 );
@@ -143,17 +146,26 @@ public static class SeaDressing
 		{
 			var variant = random.Next( Bright.Length );
 			if ( Put( "starfish", at, Range( 1.3f, 2.4f ) ) is { } s )
+			{
+				s.AddToGroup( LooseGroup );
 				Recolour( s, variant, n => n == "Starfish" ? Bright[variant] : n == "StarfishDot" ? Bright[variant].Lightened( 0.5f ) : null );
+			}
 		} );
 		Scatter( 18, 0.5f, at =>
 		{
 			if ( Put( "shell", at, Range( 1.2f, 2.2f ), 0.03f ) is { } s )
+			{
+				s.AddToGroup( LooseGroup );
 				Recolour( s, 0, n => n == "Shell" ? new Color( 0.95f, 0.84f, 0.72f ) : n == "ShellLip" ? new Color( 1f, 0.62f, 0.62f ) : null );
+			}
 		} );
 		Scatter( 12, 0.6f, at =>
 		{
 			if ( Put( "urchin", at, Range( 1.2f, 2f ) ) is { } u )
+			{
+				u.AddToGroup( LooseGroup );
 				Recolour( u, 0, n => n == "Urchin" ? new Color( 0.2f, 0.1f, 0.28f ) : n == "UrchinSpine" ? new Color( 0.42f, 0.24f, 0.55f ) : null );
+			}
 		} );
 
 		// ---- Fish overhead. ----

@@ -233,7 +233,8 @@ public partial class Bloober : Creature
 			// The sculpted skin, sized like the unit sphere it replaces.
 			var skin = new Node3D { Name = "Skin" };
 			go.AddChild( skin );
-			var shade = Shapes.Hsv( hue + t * 0.07f, 0.85f - t * 0.1f, 0.36f - t * 0.06f );
+			// Bright and saturated from head to tail (it was 36% dark: a black eel in the murk), shading a little toward the tail.
+			var shade = Shapes.Hsv( hue + t * 0.08f, 0.78f - t * 0.08f, 0.82f - t * 0.12f );
 			MeshInstance3D renderer;
 			Node3D jaw = null;
 			var serpentModel = Serpent ? LoadSerpent( i == 0 ? "head" : i == count - 1 ? "tail" : $"segment{i % 2}" ) : null;
@@ -244,7 +245,7 @@ public partial class Bloober : Creature
 				skin.AddChild( serpentModel );
 				var meshes = serpentModel.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().ToList();
 				renderer = meshes.First( m => m.Name.ToString() is "Head" or "Tail" || m.Name.ToString().StartsWith( "Segment" ) );
-				renderer.MaterialOverride = Shapes.Material( shade, "eelskin" );
+				renderer.MaterialOverride = Shapes.Sheen( Shapes.Material( shade, "eelskin" ) );
 				var finMaterial = FinMaterial( shade.Lightened( 0.35f ).Lerp( SpotColor, 0.3f ) );
 				foreach ( var m in meshes )
 				{
@@ -258,7 +259,7 @@ public partial class Bloober : Creature
 				model.Basis = ModelFix * Basis.FromScale( Vector3.One * (1f / 0.64f) );
 				skin.AddChild( model );
 				renderer = model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().First();
-				renderer.MaterialOverride = Shapes.Material( shade, "eelskin" );
+				renderer.MaterialOverride = Shapes.Sheen( Shapes.Material( shade, "eelskin" ) );
 			}
 			else
 			{

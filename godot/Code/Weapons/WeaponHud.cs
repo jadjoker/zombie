@@ -31,6 +31,24 @@ public partial class WeaponHud : Control
 	public override void _Ready()
 	{
 		inventory = player.GetNodeOrNull<WeaponInventory>( "WeaponInventory" );
+		Build();
+		UiStyle.Changed += Rebuild;
+	}
+
+	public override void _ExitTree() => UiStyle.Changed -= Rebuild;
+
+	/// <summary> The theme changed: build the scope mask and the ammo panel again in the new look. </summary>
+	void Rebuild()
+	{
+		foreach ( var child in GetChildren() ) { RemoveChild( child ); child.QueueFree(); }
+		Build();
+	}
+
+	static HudTheme Theme => UiStyle.Theme;
+	static float Sc => Theme.Scale;
+
+	void Build()
+	{
 
 		maskMaterial = new ShaderMaterial { Shader = new Shader { Code = MaskShader } };
 		scopeMask = new ColorRect { Material = maskMaterial, MouseFilter = MouseFilterEnum.Ignore };
@@ -40,21 +58,25 @@ public partial class WeaponHud : Control
 		// The ammo panel (bottom right): a suit frame with the weapon's name as a caption, the magazine big and the
 		// reserve as a small readout.
 		ammoPanel = new PanelContainer { MouseFilter = MouseFilterEnum.Ignore };
-		ammoPanel.AddThemeStyleboxOverride( "panel", UiStyle.Frame( 1f, null, 14 ) );
+		ammoPanel.AddThemeStyleboxOverride( "panel", UiStyle.Frame( Sc, null, 16 ) );
+		ammoPanel.Draw += () => UiStyle.DrawFrameExtras( ammoPanel, new Rect2( Vector2.Zero, ammoPanel.Size ), 1f, null, Sc );
+		ammoPanel.Resized += () => ammoPanel.PivotOffset = ammoPanel.Size * 0.5f;
+		ammoPanel.Rotation = MathX.Rad( -Theme.Tilt * 0.75f );
 		ammoPanel.SetAnchorsPreset( LayoutPreset.BottomRight );
 		ammoPanel.GrowHorizontal = GrowDirection.Begin;
 		ammoPanel.GrowVertical = GrowDirection.Begin;
 		ammoPanel.OffsetRight = -32; ammoPanel.OffsetBottom = -32;
 		AddChild( ammoPanel );
 		var box = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.End, MouseFilter = MouseFilterEnum.Ignore };
-		box.AddThemeConstantOverride( "separation", -4 );
+		box.AddThemeConstantOverride( "separation", (int)(-6 * Sc) );
 		ammoPanel.AddChild( box );
-		weaponName = UiStyle.Tag( box, 12, null, HorizontalAlignment.Right );
+		weaponName = UiStyle.Tag( box, UiStyle.S( 14 ), Theme.PanelCaption, HorizontalAlignment.Right, onPanel: true );
 		var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.End, MouseFilter = MouseFilterEnum.Ignore };
 		row.AddThemeConstantOverride( "separation", 8 );
 		box.AddChild( row );
-		mag = UiStyle.Big( row, 36, UiStyle.Teal, HorizontalAlignment.Right );
-		reserve = UiStyle.Text( row, 16, UiStyle.Readout, HorizontalAlignment.Left, mono: true );
+		mag = UiStyle.Big( row, UiStyle.S( 52 ), Theme.PanelNumber, HorizontalAlignment.Right );
+		UiStyle.StyleBig( mag, UiStyle.S( 52 ), Theme.PanelNumber, true );
+		reserve = UiStyle.Text( row, UiStyle.S( 22 ), Theme.PanelReadout, HorizontalAlignment.Left, mono: true, onPanel: true );
 		reserve.SizeFlagsVertical = SizeFlags.ShrinkEnd;
 	}
 
@@ -67,11 +89,11 @@ public partial class WeaponHud : Control
 	{
 		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no ammo counter on the death screen
 		var weapon = Weapon;
-		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant();
+		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant() + Theme.WeaponSuffix;
 		mag.Text = (weapon?.Ammo ?? 0).ToString();
-		reserve.Text = "//" + (weapon?.Reserve ?? 0);
-		var low = weapon is not null && !weapon.IsReloading && weapon.Ammo <= weapon.MagazineSize / 4;
-		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : UiStyle.Teal );
+		reserve.Text = Theme.ReserveSep + (weapon is { Vacuum: true } ? weapon.MagazineSize : weapon?.Reserve ?? 0) + (weapon is { HasMine: true } ? "  +MINE" : "");   // the Gore Vac: the tank out of 100
+		var low = weapon is not null && !weapon.IsReloading && (weapon.Vacuum ? weapon.Ammo < PlayerWeapon.BallCost : weapon.Ammo <= weapon.MagazineSize / 4);
+		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : Theme.PanelNumber );
 		ammoPanel.OffsetRight = -32f + VisorOverlay.Jitter;   // a big hit knocks it sideways
 		ammoPanel.Visible = weapon is not null;
 
@@ -94,7 +116,6 @@ public partial class WeaponHud : Control
 		var weapon = Weapon;
 		var c = Size * 0.5f;
 		var scope = weapon?.ScopeAmount ?? 0f;
-		if ( ammoPanel.Visible ) UiStyle.DrawBrackets( this, ammoPanel.GetRect(), null, 10f );
 
 		if ( scope > 0.01f )
 		{
@@ -116,16 +137,11 @@ public partial class WeaponHud : Control
 			DrawCircle( c, 2.5f, new Color( "ff3b2e" ) with { A = scope } );
 		}
 
-		// The crosshair: the visor's small lock-on reticle (four corner brackets round a dot), ink-edged so it reads on
-		// anything. It stays while you aim down the sights (issue #37) and only gives way to the scope's own reticle.
+		// The crosshair in the theme's style, ink-edged so it reads on anything. It stays while you aim down the sights
+		// (issue #37) and only gives way to the scope's own reticle.
 		var dotAlpha = PlayerSurvivor.LocalDead ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
 		DotAlpha = dotAlpha;
-		if ( dotAlpha > 0f )
-		{
-			UiStyle.DrawBrackets( this, new Rect2( c - new Vector2( 9f, 9f ), new Vector2( 18f, 18f ) ), UiStyle.Teal with { A = 0.9f * dotAlpha }, 5f, 1.6f );
-			DrawCircle( c, 2.4f, UiStyle.Ink with { A = 0.8f * dotAlpha } );
-			DrawCircle( c, 1.4f, Colors.White with { A = dotAlpha } );
-		}
+		if ( dotAlpha > 0f ) DrawCrosshair( c, dotAlpha, weapon );
 
 		// A charging shot (the trident's 1 s hold): a ring round the crosshair fills clockwise from the top, white to
 		// sea green, while three trident prongs close in on the middle. Full, it flashes a ring outward and the
@@ -144,9 +160,9 @@ public partial class WeaponHud : Control
 			const float top = -MathF.PI * 0.5f;
 			DrawArc( c, radius, 0f, MathF.Tau, 48, new Color( 0f, 0f, 0f, 0.4f ), 3.5f, true );
 			DrawArc( c, radius, top, top + MathF.Tau * charge, 48, colour, full ? 3.5f + pulse : 2.5f, true );
-			// The prongs: from up and the two lower sides, sliding in as it charges.
+			// The prongs: from up and the two lower sides, sliding in as it charges (the trident only).
 			var reach = MathX.Lerp( 36f, radius + 4f, charge * charge * (3f - 2f * charge) );
-			foreach ( var degrees in new[] { -90f, 30f, 150f } )
+			foreach ( var degrees in weapon.Vacuum ? Array.Empty<float>() : new[] { -90f, 30f, 150f } )
 			{
 				var dir = Vector2.FromAngle( MathX.Rad( degrees ) );
 				var side = new Vector2( -dir.Y, dir.X );
@@ -161,6 +177,19 @@ public partial class WeaponHud : Control
 				DrawArc( c, radius + since * 90f, 0f, MathF.Tau, 48, green with { A = 1f - since / 0.3f }, 2f, true );
 		}
 		else chargeWasFull = false;
+
+		// The Gore Vac sucking: three arcs swirling in round the crosshair.
+		if ( weapon is { Sucking: true } or { Blowing: true } && dotAlpha > 0f )
+		{
+			var spin = (float)Clock.Now * (weapon.Blowing ? -9f : 9f);
+			for ( var i = 0; i < 3; i++ )
+			{
+				var travel = ((float)Clock.Now * 30f + i * 7f) % 18f;
+				var r = weapon.Blowing ? 8f + travel : 26f - travel;   // in while sucking, out while blowing
+				var a0 = spin + i * MathF.Tau / 3f;
+				DrawArc( c, r, a0, a0 + 1.1f, 12, weapon.TankColour with { A = 0.8f * dotAlpha * (r / 26f) }, 2f, true );
+			}
+		}
 
 		// Hitmarker.
 		if ( weapon is not null )
@@ -184,8 +213,72 @@ public partial class WeaponHud : Control
 			if ( weapon.IsReloading )
 			{
 				var panel = ammoPanel.GetRect();
-				UiStyle.DrawPills( this, new Rect2( panel.Position.X + 8f, panel.Position.Y - 12f, panel.Size.X - 16f, 6f ), 8, weapon.ReloadProgress, UiStyle.Teal, Colors.White, 1f, -1f, 3f );
+				UiStyle.DrawPills( this, new Rect2( panel.Position.X + 10f * Sc, panel.Position.Y - 16f * Sc, panel.Size.X - 20f * Sc, 9f * Sc ), 8, weapon.ReloadProgress, UiStyle.Teal, Colors.White, 1f, -1f, 3f );
 			}
+		}
+	}
+
+	/// <summary> The theme's crosshair round the middle of the screen. </summary>
+	void DrawCrosshair( Vector2 c, float a, PlayerWeapon weapon )
+	{
+		var ink = UiStyle.Ink with { A = 0.75f * a };
+		var accent = UiStyle.Teal;
+		var since = weapon is null ? 9f : (float)weapon.TimeSinceHit;
+		switch ( Theme.Crosshair )
+		{
+			case HudTheme.CrossLook.Brackets:
+				UiStyle.DrawBrackets( this, new Rect2( c - new Vector2( 9f, 9f ), new Vector2( 18f, 18f ) ), accent with { A = 0.9f * a }, 5f, 1.6f );
+				DrawCircle( c, 2.4f, UiStyle.Ink with { A = 0.8f * a } );
+				DrawCircle( c, 1.4f, Colors.White with { A = a } );
+				break;
+			case HudTheme.CrossLook.Brass:
+				DrawArc( c, 11f, 0f, MathF.Tau, 40, new Color( "3a2606" ) with { A = 0.85f * a }, 5f, true );
+				DrawArc( c, 11f, 0f, MathF.Tau, 40, new Color( "e8c070" ) with { A = a }, 2.6f, true );
+				DrawCircle( c, 2.2f, new Color( "ffe2a0" ) with { A = a } );
+				break;
+			case HudTheme.CrossLook.Bubble:
+				DrawArc( c, 10f, 0f, MathF.Tau, 40, new Color( 0.9f, 1f, 1f, 0.85f * a ), 1.6f, true );
+				DrawCircle( c - new Vector2( 3.5f, 3.5f ), 2.4f, new Color( 1f, 1f, 1f, 0.7f * a ) );
+				break;
+			case HudTheme.CrossLook.Ink:
+				DrawArc( c, 11f, 0f, MathF.Tau, 40, new Color( "fff6e0" ) with { A = 0.9f * a }, 6f, true );
+				DrawArc( c, 11f, 0f, MathF.Tau, 40, new Color( "111111" ) with { A = a }, 3f, true );
+				DrawCircle( c, 2f, new Color( "111111" ) with { A = a } );
+				break;
+			case HudTheme.CrossLook.Tm:
+				DrawArc( c, 8f, 0f, MathF.Tau, 32, UiStyle.Ink with { A = 0.75f * a }, 4.5f, true );
+				DrawArc( c, 8f, 0f, MathF.Tau, 32, Colors.White with { A = a }, 2f, true );
+				DrawLine( c - new Vector2( 8f, 0f ), c + new Vector2( 8f, 0f ), Colors.White with { A = a }, 1.5f );
+				DrawLine( c - new Vector2( 0f, 8f ), c + new Vector2( 0f, 8f ), Colors.White with { A = a }, 1.5f );
+				UiStyle.DrawBig( this, c + new Vector2( 9f, -5f ), "™", 15, Colors.White with { A = a } );
+				break;
+			case HudTheme.CrossLook.Ping:
+				// Rings ping outward from the dot, and once more on every hit.
+				var now = (float)Clock.Now;
+				for ( var k = 0; k < 2; k++ )
+				{
+					var t = (now / 1.8f + k * 0.5f) % 1f;
+					DrawArc( c, 4f + t * 16f, 0f, MathF.Tau, 32, accent with { A = (1f - t) * 0.8f * a }, 1.5f, true );
+				}
+				if ( since < 0.4f ) DrawArc( c, 6f + since * 60f, 0f, MathF.Tau, 32, accent with { A = (1f - since / 0.4f) * a }, 2f, true );
+				DrawCircle( c, 2.2f, new Color( "d8ffef" ) with { A = a } );
+				break;
+			case HudTheme.CrossLook.Glow:
+				UiStyle.Glow( this, c, 3f, UiStyle.TealSoft, a );
+				break;
+			case HudTheme.CrossLook.Diamond:
+				var d = 9f;
+				var pts = new[] { c + new Vector2( 0f, -d ), c + new Vector2( d, 0f ), c + new Vector2( 0f, d ), c + new Vector2( -d, 0f ), c + new Vector2( 0f, -d ) };
+				DrawPolyline( pts, ink, 4.5f, true );
+				DrawPolyline( pts, new Color( "ffb02e" ) with { A = a }, 2.2f, true );
+				DrawCircle( c, 1.6f, Colors.White with { A = a } );
+				break;
+			default:   // Ring (Arcade Dive): a small glowing suit ring with a dot in the middle.
+				DrawArc( c, 9f, 0f, MathF.Tau, 40, UiStyle.Ink with { A = 0.75f * a }, 4f, true );
+				DrawArc( c, 9f, 0f, MathF.Tau, 40, accent with { A = 0.85f * a }, 1.6f, true );
+				DrawCircle( c, 2.6f, UiStyle.Ink with { A = 0.8f * a } );
+				DrawCircle( c, 1.6f, Colors.White with { A = a } );
+				break;
 		}
 	}
 

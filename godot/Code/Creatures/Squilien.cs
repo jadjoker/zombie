@@ -35,6 +35,10 @@ public partial class Squilien : Creature
 	public int PulseCount;
 	public static readonly List<Squilien> All = new();
 	public Color BodyColor { get; private set; }
+	static readonly float[] SquilienHues = { 0.92f, 0.78f, 0.58f, 0.48f, 0.01f };
+	/// <summary> The tentacles: a paler tint of the bell, so they still read in the bell's shadow. </summary>
+	public Color TentacleColor { get; private set; }
+	Color ColourOf( Piece piece ) => piece.Index == 0 ? BodyColor : TentacleColor;
 	public Color SpotColor { get; private set; }
 	public Color GooColor { get; private set; }
 	public Color InkColor { get; private set; }
@@ -102,9 +106,12 @@ public partial class Squilien : Creature
 		var hue = Hue;
 		// A bright pastel body, so the black alien eyes and glowing spots read against it (it was near black, and the
 		// whole creature was a dark blob in the murk).
-		BodyColor = Shapes.Hsv( hue, 0.5f, 0.92f );
-		SpotColor = Shapes.Glow( hue + 0.5f, 2.2f );
-		GooColor = Shapes.Hsv( hue + 0.35f, 0.95f, 1f );
+		// Candy colours only (bubblegum, violet, sky blue, aqua, salmon): the old free hue also gave olive and brown.
+		var bodyHue = SquilienHues[(int)(hue * SquilienHues.Length) % SquilienHues.Length] + (hue * SquilienHues.Length % 1f - 0.5f) * 0.04f;
+		BodyColor = Shapes.Hsv( bodyHue, 0.62f, 0.96f );
+		TentacleColor = Shapes.Hsv( bodyHue + 0.03f, 0.42f, 1f );
+		SpotColor = Shapes.Glow( bodyHue + 0.5f, 2.2f );
+		GooColor = Shapes.Hsv( bodyHue + 0.35f, 0.95f, 1f );
 		InkColor = Shapes.Hsv( 0.76f, 0.75f, 0.28f );
 		nextPulse = Rng.Float( 0.1f, PulseInterval );
 		nextThrow = Rng.Float( 1f, ThrowCooldown + 1f );
@@ -207,7 +214,7 @@ public partial class Squilien : Creature
 			model.Scale = Vector3.One / 0.64f;
 			skin.AddChild( model );
 			renderer = model.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().First();
-			renderer.MaterialOverride = Shapes.Material( BodyColor, "jelly" );
+			renderer.MaterialOverride = Shapes.Sheen( Shapes.Material( index == 0 ? BodyColor : TentacleColor, "jelly" ), 0.6f, index == 0 ? 0.4f : 0.6f );
 		}
 		else renderer = Shapes.Part( skin, "Sphere", Vector3.Zero, Vector3.One, BodyColor, skin: "jelly" );
 		return new Piece { Index = index, Go = go, Skin = skin, Renderer = renderer, Radius = radius };
@@ -335,7 +342,8 @@ public partial class Squilien : Creature
 
 	void Tint( Piece piece )
 	{
-		var baseColor = BodyColor.Lerp( BodyColor * 0.45f, piece.Hurt ) with { A = 1f };
+		var colour = ColourOf( piece );
+		var baseColor = colour.Lerp( colour * 0.45f, piece.Hurt ) with { A = 1f };
 		var flash = MathX.Clamp( 1f - piece.Flash / 0.1f, 0f, 1f );
 		Shapes.Tint( piece.Renderer, baseColor.Lerp( Colors.White * 3f, flash ) );
 	}
@@ -506,7 +514,7 @@ public partial class Squilien : Creature
 
 	void Detach( Piece piece, Vector3 push )
 	{
-		Shapes.Tint( piece.Renderer, BodyColor.Lerp( BodyColor * 0.45f, piece.Hurt ) with { A = 1f } );
+		Shapes.Tint( piece.Renderer, ColourOf( piece ).Lerp( ColourOf( piece ) * 0.45f, piece.Hurt ) with { A = 1f } );
 		var holder = new Node3D { Name = "Squilien Piece" };
 		GetTree().CurrentScene.AddChild( holder );
 		holder.GlobalTransform = piece.Go.GlobalTransform;

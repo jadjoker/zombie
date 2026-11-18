@@ -54,40 +54,70 @@ public partial class GameHud : Control
 	static Label Text( Control parent, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Center ) => UiStyle.Text( parent, size, color, align );
 	static Label Big( Control parent, int size, Color color, HorizontalAlignment align = HorizontalAlignment.Center ) => UiStyle.Big( parent, size, color, align );
 
-	/// <summary> The health panel's corner (bottom left), and where the points sit over it. </summary>
-	const float HullW = 270f, HullH = 62f, Edge = 32f, PointsBottom = -106f;
+	/// <summary> The health widget's size (bottom left) in the current theme, and where the points sit over it. </summary>
+	static HudTheme Theme => UiStyle.Theme;
+	static float Sc => Theme.Scale;
+	static Vector2 HullSize => Theme.Health switch
+	{
+		HudTheme.HealthLook.Porthole or HudTheme.HealthLook.Sonar => new Vector2( 150f, 150f ) * Sc,
+		HudTheme.HealthLook.Tank => new Vector2( 96f, 140f ) * Sc,
+		HudTheme.HealthLook.Tentacle => new Vector2( 230f, 110f ) * Sc,
+		_ => new Vector2( 360f, 78f ) * Sc,
+	};
+	static float HullW => HullSize.X;
+	static float HullH => HullSize.Y;
+	const float Edge = 32f;
+	static float PointsBottom => -(Edge + HullH + 16f * Sc);
+	static int S( int size ) => UiStyle.S( size );
+	string finePrint;
 
 	public override void _Ready()
 	{
+		Build();
+		UiStyle.Changed += Rebuild;
+	}
+
+	public override void _ExitTree() => UiStyle.Changed -= Rebuild;
+
+	/// <summary> The theme changed: build every label again in the new look. </summary>
+	void Rebuild()
+	{
+		foreach ( var child in GetChildren() ) { RemoveChild( child ); child.QueueFree(); }
+		Build();
+	}
+
+	void Build()
+	{
+		finePrint = Theme.FinePrint is { Length: > 0 } lines ? lines[new Random().Next( lines.Length )] : null;
 		var top = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		top.SetAnchorsPreset( LayoutPreset.CenterTop );
 		top.OffsetTop = 32; top.GrowHorizontal = GrowDirection.Both;
 		AddChild( top );
-		wave = Big( top, 34, UiStyle.Teal );
-		status = UiStyle.Text( top, 15, UiStyle.Readout, mono: true );
+		wave = Big( top, S( 54 ), Theme.Wave );
+		status = UiStyle.Text( top, S( 18 ), UiStyle.Readout, mono: true );
 		status.Uppercase = true;
 
 		banner = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		banner.SetAnchorsPreset( LayoutPreset.CenterTop );
 		banner.AnchorTop = 0.28f; banner.GrowHorizontal = GrowDirection.Both;
 		AddChild( banner );
-		bannerBig = Big( banner, 72, Colors.White );
-		bannerSmall = UiStyle.Text( banner, 20, UiStyle.TealSoft, mono: true );
+		bannerBig = Big( banner, S( 112 ), Colors.White );
+		bannerSmall = UiStyle.Sub( banner, S( 26 ), new Color( 1, 1, 1, 0.92f ) );
 
 		var killBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		killBox.SetAnchorsPreset( LayoutPreset.TopRight );
 		killBox.OffsetTop = 32; killBox.OffsetRight = -40; killBox.GrowHorizontal = GrowDirection.Begin;
 		AddChild( killBox );
-		kills = Big( killBox, 32, UiStyle.Teal, HorizontalAlignment.Right );
-		killsCaption = UiStyle.Tag( killBox, 12, null, HorizontalAlignment.Right );
+		kills = Big( killBox, S( 46 ), Theme.Number, HorizontalAlignment.Right );
+		killsCaption = UiStyle.Tag( killBox, S( 14 ), Theme.LightPanel ? Theme.Number : null, HorizontalAlignment.Right );
 		killsCaption.Text = "KILLS";
 
-		points = Big( this, 28, UiStyle.Gold, HorizontalAlignment.Left );
+		points = Big( this, S( 40 ), UiStyle.Gold, HorizontalAlignment.Left );
 		points.SetAnchorsPreset( LayoutPreset.BottomLeft );
 		points.OffsetLeft = Edge + 4; points.OffsetTop = points.OffsetBottom = PointsBottom; points.GrowVertical = GrowDirection.Begin;
-		gain = Big( this, 18, UiStyle.Gold, HorizontalAlignment.Left );
+		gain = Big( this, S( 24 ), UiStyle.Gold, HorizontalAlignment.Left );
 		gain.SetAnchorsPreset( LayoutPreset.BottomLeft );
-		gain.OffsetLeft = Edge + 4; gain.OffsetTop = gain.OffsetBottom = PointsBottom - 32; gain.GrowVertical = GrowDirection.Begin;
+		gain.OffsetLeft = Edge + 4; gain.OffsetTop = gain.OffsetBottom = PointsBottom - S( 44 ); gain.GrowVertical = GrowDirection.Begin;
 
 		// The HEALTH caption and its states are drawn inside the health panel now (_Draw); this label stays for tests.
 		healthCaption = Text( this, 16, Colors.White, HorizontalAlignment.Left );
@@ -101,14 +131,14 @@ public partial class GameHud : Control
 		diveTop.SetAnchorsPreset( LayoutPreset.CenterTop );
 		diveTop.OffsetTop = 110; diveTop.GrowHorizontal = GrowDirection.Both;
 		dive.AddChild( diveTop );
-		diveCount = Big( diveTop, 26, new Color( "d6fff7" ) );
+		diveCount = Big( diveTop, S( 30 ), new Color( "d6fff7" ) );
 		diveHelp = UiStyle.Text( diveTop, 15, UiStyle.Readout, mono: true );
 		diveHelp.Text = "WASD tilt to glide   Ctrl tuck   Space spread out";
 		var depthBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		depthBox.SetAnchorsPreset( LayoutPreset.CenterRight );
 		depthBox.OffsetRight = -60; depthBox.OffsetTop = -170; depthBox.GrowHorizontal = GrowDirection.Begin;
 		dive.AddChild( depthBox );
-		depthNum = Big( depthBox, 36, new Color( "d6fff7" ) );
+		depthNum = Big( depthBox, S( 48 ), new Color( "d6fff7" ) );
 		depthSpeed = UiStyle.Text( depthBox, 17, UiStyle.Gold, mono: true );
 
 		gameOver = new ColorRect { Color = new Color( 0, 0, 0, 0.5f ), MouseFilter = MouseFilterEnum.Ignore, Visible = false };
@@ -117,9 +147,9 @@ public partial class GameHud : Control
 		var goBox = new VBoxContainer { Alignment = BoxContainer.AlignmentMode.Center, MouseFilter = MouseFilterEnum.Ignore };
 		goBox.SetAnchorsPreset( LayoutPreset.FullRect );
 		gameOver.AddChild( goBox );
-		gameOverTitle = Big( goBox, 84, UiStyle.Red );
+		gameOverTitle = Big( goBox, S( 120 ), UiStyle.Red );
 		gameOverTitle.Text = "YOU DIED";
-		gameOverDetail = UiStyle.Text( goBox, 20, UiStyle.TealSoft, mono: true );
+		gameOverDetail = UiStyle.Sub( goBox, S( 26 ), Colors.White );
 	}
 
 	public override void _Process( double delta )
@@ -158,7 +188,7 @@ public partial class GameHud : Control
 		var gainAge = player is null ? 999f : (float)player.TimeSinceGain;
 		gain.Modulate = new Color( 1, 1, 1, MathX.Clamp( 1f - (gainAge - 0.5f) / 0.4f, 0f, 1f ) );
 		gain.Text = $"+{player?.LastGain ?? 0}";
-		gain.OffsetTop = gain.OffsetBottom = PointsBottom - 32 - MathF.Min( gainAge, 0.9f ) * 24f;
+		gain.OffsetTop = gain.OffsetBottom = PointsBottom - S( 44 ) - MathF.Min( gainAge, 0.9f ) * 30f * Sc;
 
 		var afflictions = player?.Afflictions;
 		var venom = afflictions?.Venomed ?? false;
@@ -255,55 +285,55 @@ public partial class GameHud : Control
 
 	public override void _Draw()
 	{
-		// The health panel (bottom left): a suit frame with the HEALTH caption and any states, the number big on the
-		// right, a bar of ten glossy pills (pale where health was just lost), and the shield's blue pills over it.
+		// The health widget (bottom left), in the theme's shape: a panel, a porthole, a sonar screen, a tank or a
+		// tentacle. Then the shield's bar over it.
 		var frame = new Rect2( Edge, Size.Y - Edge - HullH, HullW, HullH );
 		var percent = (player?.Health?.Fraction ?? 0f) * 100f;
-		var venomed = player?.Afflictions?.Venomed ?? false;
-		var burning = (player?.Afflictions?.BurnLeft ?? 0f) > 0f;
-		var slowed = (player?.Afflictions?.SlowLeft ?? 0f) > 0f;
-		var low = percent <= 30;
-		UiStyle.DrawFrame( this, frame, 1f, low ? UiStyle.Red : null );
-		var states = (venomed ? "  VENOM" : "") + (burning ? "  BURNING" : "") + (slowed ? "  SLOWED" : "");
-		var captionColour = venomed ? new Color( "6dff4a" ) : burning ? new Color( "ff8a3a" ) : low ? UiStyle.Red : UiStyle.TealSoft;
-		UiStyle.DrawTag( this, frame.Position + new Vector2( 14f, 22f ), "HULL" + states, 13, captionColour, HorizontalAlignment.Left, -1f, true );
-		// Low: a blinking breach warning under the caption.
-		if ( low && ((int)(Clock.Now * 2.5f) & 1) == 0 )
-			UiStyle.DrawTag( this, frame.Position + new Vector2( 14f, 36f ), "! BREACH", 11, UiStyle.Red, HorizontalAlignment.Left, -1f, true );
-		var shownHealth = player?.Health is { } hp ? MathF.Ceiling( hp.Current ).ToString( "0" ) : "0";
-		UiStyle.DrawBig( this, frame.Position + new Vector2( 0f, 34f ), shownHealth, 30, low ? UiStyle.Red : UiStyle.Teal, HorizontalAlignment.Right, HullW - 14f );
-		UiStyle.DrawPills( this, new Rect2( frame.Position + new Vector2( 14f, 44f ), new Vector2( HullW - 28f, 9f ) ), 10, percent / 100f,
-			venomed ? new Color( "3fc22a" ) : low ? UiStyle.Red : UiStyle.Teal, venomed ? new Color( "b8ff9a" ) : Colors.White, 1f, lagHealth / 100f, 3f );
 		var perks = PlayerPerks.Of( player?.Controller );
+		var centre = frame.GetCenter();
+		var bob = Theme.Bob ? new Vector2( 0f, MathF.Sin( (float)Clock.Now * 2.1f ) * 3f * Sc ) : Vector2.Zero;
+		DrawSetTransformMatrix( Transform2D.Identity.Translated( -centre ).Rotated( MathX.Rad( Theme.Tilt ) ).Translated( centre + bob ) );
+		switch ( Theme.Health )
+		{
+			case HudTheme.HealthLook.Porthole: DrawPorthole( frame, percent ); break;
+			case HudTheme.HealthLook.Sonar: DrawSonar( frame, percent ); break;
+			case HudTheme.HealthLook.Tank: DrawTank( frame, percent ); break;
+			case HudTheme.HealthLook.Tentacle: DrawTentacle( frame, percent ); break;
+			default: DrawHealthPanel( frame, percent ); break;
+		}
+		if ( Theme.TmBadge ) DrawTm( new Vector2( frame.End.X - 8f * Sc, frame.Position.Y + 6f * Sc ) );
 		if ( perks is { ShieldMax: > 0f } )
 		{
 			// As long as the health bar when the shield matches the starting health; longer shields are capped at it.
-			var width = (HullW - 28f) * MathF.Min( 1f, perks.ShieldMax / 100f );
-			UiStyle.DrawPills( this, new Rect2( frame.Position + new Vector2( 14f, -11f ), new Vector2( width, 6f ) ), 10, perks.Shield / perks.ShieldMax, UiStyle.Blue, UiStyle.BlueTop, 1f, -1f, 3f );
+			var inner = Theme.Health == HudTheme.HealthLook.Panel ? HullW - 40f * Sc : MathF.Max( HullW, 150f * Sc );
+			var width = inner * MathF.Min( 1f, perks.ShieldMax / 100f );
+			var x = Theme.Health == HudTheme.HealthLook.Panel ? 20f * Sc : 0f;
+			UiStyle.DrawPills( this, new Rect2( frame.Position + new Vector2( x, -16f * Sc ), new Vector2( width, 9f * Sc ) ), 10, perks.Shield / perks.ShieldMax, UiStyle.Blue, UiStyle.BlueTop, 1f, -1f, 3f );
 		}
+		DrawSetTransform( Vector2.Zero, 0f, Vector2.One );
 
 		// The pickups held: their icons in a row over the bars, a count on each that stacks; the blast's key when ready.
 		if ( perks is not null )
 		{
 			var x = Edge + 4f;
 			// Above everything else in the corner: the health panel, the points and the "+points" popup over them.
-			var y = Size.Y + PointsBottom - 32f - 24f - 12f - 34f;
+			var y = Size.Y + PointsBottom - S( 44 ) - 30f * Sc - 12f - 40f * Sc;
 			foreach ( var entry in PlayerPerks.Table )
 			{
 				var count = perks.Count( entry.Kind );
 				if ( count == 0 ) continue;
 				var spent = entry.Kind == PerkKind.Blast && !perks.BlastReady;
 				var tint = spent ? new Color( 1f, 1f, 1f, 0.3f ) : Colors.White;
-				var rect = new Rect2( x, y, 34f, 34f );
+				var rect = new Rect2( x, y, 40f * Sc, 40f * Sc );
 				if ( PerkPickup.Icon( entry.Icon ) is { } icon ) DrawTextureRect( icon, rect, false, tint );
 				else DrawRect( rect, entry.Colour with { A = tint.A } );
 				if ( entry.Kind == PerkKind.Blast )
 					UiStyle.DrawTag( this, new Vector2( x - 10f, y - 5f ), spent ? "next wave" : (Controls.IsController ? "RB" : "G") + (perks.BlastsLeft > 1 ? $" x{perks.BlastsLeft}" : ""), 12, UiStyle.TealSoft with { A = tint.A }, HorizontalAlignment.Center, 60f );
 				else if ( count > 1 )
 				{
-					UiStyle.DrawBig( this, new Vector2( x + 15f, y + 38f ), $"x{count}", 13, UiStyle.Gold, HorizontalAlignment.Center, 24f );
+					UiStyle.DrawBig( this, new Vector2( x + 18f * Sc, y + 44f * Sc ), $"x{count}", S( 16 ), UiStyle.Gold, HorizontalAlignment.Center, 28f * Sc );
 				}
-				x += 40f;
+				x += 46f * Sc;
 			}
 		}
 
@@ -311,16 +341,16 @@ public partial class GameHud : Control
 		if ( announceAge < 2.2f )
 		{
 			var alpha = MathX.Clamp( MathF.Min( (float)announceAge / 0.15f, (2.2f - (float)announceAge) / 0.5f ), 0f, 1f );
-			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.68f ), announceText, 26, announceColour, HorizontalAlignment.Center, Size.X, alpha );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.68f ), announceText, S( 34 ), announceColour, HorizontalAlignment.Center, Size.X, alpha );
 		}
 
 		// Danger bar (open world).
 		var d = Director;
 		if ( d is { OpenWorld: true } )
 		{
-			var bar = new Vector2( Size.X * 0.5f - 140, 32 + 40 + 24 + 8 );
+			var bar = new Vector2( Size.X * 0.5f - 160f * Sc, 32 + (60 + 30) * Sc + 8 );
 			var hot = UiStyle.Lime.Lerp( new Color( "ff5a3c" ), d.DangerProgress );
-			UiStyle.DrawPills( this, new Rect2( bar, new Vector2( 280, 8 ) ), 12, d.DangerProgress, hot, hot.Lightened( 0.5f ) );
+			UiStyle.DrawPills( this, new Rect2( bar, new Vector2( 320, 12 ) * Sc ), 12, d.DangerProgress, hot, hot.Lightened( 0.5f ) );
 		}
 
 		// The dive: darkening edges the deeper you go, speed lines rushing out, and the depth bar.
@@ -381,5 +411,204 @@ public partial class GameHud : Control
 				DrawSetTransform( Vector2.Zero, 0f, Vector2.One );
 			}
 		}
+	}
+
+	// ---- The health widgets ----
+
+	bool Venomed => player?.Afflictions?.Venomed ?? false;
+	string States => (Venomed ? "  VENOM" : "") + ((player?.Afflictions?.BurnLeft ?? 0f) > 0f ? "  BURNING" : "") + ((player?.Afflictions?.SlowLeft ?? 0f) > 0f ? "  SLOWED" : "");
+	string ShownHealth => player?.Health is { } hp ? MathF.Ceiling( hp.Current ).ToString( "0" ) : "0";
+	Color CaptionColour( bool low, Color normal ) => Venomed ? new Color( "6dff4a" ) : (player?.Afflictions?.BurnLeft ?? 0f) > 0f ? new Color( "ff8a3a" ) : low ? UiStyle.Red : normal;
+	Color Fill( bool low ) => Venomed ? new Color( "3fc22a" ) : low && Theme.HealthFill != Theme.Red ? UiStyle.Red : Theme.HealthFill;
+	Color FillTop => Venomed ? new Color( "b8ff9a" ) : Theme.HealthTop;
+	static bool Blink => ((int)(Clock.Now * 2.5f) & 1) == 0;
+
+	/// <summary> A warning line under the widget when low (themes with a breach warning). </summary>
+	void DrawBreach( Vector2 at, bool low, HorizontalAlignment align = HorizontalAlignment.Left, float width = -1f )
+	{
+		if ( Theme.Breach is { } words && low && Blink ) UiStyle.DrawTag( this, at, words, S( 12 ), UiStyle.Red, align, width, true );
+	}
+
+	/// <summary> The panel: the caption and any states, the number big on the right, a bar of ten segments. </summary>
+	void DrawHealthPanel( Rect2 frame, float percent )
+	{
+		var low = percent <= 30;
+		UiStyle.DrawFrame( this, frame, 1f, low ? UiStyle.Red : null, Sc );
+		UiStyle.DrawTag( this, frame.Position + new Vector2( 20f, 30f ) * Sc, Theme.HealthWord + States, S( 15 ), CaptionColour( low, Theme.PanelCaption ), onPanel: true );
+		if ( Theme.Breach is not null ) DrawBreach( frame.Position + new Vector2( 20f, 46f ) * Sc, low );
+		UiStyle.DrawBig( this, frame.Position + new Vector2( 0f, 38f * Sc ), ShownHealth, S( 36 ), low ? UiStyle.Red : Theme.PanelNumber, HorizontalAlignment.Right, HullW - 20f * Sc, onPanel: true );
+		UiStyle.DrawPills( this, new Rect2( frame.Position + new Vector2( 20f, 50f ) * Sc, new Vector2( HullW - 40f * Sc, 14f * Sc ) ), 10, percent / 100f, Fill( low ), FillTop, 1f, lagHealth / 100f );
+		if ( finePrint is not null )
+			UiStyle.DrawTag( this, new Vector2( frame.Position.X + 4f, frame.End.Y + 17f * Sc ), finePrint, S( 14 ), Colors.White, HorizontalAlignment.Left, -1f, true, false );
+	}
+
+	/// <summary> Ten arc segments round a centre, from `from` to `to` degrees clockwise from the top. </summary>
+	void DrawRing( Vector2 c, float radius, float width, float fraction, Color fill, Color empty, float from = -140f, float to = 140f, float gapDegrees = 4f )
+	{
+		const int n = 10;
+		var step = (to - from) / n;
+		var lag = lagHealth / 100f;
+		for ( var i = 0; i < n; i++ )
+		{
+			var a0 = MathX.Rad( from + i * step + gapDegrees * 0.5f - 90f );
+			var a1 = MathX.Rad( from + (i + 1) * step - gapDegrees * 0.5f - 90f );
+			var full = MathX.Clamp( fraction * n - i, 0f, 1f );
+			var lagged = MathX.Clamp( lag * n - i, 0f, 1f );
+			DrawArc( c, radius, a0, a1, 12, empty, width, true );
+			if ( lagged > full ) DrawArc( c, radius, a0, a0 + (a1 - a0) * lagged, 12, new Color( 1f, 0.8f, 0.8f, 0.6f ), width, true );
+			if ( full > 0f ) DrawArc( c, radius, a0, a0 + (a1 - a0) * full, 12, fill, width, true );
+		}
+	}
+
+	/// <summary> Brass: a riveted porthole with the health lights round the glass and the number in it. </summary>
+	void DrawPorthole( Rect2 frame, float percent )
+	{
+		var low = percent <= 30;
+		var c = frame.GetCenter();
+		var r = frame.Size.X * 0.5f;
+		DrawCircle( c + new Vector2( 0f, 4f * Sc ), r, UiStyle.Ink with { A = 0.6f } );
+		DrawCircle( c, r, new Color( "5e3e10" ) );
+		DrawCircle( c, r - 2f * Sc, new Color( "c4913a" ) );
+		DrawArc( c, r - 5f * Sc, MathX.Rad( 200f ), MathX.Rad( 290f ), 16, new Color( "fff0c0" ) with { A = 0.7f }, 3f * Sc, true );
+		for ( var i = 0; i < 10; i++ )
+		{
+			var a = MathX.Rad( i * 36f + 18f - 90f );
+			var at = c + new Vector2( MathF.Cos( a ), MathF.Sin( a ) ) * (r * 0.88f);
+			DrawCircle( at, 3.2f * Sc, new Color( "5a3a0c" ) );
+			DrawCircle( at, 2.2f * Sc, new Color( "fff1c4" ) );
+		}
+		var glass = r * 0.78f;
+		DrawCircle( c, glass + 2f * Sc, new Color( "3a2606" ) );
+		DrawCircle( c, glass, new Color( "0b3446" ) );
+		DrawCircle( c - new Vector2( glass * 0.15f, glass * 0.15f ), glass * 0.75f, new Color( "174f63" ) with { A = 0.6f } );
+		if ( low ) DrawArc( c, glass, 0f, MathF.Tau, 48, UiStyle.Red with { A = Blink ? 0.9f : 0.4f }, 2.5f * Sc, true );
+		DrawRing( c, glass * 0.84f, 7f * Sc, percent / 100f, Fill( low ), new Color( 1f, 1f, 1f, 0.12f ) );
+		UiStyle.DrawBig( this, c + new Vector2( -r, 12f * Sc ), ShownHealth, S( 40 ), low ? UiStyle.Red : UiStyle.Gold, HorizontalAlignment.Center, r * 2f );
+		UiStyle.DrawTag( this, c + new Vector2( -r, glass * 0.55f ), Theme.HealthWord + States, S( 12 ), CaptionColour( low, Theme.Readout ), HorizontalAlignment.Center, r * 2f );
+		DrawBreach( new Vector2( frame.Position.X, frame.End.Y + 18f * Sc ), low, HorizontalAlignment.Center, frame.Size.X );
+	}
+
+	/// <summary> Sonar: a round screen with a sweep and the enemies near you as blips, health round the rim. </summary>
+	void DrawSonar( Rect2 frame, float percent )
+	{
+		var low = percent <= 30;
+		var c = frame.GetCenter();
+		var r = frame.Size.X * 0.5f - 8f * Sc;
+		var green = Theme.Accent;
+		DrawCircle( c, r + 5f * Sc, new Color( "0b2a24" ) );
+		DrawCircle( c, r, new Color( "021a16" ) with { A = 0.92f } );
+		for ( var k = 1; k <= 3; k++ ) DrawArc( c, r * k / 4f, 0f, MathF.Tau, 40, green with { A = 0.2f }, 1f, true );
+		DrawLine( c - new Vector2( r, 0f ), c + new Vector2( r, 0f ), green with { A = 0.15f }, 1f );
+		DrawLine( c - new Vector2( 0f, r ), c + new Vector2( 0f, r ), green with { A = 0.15f }, 1f );
+		// The sweep: a fading wedge behind the turning line.
+		var now = (float)Clock.Now;
+		var sweep = now * MathF.Tau / 3f;
+		for ( var i = 0; i < 12; i++ )
+		{
+			var a0 = sweep - i * 0.06f;
+			var a1 = a0 - 0.06f;
+			DrawColoredPolygon( new[] { c, c + Vector2.FromAngle( a0 ) * r, c + Vector2.FromAngle( a1 ) * r }, green with { A = 0.35f * (1f - i / 12f) } );
+		}
+		// Blips: enemies within 30 m, turned to where you look (up is ahead).
+		var controller = player?.Controller;
+		if ( controller is not null )
+		{
+			var me = controller.GlobalPosition;
+			var yaw = MathX.Rad( controller.EyeAngles.Yaw );
+			const float range = 30f;
+			foreach ( var enemy in CreatureRegistry.Alive() )
+			{
+				var d = enemy.GlobalPosition - me;
+				var flat = new Vector2( d.X, d.Z ) / U.PerMetre;
+				if ( flat.Length() > range ) continue;
+				var local = flat.Rotated( yaw );
+				var at = c + local / range * r;
+				var age = Mathf.Wrap( sweep - MathF.Atan2( at.Y - c.Y, at.X - c.X ), 0f, MathF.Tau );
+				UiStyle.Glow( this, at, 2.6f * Sc, new Color( "ff5a6e" ), MathX.Clamp( 1f - age / MathF.Tau, 0.25f, 1f ) );
+			}
+		}
+		DrawRing( c, r + 12f * Sc, 5f * Sc, percent / 100f, Fill( low ), green with { A = 0.15f }, 0f, 360f );
+		UiStyle.DrawBig( this, c + new Vector2( -r, 8f * Sc ), ShownHealth, S( 40 ), low ? UiStyle.Red : Theme.Number, HorizontalAlignment.Center, r * 2f );
+		UiStyle.DrawTag( this, c + new Vector2( -r, 26f * Sc ), Theme.HealthWord + States, S( 12 ), CaptionColour( low, Theme.Readout ), HorizontalAlignment.Center, r * 2f, true );
+	}
+
+	/// <summary> Fish tank: a glass tank with the health as water that sloshes as you move, pebbles on the bottom. </summary>
+	void DrawTank( Rect2 frame, float percent )
+	{
+		var low = percent <= 30;
+		var glass = new StyleBoxFlat { BgColor = new Color( 0.04f, 0.16f, 0.24f, 0.4f ), BorderColor = new Color( 0.86f, 0.98f, 1f, 0.85f ), AntiAliasing = true };
+		glass.SetBorderWidthAll( Math.Max( 2, (int)(4f * Sc) ) );
+		glass.CornerRadiusTopLeft = glass.CornerRadiusTopRight = (int)(6f * Sc);
+		glass.CornerRadiusBottomLeft = glass.CornerRadiusBottomRight = (int)(20f * Sc);
+		DrawStyleBox( glass, frame );
+		var inner = frame.Grow( -4f * Sc );
+		var now = (float)Clock.Now;
+		var speed = player?.Controller?.Velocity.Length() ?? 0f;
+		var slosh = 2.5f * Sc + MathF.Min( speed * 0.4f, 6f ) * Sc;
+		void Water( float level, Color colour )
+		{
+			if ( level <= 0f ) return;
+			var top = inner.End.Y - inner.Size.Y * level;
+			var points = new List<Vector2>();
+			for ( var i = 0; i <= 12; i++ )
+			{
+				var x = inner.Position.X + inner.Size.X * i / 12f;
+				points.Add( new Vector2( x, MathF.Min( inner.End.Y, top + MathF.Sin( now * 4f + i * 0.9f ) * slosh ) ) );
+			}
+			points.Add( new Vector2( inner.End.X, inner.End.Y ) );
+			points.Add( new Vector2( inner.Position.X, inner.End.Y ) );
+			DrawColoredPolygon( points.ToArray(), colour );
+		}
+		Water( lagHealth / 100f, new Color( 1f, 0.8f, 0.75f, 0.45f ) );
+		Water( percent / 100f, Fill( low ) with { A = 0.9f } );
+		for ( var i = 0; i < 5; i++ )
+			DrawCircle( new Vector2( inner.Position.X + inner.Size.X * (0.15f + i * 0.18f), inner.End.Y - 2f * Sc ), (3f + (i % 3)) * Sc, new Color( "d9c89a" ).Darkened( (i % 2) * 0.2f ) );
+		DrawRect( new Rect2( inner.Position + new Vector2( 5f * Sc, 4f * Sc ), new Vector2( 4f * Sc, inner.Size.Y * 0.7f ) ), new Color( 1f, 1f, 1f, 0.18f ) );
+		var mid = frame.GetCenter();
+		UiStyle.DrawBig( this, new Vector2( frame.Position.X - 20f, mid.Y + 8f * Sc ), ShownHealth, S( 40 ), low ? UiStyle.Red : Colors.White, HorizontalAlignment.Center, frame.Size.X + 40f );
+		UiStyle.DrawTag( this, new Vector2( frame.Position.X - 30f, mid.Y + 26f * Sc ), Theme.HealthWord + States, S( 12 ), CaptionColour( low, Theme.AccentSoft ), HorizontalAlignment.Center, frame.Size.X + 60f );
+	}
+
+	/// <summary> Deep Glow: health lights running along a tentacle, the number glowing at its root. </summary>
+	void DrawTentacle( Rect2 frame, float percent )
+	{
+		var low = percent <= 30;
+		var p0 = frame.Position + new Vector2( 0.04f, 0.86f ) * frame.Size;
+		var p1 = frame.Position + new Vector2( 0.3f, 0.9f ) * frame.Size;
+		var p2 = frame.Position + new Vector2( 0.45f, 0.3f ) * frame.Size;
+		var p3 = frame.Position + new Vector2( 0.96f, 0.08f ) * frame.Size;
+		var now = (float)Clock.Now;
+		Vector2 At( float t )
+		{
+			var u = 1f - t;
+			var sway = new Vector2( 0f, MathF.Sin( now * 1.6f + t * 4f ) * 4f * Sc * t );
+			return u * u * u * p0 + 3f * u * u * t * p1 + 3f * u * t * t * p2 + t * t * t * p3 + sway;
+		}
+		var line = new Vector2[24];
+		for ( var i = 0; i < line.Length; i++ ) line[i] = At( i / (line.Length - 1f) );
+		DrawPolyline( line, Theme.Accent with { A = 0.35f }, 3f * Sc, true );
+		var beat = low ? 9f : 4.5f;   // the glow pulses faster at low health, like a heartbeat
+		for ( var i = 0; i < 10; i++ )
+		{
+			var at = At( 0.14f + 0.84f * i / 9f );
+			var full = MathX.Clamp( percent / 10f - i, 0f, 1f );
+			if ( full <= 0f ) { DrawCircle( at, 4f * Sc, new Color( "20333d" ) ); continue; }
+			var pulse = 1f + 0.18f * MathF.Sin( now * beat - i * 0.4f );
+			UiStyle.Glow( this, at, 6f * Sc * pulse, Fill( low ), full );
+		}
+		var root = frame.Position + new Vector2( 6f * Sc, frame.Size.Y - 4f * Sc );
+		UiStyle.DrawBig( this, root, ShownHealth, S( 40 ), low ? UiStyle.Red : Theme.Number );
+		UiStyle.DrawTag( this, root + new Vector2( UiStyle.BigWidth( ShownHealth, S( 40 ) ) + 8f * Sc, 0f ), Theme.HealthWord + States, S( 12 ), CaptionColour( low, Theme.AccentSoft ), HorizontalAlignment.Left, -1f, true );
+	}
+
+	/// <summary> A little ™ sticker, tilted. </summary>
+	void DrawTm( Vector2 at )
+	{
+		var box = new StyleBoxFlat { BgColor = Colors.White, AntiAliasing = true, ShadowColor = new Color( 0f, 0f, 0f, 0.4f ), ShadowSize = 2, ShadowOffset = new Vector2( 1f, 2f ) };
+		box.SetCornerRadiusAll( 5 );
+		var size = new Vector2( 26f, 20f ) * Sc;
+		var r = new Rect2( at - size * 0.5f, size );
+		DrawStyleBox( box, r );
+		DrawString( UiStyle.Display, new Vector2( r.Position.X, r.End.Y - 4f * Sc ), "™", HorizontalAlignment.Center, size.X, S( 16 ), new Color( "e53b3b" ) );
 	}
 }

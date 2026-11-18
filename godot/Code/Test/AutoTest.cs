@@ -71,6 +71,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
 		if ( args.Contains( "--bulbs" ) ) { await BulbTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
+		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
+		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--poseidongallery" ) ) { await PoseidonGalleryTest(); return; }
 		if ( args.Contains( "--hudshots" ) ) { await HudShotsTest(); return; }
@@ -2951,7 +2953,7 @@ public partial class AutoTest : Node
 		await Wait( 0.3f );
 		var eyes = CreaturePart.All.Where( p => p.Creature == crab && p.Name.ToString().Contains( "Eye" ) )
 			.Select( p => p.FindChild( "Eyeball", true, false ) as Node3D ).Where( e => e is not null ).ToList();
-		Check( eyes.Count == 2, $"the crab has {eyes.Count} antenna eyes, not 2" );
+		Check( eyes.Count == 3, $"the crab has {eyes.Count} antenna eyes, not 3 (two in front, one set back in the middle)" );
 		var before = eyes.Select( e => e.GlobalPosition ).ToList();
 		await Wait( 1.2f );
 		var moved = eyes.Select( ( e, i ) => e.GlobalPosition.DistanceTo( before[i] ) ).DefaultIfEmpty( 0f ).Min();

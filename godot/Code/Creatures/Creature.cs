@@ -21,6 +21,12 @@ public abstract partial class Creature : Node3D, ICreature
 	/// How much of a blast or shock (pickups, straight to health) gets through: 1 for most, less for armoured ones.
 	/// </summary>
 	public virtual float AreaDamageScale => 1f;
+	/// <summary> How hard it is to drag (the Gore Vac's pull): its full health stands in for its weight. </summary>
+	public virtual float Weight => health?.MaxHealth ?? 100f;
+	/// <summary> Can the Gore Vac drag it at all (bosses are far too heavy). </summary>
+	public virtual bool Pullable => Weight < 1000f;
+	/// <summary> Dragged by the Gore Vac (or blown away): moved this far (m) on top of its own movement. </summary>
+	public virtual void Pull( Vector3 delta ) => GlobalPosition += delta;
 	public event Action<Creature> Killed;
 
 	protected Health health;
@@ -146,6 +152,16 @@ public abstract partial class PartCreature : Creature
 	}
 
 	protected bool Has( int index ) => parts[index] is { Gone: false };
+
+	/// <summary> Its limbs still on (every part but the root): which, the part node, health left and full health. </summary>
+	public List<(int Index, CreaturePart Go, float Health, float MaxHealth)> Limbs()
+	{
+		var list = new List<(int, CreaturePart, float, float)>();
+		if ( parts is null ) return list;
+		foreach ( var p in parts )
+			if ( p is { Gone: false } && p.Parent >= 0 && p.MaxHealth > 0f && IsInstanceValid( p.Go ) ) list.Add( (p.Index, p.Go, p.Health, p.MaxHealth) );
+		return list;
+	}
 
 	protected Part AddPart( int index, int parent, Node3D parentGo, string name, Vector3 sboxPosition, Basis rotation, float hp )
 	{

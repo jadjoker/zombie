@@ -96,6 +96,55 @@ public partial class AutoTest
 	}
 
 	/// <summary> The four kinds of mermaid side by side, held still and lit: a front view, a closer face view, and a side view. </summary>
+	/// <summary> --oldgallery: three crabs, Bloobers and Squiliens in a row (plus a shark and a mermaid to compare), close and wide. </summary>
+	async Task OldGalleryTest()
+	{
+		DevFlags.FreezeEnemies = true;
+		player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+		DockHouse.Current?.SkipDive();
+		await WaitForNav();
+		await Wait( 0.5f );
+		var (spot, yaw) = OpenLane( 16f );
+		var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+		var right = ahead.Cross( Vector3.Up );
+		var director = WaveDirector.Current;
+		var rows = new[] { WaveDirector.EnemyKind.Crab, WaveDirector.EnemyKind.Bloober, WaveDirector.EnemyKind.Squilien };
+		var spawned = new List<(WaveDirector.EnemyKind Kind, Node3D Node)>();
+		for ( var r = 0; r < rows.Length; r++ )
+			for ( var i = 0; i < 3; i++ )
+			{
+				var at = Nav.Closest( player, spot + ahead * 7f + right * ((r - 1) * 4.5f + (i - 1) * 1.4f) );
+				if ( director.SpawnAt( rows[r], at + Vector3.Up * 0.3f, spot ) is Node3D n ) spawned.Add( (rows[r], n) );
+			}
+		foreach ( var extra in new[] { WaveDirector.EnemyKind.RockyShark, WaveDirector.EnemyKind.Mermaid } )
+		{
+			var at = Nav.Closest( player, spot + ahead * 11f + right * (extra == WaveDirector.EnemyKind.Mermaid ? 3f : -3f) );
+			if ( director.SpawnAt( extra, at + Vector3.Up * 0.5f, spot ) is Node3D n ) spawned.Add( (extra, n) );
+		}
+		await Wait( 1.2f );
+		var middle = spot + ahead * 8f + Vector3.Up * 0.8f;
+		FreeView( middle - ahead * 9f + Vector3.Up * 2.2f, middle );
+		await Wait( 0.4f );
+		await Shot( "old_lineup" );
+		foreach ( var kind in rows )
+		{
+			var group = spawned.Where( s => s.Kind == kind && IsInstanceValid( s.Node ) ).Select( s => s.Node.GlobalPosition ).ToList();
+			if ( group.Count == 0 ) continue;
+			var c = group.Aggregate( Vector3.Zero, ( a, b ) => a + b ) / group.Count + Vector3.Up * 0.4f;
+			FreeView( c - ahead * 3.6f + Vector3.Up * 1.2f, c );
+			await Wait( 0.4f );
+			await Shot( $"old_{kind.ToString().ToLowerInvariant()}" );
+			if ( kind == WaveDirector.EnemyKind.Crab )
+			{
+				FreeView( c + Vector3.Up * 2.6f - ahead * 0.4f, c );
+				await Wait( 0.3f );
+				await Shot( "old_crab_top" );
+			}
+		}
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task MermaidGalleryTest()
 	{
 		DevFlags.FreezeEnemies = true;
@@ -277,6 +326,24 @@ public partial class AutoTest
 		MC61.Spawn( GetTree().CurrentScene, spot + ahead * 14f + Vector3.Up * 2.5f, 2000f );
 		await Wait( 2.5f );
 		await Shot( "hud_boss" );
+		// --allthemes: the same moment in every HUD theme, switched live (the dev menu's HUD theme picker).
+		if ( OS.GetCmdlineUserArgs().Contains( "--allthemes" ) )
+		{
+			for ( var i = 0; i < HudTheme.All.Length; i++ )
+			{
+				var t = HudTheme.All[i];
+				UiStyle.Theme = t;
+				await Wait( 0.4f );
+				var hud = GetTree().Root.FindChildren( "*", "", true, false ).OfType<GameHud>().FirstOrDefault();
+				if ( hud is null || hud.GetChildCount() == 0 ) GD.Print( $"[autotest] FAIL theme {t.Name}: the HUD did not rebuild" );
+				await Shot( $"theme_{i:00}_{new string( t.Name.Where( char.IsLetter ).ToArray() )}" );
+			}
+			UiStyle.Theme = HudTheme.ArcadeDive;
+			await Wait( 0.2f );
+			GD.Print( "[autotest] done" );
+			GetTree().Quit();
+			return;
+		}
 		// The wave banner as the first wave starts.
 		for ( var i = 0; i < 80 && WaveDirector.Current.State != WaveState.Fighting; i++ ) await Wait( 0.1f );
 		await Wait( 0.35f );

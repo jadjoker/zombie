@@ -11,6 +11,8 @@ public partial class PauseMenu : CanvasLayer
 	Label hint;
 	Control window;
 	Button resume;
+	PanelContainer panel;
+	Label title;
 	static readonly Color Accent = new( "5fffe0" );
 
 	public override void _Ready()
@@ -20,6 +22,7 @@ public partial class PauseMenu : CanvasLayer
 		ProcessMode = ProcessModeEnum.Always;   // it has to work while everything else is stopped
 
 		Controls.Changed += OnSchemeChanged;
+		UiStyle.Changed += Restyle;
 		window = new Control { Visible = false, Theme = UiStyle.Menu };
 		window.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		AddChild( window );
@@ -30,16 +33,13 @@ public partial class PauseMenu : CanvasLayer
 		var center = new CenterContainer();
 		center.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		window.AddChild( center );
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2( 560, 0 ) };
-		var frame = UiStyle.Frame( 1.6f, UiStyle.PanelDeep, 22 );
-		frame.BorderColor = UiStyle.Teal with { A = 0.75f };
-		panel.AddThemeStyleboxOverride( "panel", frame );
+		panel = new PanelContainer { CustomMinimumSize = new Vector2( 560, 0 ) };
 		center.AddChild( panel );
 		var column = new VBoxContainer();
 		column.AddThemeConstantOverride( "separation", 14 );
 		panel.AddChild( column );
 
-		var title = UiStyle.Big( column, 40, UiStyle.Teal );
+		title = UiStyle.Big( column, 52, UiStyle.Gold );
 		title.Text = "PAUSED";
 
 		resume = MenuButton( "Resume", () => SetOpen( false ) );
@@ -74,6 +74,18 @@ public partial class PauseMenu : CanvasLayer
 		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
 		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
+		Restyle();
+	}
+
+	/// <summary> The HUD theme changed: the menu's buttons, panel and title follow it. </summary>
+	void Restyle()
+	{
+		window.Theme = UiStyle.Menu;
+		var frame = UiStyle.Frame( 1.6f, UiStyle.PanelDeep, 22 );
+		if ( UiStyle.Theme.Frame is HudTheme.FrameLook.Suit or HudTheme.FrameLook.Brackets or HudTheme.FrameLook.None ) frame.BorderColor = UiStyle.Teal with { A = 0.75f };
+		if ( UiStyle.Theme.Frame == HudTheme.FrameLook.None ) frame.SetBorderWidthAll( 2 );
+		panel.AddThemeStyleboxOverride( "panel", frame );
+		UiStyle.StyleBig( title, 52, UiStyle.Theme.LightPanel ? UiStyle.Theme.PanelNumber : UiStyle.Theme.Wave );
 	}
 
 	/// <summary> With a pad the cursor is hidden (the buttons are picked with the stick and A); with a mouse it shows. </summary>
@@ -90,6 +102,7 @@ public partial class PauseMenu : CanvasLayer
 	public override void _ExitTree()
 	{
 		Controls.Changed -= OnSchemeChanged;
+		UiStyle.Changed -= Restyle;
 		// Never leave the game stopped behind us (a level change while paused).
 		if ( IsOpen ) { IsOpen = false; GetTree().Paused = false; }
 	}

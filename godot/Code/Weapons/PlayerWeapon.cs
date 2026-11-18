@@ -144,12 +144,13 @@ public partial class PlayerWeapon : Node
 		controller = GetParent<PlayerController>();
 		movement = controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" );
 		juice = controller.GetNodeOrNull<CameraJuice>( "CameraJuice" );
-		Ammo = MagazineSize;
+		Ammo = Vacuum ? StartGunk : MagazineSize;
 		Reserve = StartingReserve;
 	}
 
 	public void RefillAmmo()
 	{
+		if ( Vacuum ) return;   // the Gore Vac fills only with what it sucks up
 		Ammo = MagazineSize;
 		Reserve = Math.Max( Reserve, StartingReserve );
 		IsReloading = false;
@@ -166,6 +167,11 @@ public partial class PlayerWeapon : Node
 	{
 		if ( ViewModel is not null ) ViewModel.Visible = false;
 		CancelReload();
+		Sucking = false;
+		Blowing = false;
+		charging = false;
+		suckSound?.Stop();
+		blowSound?.Stop();
 		if ( movement is not null )
 		{
 			controller.WalkSpeed = movement.MoveSpeed;
@@ -210,6 +216,14 @@ public partial class PlayerWeapon : Node
 
 		if ( IsReloading && ShellReload ) UpdateShellReload();
 		else if ( IsReloading && reloadFinished <= 0f ) FinishReload();
+
+		if ( Vacuum )
+		{
+			// The Gore Vac: no aiming or reloading; fire sucks and aim spits (GoreVac.cs).
+			var free = !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree);
+			UpdateVacuum( dt, free );
+			return;
+		}
 
 		UpdateAiming( dt );
 

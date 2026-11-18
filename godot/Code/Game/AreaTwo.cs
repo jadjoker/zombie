@@ -67,6 +67,7 @@ public static class AreaTwo
 			[BuyStationKind.Health] = new( -2.2f, 0f, -25f ),
 			[BuyStationKind.Damage] = new( 2.2f, 0f, -25f ),
 			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
+			[BuyStationKind.GoreVac] = new( -9.6f, 0f, -29.6f ),
 		}, ArrivalFlat, p => SeaTerrain.HeightAt( p ) );
 		Nav.Bake( level );
 		SeaMine.Lay( level );
@@ -116,8 +117,19 @@ public static class AreaTwo
 			BuyStation.CreateTridentStation( level, at, Facing( at ), TridentCost );
 			used.Add( at );
 		}
+		if ( spots.TryGetValue( BuyStationKind.GoreVac, out var vacSpot ) && !level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Any( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind == BuyStationKind.GoreVac ) )
+		{
+			var at = Ground( vacSpot );
+			BuyStation.CreateGoreVacStation( level, at, Facing( at ) );
+			used.Add( at );
+		}
+		var cleared = ClearAround( level, used );
+		GD.Print( $"[area2] {used.Count} buy stations by the arrival pad, {cleared} props cleared round them" );
+	}
 
-		// Clear what grows or lies where they now stand (plants, their solid shapes, rocks and the sea props).
+	/// <summary> Clears what grows or lies within 2.8 m of each spot (plants, their solid shapes, rocks and the sea props). </summary>
+	public static int ClearAround( Node3D level, List<Vector3> used )
+	{
 		var cleared = 0;
 		foreach ( var n in level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>().ToList() )
 		{
@@ -128,7 +140,7 @@ public static class AreaTwo
 			n.Free();
 			cleared++;
 		}
-		GD.Print( $"[area2] {used.Count} buy stations by the arrival pad, {cleared} props cleared round them" );
+		return cleared;
 	}
 
 	/// <summary> On the wreck site's plain (with a margin). </summary>

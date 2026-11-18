@@ -169,6 +169,36 @@ public partial class SeaMine : Node3D
 		}
 	}
 
+	/// <summary> Where the ball is (the chain sways it about). </summary>
+	public Vector3 BallPosition => ball is not null && IsInstanceValid( ball ) ? ball.GlobalPosition : GlobalPosition;
+	public bool Gone => gone;
+
+	/// <summary> A mine laid at a spot (tests; the areas use Lay). </summary>
+	public static SeaMine PlaceAt( Node parent, Vector3 floor, float height = 1.8f )
+	{
+		var mine = new SeaMine { Name = "Sea Mine", anchor = floor, height = height, phases = new Vector3( 1f, 2f, 3f ), rates = new Vector3( 0.3f, 0.4f, 0.35f ), sway = new Vector3( 0.3f, 0.2f, 0.3f ) };
+		parent.AddChild( mine );
+		mine.GlobalPosition = floor;
+		return mine;
+	}
+
+	/// <summary>
+	/// The Gore Vac tore it off its chain: the ball comes loose (disarmed, it no longer goes off when walked into, and
+	/// shots no longer ring off it), the chain and anchor are gone. Returns the ball, now a node of its own in the scene.
+	/// </summary>
+	public Node3D TearLoose()
+	{
+		if ( gone || ball is null ) return null;
+		gone = true;
+		foreach ( var shell in ball.FindChildren( "*", "", true, false ).OfType<SeaMineShell>() ) shell.QueueFree();
+		var loose = ball;
+		loose.Reparent( GetTree().CurrentScene, true );
+		ball = null;
+		Sfx.Play( "mine_tink", loose.GlobalPosition, 1f, 0.7f );
+		QueueFree();
+		return loose;
+	}
+
 	/// <summary> A shot rang off the ball: sparks and a tink. </summary>
 	public static void Tink( Vector3 at, Vector3 normal )
 	{

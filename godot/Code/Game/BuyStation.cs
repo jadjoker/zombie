@@ -1,6 +1,6 @@
 using Godot;
 
-public enum BuyStationKind { Ammo, Health, Damage, Trident }
+public enum BuyStationKind { Ammo, Health, Damage, Trident, GoreVac }
 
 /// <summary>
 /// Port of s&box BuyStation: something in the world you press Use on to spend points. Lives under a level object
@@ -27,6 +27,7 @@ public partial class BuyStation : Node
 		BuyStationKind.Health => AtLimit ? "Full heal (max health is at its limit)" : $"+{HealthPerPurchase:0} max health, full heal",
 		BuyStationKind.Damage => $"Damage level {Purchases + 1}",
 		BuyStationKind.Trident => "Trident shooter: weapon slot 3",
+		BuyStationKind.GoreVac => "Gore Vac: hold fire to suck up gore, aim to spit it back (slot 4)",
 		_ => "",
 	};
 
@@ -117,6 +118,62 @@ public partial class BuyStation : Node
 		return station;
 	}
 
+	/// <summary> The Gore Vac station's colour (its tank's goo green). </summary>
+	public static readonly Color GoreVacTint = new( 0.55f, 1f, 0.25f );
+	public const int GoreVacCost = 1250;
+
+	/// <summary>
+	/// The Gore Vac's station, built like the trident's, with a little Gore Vac turning in the hologram's place.
+	/// `facing` is the way its front looks.
+	/// </summary>
+	public static Node3D CreateGoreVacStation( Node parent, Vector3 at, Vector3 facing, int cost = GoreVacCost )
+	{
+		var station = new Node3D { Name = "Gore Vac Station" };
+		parent.AddChild( station );
+		station.GlobalTransform = new Transform3D( Shapes.LookAt( facing.Flat().SafeNormal() is var f && f != Vector3.Zero ? f : Vector3.Forward ), at );
+		var body = new Node3D { Name = "Body" };
+		station.AddChild( body );
+		body.Transform = new Transform3D( Basis.FromScale( new Vector3( 1.2f, 1.2f, 0.8f ) ), new Vector3( 0f, 0.762f, 0f ) );
+		var cube = Vector3.One * 50f * U.In;
+		body.AddChild( new MeshInstance3D { Mesh = new BoxMesh { Size = cube }, MaterialOverride = new StandardMaterial3D { AlbedoColor = GoreVacTint.Darkened( 0.3f ) } } );
+		var solid = new StaticBody3D { CollisionLayer = Layers.World, CollisionMask = 0 };
+		body.AddChild( solid );
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = cube } } );
+		body.AddChild( new BuyStation { Name = "BuyStation", Kind = BuyStationKind.GoreVac, Title = "Gore Vac", Cost = cost, MaxPurchases = 1 } );
+		body.AddToGroup( "buy_station" );
+		Dress( body, BuyStationKind.GoreVac, GoreVacTint );
+		var holo = new Node3D { Name = "Gore Vac Hologram" };
+		station.AddChild( holo );
+		holo.Position = new Vector3( 0f, 1.95f, 0f );
+		GoreVacModel.BuildIcon( holo );
+		holo.AddChild( new Spin { Name = "Spin" } );
+		station.AddChild( new Label3D
+		{
+			Name = "Label", Text = "GORE VAC", Modulate = GoreVacTint, FontSize = 32, PixelSize = 0.12f * U.In, Font = UiStyle.Display,
+			Billboard = BaseMaterial3D.BillboardModeEnum.Enabled, OutlineSize = 8, OutlineModulate = UiStyle.Ink,
+			Position = new Vector3( 0f, 2.6f, 0f ),
+		} );
+		return station;
+	}
+
+	/// <summary>
+	/// The Gore Vac's station in the first area: in the row with the level's three, one more step past the damage
+	/// station (it follows the others to each new area: AreaTwo.PlaceStations). Plants and props in the way are cleared.
+	/// </summary>
+	public static void AddGoreVacStation( Node3D level, Func<Vector3, float> ground )
+	{
+		var stations = level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>()
+			.Select( b => (Station: b.GetNodeOrNull<BuyStation>( "BuyStation" ), Node: b.GetParent() as Node3D) ).Where( s => s.Station is not null && s.Node is not null ).ToList();
+		var damage = stations.FirstOrDefault( s => s.Station.Kind == BuyStationKind.Damage ).Node;
+		var health = stations.FirstOrDefault( s => s.Station.Kind == BuyStationKind.Health ).Node;
+		if ( damage is null || stations.Any( s => s.Station.Kind == BuyStationKind.GoreVac ) ) return;
+		var step = health is not null ? damage.GlobalPosition - health.GlobalPosition : damage.GlobalBasis.X * 3f;
+		var at = damage.GlobalPosition + step.Flat();
+		at.Y = ground( at );
+		CreateGoreVacStation( level, at, -damage.GlobalBasis.Z );
+		AreaTwo.ClearAround( level, new List<Vector3> { at } );
+	}
+
 	/// <summary> Turns and bobs the hologram icon it sits under. </summary>
 	partial class Spin : Node
 	{
@@ -148,7 +205,7 @@ public partial class BuyStation : Node
 		Apply( buyer );
 		Sfx.Play( "buy", buyer.Controller.GlobalPosition );
 		if ( Kind == BuyStationKind.Health ) Sfx.Play2D( "heal", 0.6f );
-		else if ( Kind == BuyStationKind.Ammo || Kind == BuyStationKind.Trident ) Sfx.Play2D( "mag_in", 0.7f );
+		else if ( Kind is BuyStationKind.Ammo or BuyStationKind.Trident or BuyStationKind.GoreVac ) Sfx.Play2D( "mag_in", 0.7f );
 		Purchases++;
 		return true;
 	}
@@ -156,8 +213,9 @@ public partial class BuyStation : Node
 	/// <summary> Stops you paying for something that would do nothing, like ammo when you're full. </summary>
 	bool CanUse( PlayerSurvivor buyer ) => Kind switch
 	{
-		BuyStationKind.Ammo => Weapons( buyer ).Any( w => w.Ammo < w.MagazineSize || w.Reserve < w.StartingReserve ),
+		BuyStationKind.Ammo => Weapons( buyer ).Any( w => !w.Vacuum && (w.Ammo < w.MagazineSize || w.Reserve < w.StartingReserve) ),
 		BuyStationKind.Trident => Inventory( buyer ) is { } inventory && !inventory.HasSlot( 3 ),
+		BuyStationKind.GoreVac => Inventory( buyer ) is { } vacs && !vacs.HasSlot( 4 ),
 		_ => true,
 	};
 
@@ -180,6 +238,9 @@ public partial class BuyStation : Node
 				break;
 			case BuyStationKind.Trident:
 				Inventory( buyer )?.Add( PlayerWeapon.Trident() );
+				break;
+			case BuyStationKind.GoreVac:
+				Inventory( buyer )?.Add( PlayerWeapon.GoreVac() );
 				break;
 		}
 	}

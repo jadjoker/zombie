@@ -33,6 +33,21 @@ public static class Shapes
 
 	static readonly Dictionary<string, (Texture2D Color, Texture2D Normal, Texture2D Rough)> skins = new();
 
+	/// <summary>
+	/// A wet sheen on a skinned material: a glossy clear coat and a soft rim light, so a textured hide reads bright and
+	/// lively like the newer creatures (mermaids, Rocky Shark) instead of flat and dull.
+	/// </summary>
+	public static StandardMaterial3D Sheen( StandardMaterial3D m, float clearcoat = 0.5f, float rim = 0.35f )
+	{
+		m.ClearcoatEnabled = true;
+		m.Clearcoat = clearcoat;
+		m.ClearcoatRoughness = 0.2f;
+		m.RimEnabled = true;
+		m.Rim = rim;
+		m.RimTint = 0.6f;
+		return m;
+	}
+
 	/// <summary> A new material for one piece: plain, or one of the creature skins, tinted. </summary>
 	public static StandardMaterial3D Material( Color tint, string skin = null, bool glow = false )
 	{

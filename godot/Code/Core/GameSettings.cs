@@ -34,11 +34,15 @@ public static class GameSettings
 	public const float MinGunHeight = -16f, MaxGunHeight = 4f;
 	/// <summary> Which rifle design is in hand (RifleModels). </summary>
 	public static string Rifle = RifleArgument() ?? "Blaster";
+	/// <summary> The HUD's look (HudTheme name), picked in the dev menu. `--hudtheme <name or letter>` overrides it. </summary>
+	public static string HudTheme = Argument( "--hudtheme" ) ?? global::HudTheme.ArcadeDive.Name;
 
-	static string RifleArgument()
+	static string RifleArgument() => Argument( "--rifle" );
+
+	static string Argument( string flag )
 	{
 		var args = OS.GetCmdlineUserArgs();
-		var i = Array.IndexOf( args, "--rifle" );
+		var i = Array.IndexOf( args, flag );
 		return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
 	}
 
@@ -63,6 +67,8 @@ public static class GameSettings
 		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
 		GunHeight = MathX.Clamp( (float)file.GetValue( "video", "gun_height", 0f ), MinGunHeight, MaxGunHeight );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
+		HudTheme = Argument( "--hudtheme" ) ?? (string)file.GetValue( "game", "hud_theme", HudTheme );
+		UiStyle.Theme = global::HudTheme.Find( HudTheme );
 	}
 
 	public static void Save()
@@ -80,6 +86,7 @@ public static class GameSettings
 		file.SetValue( "video", "gun_distance", GunDistance );
 		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );
+		file.SetValue( "game", "hud_theme", HudTheme );
 		file.Save( Path );
 	}
 

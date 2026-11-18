@@ -29,12 +29,16 @@ public partial class JunkCrab : PartCreature
 	public static readonly List<JunkCrab> All = new();
 
 	const int Body = 0, Barrel = 1, EyeL = 2, EyeR = 3, ArmL = 4, PincerL = 5, ArmR = 6, PincerR = 7, FirstLeg = 8, LegCount = 6;
+	/// <summary> The third eye: on its own stalk between the two, set back, so the three make a triangle. </summary>
+	const int EyeM = FirstLeg + LegCount;
+	static bool IsEye( int index ) => index is EyeL or EyeR or EyeM;
 
-	public JunkCrab() => parts = new Part[FirstLeg + LegCount];
+	public JunkCrab() => parts = new Part[EyeM + 1];
 	Node3D jawL, jawR;
 	NavAgent agent;
 
-	Color shellColor, bellyColor, gooColor;
+	Color shellColor, bellyColor, clawColor, gooColor;
+	static readonly float[] CrabHues = { 0.0f, 0.05f, 0.93f, 0.78f, 0.58f };
 	TimeSince timeSinceAttack = 999f;
 	TimeSince timeSinceRepath = 999f;
 	TimeSince timeSinceSnap = 999f;
@@ -78,8 +82,12 @@ public partial class JunkCrab : PartCreature
 		agent = new NavAgent( this ) { Acceleration = 600f * U.In };
 		if ( Hue < 0f ) Hue = Rng.Float();
 		var hue = Hue;
-		shellColor = Shapes.Hsv( MathX.LerpUnclamped( -0.08f, 0.1f, hue ), 0.9f, 0.42f );
-		bellyColor = Shapes.Hsv( MathX.LerpUnclamped( -0.05f, 0.12f, hue ), 0.45f, 0.6f );
+		// Bright reef colours (it was a near black brown and read as a dark smudge): coral red, tangerine, hot pink,
+		// violet or electric blue, with a pale belly and claws a shade lighter than the shell.
+		var shellHue = CrabHues[(int)(hue * CrabHues.Length) % CrabHues.Length] + (hue * CrabHues.Length % 1f - 0.5f) * 0.03f;
+		shellColor = Shapes.Hsv( shellHue, 0.78f, 0.86f );
+		bellyColor = Shapes.Hsv( shellHue + 0.06f, 0.32f, 0.97f );
+		clawColor = Shapes.Hsv( shellHue + 0.03f, 0.68f, 0.97f );
 		gooColor = Shapes.Hsv( 0.3f + hue * 0.1f, 1f, 1f );
 		var down = Trace.Ray( this, GlobalPosition + Vector3.Up * 40f * U.In, GlobalPosition + Vector3.Down * 4000f * U.In, Layers.World );
 		if ( down.Hit ) GlobalPosition = down.HitPosition;
@@ -133,6 +141,14 @@ public partial class JunkCrab : PartCreature
 			Trigger( eye, new Vector3( 0, 0, 2 ), new Vector3( 1, side * 2.5f, 12 ), 3f );
 			Trigger( eye, new Vector3( 1, side * 2.5f, 12 ), new Vector3( 12f, side * 7.5f, 15f ), 4.5f );
 		}
+		{
+			// The middle eye: behind the pair, on the centre line, its stalk standing straight up.
+			var eye = AddPart( EyeM, Body, body.Go, "Eye M", new Vector3( 4f, 0f, 7f ), new Angles( -4, 0, 0 ).ToBasis(), EyeHealth );
+			var elbow = BuildAntenna( eye, 0f );
+			BuildEye( eye, 0f, elbow, ElbowToTip( 0f ) );
+			Trigger( eye, new Vector3( 0, 0, 2 ), new Vector3( 1, 0, 12 ), 3f );
+			Trigger( eye, new Vector3( 1, 0, 12 ), new Vector3( 7f, 0, 17f ), 4.5f );
+		}
 
 		foreach ( var (arm, pincer, side) in new[] { (ArmL, PincerL, 1f), (ArmR, PincerR, -1f) } )
 		{
@@ -141,11 +157,11 @@ public partial class JunkCrab : PartCreature
 			Trigger( a, new Vector3( 1, 0, 0 ), new Vector3( 13, 0, 0 ), 4.5f );
 
 			var p = AddPart( pincer, arm, a.Go, side > 0 ? "Pincer L" : "Pincer R", new Vector3( 14f, 0, 0 ), new Angles( 0, -side * 40f, 0 ).ToBasis(), LimbHealth );
-			Sculpt( p, "pincer", shellColor );
+			Sculpt( p, "pincer", clawColor );
 			var jaw = new Node3D { Name = "Jaw" };
 			p.Go.AddChild( jaw );
 			jaw.Position = U.Sbox( 9.5f, 0, 1.6f );
-			Sculpt( p, "jaw", shellColor.Lerp( Colors.Black, 0.15f ), jaw );
+			Sculpt( p, "jaw", clawColor.Lerp( Colors.Black, 0.12f ), jaw );
 			if ( side > 0 ) jawL = jaw; else jawR = jaw;
 			Trigger( p, new Vector3( 1, 0, 0 ), new Vector3( 15, 0, 0 ), 6f );
 		}
@@ -175,16 +191,16 @@ public partial class JunkCrab : PartCreature
 		(parent ?? part.Go).AddChild( node );
 		foreach ( var mesh in node.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
-			mesh.MaterialOverride = Shapes.Material( color, "chitin" );
+			mesh.MaterialOverride = Shapes.Sheen( Shapes.Material( color, "chitin" ) );
 			part.Renderers.Add( (mesh, color) );
 		}
 	}
 
 	/// <summary> The alien green of the eye bulbs and their lids, and the big dark almond eye. </summary>
-	static readonly Color AlienSkin = new( 0.24f, 0.46f, 0.42f ), AlienEye = new( 0.01f, 0.01f, 0.015f ), EyeRim = new( 0.3f, 1f, 0.35f );
+	static readonly Color AlienSkin = new( 0.36f, 0.78f, 0.62f ), AlienEye = new( 0.01f, 0.01f, 0.015f ), EyeRim = new( 0.3f, 1f, 0.35f );
 
 	/// <summary> Where the eye sits from the antenna's elbow (s&box inches): forward, out and a little up. </summary>
-	static Vector3 ElbowToTip( float side ) => new( 11f, side * 5f, 3f );
+	static Vector3 ElbowToTip( float side ) => side == 0f ? new( 6f, 0f, 5f ) : new( 11f, side * 5f, 3f );   // the middle eye leans forward less
 
 	/// <summary>
 	/// An ant's elbowed antenna on the eye part: a stiff shaft up from the shell, then a beaded whip bent forward from
@@ -192,8 +208,8 @@ public partial class JunkCrab : PartCreature
 	/// </summary>
 	Node3D BuildAntenna( Part part, float side )
 	{
-		var stalk = shellColor.Lerp( Colors.Black, 0.35f );
-		var mat = Shapes.Material( stalk, "chitin" );
+		var stalk = shellColor.Lerp( Colors.Black, 0.2f );
+		var mat = Shapes.Sheen( Shapes.Material( stalk, "chitin" ) );
 		var top = U.Sbox( 1f, side * 2.5f, 12f );
 		part.Renderers.Add( (global::Sculpt.Limb( part.Go, Vector3.Zero, top, 0.95f * U.In, 0.6f * U.In, mat, "Shaft" ), stalk) );
 		part.Renderers.Add( (Shapes.Part( part.Go, "Socket", Vector3.Zero, Shapes.Ellipsoid( 1.8f ), stalk, skin: "chitin" ), stalk) );
@@ -338,7 +354,7 @@ public partial class JunkCrab : PartCreature
 	int LegsLeft( float side ) => Enumerable.Range( 0, LegCount ).Count( i => (i < 3 ? 1f : -1f) == side && Has( FirstLeg + i ) );
 	int LegsLost => LegCount - LegsLeft( 1f ) - LegsLeft( -1f );
 	bool Dragging => LegsLeft( 1f ) <= 1 || LegsLeft( -1f ) <= 1;
-	bool Blind => !Has( EyeL ) && !Has( EyeR );
+	bool Blind => !Has( EyeL ) && !Has( EyeR ) && !Has( EyeM );
 	int ClawsLeft => (Has( PincerL ) ? 1 : 0) + (Has( PincerR ) ? 1 : 0);
 
 	public override void _Process( double delta )
@@ -414,7 +430,7 @@ public partial class JunkCrab : PartCreature
 			var go = parts[e.Index].Go;
 			var phase = e.Side * 1.9f + Hue * 6f;
 			var pitch = MathF.Sin( now * 0.8f + phase ) * 16f + MathF.Sin( now * 1.9f + phase * 2f ) * 4f;
-			var yaw = MathF.Sin( now * 0.55f + phase * 1.3f ) * 24f + MathF.Sin( now * 1.3f + phase ) * 5f;
+			var yaw = (MathF.Sin( now * 0.55f + phase * 1.3f ) * 24f + MathF.Sin( now * 1.3f + phase ) * 5f) * (e.Side == 0f ? 0.3f : 1f);   // the middle one stays between the pair
 			go.Basis = parts[e.Index].Rest * new Angles( pitch, yaw, 0f ).ToBasis();
 			// The whip's spring: it chases a bend that leads the shaft's own wave, and each step of the crab kicks it.
 			var target = new Vector2( MathF.Sin( now * 0.8f + phase - 0.9f ) * 10f, MathF.Sin( now * 0.55f + phase * 1.3f - 0.9f ) * 12f );
@@ -486,18 +502,21 @@ public partial class JunkCrab : PartCreature
 
 	// ---- Getting shot ----
 
+	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
+	public override void Pull( Vector3 delta ) => agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
+
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
 		NoteShot( direction, position, origin );
 		var part = parts[index];
-		var crit = index is EyeL or EyeR;
+		var crit = IsEye( index );
 		var multiplier = index switch
 		{
 			Body => WearsBarrel && !Has( Barrel ) ? SoftMultiplier : 1f,
 			Barrel => 0.25f,
-			EyeL or EyeR => EyeMultiplier,
+			EyeL or EyeR or EyeM => EyeMultiplier,
 			_ => LimbMultiplier,
 		};
 
@@ -564,9 +583,9 @@ public partial class JunkCrab : PartCreature
 		{
 			var parent = part.Parent >= 0 ? parts[part.Parent] : null;
 			var outward = parent is not null ? (at - parent.Go.GlobalPosition).SafeNormal() : Vector3.Up;
-			var radius = (index is EyeL or EyeR ? 1.8f : index is ArmL or ArmR or PincerL or PincerR ? 4f : 2.8f) * Size;
+			var radius = (IsEye( index ) ? 1.8f : index is ArmL or ArmR or PincerL or PincerR ? 4f : 2.8f) * Size;
 			if ( parent is not null && !parent.Gone ) CreatureGore.AddStump( parent.Go, at, outward, radius, shellColor, gooColor, 4f, Gibs );
-			if ( index is not EyeL and not EyeR ) CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f, Gibs );
+			if ( !IsEye( index ) ) CreatureGore.AddStump( part.Go, at, -outward, radius, shellColor, gooColor, 1.5f, Gibs );
 		}
 		if ( index == Barrel )
 		{
@@ -575,7 +594,7 @@ public partial class JunkCrab : PartCreature
 			Detach( part, direction * 120f + Vector3.Up * 260f, spin: 18f );
 			return;
 		}
-		if ( index is EyeL or EyeR )
+		if ( IsEye( index ) )
 		{
 			gore.GooBurst( at, direction, Colors.White, 8, 200f, 0.8f );
 			part.Go.QueueFree();
@@ -613,7 +632,7 @@ public partial class JunkCrab : PartCreature
 		gore.GooSpray( at, direction, 6, gooColor, 240f, 0.7f, 1.5f );
 		GibKit.Burst( Gibs, at, direction, 0.17f * Size, 6 );
 
-		foreach ( var index in new[] { Barrel, ArmL, ArmR, EyeL, EyeR }.Concat( Enumerable.Range( FirstLeg, LegCount ) ) )
+		foreach ( var index in new[] { Barrel, ArmL, ArmR, EyeL, EyeR, EyeM }.Concat( Enumerable.Range( FirstLeg, LegCount ) ) )
 		{
 			if ( !Has( index ) ) continue;
 			var part = parts[index];

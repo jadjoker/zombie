@@ -97,6 +97,20 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   for a charged next trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
+- The Gore Vac (slot 4, `Weapons/GoreVac.cs` as a `PlayerWeapon` partial with `Vacuum` set, model `GoreVacModel.cs` on
+  the Blaster's rig like the trident) is all pushes and pulls. Fire sucks: gibs (`GoreSystem.Gibs`) and goo puddles
+  (`GoreSystem.Slurp`) go into the tank (Ammo, 0 to 100; ammo stations do not fill it); enemies are dragged by
+  `Creature.Pull` at `PullStrength / Weight` (Weight is max health; crab and spider override Pull to move their nav
+  agent; bosses are not `Pullable`) and held `HoldOff` from the nozzle; a light weak one there is sucked apart; limbs at
+  half health or less are torn off (`PartCreature.Limbs`); starfish, shells and urchins (`SeaDressing.LooseGroup`) are
+  torn up as dry gibs; a sea mine is torn off its chain (`SeaMine.TearLoose`) and loaded. Aim spits a `GoreBall`
+  (manual physics: it bounces twice, sticks to an enemy and bursts after `StickFuse`; the big one splits into four on
+  the ground; a loaded mine goes first and blows up). Reload blows (pushes everything away, thrusts the player back,
+  hover when aimed down). Spits kick the player back (`LastKick`; full tank at the floor is a rocket jump); a full tank
+  slows you by `FullTankSlow` and sways the view. Lumps a ball throws are `Gib.Recycled` (worth 1 gunk), so there is no
+  free ammo loop. Its station (`BuyStation.CreateGoreVacStation`, 1250) joins the first area's row (`AddGoreVacStation`)
+  and follows to areas 2 and 3 via `PlaceStations`. Dev menu: Cheats, Give Gore Vac. Test: `--gorevac` (spawning
+  paused; with `--shots` for pictures).
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor
@@ -203,17 +217,24 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   warmed a frame at a time for the shark, MC-51 and Kraken) and copies them; random creature colours are snapped to a
   few shades so recipes are shared. Tests: `--gibs` (each creature blown apart, shots need a window), `--gibgallery`
   (each recipe's pieces up close, and the burst build time).
-- UI look "Robot Visor" (`Core/UiStyle.cs`): the HUD is read off the robot's faceplate. Cyan readouts with a slight
-  red/blue colour split, faint see-through panels marked by corner brackets (`DrawBrackets`), slanted tick bars
-  (`DrawPills`), small sizes on purpose (the user asked to keep graphics small). `Game/VisorOverlay.cs` sits under the
-  HUD: a very faint scanline (keep it minimal, user request), a soft dark rim, and a glitch on hits of 12+ damage
-  (`VisorOverlay.Glitch`, `Jitter` shifts GameHud, HudOverlays and the ammo panel sideways).
-  Fonts in `assets/fonts` (SIL OFL, licences beside them): Chakra Petch Bold (`UiStyle.Number`: HUD numbers, banners,
-  damage), Lilita One (`UiStyle.Display`: world labels only), Chakra Petch (`Label`/`LabelBold`/`Caption`; the project
-  default via `gui/theme/custom_font`), Share Tech Mono (`Mono`: readouts). Use `UiStyle.Big`/`Tag`/`Text` for labels,
-  `DrawBig`/`DrawTag`/`DrawPills`/`DrawFrame` in `_Draw`, `UiStyle.Frame` for panels and `UiStyle.Menu` as a menu's
-  theme; colours are `UiStyle.Teal`, `Gold`, `Ink` and friends, not inline hex. Test: `--hudshots` (firing, a boss
-  bar, the pause menu; needs a window).
+- UI themes (`Core/HudTheme.cs`, drawn by `Core/UiStyle.cs`): twelve HUD looks, picked in the dev menu (Look tab,
+  "HUD theme") and saved in settings.cfg (`game/hud_theme`); `--hudtheme <name or letter>` forces one. Arcade Dive is
+  the default (user's choice: chunky outlined Lilita numbers, suit frames, glossy pills). The others are the mockup
+  letters A to K: Brass Diving Gear (porthole health), Robot Visor (small sizes and a minimal scanline on purpose,
+  user requests), Bubble Pop, Ink Comic, Copyright Stickers (fine print jokes), Sonar (health in a sonar screen with
+  real enemy blips), Fish Tank (sloshing tank), Deep Glow (tentacle lights), Dive Computer (LCD), Arcade Dive Juiced,
+  Diving-Bell Robot (brass plus the visor). A theme is data: palette, number font, BigLook, FrameLook, BarLook,
+  CrossLook, HealthLook, Scale, Tilt, visor Scan/Rim/Glitch. `UiStyle.Theme` setter fires `UiStyle.Changed`;
+  GameHud, WeaponHud and HudOverlays rebuild their labels on it, PauseMenu restyles. Sizes in HUD code are Arcade
+  Dive's, wrapped in `UiStyle.S()` so each theme scales them. `Game/VisorOverlay.cs` draws the scanline, rim and hit
+  glitch only for themes that set them (`Glitch`, `Jitter` shift the HUD sideways on hits of 12+).
+  Fonts in `assets/fonts` (SIL OFL, licences beside them): Lilita One (`UiStyle.Display`), Chakra Petch
+  (`Label`/`LabelBold`/`Caption`; the project default via `gui/theme/custom_font`), Share Tech Mono (`Mono`);
+  `UiStyle.Number` is the theme's number font. Use `UiStyle.Big`/`Tag`/`Text`/`Sub` for labels,
+  `DrawBig`/`DrawTag`/`DrawPills`/`DrawFrame` in `_Draw`, `UiStyle.Frame` (plus `DrawFrameExtras` on the panel's
+  Draw signal) for panels and `UiStyle.Menu` as a menu's theme; colours are `UiStyle.Teal`, `Gold`, `Ink` and
+  friends (theme properties), not inline hex. Test: `--hudshots` (firing, a boss bar, the pause menu; needs a
+  window); add `--allthemes` for one shot per theme, switched live.
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).

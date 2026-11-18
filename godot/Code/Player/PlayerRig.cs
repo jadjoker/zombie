@@ -297,13 +297,13 @@ public partial class PlayerRig : Node
 	};
 
 	/// <summary> Paints whose body wears polka dots, and the dots' colour. </summary>
-	static readonly Dictionary<string, Color> Dots = new() { ["Vac"] = new Color( 0.52f, 0.18f, 0.78f ) };
+	static readonly Dictionary<string, Color> Dots = new() { ["Vac"] = new Color( 0.66f, 0.26f, 0.95f ) };
 
 	/// <summary> One tile of polka dots (a staggered pair, so they tile as offset rows), soft edged. </summary>
 	static ImageTexture DotTexture( Color ground, Color dot )
 	{
 		const int size = 128;
-		const float radius = 17f;
+		const float radius = 13f;
 		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
 		var centres = new[] { new Vector2( 32f, 32f ), new Vector2( 96f, 96f ) };
 		for ( var y = 0; y < size; y++ )
@@ -331,7 +331,7 @@ public partial class PlayerRig : Node
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
 		var dots = Dots.TryGetValue( appliedSkin, out var dotColour ) ? DotTexture( paint[1], dotColour ) : null;
-		// About eight rows of dots from head to foot, whatever units the model's meshes are in.
+		// About a dozen rows of dots from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
 		foreach ( var mesh in meshes )
 		{
@@ -356,7 +356,7 @@ public partial class PlayerRig : Node
 					m.AlbedoColor = Colors.White;
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
-					m.Uv1Scale = Vector3.One * 4f / MathF.Max( 0.01f, extent );
+					m.Uv1Scale = Vector3.One * 6f / MathF.Max( 0.01f, extent );
 					m.Metallic = 0.25f;
 				}
 				mesh.SetSurfaceOverrideMaterial( i, m );

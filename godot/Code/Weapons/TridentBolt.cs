@@ -35,7 +35,7 @@ public partial class TridentBolt : Node3D
 	/// <summary> After the first enemy it hits, a trident seeks this many more (the next closest each time) and goes through them. </summary>
 	public const int SeekNext = 2;
 	public const float SeekRange = 28f;       // metres from the last hit to the next enemy it will go for
-	public const float SeekTurn = 16f;        // radians a second it can turn while seeking
+	public const float SeekTurn = 40f;        // radians a second it can turn while seeking (at full speed a slow turn swung wide of the next enemy)
 	int hits;
 	readonly HashSet<Node> struck = new();
 	Creature seeking;
@@ -237,6 +237,8 @@ public partial class TridentBolt : Node3D
 				// Through it and on to the next closest enemy: none of this creature's parts stop it again; a burst of bubbles out the far side.
 				seeking = next;
 				age = 0f;
+				// It comes out of the enemy already turned onto the next one, at the plain speed so it can follow it.
+				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed;
 				foreach ( var part in CreaturePart.All )
 					if ( part.ShotOwner == owner && IsInstanceValid( part ) ) exclude.Add( part.GetRid() );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );
@@ -273,19 +275,18 @@ public partial class TridentBolt : Node3D
 		return best;
 	}
 
-	/// <summary> Where to fly at an enemy: its nearest hit shape (the parts' colliders), else a little above its origin. </summary>
+	/// <summary> Where to fly at an enemy: the middle of its hit shapes (the parts' colliders), else a little above its origin. </summary>
 	static Vector3 AimAt( Creature c, Vector3 from )
 	{
-		var best = c.GlobalPosition + Vector3.Up * 0.5f;
-		var bestDistance = float.MaxValue;
+		var sum = Vector3.Zero;
+		var count = 0;
 		foreach ( var part in CreaturePart.All )
 		{
 			if ( part.ShotOwner != c || !IsInstanceValid( part ) || part.Collider is null ) continue;
-			var at = part.Collider.GlobalPosition;
-			var d = from.DistanceSquaredTo( at );
-			if ( d < bestDistance ) { bestDistance = d; best = at; }
+			sum += part.Collider.GlobalPosition;
+			count++;
 		}
-		return best;
+		return count > 0 ? sum / count : c.GlobalPosition + Vector3.Up * 0.5f;
 	}
 
 	/// <summary> Stays where it hit, points sunk in, carried along by what it hit if that moves (a creature, a piece). </summary>

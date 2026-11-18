@@ -63,13 +63,13 @@ public static class SpearModel
 			// A hard one-handed stab: cocked back and turned out, then driven forward and across with a corkscrew twist.
 			var across = left ? -1f : 1f;
 			var reach = MathF.Max( 0f, thrust );
-			model.Position = new Vector3( -0.09f * thrust * across, 0.05f * reach - 0.03f * MathF.Min( 0f, thrust ) - 0.05f * raise, -0.55f * thrust + 0.04f * raise );
-			model.Rotation = new Vector3( -0.14f * thrust, 0.2f * thrust * across, 0.45f * reach * across );
+			model.Position = new Vector3( -0.04f * thrust * across, 0.03f * reach - 0.05f * raise, -0.42f * thrust + 0.04f * raise );
+			model.Rotation = new Vector3( -0.1f * thrust, 0.07f * thrust * across, 0.25f * reach * across );
 		}
 		var shield = vm.GetNodeOrNull<Node3D>( "Energy Shield" ) ?? BuildShield( vm );
 		shield.Visible = true;
 		var ease = raise * raise * (3f - 2f * raise);
-		shield.Position = new Vector3( -0.34f, -0.42f, -0.32f ).Lerp( new Vector3( -0.07f, -0.06f, -0.4f ), ease );
+		shield.Position = new Vector3( -0.34f, -0.42f, -0.32f ).Lerp( new Vector3( -0.05f, -0.06f, -0.46f ), ease );
 		shield.Rotation = new Vector3( MathX.Lerp( -0.7f, 0f, ease ), MathX.Lerp( 0.6f, 0.08f, ease ), MathX.Lerp( 0.4f, 0f, ease ) );
 		var t = (float)Clock.Now;
 		if ( shield.GetNodeOrNull<MeshInstance3D>( "Glass" ) is { MaterialOverride: StandardMaterial3D glass } )
@@ -129,8 +129,9 @@ public static class SpearModel
 /// </summary>
 public partial class ShieldArm : SkeletonModifier3D
 {
-	/// <summary> The grip on the back of the shield, in the shield's space (the boss side faces the camera). </summary>
-	static readonly Vector3 Grip = new( 0.01f, -0.015f, 0.06f );
+	/// <summary> Where the hand holds the shield, in the shield's space: its left rim, just behind (a hand on the boss
+	/// sat right in front of the camera and hid the view). </summary>
+	static readonly Vector3 Grip = new( -0.15f, -0.03f, 0.03f );
 	int upper = -1, lower = -1, hand = -1;
 	ViewModel vm;
 

@@ -28,6 +28,8 @@ public partial class PlayerWeapon : Node
 	/// <summary> How charged the held shot is, 0 to 1 (for the HUD). </summary>
 	public float ChargeAmount => charging && ChargeTime > 0f ? MathX.Clamp( (float)sinceChargeStart / ChargeTime, 0f, 1f ) : 0f;
 	bool charging, chargeFull, chargedShot;
+	/// <summary> This shot came out of the gun in the robot's hands (third person). </summary>
+	bool thirdPersonMuzzle;
 	/// <summary> The trigger has stayed down since the last shot (holding on charges the next trident). </summary>
 	bool heldSinceShot;
 	TimeSince sinceChargeStart;
@@ -354,9 +356,19 @@ public partial class PlayerWeapon : Node
 			trailStart = barrel.Origin;
 			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
 		}
+		else if ( controller.ThirdPerson && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held )
+		{
+			// Third person: the flash and the tracers come out of the gun in the robot's hands, not where the
+			// first person gun would be on screen.
+			trailStart = held.Origin;
+			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( held.Origin, held.Basis.Y, MuzzleFlashScale, null, FlashTint );
+			thirdPersonMuzzle = true;
+		}
 		else if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale, null, FlashTint );
 
 		hitThisShot.Clear();
+		var usedHeldMuzzle = thirdPersonMuzzle;
+		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
 		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
 		else if ( Projectile )
@@ -368,7 +380,7 @@ public partial class PlayerWeapon : Node
 			// In third person the camera hangs behind the robot: the trident leaves from in front of the robot's eyes.
 			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
 			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
-			var from = controller.ThirdPerson ? eyes + aimDirection * 0.6f : trailStart;
+			var from = controller.ThirdPerson && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
 			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this, chargedShot );
 			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }
 		}

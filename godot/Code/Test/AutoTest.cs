@@ -2930,6 +2930,25 @@ public partial class AutoTest : Node
 			foreach ( var cl in hidden ) cl.Visible = true;
 			foreach ( var g in guns ) g.Visible = true;
 		}
+		// Third person: the shot's flash comes out of the gun in the robot's hands, not the first person spot.
+		player.ThirdPerson = true;
+		await Wait( 0.6f );
+		var gun = player.GetNode<WeaponInventory>( "WeaponInventory" ).Current;
+		var rig = player.GetChildren().OfType<PlayerRig>().First();
+		var muzzleAt = rig.WorldMuzzle();
+		Fx.FlashLife = 1f;
+		gun.TestFire();
+		var flash = GetTree().CurrentScene.GetChildren().OfType<Node3D>().LastOrDefault( n => n.Name.ToString().StartsWith( "Muzzle Flash" ) );
+		var gap = flash is null || muzzleAt is null ? 99f : flash.GlobalPosition.DistanceTo( muzzleAt.Value.Origin );
+		GD.Print( $"[autotest] third person flash: {gap:0.00} m from the held gun's muzzle" );
+		Check( gap < 0.35f, "in third person the muzzle flash is not on the gun in the robot's hands" );
+		if ( shots is not null )
+		{
+			await Wait( 0.05f );
+			await Shot( "third_person_flash" );
+		}
+		Fx.FlashLife = 0.08f;
+		player.ThirdPerson = false;
 		DevFlags.FreezeEnemies = false;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();

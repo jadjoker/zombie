@@ -182,6 +182,14 @@ public partial class PlayerRig : Node
 				return muzzle.GlobalBasis.Y.Normalized();
 		return null;
 	}
+	/// <summary> Where the muzzle of the gun in the robot's hands is (third person), for the flash and tracers; null when none shows. </summary>
+	public Transform3D? WorldMuzzle()
+	{
+		foreach ( var (_, gun) in worldGuns )
+			if ( IsInstanceValid( gun.Root ) && gun.Root.IsVisibleInTree() && gun.Root.FindChild( "Muzzle", true, false ) is Node3D muzzle )
+				return muzzle.GlobalTransform;
+		return null;
+	}
 	PlayerWeapon Held => inventory?.Current;
 
 	public override void _Process( double delta )

@@ -81,7 +81,7 @@ public partial class PlayerPerks : Node
 
 	public static PlayerPerks Of( Node controller ) => controller?.GetNodeOrNull<PlayerPerks>( "PlayerPerks" );
 	/// <summary> Tests: pickups taken, shocks dealt and jumps made, clips thrown, blasts let off. </summary>
-	public static int Taken, Shocks, ShockJumps, ClipsThrown, Blasts;
+	public static int Taken, Shocks, ShockJumps, ClipsThrown, Blasts, Blocked;
 
 	public override void _Ready()
 	{
@@ -133,6 +133,13 @@ public partial class PlayerPerks : Node
 	/// <summary> The shield takes a hit first: what is left over goes on to health. Poison and the like go straight through. </summary>
 	float Absorb( DamageInfo damage )
 	{
+		// The Trident-Bot's energy shield, raised: it takes 65% of the hit before anything else.
+		if ( damage.Attacker is not PlayerAfflictions && controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { Spear: true, Blocking: true } )
+		{
+			damage.Damage *= 1f - PlayerWeapon.BlockShare;
+			Blocked++;
+			Sfx.Play2D( "glass_hit", 0.45f, 1.4f );
+		}
 		if ( Shield <= 0f || damage.Attacker is PlayerAfflictions ) return damage.Damage;
 		TimeSinceShieldHit = 0f;
 		var taken = MathF.Min( Shield, damage.Damage );

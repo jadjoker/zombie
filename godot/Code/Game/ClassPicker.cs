@@ -41,7 +41,7 @@ public partial class ClassPicker : CanvasLayer
 		column.AddChild( row );
 		for ( var i = 0; i < RobotClass.All.Length; i++ ) row.AddChild( Card( RobotClass.All[i], i + 1 ) );
 
-		var hint = new Label { Text = "Press 1 or 2, or click a robot", HorizontalAlignment = HorizontalAlignment.Center };
+		var hint = new Label { Text = RobotClass.All.Length == 3 ? "Press 1, 2 or 3, or click a robot" : "Press 1 or 2, or click a robot", HorizontalAlignment = HorizontalAlignment.Center };
 		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
 		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
@@ -57,7 +57,7 @@ public partial class ClassPicker : CanvasLayer
 
 	Control Card( RobotClass robot, int number )
 	{
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2( 400, 0 ), Name = robot.Name };
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2( 380, 0 ), Name = robot.Name };
 		var frame = UiStyle.Frame( 1.4f, UiStyle.PanelDeep, 20 );
 		frame.BorderColor = robot.Tint;
 		frame.SetBorderWidthAll( 3 );
@@ -75,7 +75,9 @@ public partial class ClassPicker : CanvasLayer
 		Line( column, "MOUSE 4", 16, UiStyle.Gold );
 		Line( column, robot.Movement, 18, Colors.White );
 		Line( column, "MELEE", 16, UiStyle.Gold );
-		Line( column, "Axe", 20, Colors.White );
+		Line( column, robot.Melee, 20, Colors.White );
+		Line( column, "HEALTH", 16, UiStyle.Gold );
+		Line( column, $"{robot.BaseHealth:0}", 20, Colors.White );
 
 		var pick = new Button { Text = $"Play as {robot.Name}", CustomMinimumSize = new Vector2( 0, 50 ), Name = "Pick" };
 		pick.AddThemeFontSizeOverride( "font_size", 22 );

@@ -24,6 +24,7 @@ public static class PlayerFactory
 		player.AddChild( new PlayerUse() );
 		player.AddChild( new MoveModeFloat() );
 		player.AddChild( new PlayerRig() );
+		player.AddChild( new HealPlecos() );   // third person: little fish feeding on the robot while it heals
 		var survivor = new PlayerSurvivor();
 		player.AddChild( survivor );
 

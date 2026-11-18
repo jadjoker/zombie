@@ -38,6 +38,22 @@ public partial class PlayerWeapon : Node
 	public float ShellTime = 0.5f;
 	/// <summary> Fires a flying trident (TridentBolt) instead of hitscan rays. </summary>
 	public bool Projectile;
+	/// <summary>
+	/// The Trident-Bot's melee slot: the trident held as a spear. Left click thrusts it (twice the axe's reach), right
+	/// click raises the energy shield, which takes BlockShare of every hit while it is up.
+	/// </summary>
+	public bool Spear;
+	public bool Blocking { get; private set; }
+	public const float BlockShare = 0.65f;
+	public float SpearReach = 220f * U.In;   // the axe's reach is 110
+	public float SpearRadius = 18f * U.In;
+	public float SpearCooldown = 0.62f, SpearWindUp = 0.16f;
+	TimeSince spearSwing = 99f;
+	bool spearStruck, spearLeft;
+	float shieldUp;
+	/// <summary> How far into its thrust the spear is (0 at rest), and how far the shield is raised, for the model. </summary>
+	public float SpearThrust => spearSwing < SpearCooldown ? MathF.Sin( MathX.Clamp( (float)spearSwing / SpearCooldown, 0f, 1f ) * MathF.PI ) : 0f;
+	public float ShieldRaise => shieldUp;
 	/// <summary> The firing sound (null: "{ModelName}_shoot"). </summary>
 	public string ShootSound;
 
@@ -122,14 +138,22 @@ public partial class PlayerWeapon : Node
 	/// The trident shooter (bought on the wreck site): slot 3, a few heavy tridents per load that fly to the crosshair
 	/// with a slight drop, one at a time.
 	/// </summary>
-	public static PlayerWeapon Trident() => new()
+	public static PlayerWeapon Trident( int slot = 3 ) => new()
 	{
-		Name = "Trident", DisplayName = "Trident Shooter", Slot = 3, ModelName = "trident",
+		Name = "Trident", DisplayName = "Trident Shooter", Slot = slot, ModelName = "trident",
 		Damage = 380f /* 140 at first (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
 		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
 		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
 		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,
 		Projectile = true, ShootSound = "harpoon", ChargeTime = 1f,
+	};
+
+	/// <summary> The Trident-Bot's second slot: the trident as a spear, and an energy shield (right click) that takes 65% of hits. </summary>
+	public static PlayerWeapon TridentSpear( int slot = 2 ) => new()
+	{
+		Name = "Trident Spear", DisplayName = "Trident & Shield", Slot = slot, ModelName = "spear",
+		Damage = 95f, FireRate = 1.6f, Range = 220f * U.In, MagazineSize = 1, StartingReserve = 0, Automatic = false,
+		MuzzleFlashScale = 0f, Spear = true,
 	};
 
 	public static PlayerWeapon Shotgun() => new()
@@ -176,6 +200,8 @@ public partial class PlayerWeapon : Node
 	void OnDisabled()
 	{
 		if ( ViewModel is not null ) ViewModel.Visible = false;
+		Blocking = false;
+		shieldUp = 0f;
 		CancelReload();
 		Sucking = false;
 		ReleaseCaught();
@@ -228,6 +254,12 @@ public partial class PlayerWeapon : Node
 		if ( IsReloading && ShellReload ) UpdateShellReload();
 		else if ( IsReloading && reloadFinished <= 0f ) FinishReload();
 
+		if ( Spear )
+		{
+			UpdateSpear( dt, !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree) );
+			return;
+		}
+
 		if ( Vacuum )
 		{
 			// The Gore Vac: no aiming or reloading; fire sucks and aim spits (GoreVac.cs).
@@ -256,7 +288,29 @@ public partial class PlayerWeapon : Node
 			chargeFrame = frame;
 			if ( IsReloading ) charging = false;
 			var held = Input.IsActionPressed( "attack1" );
-			if ( !charging )
+			if ( !charging && !Bubbles )
+			{
+				// The trident: a pull only starts the charge, nothing leaves yet. Let go to fire: charged if it filled,
+				// a plain shot if it didn't. (One trident a pull, never a plain one and then a charged one.)
+				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				{
+					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
+					else if ( Reserve > 0 ) StartReload();
+					else Sfx.Play2D( "dry_fire" );
+				}
+			}
+			else if ( charging && !Bubbles )
+			{
+				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
+				if ( !held )
+				{
+					charging = false;
+					chargedShot = chargeFull;
+					Shoot();
+					chargedShot = false;
+				}
+			}
+			else if ( !charging )
 			{
 				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
@@ -294,6 +348,37 @@ public partial class PlayerWeapon : Node
 	}
 
 	Node3D loaded;
+
+	/// <summary>
+	/// The spear and shield: left click thrusts (the hit lands a moment in, a fan of sweeps out to twice the axe's
+	/// reach, PlayerMelee.StrikeWith); right click holds the shield up, which takes BlockShare of each hit
+	/// (PlayerPerks.Absorb). No thrusting from behind the shield.
+	/// </summary>
+	void UpdateSpear( float dt, bool free )
+	{
+		Ammo = MagazineSize;
+		Blocking = free && Input.IsActionPressed( "attack2" );
+		shieldUp = MathX.Lerp( shieldUp, Blocking ? 1f : 0f, 1f - MathF.Exp( -14f * dt ) );
+		if ( free && !Blocking && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
+		if ( !spearStruck && spearSwing >= SpearWindUp && spearSwing < SpearCooldown )
+		{
+			spearStruck = true;
+			controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" )?.StrikeWith( SpearReach, SpearRadius, CurrentDamage, this );
+		}
+		if ( ViewModel is not null ) SpearModel.Pose( ViewModel, SpearThrust, spearLeft, shieldUp, dt );
+	}
+
+	/// <summary> Thrusts the spear as if clicked (also the testing hook). </summary>
+	public void TestThrust()
+	{
+		spearSwing = 0f;
+		spearStruck = false;
+		spearLeft = !spearLeft;
+		Sfx.Play2D( "axe_swing", 0.9f, 1.25f );
+	}
+
+	/// <summary> Testing aid: raise or lower the shield as if right click were held. </summary>
+	public void TestBlock( bool up ) { Blocking = up; shieldUp = up ? 1f : 0f; }
 
 	/// <summary> The trident shooter shows its next trident in the mouth: gone just after a shot, back once one is loaded. </summary>
 	void ShowLoaded()

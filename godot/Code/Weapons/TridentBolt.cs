@@ -32,7 +32,7 @@ public partial class TridentBolt : Node3D
 	bool charged;
 	int pierced;
 	public const float ChargedSpeed = 1.8f;   // times Speed
-	public const int MaxPierced = 6;
+	public const int MaxPierced = 2;   // a charged trident goes through two enemies (6 before the playtest)
 	/// <summary> Tests: enemies the last charged trident went through. </summary>
 	public static int LastPierced;
 
@@ -58,7 +58,7 @@ public partial class TridentBolt : Node3D
 		bolt.Face();
 		TridentModel.BuildTrident( bolt );
 		bolt.age = 0f;
-		if ( charged ) LastPierced = 0;
+		if ( charged ) { LastPierced = 0; bolt.Enchant(); }
 		return bolt;
 	}
 
@@ -101,7 +101,53 @@ public partial class TridentBolt : Node3D
 		roll += 5f * dt;
 		Face();
 		if ( UnderWater( to ) ) { Bubbles( from, to ); if ( charged ) Bubbles( from, to ); }
+		if ( charged ) Sparkles( from, to );
 		if ( age > MaxFlight ) QueueFree();
+	}
+
+	static StandardMaterial3D[] sparkleMaterials;
+
+	/// <summary> A charged trident is magical: a violet and sea-green aura round its head, and a light that travels with it. </summary>
+	void Enchant()
+	{
+		var aura = new StandardMaterial3D
+		{
+			AlbedoColor = new Color( 0.7f, 0.4f, 1f, 0.35f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, EmissionEnabled = true, Emission = new Color( 0.75f, 0.45f, 1f ), EmissionEnergyMultiplier = 3f,
+			CullMode = BaseMaterial3D.CullModeEnum.Disabled,
+		};
+		aura.SetMeta( "no_caustics", true );
+		var glow = new MeshInstance3D
+		{
+			Name = "Magic Aura", Mesh = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 16, Rings = 8 }, MaterialOverride = aura,
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Scale = new Vector3( 0.32f, 0.32f, 1.6f ), Position = new Vector3( 0f, 0f, -0.35f ),
+		};
+		AddChild( glow );
+		AddChild( new OmniLight3D { LightColor = new Color( 0.6f, 0.45f, 1f ), LightEnergy = 2.5f, OmniRange = 3.5f, ShadowEnabled = false } );
+	}
+
+	/// <summary> Glittering specks in violet, sea green and gold left along a charged trident's path, twinkling out. </summary>
+	void Sparkles( Vector3 from, Vector3 to )
+	{
+		sparkleMaterials ??= new[] { new Color( 0.75f, 0.45f, 1f ), new Color( 0.4f, 1f, 0.75f ), new Color( 1f, 0.85f, 0.35f ) }
+			.Select( c => new StandardMaterial3D { AlbedoColor = c, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = 4f } ).ToArray();
+		var count = Math.Clamp( (int)(from.DistanceTo( to ) / 0.25f), 1, 8 );
+		var scene = GetTree().CurrentScene;
+		for ( var i = 0; i < count; i++ )
+		{
+			var speck = new MeshInstance3D
+			{
+				Mesh = new BoxMesh { Size = Vector3.One * Rng.Float( 0.03f, 0.06f ) }, MaterialOverride = sparkleMaterials[Rng.Int( 0, sparkleMaterials.Length - 1 )],
+				CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+			};
+			scene.AddChild( speck );
+			speck.GlobalPosition = from.Lerp( to, Rng.Float() ) + Rng.InSphere( 0.12f );
+			speck.RotationDegrees = new Vector3( 45f, Rng.Float( 0f, 90f ), 45f );
+			var tween = speck.CreateTween();
+			tween.TweenProperty( speck, "scale", Vector3.One * 0.01f, Rng.Float( 0.3f, 0.6f ) ).SetEase( Tween.EaseType.In );
+			tween.Parallel().TweenProperty( speck, "global_position", speck.GlobalPosition + Rng.InSphere( 0.25f ), 0.5f );
+			tween.TweenCallback( Callable.From( speck.QueueFree ) );
+		}
 	}
 
 	public static bool UnderWater( Vector3 at ) => WaterFeel.IsOn() && (Sea.SurfaceY is not float top || at.Y < top);
@@ -173,6 +219,7 @@ public partial class TridentBolt : Node3D
 					if ( part.ShotOwner == owner && IsInstanceValid( part ) ) exclude.Add( part.GetRid() );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );
 				GlobalPosition = tr.HitPosition + direction * 0.05f;
+				AlienBlast.Spawn( GetTree().CurrentScene, tr.HitPosition, 0.45f );   // a little magic flash as it goes through
 				if ( UnderWater( tr.HitPosition ) ) Bubbles( tr.HitPosition, tr.HitPosition + direction * 0.8f );
 				return;
 			}

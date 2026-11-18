@@ -92,7 +92,8 @@ public partial class WeaponHud : Control
 		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant() + Theme.WeaponSuffix;
 		mag.Text = (weapon?.Ammo ?? 0).ToString();
 		reserve.Text = Theme.ReserveSep + (weapon is { Vacuum: true } ? weapon.MagazineSize : weapon?.Reserve ?? 0) + (weapon is { HasMine: true } ? "  +MINE" : "") + (weapon is { Bubbles: true } && BubbleTrap.CountFor( player ) is > 0 and var held ? $"  {held} BUBBLED" : "") + (weapon is { Vacuum: true } && weapon.Ammo >= weapon.MagazineSize ? "  FULL" : "");   // the Gore Vac: the tank out of 100
-		var low = weapon is not null && !weapon.IsReloading && (weapon.Vacuum ? weapon.Ammo < PlayerWeapon.BallCost : weapon.Ammo <= weapon.MagazineSize / 4);
+		if ( weapon is { Spear: true } ) { mag.Text = ""; reserve.Text = weapon.Blocking ? "SHIELD UP" : "SPEAR"; }
+		var low = weapon is not null && !weapon.Spear && !weapon.IsReloading && (weapon.Vacuum ? weapon.Ammo < PlayerWeapon.BallCost : weapon.Ammo <= weapon.MagazineSize / 4);
 		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : Theme.PanelNumber );
 		// The Gore Vac: the tank's number pops each time a piece goes down.
 		var pop = weapon is { Vacuum: true } ? MathX.Clamp( 1f - (float)weapon.SinceGulp / 0.15f, 0f, 1f ) : 0f;

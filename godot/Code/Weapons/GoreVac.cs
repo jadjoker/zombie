@@ -19,8 +19,10 @@ public partial class PlayerWeapon
 {
 	/// <summary> This is the Gore Vac (fire sucks, aim spits, reload blows). </summary>
 	public bool Vacuum;
-	/// <summary> How far (m) and how wide (cosine of the half angle) it sucks. </summary>
-	public const float VacRange = 7.5f, VacCone = 0.8f;
+	/// <summary> How far (m: no real limit) and how wide (cosine of the half angle) it sucks. </summary>
+	public const float VacRange = 1000f, VacCone = 0.8f;
+	/// <summary> The pull weakens out to this distance (m), then stays at half strength however far away. </summary>
+	public const float FalloffReach = 30f;
 	/// <summary> Gunk a small ball costs; the least a big one takes; what the tank starts with. </summary>
 	public const int BallCost = 10, BigBallMin = 30, StartGunk = 25;
 	/// <summary> How wide a small ball's burst is (m). </summary>
@@ -52,11 +54,13 @@ public partial class PlayerWeapon
 	public static PlayerWeapon GoreVac() => new()
 	{
 		Name = "GoreVac", DisplayName = "Gore Vac", Slot = 4, ModelName = "gorevac", Vacuum = true,
-		Damage = 120f, FireRate = 2.5f, MagazineSize = 100, StartingReserve = 0, Automatic = false, ChargeTime = 0.7f,
+		Damage = 120f, FireRate = 3.5f, MagazineSize = 100, StartingReserve = 0, Automatic = false, ChargeTime = 0.7f,
 		Recoil = 2.6f, ShakePerShot = 0.4f, FovKickPerShot = 3f, MuzzleFlashScale = 0f,
 	};
 
-	TimeSince sinceFullWarning = 9f, sinceStreak, sinceGulp = 9f;
+	TimeSince sinceFullWarning = 9f, sinceStreak, sinceGulp = 9f, sinceTrigger;
+	bool triggerHeld;
+	SuctionCone cone;
 	AudioStreamPlayer suckSound, blowSound;
 	Node3D gunkFill, fan;
 	StandardMaterial3D gunkMaterial;
@@ -88,7 +92,8 @@ public partial class PlayerWeapon
 		var forward = -camera.GlobalBasis.Z;
 		var nozzle = Nozzle();
 
-		var wantSuck = allowed && (Input.IsActionPressed( "attack1" ) || ForceSuck);
+		// Right click (aim) sucks, reload blows, left click (fire) shoots.
+		var wantSuck = allowed && (Input.IsActionPressed( "attack2" ) || ForceSuck);
 		var wantBlow = allowed && !wantSuck && (Input.IsActionPressed( "reload" ) || ForceBlow);
 		Sucking = wantSuck;
 		Blowing = wantBlow;
@@ -105,22 +110,28 @@ public partial class PlayerWeapon
 		UpdateLoopSounds();
 		UpdateWeight( dt );
 
-		// The spit: tap aim for a ball; hold it until the ring fills (and there is enough in the tank) for a huge one.
+		// The shot: a pull of the trigger fires a ball at once. Keep holding and (with enough in the tank) the ring fills;
+		// let go with it full for the huge one. Let go early and nothing more happens.
 		if ( allowed )
 		{
-			if ( Input.IsActionJustPressed( "attack2" ) )
+			var down = Input.IsActionPressed( "attack1" );
+			if ( Input.IsActionJustPressed( "attack1" ) )
 			{
-				if ( (Ammo >= BallCost || HasMine) && TimeSinceShot >= 1f / CurrentFireRate ) { charging = true; sinceChargeStart = 0f; }
-				else if ( Ammo < BallCost ) Sfx.Play2D( "dry_fire" );
+				if ( (Ammo >= BallCost || HasMine) && TimeSinceShot >= 1f / CurrentFireRate ) { Spit( false ); triggerHeld = true; sinceTrigger = 0f; }
+				else if ( Ammo < BallCost && !HasMine ) Sfx.Play2D( "dry_fire" );
 			}
-			if ( charging && (Ammo < BigBallMin || HasMine) ) sinceChargeStart = 0f;   // not enough for a big one (or a mine goes first): the ring stays empty
-			if ( charging && !Input.IsActionPressed( "attack2" ) )
+			if ( triggerHeld && down && !charging && sinceTrigger > 0.25f && Ammo >= BigBallMin && !HasMine ) { charging = true; sinceChargeStart = 0f; }
+			if ( charging && Ammo < BigBallMin ) charging = false;
+			if ( !down )
 			{
+				if ( charging && ChargeAmount >= 1f ) Spit( true );
 				charging = false;
-				Spit( ChargeAmount >= 1f && Ammo >= BigBallMin );
+				triggerHeld = false;
 			}
 		}
-		else charging = false;
+		else { charging = false; triggerHeld = false; }
+		cone ??= SuctionCone.Create( controller.Camera );
+		cone.Show( dt, Nozzle(), -controller.Camera.GlobalBasis.Z, Sucking ? 1f : Blowing ? -1f : 0f, TankColour );
 		UpdateTankModel( dt );
 	}
 
@@ -138,7 +149,7 @@ public partial class PlayerWeapon
 				var toNozzle = nozzle - gib.GlobalPosition;
 				var d = toNozzle.Length();
 				if ( d < 0.6f ) { Swallow( gib ); continue; }
-				var speed = MathX.Lerp( 16f, 5f, MathX.Clamp( d / VacRange, 0f, 1f ) );
+				var speed = MathX.Lerp( 18f, 7f, MathX.Clamp( d / FalloffReach, 0f, 1f ) );
 				gib.Sleeping = false;
 				gib.LinearVelocity = gib.LinearVelocity.Lerp( toNozzle / d * speed, pull );
 				gib.AngularVelocity += Rng.InSphere( 20f ) * dt;
@@ -148,7 +159,7 @@ public partial class PlayerWeapon
 			{
 				Slurped++;
 				AddGunk( 2f, colour );
-				for ( var i = 0; i < 3; i++ ) VacStreak.Fly( GetTree().CurrentScene, at + Rng.InSphere( 0.15f ), Nozzle, colour with { A = 1f }, 0.05f );
+				for ( var i = 0; i < 4; i++ ) GpuFx.SandPuff( at + Rng.InSphere( 0.2f ), (nozzle - at).SafeNormal() * Rng.Float( 5f, 9f ) + Rng.InSphere( 1f ), colour, Rng.Float( 6f, 12f ), 0.7f );
 			}
 		}
 
@@ -157,7 +168,7 @@ public partial class PlayerWeapon
 		{
 			if ( !IsInstanceValid( creature ) || !creature.IsEnemy || creature.IsDead || !creature.Pullable ) continue;
 			var centre = creature.GlobalPosition + Vector3.Up * 0.3f;
-			if ( !InCone( from, forward, centre, VacRange + 1.5f, VacCone - 0.05f, out var distance ) ) continue;
+			if ( !InCone( from, forward, centre, VacRange, VacCone - 0.05f, out var distance ) ) continue;
 			var toNozzle = nozzle - centre;
 			var d = toNozzle.Length();
 			if ( d < SwallowReach && creature.Weight <= SwallowWeight && creature.Health.Current <= SwallowHealth )
@@ -171,12 +182,8 @@ public partial class PlayerWeapon
 				Controls.Rumble( 0.5f );
 				continue;
 			}
-			if ( d < HoldOff ) continue;   // close enough: held in front of the nozzle
-			var strength = PullStrength / MathF.Max( 30f, creature.Weight ) * MathX.Lerp( 1f, 0.5f, MathX.Clamp( distance / (VacRange + 1.5f), 0f, 1f ) );
-			creature.Pull( toNozzle / d * MathF.Min( strength * dt, d - HoldOff ) );
-
 			// Limbs shot half off are torn away after a short tug.
-			if ( creature is PartCreature body && d < VacRange * 0.8f )
+			if ( creature is PartCreature body && d < 12f )
 				foreach ( var limb in body.Limbs() )
 				{
 					if ( limb.Health > limb.MaxHealth * RipBelow ) continue;
@@ -190,12 +197,15 @@ public partial class PlayerWeapon
 					MarkHit();
 					Sfx.Play( "gib", at, 1f, 0.75f );
 				}
+			if ( d < HoldOff ) continue;   // close enough: held in front of the nozzle (limbs above still tear)
+			var strength = PullStrength / MathF.Max( 30f, creature.Weight ) * MathX.Lerp( 1f, 0.5f, MathX.Clamp( distance / FalloffReach, 0f, 1f ) );
+			creature.Pull( toNozzle / d * MathF.Min( strength * dt, d - HoldOff ) );
 		}
 
 		// The small things on the floor: torn up and sucked in like gibs (stone and shell: hardly worth a thing).
 		foreach ( var prop in GetTree().GetNodesInGroup( SeaDressing.LooseGroup ).OfType<Node3D>().ToList() )
 		{
-			if ( !IsInstanceValid( prop ) || !InCone( from, forward, prop.GlobalPosition, VacRange * 0.75f, VacCone, out _ ) ) continue;
+			if ( !IsInstanceValid( prop ) || !InCone( from, forward, prop.GlobalPosition, VacRange, VacCone, out _ ) ) continue;
 			touched.Add( prop );
 			tugs[prop] = tugs.GetValueOrDefault( prop ) + dt;
 			if ( tugs[prop] < 0.25f ) continue;
@@ -212,7 +222,7 @@ public partial class PlayerWeapon
 
 		// A sea mine: held a moment, its chain snaps, and it flies into the nozzle (one at a time).
 		if ( !HasMine && incomingMine is null )
-			foreach ( var mine in SeaMine.All.ToList() )
+			foreach ( var mine in SeaMine.All.OrderBy( m => m.BallPosition.DistanceSquaredTo( from ) ).ToList() )
 			{
 				if ( mine.Gone || !InCone( from, forward, mine.BallPosition, VacRange, VacCone - 0.05f, out _ ) ) continue;
 				touched.Add( mine );
@@ -226,11 +236,16 @@ public partial class PlayerWeapon
 			}
 
 		// The draw of the water itself: faint streaks rushing into the nozzle from the cone.
-		if ( sinceStreak > 0.035f )
+		// The draw: sand lifted off the floor where the cone meets it, and silt rushing in through the water.
+		if ( sinceStreak > 0.03f )
 		{
 			sinceStreak = 0f;
-			var dir = (forward + Rng.InSphere( 1f ) * 0.55f).Normalized();
-			VacStreak.Fly( GetTree().CurrentScene, from + dir * Rng.Float( 2.5f, 6f ), Nozzle, new Color( 0.85f, 0.97f, 1f, 0.35f ), 0.03f );
+			var dir = (forward + Rng.InSphere( 1f ) * 0.5f).Normalized();
+			var floor = Trace.Ray( controller, from, from + dir * 14f, Layers.World, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+			if ( floor.Hit && floor.HitPosition.DistanceTo( from ) > 1.5f )
+				GpuFx.SandPuff( floor.HitPosition + floor.Normal * 0.1f, (nozzle - floor.HitPosition).SafeNormal() * Rng.Float( 4f, 7f ) + floor.Normal * 1.5f, new Color( 0.82f, 0.86f, 0.8f ), Rng.Float( 10f, 18f ), 0.9f );
+			var at = from + dir * Rng.Float( 2f, 6f );
+			GpuFx.SandPuff( at, (nozzle - at).SafeNormal() * Rng.Float( 6f, 10f ), new Color( 0.75f, 0.92f, 1f, 0.6f ), Rng.Float( 3f, 6f ), 0.6f );
 		}
 		// The suction drags you a little toward what you point it at.
 		if ( controller.Velocity.Dot( forward ) < 2.2f ) controller.Velocity += forward * 3f * dt;
@@ -266,14 +281,14 @@ public partial class PlayerWeapon
 		{
 			if ( !InCone( from, forward, gib.GlobalPosition, VacRange, VacCone - 0.1f, out var d ) ) continue;
 			gib.Sleeping = false;
-			gib.LinearVelocity += (gib.GlobalPosition - from).SafeNormal() * 30f * (1f - d / VacRange) * dt;
+			gib.LinearVelocity += (gib.GlobalPosition - from).SafeNormal() * 30f * (1f - MathX.Clamp( d / FalloffReach, 0f, 0.8f )) * dt;
 		}
 		foreach ( var creature in Creature.Everyone.ToList() )
 		{
 			if ( !IsInstanceValid( creature ) || !creature.IsEnemy || creature.IsDead || !creature.Pullable ) continue;
 			var centre = creature.GlobalPosition + Vector3.Up * 0.3f;
 			if ( !InCone( from, forward, centre, VacRange, VacCone - 0.1f, out var d ) ) continue;
-			creature.Pull( (centre - from).SafeNormal() * PullStrength * 1.3f / MathF.Max( 30f, creature.Weight ) * (1f - d / VacRange * 0.5f) * dt );
+			creature.Pull( (centre - from).SafeNormal() * PullStrength * 1.3f / MathF.Max( 30f, creature.Weight ) * (1f - MathX.Clamp( d / FalloffReach, 0f, 1f ) * 0.5f) * dt );
 		}
 		// The thrust: back from where it points, strongest pointing down (hover).
 		var thrust = 13f + MathF.Max( 0f, -forward.Y ) * 9f;
@@ -282,8 +297,7 @@ public partial class PlayerWeapon
 		{
 			sinceStreak = 0f;
 			var dir = (forward + Rng.InSphere( 1f ) * 0.35f).Normalized();
-			var end = nozzle + dir * Rng.Float( 3f, 6f );
-			VacStreak.Fly( GetTree().CurrentScene, nozzle, () => end, new Color( 0.85f, 0.97f, 1f, 0.45f ), 0.035f );
+			GpuFx.SandPuff( nozzle + dir * 0.4f, dir * Rng.Float( 7f, 11f ), new Color( 0.75f, 0.92f, 1f, 0.6f ), Rng.Float( 3f, 6f ), 0.7f );
 		}
 		juice?.Shake( 0.02f );
 	}
@@ -347,14 +361,17 @@ public partial class PlayerWeapon
 		var damage = mine ? GoreBall.MineDamage : CurrentDamage * (big ? 0.6f * scale : 1f);
 		var radius = mine ? GoreBall.MineRadius : big ? BallRadius * MathF.Min( 2.2f, 0.75f + scale * 0.15f ) : BallRadius;
 		var size = big ? MathF.Min( 0.55f, 0.16f + scale * 0.04f ) : 0.14f;
-		// Aim at what is under the crosshair: the ball flies from the nozzle toward it.
+		// Aim at what is under the crosshair: the ball flies from the nozzle toward it. With no enemy right under it,
+		// an enemy close beside the crosshair line is aimed at instead (aim assist: easy to land).
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
-		var aim = Trace.Ray( controller, camera.GlobalPosition, camera.GlobalPosition + forward * 60f, Layers.World | Layers.Creature, exclude );
-		var target = aim.Hit ? aim.HitPosition : camera.GlobalPosition + forward * 60f;
-		var speed = mine ? 18f : big ? 17f : 24f;
+		var aim = Trace.Ray( controller, camera.GlobalPosition, camera.GlobalPosition + forward * 80f, Layers.World | Layers.Creature, exclude );
+		var target = aim.Hit ? aim.HitPosition : camera.GlobalPosition + forward * 80f;
+		var reach = aim.Hit ? aim.HitPosition.DistanceTo( camera.GlobalPosition ) + 1f : 80f;
+		if ( Shootables.Find( aim.Node )?.ShotOwner is not Creature && GoreBall.NearestToLine( camera.GlobalPosition, forward, reach, 1.4f ) is { } assisted ) target = assisted;
+		var speed = mine ? 26f : big ? 30f : 42f;
 		var direction = (target - nozzle).SafeNormal();
 		var kind = mine ? GoreBall.Kind.Mine : big ? GoreBall.Kind.Big : GoreBall.Kind.Small;
-		var ball = GoreBall.Launch( GetTree().CurrentScene, nozzle, direction * speed + Vector3.Up * 1f, damage, radius, size, TankColour, controller, this, kind );
+		var ball = GoreBall.Launch( GetTree().CurrentScene, nozzle, direction * speed, damage, radius, size, TankColour, controller, this, kind );
 		if ( mine )
 		{
 			heldMine.Reparent( ball, false );
@@ -428,76 +445,33 @@ public partial class PlayerWeapon
 	}
 }
 
-/// <summary> A little blob of goo (or a fleck of water) rushing into the Gore Vac's nozzle, gone when it gets there. </summary>
-public partial class VacStreak : MeshInstance3D
-{
-	static readonly SphereMesh Ball = new() { Radius = 0.5f, Height = 1f, RadialSegments = 8, Rings = 4 };
-	Func<Vector3> target;
-	float speed = 2f;
-	TimeSince age;
-
-	public static void Fly( Node parent, Vector3 from, Func<Vector3> target, Color colour, float size )
-	{
-		var streak = new VacStreak
-		{
-			Name = "Vac Streak", Mesh = Ball, target = target, CastShadow = ShadowCastingSetting.Off,
-			MaterialOverride = new StandardMaterial3D
-			{
-				AlbedoColor = colour, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
-				Transparency = colour.A < 1f ? BaseMaterial3D.TransparencyEnum.Alpha : BaseMaterial3D.TransparencyEnum.Disabled,
-			},
-		};
-		parent.AddChild( streak );
-		streak.age = 0f;
-		streak.GlobalPosition = from;
-		streak.Scale = Vector3.One * size;
-	}
-
-	public override void _Process( double delta )
-	{
-		var dt = (float)delta;
-		var to = target() - GlobalPosition;
-		var d = to.Length();
-		speed += dt * 40f;
-		if ( d < 0.12f || age > 1.2f ) { QueueFree(); return; }
-		var step = MathF.Min( d, speed * dt );
-		GlobalPosition += to / d * step;
-		// Stretched along the way it flies, thinner the faster it goes.
-		var dir = to / d;
-		var up = MathF.Abs( dir.Dot( Vector3.Up ) ) > 0.95f ? Vector3.Right : Vector3.Up;
-		var size = Scale.X == 0f ? 0.03f : MathF.Min( Scale.X, Scale.Y );
-		Basis = Basis.LookingAt( dir, up ).Scaled( new Vector3( size, size, size * MathF.Min( 4f, 1f + speed * 0.2f ) ) );
-	}
-}
-
 /// <summary>
-/// A ball of gore spat by the Gore Vac, flown by its own simple physics: it drops a little, bounces off the ground and
-/// walls (a small one twice, splatting goo each time, then bursts once it has slowed), and sticks to an enemy it hits,
-/// bursting a moment later. A big one bursts on the ground into four small ones thrown outward. A loaded sea mine flies
-/// the same way and blows up on the first thing it touches. Bursting hurts every enemy near, sprays goo, and flings a
-/// few lumps (which can be sucked up again, for a little).
+/// A ball of gore shot from the Gore Vac: fast and nearly straight, it curves a little onto an enemy near its path,
+/// goes off when it passes close to one (a proximity fuse, so a near miss still counts), and goes off on whatever it
+/// hits. Every burst is a mini explosion: a flash and a shock ring, goo everywhere, every enemy in the radius hurt and
+/// shoved back, loose gibs blown outward. The huge one throws four bomblets out of its blast; a loaded sea mine flies
+/// the same way and goes off as a full blast.
 /// </summary>
 public partial class GoreBall : Node3D
 {
-	public enum Kind { Small, Big, Mine }
+	public enum Kind { Small, Big, Mine, Bomblet }
 	public const float MineDamage = 450f, MineRadius = 4f;
-	/// <summary> How long a stuck ball holds on before it bursts (s). </summary>
-	public const float StickFuse = 0.55f;
-	const float Gravity = 6f, Bounce = 0.55f;
+	/// <summary> It goes off this far (m) from an enemy part it passes. </summary>
+	public const float Proximity = 0.9f;
+	/// <summary> How hard it curves onto an enemy near its path (radians a second), and how far off its path it looks. </summary>
+	const float HomingTurn = 3.5f, HomingCone = 0.9f, HomingRange = 40f;
+	const float Gravity = 1.2f;
 
 	Vector3 velocity;
-	float damage, radius, size;
+	float damage, radius, size, fuse = -1f;
 	Color colour;
 	Kind kind;
 	PlayerController shooter;
 	PlayerWeapon weapon;
-	TimeSince age, sinceDrip;
+	TimeSince age, sinceDrip, sinceLook = 9f;
 	MeshInstance3D blob;
-	int bounces;
-	Node3D stuckTo;
-	Vector3 stuckAt;
-	float fuse = -1f;
-	public static int Bursts, Hits, Bounces, Sticks, Splits, MineBlasts;
+	Creature homing;
+	public static int Bursts, Hits, Splits, MineBlasts, ProximityBursts;
 	/// <summary> For tests: where the last one burst, and on what. </summary>
 	public static Vector3 LastBurst;
 	public static string LastHitName = "";
@@ -509,12 +483,12 @@ public partial class GoreBall : Node3D
 		ball.age = 0f;
 		ball.sinceDrip = 0f;
 		ball.GlobalPosition = from;
+		if ( kind == Kind.Bomblet ) ball.fuse = Rng.Float( 0.35f, 0.6f );
 		if ( kind != Kind.Mine )
 		{
 			ball.blob = new MeshInstance3D { Name = "Blob", Mesh = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 16, Rings = 8 }, MaterialOverride = GoreVacModel.GunkMaterial( colour ) };
 			ball.AddChild( ball.blob );
 			ball.blob.Scale = Vector3.One * size;
-			// A few lumps stuck to it.
 			for ( var i = 0; i < 4; i++ )
 			{
 				var lump = new MeshInstance3D { Mesh = ball.blob.Mesh, MaterialOverride = GoreVacModel.GunkMaterial( colour.Darkened( 0.25f ) ) };
@@ -524,93 +498,94 @@ public partial class GoreBall : Node3D
 			}
 		}
 		else ball.size = SeaMine.Radius * 0.8f;
-		ball.AddChild( new OmniLight3D { LightColor = kind == Kind.Mine ? new Color( 0.4f, 1f, 0.5f ) : colour, LightEnergy = 0.6f, OmniRange = 1.5f + ball.size * 4f, ShadowEnabled = false } );
+		ball.AddChild( new OmniLight3D { LightColor = kind == Kind.Mine ? new Color( 0.4f, 1f, 0.5f ) : colour, LightEnergy = 1f, OmniRange = 2f + ball.size * 4f, ShadowEnabled = false } );
 		return ball;
+	}
+
+	/// <summary> The point on the nearest enemy part within `width` of a line (from, along `dir`, up to `length`), if any. </summary>
+	public static Vector3? NearestToLine( Vector3 from, Vector3 dir, float length, float width )
+	{
+		Vector3? best = null;
+		var bestOff = width;
+		foreach ( var part in CreaturePart.All )
+		{
+			if ( !GodotObject.IsInstanceValid( part ) || part.Creature is not Creature { IsEnemy: true, IsDead: false } ) continue;
+			var to = part.GlobalPosition - from;
+			var along = to.Dot( dir );
+			if ( along < 1f || along > length ) continue;
+			var off = (to - dir * along).Length() - along * 0.012f;   // a little wider the further out
+			if ( off < bestOff ) { bestOff = off; best = part.GlobalPosition; }
+		}
+		return best;
+	}
+
+	static bool EnemyNear( Vector3 at, float reach )
+	{
+		foreach ( var part in CreaturePart.All )
+			if ( GodotObject.IsInstanceValid( part ) && part.Creature is Creature { IsEnemy: true, IsDead: false } && part.GlobalPosition.DistanceTo( at ) < reach ) return true;
+		return false;
 	}
 
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
-		if ( stuckTo is not null ) { Stuck( dt ); return; }
 		var from = GlobalPosition;
+		if ( fuse >= 0f && (fuse -= dt) <= 0f ) { Burst( from, Vector3.Up ); return; }
+
+		// Homing: a gentle curve onto the enemy nearest its heading (not for bomblets, which scatter).
+		if ( kind != Kind.Bomblet && sinceLook > 0.1f )
+		{
+			sinceLook = 0f;
+			homing = null;
+			var heading = velocity.SafeNormal();
+			var bestScore = float.MaxValue;
+			foreach ( var c in Creature.Everyone )
+			{
+				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead ) continue;
+				var to = c.GlobalPosition + Vector3.Up * 0.4f - from;
+				var d = to.Length();
+				if ( d > HomingRange || d < 0.01f ) continue;
+				var along = heading.Dot( to / d );
+				if ( along < HomingCone ) continue;
+				var score = d * (2f - along);
+				if ( score < bestScore ) { bestScore = score; homing = c; }
+			}
+		}
+		if ( homing is not null && IsInstanceValid( homing ) && !homing.IsDead )
+		{
+			var want = (homing.GlobalPosition + Vector3.Up * 0.4f - from).SafeNormal();
+			var speed = velocity.Length();
+			var heading = velocity / MathF.Max( speed, 0.01f );
+			var angle = heading.AngleTo( want );
+			velocity = heading.Slerp( want, MathF.Min( 1f, HomingTurn * dt / MathF.Max( angle, 0.001f ) ) ).Normalized() * speed;
+		}
 		velocity += Vector3.Down * Gravity * dt;
-		var to = from + velocity * dt;
+		var to2 = from + velocity * dt;
+
+		// The proximity fuse: passing close to an enemy is a hit.
+		var reach = Proximity + size * (kind == Kind.Big ? 1.5f : 1f);
+		if ( EnemyNear( to2, reach ) ) { ProximityBursts++; LastHitName = "near an enemy"; Burst( to2, -velocity.SafeNormal() ); return; }
+
 		var exclude = shooter is not null && IsInstanceValid( shooter ) ? new Godot.Collections.Array<Rid> { shooter.GetRid() } : null;
-		var hit = Trace.Ray( this, from, to + velocity.SafeNormal() * size, Layers.World | Layers.Creature, exclude );
-		if ( age > 6f ) { Burst( to, -velocity.SafeNormal() ); return; }
+		var hit = Trace.Ray( this, from, to2 + velocity.SafeNormal() * size, Layers.World | Layers.Creature, exclude );
+		if ( age > 4f ) { Burst( to2, -velocity.SafeNormal() ); return; }
 		if ( hit.Hit )
 		{
 			LastHitName = $"{hit.Node?.Name} ({hit.Node?.GetType().Name})";
-			var at = hit.HitPosition - velocity.SafeNormal() * MathF.Min( size, 0.1f );
-			var creature = Shootables.Find( hit.Node )?.ShotOwner is Creature c && !c.IsDead ? c : null;
-			if ( kind == Kind.Mine ) { Burst( at, hit.Normal ); return; }
-			if ( creature is not null && hit.Node is Node3D part )
-			{
-				// Splat onto the enemy and hold on, wobbling, then burst (a big one goes almost at once).
-				Sticks++;
-				stuckTo = part;
-				stuckAt = part.ToLocal( at );
-				fuse = kind == Kind.Big ? 0.2f : StickFuse;
-				GoreSystem.Get( this ).Squelch( at, 1f, 1.2f );
-				GoreSystem.Get( this ).GooBurst( at, hit.Normal, colour, 6, 160f, 0.8f );
-				return;
-			}
-			if ( kind == Kind.Big ) { Split( at, hit.Normal ); return; }
-			var speed = velocity.Length();
-			if ( bounces < 2 && speed > 5f )
-			{
-				// Bounce: off the surface, losing half its speed, leaving a splat.
-				bounces++;
-				Bounces++;
-				velocity = velocity.Bounce( hit.Normal ) * Bounce;
-				GlobalPosition = at + hit.Normal * 0.02f;
-				var gore = GoreSystem.Get( this );
-				gore.GooSplat( hit.HitPosition, hit.Normal, 0.7f, colour );
-				gore.Squelch( hit.HitPosition, 0.6f, 1.3f );
-				blob.Scale = new Vector3( 1.4f, 0.6f, 1.4f ) * size;   // squashed on the bounce
-				return;
-			}
-			Burst( at, hit.Normal );
+			Burst( hit.HitPosition - velocity.SafeNormal() * MathF.Min( size, 0.1f ), hit.Normal );
 			return;
 		}
-		GlobalPosition = to;
+		GlobalPosition = to2;
 		if ( kind == Kind.Mine ) { RotateObjectLocal( Vector3.Right, dt * 5f ); return; }
-		// It wobbles like jelly as it flies, and springs back from a bounce's squash.
+		// It wobbles like jelly and stretches along its flight, dripping as it goes.
 		var t = (float)age * 18f;
-		var wobble = new Vector3( 1f + MathF.Sin( t ) * 0.12f, 1f + MathF.Sin( t + 2f ) * 0.12f, 1f + MathF.Sin( t + 4f ) * 0.12f ) * size;
-		blob.Scale = blob.Scale.Lerp( wobble, 1f - MathF.Exp( -10f * dt ) );
-		if ( sinceDrip > 0.06f )
+		var dir = velocity.SafeNormal();
+		if ( dir != Vector3.Zero ) blob.GlobalBasis = Shapes.LookAt( dir ) * Basis.FromScale( new Vector3( 1f + MathF.Sin( t ) * 0.1f, 1f + MathF.Sin( t + 2f ) * 0.1f, 1.35f ) * size );
+		if ( sinceDrip > 0.04f )
 		{
 			sinceDrip = 0f;
-			GooDroplet.Spawn( GlobalPosition, velocity * 0.2f + Rng.InSphere( 1f ), colour, 0.6f + size * 2f );
+			GooDroplet.Spawn( GlobalPosition, -velocity * 0.05f + Rng.InSphere( 0.8f ), colour, 0.5f + size * 2f );
 		}
-	}
-
-	/// <summary> Held on an enemy: rides along with it, pulsing, until the fuse runs out (or what it held is gone). </summary>
-	void Stuck( float dt )
-	{
-		if ( !IsInstanceValid( stuckTo ) || !stuckTo.IsInsideTree() ) { Burst( GlobalPosition, Vector3.Up ); return; }
-		GlobalPosition = stuckTo.ToGlobal( stuckAt );
-		fuse -= dt;
-		var pulse = 1f + MathF.Sin( (float)age * 40f ) * 0.18f * (1f - MathF.Max( 0f, fuse ) / StickFuse);
-		if ( blob is not null ) blob.Scale = Vector3.One * size * pulse;
-		if ( fuse <= 0f ) Burst( GlobalPosition, (GlobalPosition - stuckTo.GlobalPosition).SafeNormal() );
-	}
-
-	/// <summary> A big ball hitting the ground: one burst where it lands, and four small balls thrown out round it. </summary>
-	void Split( Vector3 at, Vector3 normal )
-	{
-		Splits++;
-		var side = normal.Cross( MathF.Abs( normal.Y ) > 0.9f ? Vector3.Right : Vector3.Up ).Normalized();
-		var other = normal.Cross( side );
-		for ( var i = 0; i < 4; i++ )
-		{
-			var a = i * MathF.PI * 0.5f + Rng.Float( -0.3f, 0.3f );
-			var dir = (side * MathF.Cos( a ) + other * MathF.Sin( a ) + normal * 1.1f).Normalized();
-			Launch( GetParent(), at + normal * 0.25f, dir * Rng.Float( 7f, 10f ), damage * 0.2f, PlayerWeapon.BallRadius, 0.12f, colour, shooter, weapon );
-		}
-		damage *= 0.6f;
-		Burst( at, normal );
 	}
 
 	void Burst( Vector3 at, Vector3 normal )
@@ -622,40 +597,166 @@ public partial class GoreBall : Node3D
 		var hurt = PlayerPerks.HurtCreatures( at, radius, damage, who );
 		Hits += hurt;
 		if ( hurt > 0 && weapon is not null && IsInstanceValid( weapon ) ) weapon.MarkHit();
+		// Everything in the radius is shoved back (heavier things less), and loose pieces fly.
+		var shove = kind switch { Kind.Mine => 1.4f, Kind.Big => 1f, Kind.Bomblet => 0.3f, _ => 0.45f };
+		foreach ( var creature in Creature.Everyone.ToList() )
+			if ( IsInstanceValid( creature ) && creature.IsEnemy && !creature.IsDead && creature.Pullable && creature.GlobalPosition.DistanceTo( at ) < radius )
+				creature.Pull( (creature.GlobalPosition - at).Flat().SafeNormal() * shove * 100f / MathF.Max( 60f, creature.Weight ) );
+		foreach ( var gib in gore.Gibs.ToList() )
+			if ( gib.GlobalPosition.DistanceTo( at ) < radius * 1.5f ) gib.LinearVelocity += (gib.GlobalPosition - at).SafeNormal() * 9f * shove;
+
 		if ( kind == Kind.Mine )
 		{
-			// The mine goes off: the blast, and everything near is shoved away (the player too, if too close).
 			MineBlasts++;
 			AlienBlast.Spawn( GetTree().CurrentScene, at, 2.2f );
 			Sfx.Play( "missile_boom", at, 1f );
-			foreach ( var creature in Creature.Everyone.ToList() )
-				if ( IsInstanceValid( creature ) && creature.IsEnemy && !creature.IsDead && creature.Pullable && creature.GlobalPosition.DistanceTo( at ) < radius )
-					creature.Pull( (creature.GlobalPosition - at).Flat().SafeNormal() * 1.2f );
-			foreach ( var gib in gore.Gibs.ToList() )
-				if ( gib.GlobalPosition.DistanceTo( at ) < radius * 1.5f ) gib.LinearVelocity += (gib.GlobalPosition - at).SafeNormal() * 12f;
 			if ( who is not null && who.GlobalPosition.DistanceTo( at ) < radius )
 				who.Velocity += ((who.GlobalPosition - at).Flat().SafeNormal() + Vector3.Up * 0.5f) * 7f;
 			if ( who?.GetNodeOrNull<CameraJuice>( "CameraJuice" ) is { } boom && who.GlobalPosition.DistanceTo( at ) < radius * 4f ) boom.Shake( 0.8f );
 			QueueFree();
 			return;
 		}
+
+		// The mini explosion: a blast sized to the ball, then the goo.
 		var k = size / 0.14f;
-		gore.GooBurst( at, normal, colour, (int)(16 * MathF.Min( 3f, k )), 320f * MathF.Min( 2f, k ), 1.2f * MathF.Min( 2.5f, k ) );
-		gore.GooSpray( at, normal, (int)(6 * MathF.Min( 3f, k )), colour, 140f * radius / PlayerWeapon.BallRadius, 0.6f, 1.5f * MathF.Min( 2f, k ) );
-		gore.GooSpray( at, Vector3.Down, 3, colour, 120f, 1f, 1.6f * MathF.Min( 2f, k ) );
-		for ( var i = 0; i < Math.Min( 6, 1 + (int)k ); i++ )
+		var blast = kind switch { Kind.Big => 1.5f, Kind.Bomblet => 0.4f, _ => 0.6f };
+		AlienBlast.Spawn( GetTree().CurrentScene, at + normal * 0.1f, blast );
+		Sfx.Play( kind == Kind.Big ? "missile_boom" : "splat", at, kind == Kind.Big ? 0.9f : 1f, kind == Kind.Big ? 1.1f : Rng.Float( 0.75f, 0.9f ) );
+		if ( kind != Kind.Big ) Sfx.Play( "missile_boom", at, 0.35f, Rng.Float( 1.6f, 1.9f ) );   // a small pop under the splat
+		gore.GooBurst( at, normal, colour, (int)(14 * MathF.Min( 3f, k )), 340f * MathF.Min( 2f, k ), 1.1f * MathF.Min( 2.5f, k ) );
+		gore.GooSpray( at, normal, (int)(5 * MathF.Min( 3f, k )), colour, 140f * radius / PlayerWeapon.BallRadius, 0.6f, 1.5f * MathF.Min( 2f, k ) );
+		gore.GooSpray( at, Vector3.Down, 2, colour, 120f, 1f, 1.4f * MathF.Min( 2f, k ) );
+		for ( var i = 0; i < Math.Min( 4, (int)k ); i++ )
 		{
 			var lump = gore.ThrowBlob( at + normal * 0.1f, normal, colour.Darkened( 0.2f ), colour, Rng.Float( 1.5f, 2.6f ) );
 			if ( lump is not null ) lump.Recycled = true;
 		}
-		// Gibs near the burst are blown outward.
-		foreach ( var gib in gore.Gibs.ToList() )
-			if ( !gib.Recycled && gib.GlobalPosition.DistanceTo( at ) < radius ) gib.LinearVelocity += (gib.GlobalPosition - at).SafeNormal() * 6f;
-		gore.Squelch( at, 1.5f, k > 2f ? 0.7f : 1f );
-		Sfx.Play( k > 2f ? "kraken_burst" : "splat", at, k > 2f ? 0.9f : 1f, k > 2f ? 1.3f : 0.85f );
-		// A big one shakes the view if you are close.
+		gore.Squelch( at, 1.3f, k > 2f ? 0.7f : 1f );
+		// The huge one throws four bomblets out of its blast.
+		if ( kind == Kind.Big )
+		{
+			Splits++;
+			var up = normal == Vector3.Zero ? Vector3.Up : normal;
+			var side = up.Cross( MathF.Abs( up.Y ) > 0.9f ? Vector3.Right : Vector3.Up ).Normalized();
+			var other = up.Cross( side );
+			for ( var i = 0; i < 4; i++ )
+			{
+				var a = i * MathF.PI * 0.5f + Rng.Float( -0.3f, 0.3f );
+				var dir = (side * MathF.Cos( a ) + other * MathF.Sin( a ) + up * 0.9f).Normalized();
+				Launch( GetParent(), at + up * 0.3f, dir * Rng.Float( 6f, 9f ), damage * 0.25f, PlayerWeapon.BallRadius * 0.8f, 0.1f, colour, shooter, weapon, Kind.Bomblet );
+			}
+		}
 		if ( who?.GetNodeOrNull<CameraJuice>( "CameraJuice" ) is { } juice && who.GlobalPosition.DistanceTo( at ) < radius * 3f )
-			juice.Shake( 0.3f * MathF.Min( 3f, k ) );
+			juice.Shake( 0.25f * MathF.Min( 3f, k ) );
 		QueueFree();
 	}
+}
+
+/// <summary>
+/// The suction you can see: a cone of water spiralling into the nozzle (out of it while blowing), drawn with a scrolling
+/// spiral shader, and specks of silt whirling down it into the nozzle (flung out along it while blowing). Fades in and
+/// out with the trigger, tinted a little toward the tank's goo. Lives under the camera.
+/// </summary>
+public partial class SuctionCone : MeshInstance3D
+{
+	const float Length = 4.5f, Wide = 1.5f, Narrow = 0.07f;
+	const int Specks = 90;
+	ShaderMaterial material;
+	MultiMeshInstance3D specks;
+	readonly float[] along = new float[Specks], angle = new float[Specks], spread = new float[Specks], rate = new float[Specks];
+	float shown, flow = 1f;
+
+	public static SuctionCone Create( Camera3D camera )
+	{
+		var cone = new SuctionCone
+		{
+			Name = "Suction Cone", CastShadow = ShadowCastingSetting.Off, Visible = false,
+			Mesh = new CylinderMesh { TopRadius = Narrow, BottomRadius = Wide, Height = Length, RadialSegments = 40, Rings = 8, CapTop = false, CapBottom = false },
+		};
+		cone.material = new ShaderMaterial { Shader = new Shader { Code = Code } };
+		cone.material.SetMeta( "no_caustics", true );
+		cone.MaterialOverride = cone.material;
+		camera.AddChild( cone );
+		// The specks: one small stretched bead each, coloured per speck (for the fade).
+		var bead = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 6, Rings = 3 };
+		var speckMaterial = new StandardMaterial3D
+		{
+			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, VertexColorUseAsAlbedo = true,
+			Transparency = BaseMaterial3D.TransparencyEnum.Alpha, AlbedoColor = Colors.White,
+		};
+		speckMaterial.SetMeta( "no_caustics", true );
+		bead.Material = speckMaterial;
+		cone.specks = new MultiMeshInstance3D
+		{
+			Name = "Specks", CastShadow = ShadowCastingSetting.Off,
+			Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, UseColors = true, InstanceCount = Specks, Mesh = bead },
+		};
+		cone.AddChild( cone.specks );
+		for ( var i = 0; i < Specks; i++ ) cone.Respawn( i, Rng.Float( 0f, 1f ) );
+		return cone;
+	}
+
+	/// <summary> A speck starting again at the open end (or the nozzle while blowing), at `t` along. </summary>
+	void Respawn( int i, float t )
+	{
+		along[i] = t;
+		angle[i] = Rng.Float( 0f, MathF.Tau );
+		spread[i] = Rng.Float( 0.25f, 1f );
+		rate[i] = Rng.Float( 0.5f, 1f );
+	}
+
+	/// <summary> `mode`: 1 sucking, -1 blowing, 0 off. </summary>
+	public void Show( float dt, Vector3 nozzle, Vector3 forward, float mode, Color tint )
+	{
+		if ( mode != 0f ) flow = mode;
+		shown = MathX.Approach( shown, MathF.Abs( mode ), dt * (mode != 0f ? 5f : 3f) );
+		Visible = shown > 0.01f && !DevFlags.HideWeapon;
+		if ( !Visible ) return;
+		// Its narrow top at the nozzle, opening out along the aim (local +Y points back at the nozzle).
+		GlobalTransform = new Transform3D( Shapes.LookAt( forward ) * new Basis( Vector3.Right, MathF.PI * 0.5f ), nozzle + forward * Length * 0.5f );
+		var water = new Color( 0.8f, 0.96f, 1f ).Lerp( tint, 0.3f );
+		material.SetShaderParameter( "strength", shown );
+		material.SetShaderParameter( "flow", flow );
+		material.SetShaderParameter( "tint", water );
+
+		// The specks whirl in, faster and tighter the nearer the nozzle (out and slowing while blowing).
+		var mm = specks.Multimesh;
+		for ( var i = 0; i < Specks; i++ )
+		{
+			var t = along[i];
+			t += dt * rate[i] * (0.45f + t * 1.6f) * flow;
+			if ( t >= 1f ) { Respawn( i, 0f ); t = 0f; }
+			else if ( t <= 0f ) { Respawn( i, 1f ); t = 1f; }
+			along[i] = t;
+			angle[i] += dt * (1.5f + t * 7f) * flow;
+			var y = -Length * 0.5f + Length * t;
+			var r = MathX.Lerp( Wide * 0.95f, Narrow, t ) * spread[i];
+			var at = new Vector3( MathF.Cos( angle[i] ) * r, y, MathF.Sin( angle[i] ) * r );
+			var stretch = 0.035f + t * 0.05f;
+			mm.SetInstanceTransform( i, new Transform3D( Basis.FromScale( new Vector3( 0.035f, stretch * 2.4f, 0.035f ) ), at ) );
+			var fade = MathX.Clamp( t * 6f, 0f, 1f ) * MathX.Clamp( (1f - t) * 8f, 0f, 1f );
+			mm.SetInstanceColor( i, (i % 5 == 0 ? tint : water) with { A = 0.85f * fade * shown } );
+		}
+	}
+
+	const string Code = @"
+shader_type spatial;
+render_mode unshaded, blend_mix, cull_disabled, depth_draw_never, shadows_disabled;
+uniform float strength = 1.0;
+uniform float flow = 1.0;
+uniform vec4 tint : source_color = vec4(0.75, 0.95, 1.0, 1.0);
+
+void fragment() {
+	// UV.x runs round the cone, UV.y from the nozzle (0) to the open end (1).
+	float along = UV.y;
+	float spin = fract(UV.x * 4.0 + along * 3.0 + TIME * 1.1 * flow);
+	float spiral = smoothstep(0.0, 0.1, spin) * smoothstep(0.38, 0.14, spin);
+	float rush = fract(along * 6.0 + TIME * 3.0 * flow);
+	float streaks = smoothstep(0.0, 0.06, rush) * smoothstep(0.3, 0.08, rush);
+	float ends = smoothstep(0.0, 0.1, along) * smoothstep(1.0, 0.6, along);
+	float edge = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 1.2);
+	float a = (spiral * 0.75 + streaks * 0.4) * ends * (0.5 + 0.5 * edge) * strength;
+	ALBEDO = tint.rgb;
+	ALPHA = clamp(a * 0.8, 0.0, 0.9);
+}";
 }

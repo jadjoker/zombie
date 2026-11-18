@@ -98,19 +98,22 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - The Gore Vac (slot 4, `Weapons/GoreVac.cs` as a `PlayerWeapon` partial with `Vacuum` set, model `GoreVacModel.cs` on
-  the Blaster's rig like the trident) is all pushes and pulls. Fire sucks: gibs (`GoreSystem.Gibs`) and goo puddles
-  (`GoreSystem.Slurp`) go into the tank (Ammo, 0 to 100; ammo stations do not fill it); enemies are dragged by
+  the Blaster's rig like the trident) is all pushes and pulls. Controls (user's choice): right click sucks, left click
+  shoots (hold it to charge the huge shot), reload blows. The suction has no range limit (`VacRange`; the pull weakens
+  to half by `FalloffReach`) and shows as a `SuctionCone`: a spiral-shader water cone from the nozzle with silt specks
+  whirling in (the old flying white blobs were dropped as broken-looking). It takes gibs (`GoreSystem.Gibs`) and goo
+  puddles (`GoreSystem.Slurp`) into the tank (Ammo, 0 to 100; ammo stations do not fill it); drags enemies by
   `Creature.Pull` at `PullStrength / Weight` (Weight is max health; crab and spider override Pull to move their nav
-  agent; bosses are not `Pullable`) and held `HoldOff` from the nozzle; a light weak one there is sucked apart; limbs at
-  half health or less are torn off (`PartCreature.Limbs`); starfish, shells and urchins (`SeaDressing.LooseGroup`) are
-  torn up as dry gibs; a sea mine is torn off its chain (`SeaMine.TearLoose`) and loaded. Aim spits a `GoreBall`
-  (manual physics: it bounces twice, sticks to an enemy and bursts after `StickFuse`; the big one splits into four on
-  the ground; a loaded mine goes first and blows up). Reload blows (pushes everything away, thrusts the player back,
-  hover when aimed down). Spits kick the player back (`LastKick`; full tank at the floor is a rocket jump); a full tank
-  slows you by `FullTankSlow` and sways the view. Lumps a ball throws are `Gib.Recycled` (worth 1 gunk), so there is no
-  free ammo loop. Its station (`BuyStation.CreateGoreVacStation`, 1250) joins the first area's row (`AddGoreVacStation`)
-  and follows to areas 2 and 3 via `PlaceStations`. Dev menu: Cheats, Give Gore Vac. Test: `--gorevac` (spawning
-  paused; with `--shots` for pictures).
+  agent; bosses are not `Pullable`), held `HoldOff` from the nozzle; sucks a light weak one apart; tears off limbs at
+  half health or less (`PartCreature.Limbs`); tears up starfish, shells and urchins (`SeaDressing.LooseGroup`) as dry
+  gibs; tears the nearest sea mine off its chain (`SeaMine.TearLoose`) and loads it. Shots (`GoreBall`) are made easy to
+  land: aim assist picks an enemy just beside the crosshair (`NearestToLine`), they fly fast and nearly straight, home
+  gently, and go off near an enemy (`Proximity`); every burst is a mini explosion (`AlienBlast`, goo, damage, a shove).
+  The huge shot throws four bomblets; a loaded mine goes first as a full blast. Shots kick the player back
+  (`LastKick`); a full tank slows you by `FullTankSlow` and sways the view. Lumps a burst throws are `Gib.Recycled`
+  (worth 1 gunk), so there is no free ammo loop. Its station (`BuyStation.CreateGoreVacStation`, 1250) joins the first
+  area's row (`AddGoreVacStation`) and follows to areas 2 and 3 via `PlaceStations`. Dev menu: Cheats, Give Gore Vac.
+  Test: `--gorevac` (spawning paused, the level's mines cleared; with `--shots` for pictures).
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor

@@ -4,8 +4,9 @@ using Godot;
 /// --gorevac: the Gore Vac and its physics. Its station stands in the first area's row; held fire sucks loose gibs and
 /// goo puddles into the tank, drags a crab and a Bloober in, tears off a limb shot half away, sucks a weak crab apart,
 /// tears a starfish off the floor and a mine off its chain (loaded, then spat and blown up); a full tank slows you; a
-/// small spit bounces off the floor, another sticks to a crab and hurts it; the huge spit splits on the ground and hurts
+/// shot at the floor goes off as a mini explosion, one aimed beside a crab still gets it; the huge shot throws bomblets and hurts
 /// several crabs, and kicks you back; blowing shoves you back. With --shots: pictures along the way.
+/// (The test drives the controls in code: ForceSuck is right click, TestSpit is left click.)
 /// </summary>
 public partial class AutoTest
 {
@@ -15,6 +16,7 @@ public partial class AutoTest
 		me.Health.Invulnerable = true;
 		DevFlags.FreezeEnemies = true;
 		if ( WaveDirector.Current is { } director ) director.SpawningPaused = true;   // only the creatures placed here
+		foreach ( var laid in SeaMine.All.ToList() ) laid.QueueFree();   // the suction reaches any distance: only the test's own mine
 		DockHouse.Current?.SkipDive();
 		await WaitForNav();
 		await Wait( 0.5f );
@@ -88,7 +90,10 @@ public partial class AutoTest
 			var loose = gore.Gibs.Where( g => g.GlobalPosition.DistanceTo( player.GlobalPosition ) < 9f ).ToList();
 			return loose.Count > 0 ? loose.Aggregate( Vector3.Zero, ( a, g ) => a + g.GlobalPosition ) / loose.Count : spot + ahead * 4f;
 		}
-		await Hold( GibCentre, 3f );
+		await Hold( GibCentre, 0.8f );
+		vac.ForceSuck = true;
+		await Shot( "gorevac_vortex" );
+		await Hold( GibCentre, 2.2f );
 		await Hold( () => Floor( spot + ahead * 3.5f ), 0.7f );
 		vac.ForceSuck = true;
 		await Wait( 0.05f );
@@ -187,40 +192,37 @@ public partial class AutoTest
 			Check( !IsInstanceValid( target ) || target.IsDead || target.Health.Current < target.Health.MaxHealth, "the spat mine did not hurt the crab" );
 		}
 
-		// ---- A small spit bounces off the floor ----
+		// ---- A shot at the floor goes off as a mini explosion ----
 		Stand();
 		await FillTank();
-		LookAt( Floor( spot + ahead * 3.5f ) );
+		LookAt( Floor( spot + ahead * 4f ) );
 		await Wait( 0.1f );
-		var bouncesBefore = GoreBall.Bounces;
+		var floorBursts = GoreBall.Bursts;
 		vac.TestSpit( false );
-		await Wait( 1f );
-		Check( GoreBall.Bounces > bouncesBefore, "a spit at the floor did not bounce" );
+		await Wait( 0.6f );
+		Check( GoreBall.Bursts > floorBursts, "a shot at the floor did not go off" );
 
-		// ---- A small spit sticks to a crab and hurts it ----
-		var crab2 = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Floor( spot + ahead * 8f ) + Vector3.Up * 0.3f, spot ) as Creature;
+		// ---- Easy to land: a shot aimed beside a crab still gets it (aim assist, homing, proximity fuse) ----
+		var crab2 = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Floor( spot + ahead * 12f ) + Vector3.Up * 0.3f, spot ) as Creature;
 		await Wait( 1f );
 		if ( crab2 is not null )
 		{
 			Stand();
-			LookAt( crab2.GlobalPosition + Vector3.Up * 0.3f );
+			LookAt( crab2.GlobalPosition + Vector3.Up * 0.5f + right * 1.3f );   // 1.3 m off to the side
 			await Wait( 0.2f );
 			var healthBefore = crab2.Health.Current;
 			var gunk = vac.Ammo;
-			var sticks = GoreBall.Sticks;
 			var bursts = GoreBall.Bursts;
 			vac.TestSpit( false );
-			Check( vac.Ammo == gunk - PlayerWeapon.BallCost, $"a spit took {gunk - vac.Ammo} gunk, not {PlayerWeapon.BallCost}" );
-			for ( var i = 0; i < 40 && GoreBall.Sticks == sticks; i++ ) await Wait( 0.05f );
-			Check( GoreBall.Sticks > sticks, $"the gore ball did not stick to the crab (it hit {GoreBall.LastHitName})" );
-			await Wait( 0.25f );
-			await Shot( "gorevac_stuck" );
-			await Wait( GoreBall.StickFuse );   // it bursts when its fuse runs out
+			Check( vac.Ammo == gunk - PlayerWeapon.BallCost, $"a shot took {gunk - vac.Ammo} gunk, not {PlayerWeapon.BallCost}" );
+			for ( var i = 0; i < 40 && GoreBall.Bursts == bursts; i++ ) await Wait( 0.02f );
 			await Shot( "gorevac_splat" );
-			Check( !IsInstanceValid( crab2 ) || crab2.IsDead || crab2.Health.Current < healthBefore, "the stuck gore ball did not hurt the crab" );
+			GD.Print( $"[autotest] gorevac: a shot aimed 1.3 m beside a crab went off {GoreBall.LastBurst.DistanceTo( crab2.GlobalPosition ):0.0} m from it ({GoreBall.LastHitName})" );
+			await Wait( 0.1f );
+			Check( !IsInstanceValid( crab2 ) || crab2.IsDead || crab2.Health.Current < healthBefore, "a shot aimed just beside a crab missed it" );
 		}
 
-		// ---- The huge spit: splits on the ground, hurts a group, kicks the player back ----
+		// ---- The huge shot: a big blast with bomblets, hurts a group, kicks the player back ----
 		var group = new List<Creature>();
 		for ( var i = 0; i < 3; i++ )
 			if ( WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Floor( spot + ahead * 11f + right * (i - 1) * 1.6f ) + Vector3.Up * 0.3f, spot ) is Creature c ) group.Add( c );
@@ -235,16 +237,13 @@ public partial class AutoTest
 		vac.TestSpit( true );
 		Check( vac.Ammo == 0, $"the huge spit left {vac.Ammo} gunk in the tank" );
 		Check( vac.LastKick > 8f, $"the huge spit kicked the player back only {vac.LastKick:0.0} m/s" );
-		var sticksBig = GoreBall.Sticks;
-		var burstsBig = GoreBall.Bursts;
-		for ( var i = 0; i < 60 && GoreBall.Splits == splits && GoreBall.Bursts == burstsBig; i++ ) await Wait( 0.05f );
-		GD.Print( $"[autotest] gorevac: the huge ball first touched {GoreBall.LastHitName} (stuck {GoreBall.Sticks - sticksBig}, split {GoreBall.Splits - splits})" );
+		for ( var i = 0; i < 60 && GoreBall.Splits == splits; i++ ) await Wait( 0.05f );
 		await Wait( 0.05f );
 		await Shot( "gorevac_bigsplat" );
 		var pushedBack = (start - player.GlobalPosition).Dot( ahead );
 		GD.Print( $"[autotest] gorevac: the huge spit pushed the player {pushedBack:0.00} m back" );
 		Check( pushedBack > 0.3f, $"the huge spit moved the player only {pushedBack:0.00} m back" );
-		Check( GoreBall.Splits > splits, "the huge ball did not split on the ground" );
+		Check( GoreBall.Splits > splits, "the huge ball threw no bomblets" );
 		await Wait( 1.2f );
 		var hurt = group.Where( ( c, i ) => !IsInstanceValid( c ) || c.IsDead || c.Health.Current < before[i] ).Count();
 		GD.Print( $"[autotest] gorevac: the huge spit hurt {hurt} of {group.Count} crabs" );

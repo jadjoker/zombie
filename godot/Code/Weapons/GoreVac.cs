@@ -38,10 +38,12 @@ public partial class PlayerWeapon
 	/// <summary> How long the suction has to hold a mine before its chain snaps, and how close it has to be (m). </summary>
 	public const float MineTug = 0.6f, MineReach = 6f;
 	/// <summary>
-	/// What things are worth in the tank (100 is full): a gib about 1 to 3 by its size, a lump the gun threw itself 0.3,
-	/// a puddle 0.6, a stone or shell 0.3, an enemy sucked apart 6. It takes a lot of pieces to fill.
+	/// What things are worth in the tank (100 is full): a gib about 0.4 to 1.2 by its size, a lump the gun threw itself
+	/// 0.1, a puddle 0.25, a stone or shell 0.1, an enemy sucked apart 3. It takes a great many pieces to fill.
 	/// </summary>
-	public const float GibGunkMin = 1f, GibGunkMax = 3f, RecycledGunk = 0.3f, PuddleGunk = 0.6f, DryGunk = 0.3f, EnemyGunk = 6f;
+	public const float GibGunkMin = 0.4f, GibGunkMax = 1.2f, RecycledGunk = 0.1f, PuddleGunk = 0.25f, DryGunk = 0.1f, EnemyGunk = 3f;
+	/// <summary> The tank is full: it beeps this often while sucking, and what goes in is blown out the back. </summary>
+	const float FullBeepEvery = 0.8f;
 	/// <summary> A caught piece shrinks over the last this many metres to the nozzle, and is swallowed this close. </summary>
 	const float ShrinkReach = 2.2f, SwallowAt = 0.3f;
 	/// <summary> How much slower a full tank makes you. </summary>
@@ -109,10 +111,12 @@ public partial class PlayerWeapon
 		var wantBlow = allowed && !wantSuck && (Input.IsActionPressed( "reload" ) || ForceBlow);
 		Sucking = wantSuck;
 		Blowing = wantBlow;
-		if ( wantSuck && Ammo >= MagazineSize && sinceFullWarning > 1.2f )
+		if ( wantSuck && Ammo >= MagazineSize && sinceFullWarning > FullBeepEvery )
 		{
+			// The full beep: two quick high ticks, and on it sucks (the excess goes out the back).
 			sinceFullWarning = 0f;
-			Sfx.Play2D( "deny", 0.35f, 1.3f );
+			Sfx.Play2D( "ui_click", 0.6f, 2.2f, Sfx.GunBus );
+			GetTree().CreateTimer( 0.09 ).Timeout += () => Sfx.Play2D( "ui_click", 0.6f, 2.6f, Sfx.GunBus );
 		}
 		var touched = new HashSet<Node>();
 		if ( Sucking ) Suck( dt, from, forward, nozzle, touched );
@@ -153,8 +157,7 @@ public partial class PlayerWeapon
 	{
 		var gore = GoreSystem.Get( controller );
 		var pull = 1f - MathF.Exp( -7f * dt );
-		var full = Ammo >= MagazineSize;
-		if ( !full )
+		// Full or not, it keeps taking things in (when full, they are blown out the back: Vent).
 		{
 			// Pieces in the cone are caught, and stay caught while the trigger is held (sweep the gun and they follow).
 			foreach ( var gib in gore.Gibs )
@@ -168,6 +171,7 @@ public partial class PlayerWeapon
 			foreach ( var (at, colour) in gore.Slurp( from, forward, VacRange * 0.85f, VacCone - 0.1f, dt ) )
 			{
 				Slurped++;
+				if ( Ammo >= MagazineSize && Rng.Float() < 0.5f ) Vent( colour with { A = 1f }, false );
 				AddGunk( PuddleGunk, colour );
 				for ( var i = 0; i < 4; i++ ) GpuFx.SandPuff( at + Rng.InSphere( 0.2f ), (nozzle - at).SafeNormal() * Rng.Float( 5f, 9f ) + Rng.InSphere( 1f ), colour, Rng.Float( 6f, 12f ), 0.7f );
 			}
@@ -376,6 +380,7 @@ public partial class PlayerWeapon
 	{
 		caught.Remove( gib );
 		var colour = gib.Goo ?? new Color( 0.6f, 0.6f, 0.62f );
+		if ( Ammo >= MagazineSize ) { Vented++; Vent( colour, gib.Goo is null ); }
 		if ( gib.Goo is null ) AddGunk( DryGunk, null );
 		else AddGunk( gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax ), colour );
 		Swallowed++;
@@ -404,6 +409,34 @@ public partial class PlayerWeapon
 		var forward = -controller.Camera.GlobalBasis.Z;
 		for ( var i = 0; i < 2; i++ ) GpuFx.SandPuff( nozzle + forward * 0.15f, -forward * Rng.Float( 1f, 2f ) + Rng.InSphere( 0.5f ), colour, Rng.Float( 3f, 5f ), 0.25f );
 		juice?.Shake( 0.03f );
+	}
+
+	/// <summary> For tests: pieces blown out the back with the tank full. </summary>
+	public static int Vented;
+	TimeSince sinceVent = 9f;
+
+	/// <summary>
+	/// The tank is full, so what came in goes straight out the exhaust at the back of the gun: a spurt of goo (or grit)
+	/// thrown back past your shoulder, falling and splatting behind you, with a wet pfft.
+	/// </summary>
+	void Vent( Color colour, bool dry )
+	{
+		var camera = controller.Camera;
+		var basis = camera.GlobalBasis;
+		var exhaust = camera.GlobalPosition + basis.X * 0.28f - basis.Y * 0.22f - basis.Z * 0.15f;
+		var back = (basis.Z * 1f + basis.X * 0.6f + basis.Y * 0.35f).Normalized();
+		for ( var i = 0; i < 5; i++ )
+		{
+			var v = (back + Rng.InSphere( 0.25f )).Normalized() * Rng.Float( 4f, 7f );
+			if ( dry ) GpuFx.SandPuff( exhaust, v, colour, Rng.Float( 3f, 6f ), 0.5f );
+			else GooDroplet.Spawn( exhaust, v, colour, Rng.Float( 0.5f, 0.9f ) );
+		}
+		GpuFx.SandPuff( exhaust, back * 3f, colour with { A = 0.7f }, Rng.Float( 6f, 10f ), 0.45f );
+		if ( sinceVent > 0.12f )
+		{
+			sinceVent = 0f;
+			Sfx.Play2D( "bubbles", 0.4f, Rng.Float( 1.5f, 1.8f ), Sfx.GunBus );
+		}
 	}
 
 	/// <summary> Adds gunk to the tank (fractions carry over), mixing in its colour (null: a dry piece, no colour). </summary>

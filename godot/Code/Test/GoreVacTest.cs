@@ -114,6 +114,21 @@ public partial class AutoTest
 		await Wait( 0.1f );
 		Check( !vac.Sucking, "the Gore Vac kept sucking after the trigger was let go" );
 
+		// ---- A full tank keeps sucking: the excess goes out the back ----
+		await FillTank();
+		for ( var i = 0; i < 6; i++ )
+		{
+			var at = Floor( spot + ahead * Rng.Float( 2.5f, 4f ) + right * Rng.Float( -1f, 1f ) ) + Vector3.Up * 0.4f;
+			gore.ThrowBlob( at, Vector3.Up, colours[i % 3].Darkened( 0.2f ), colours[i % 3], 2.4f );
+		}
+		await Wait( 0.6f );
+		var vented = PlayerWeapon.Vented;
+		var swallowedFull = PlayerWeapon.Swallowed;
+		await Hold( GibCentre, 2.5f );
+		GD.Print( $"[autotest] gorevac: full tank: swallowed {PlayerWeapon.Swallowed - swallowedFull} more, vented {PlayerWeapon.Vented - vented}, tank {vac.Ammo}" );
+		Check( PlayerWeapon.Swallowed > swallowedFull && PlayerWeapon.Vented > vented, "with the tank full it stopped taking pieces in, or did not blow them out the back" );
+		Check( vac.Ammo == vac.MagazineSize, "the tank went past full" );
+
 		// ---- A full tank is heavy ----
 		await FillTank();
 		await Wait( 0.1f );
@@ -173,7 +188,7 @@ public partial class AutoTest
 		prop.AddChild( new MeshInstance3D { Mesh = new SphereMesh { Radius = 0.12f, Height = 0.08f }, MaterialOverride = new StandardMaterial3D { AlbedoColor = new Color( 1f, 0.4f, 0.3f ) } } );
 		prop.AddToGroup( SeaDressing.LooseGroup );
 		var torn = PlayerWeapon.PropsTorn;
-		await Hold( () => prop.GlobalPosition, 1.2f );
+		await Hold( At( prop, spot + ahead * 3f ), 1.2f );   // it may be sucked all the way in and gone meanwhile
 		Check( PlayerWeapon.PropsTorn > torn, "the suction did not tear the starfish off the floor" );
 
 		// ---- A mine far off is out of reach (only close ones can be torn off) ----

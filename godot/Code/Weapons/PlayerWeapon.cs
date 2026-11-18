@@ -357,7 +357,7 @@ public partial class PlayerWeapon : Node
 	void UpdateSpear( float dt, bool free )
 	{
 		Ammo = MagazineSize;
-		Blocking = free && Input.IsActionPressed( "attack2" );
+		Blocking = free && (Input.IsActionPressed( "attack2" ) || forceBlock);
 		shieldUp = MathX.Lerp( shieldUp, Blocking ? 1f : 0f, 1f - MathF.Exp( -14f * dt ) );
 		if ( free && !Blocking && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
 		if ( !spearStruck && spearSwing >= SpearWindUp && spearSwing < SpearCooldown )
@@ -378,7 +378,8 @@ public partial class PlayerWeapon : Node
 	}
 
 	/// <summary> Testing aid: raise or lower the shield as if right click were held. </summary>
-	public void TestBlock( bool up ) { Blocking = up; shieldUp = up ? 1f : 0f; }
+	public void TestBlock( bool up ) { Blocking = forceBlock = up; shieldUp = up ? 1f : 0f; }
+	bool forceBlock;
 
 	/// <summary> The trident shooter shows its next trident in the mouth: gone just after a shot, back once one is loaded. </summary>
 	void ShowLoaded()

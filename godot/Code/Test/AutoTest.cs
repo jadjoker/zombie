@@ -3087,9 +3087,10 @@ public partial class AutoTest : Node
 		var line = new List<JunkCrab>();
 		for ( var i = 0; i < 3; i++ ) line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -4f - i * 2.5f ) ), 5000f ) );
 		await Wait( 0.6f );
-		LookAt( line[0].GlobalPosition + Vector3.Up * 0.3f );
-		await Wait( 0.1f );
-		shooter.TestFireCharged();
+		// Fired level at crab height along the row (from eye height it would drop under the second crab).
+		var low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - line[2].GlobalPosition).Normalized() * 1.5f;
+		var along = (line[2].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
 		await Wait( 1.2f );
 		GD.Print( $"[autotest] trident bot: the charged trident went through {TridentBolt.LastPierced}" );
 		Check( TridentBolt.LastPierced == TridentBolt.MaxPierced, $"the charged trident went through {TridentBolt.LastPierced} enemies, not {TridentBolt.MaxPierced}" );
@@ -3119,7 +3120,9 @@ public partial class AutoTest : Node
 			await Wait( 0.3f );
 			await Shot( "tridentbot_back" );
 			player.CameraOverride = null;
-			ClassPicker.Find( GetTree() )?.SetOpen( true );
+			var picker = ClassPicker.Find( GetTree() );
+			if ( picker is not null ) picker.Visible = true;
+			picker?.SetOpen( true );
 			await Wait( 0.3f );
 			await Shot( "class_picker" );
 			ClassPicker.Find( GetTree() )?.SetOpen( false );

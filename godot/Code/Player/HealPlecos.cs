@@ -18,6 +18,8 @@ public partial class HealPlecos : Node3D
 	/// <summary> Where on the robot they latch: height above the feet (m) and how far out the body is there. </summary>
 	static readonly (float Height, float Reach)[] Spots = { (1.32f, 0.24f), (1.18f, 0.25f), (1.02f, 0.22f), (0.86f, 0.19f), (0.62f, 0.12f), (0.42f, 0.11f), (1.42f, 0.2f) };
 	public const int Count = 7;
+	/// <summary> Drawn this much bigger than life (a 9 cm fish on a robot), so they read from the third person camera. </summary>
+	public const float Size = 1.7f;
 
 	PlayerController controller;
 	PlayerSurvivor survivor;
@@ -74,7 +76,7 @@ public partial class HealPlecos : Node3D
 				var right = forward.Cross( up ).Normalized();
 				f.Node.Basis = new Basis( right, up, -forward );
 			}
-			f.Node.Scale = Vector3.One * MathF.Max( 0.01f, f.Grow );
+			f.Node.Scale = Vector3.One * MathF.Max( 0.01f, f.Grow ) * Size;
 			f.Tail.Rotation = new Vector3( 0f, MathF.Sin( t * 13f + f.Phase * 3f ) * 0.45f, 0f );
 			var suck = 1f + 0.25f * MathF.Max( 0f, MathF.Sin( t * 6f + f.Phase ) );
 			f.Mouth.Scale = new Vector3( suck, 1f, suck );
@@ -113,9 +115,9 @@ public partial class HealPlecos : Node3D
 	{
 		var root = new Node3D { Name = "Pleco" };
 		parent.AddChild( root );
-		var skin = Sculpt.Paint( new Color( 0.2f, 0.19f, 0.12f ), 0.7f );
+		var skin = Sculpt.Paint( new Color( 0.3f, 0.27f, 0.16f ), 0.7f );
 		var belly = Sculpt.Paint( new Color( 0.33f, 0.3f, 0.2f ), 0.7f );
-		var spot = Sculpt.Paint( new Color( 0.86f, 0.8f, 0.55f ), 0.6f );
+		var spot = Sculpt.Paint( new Color( 0.98f, 0.9f, 0.6f ), 0.6f );
 		var fin = Sculpt.Paint( new Color( 0.16f, 0.15f, 0.1f ), 0.6f );
 		var eye = Sculpt.Paint( new Color( 0.02f, 0.02f, 0.02f ), 0.15f );
 		Sculpt.Blob( root, new Vector3( 0f, 0f, 0f ), new Vector3( 0.034f, 0.018f, 0.07f ), skin, name: "Body" );
@@ -123,9 +125,9 @@ public partial class HealPlecos : Node3D
 		Sculpt.Blob( root, new Vector3( 0f, -0.006f, -0.005f ), new Vector3( 0.03f, 0.008f, 0.06f ), belly, name: "Belly" );
 		for ( var k = 0; k < 10; k++ )
 		{
-			var x = (k % 3 - 1) * 0.009f;
+			var x = (k % 3 - 1) * 0.011f;
 			var z = -0.03f + k * 0.0065f;
-			Sculpt.Blob( root, new Vector3( x, 0.009f, z ), Vector3.One * 0.004f, spot, name: "Spot" );
+			Sculpt.Blob( root, new Vector3( x, 0.009f, z ), Vector3.One * 0.006f, spot, name: "Spot" );
 		}
 		foreach ( var s in new[] { -1f, 1f } )
 		{

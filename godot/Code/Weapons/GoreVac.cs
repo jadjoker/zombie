@@ -55,14 +55,22 @@ public partial class PlayerWeapon
 	public bool HasMine => heldMine is not null && IsInstanceValid( heldMine );
 	/// <summary> The colour of what is in the tank (a running mix of the goo sucked up). </summary>
 	public Color TankColour { get; private set; } = GoreVacModel.Gunk;
+
+	/// <summary> Takes gunk out of the tank for something else (Vac-Bot's blink). False if there isn't enough. </summary>
+	public bool SpendGunk( int amount )
+	{
+		if ( !Vacuum || Ammo < amount ) return false;
+		Ammo -= amount;
+		return true;
+	}
 	/// <summary> For tests: hold the vacuum (or the blow) on without the mouse. </summary>
 	public bool ForceSuck, ForceBlow;
 	/// <summary> For tests: what it has taken in since the start. </summary>
 	public static int Swallowed, Slurped, EnemiesSwallowed, LimbsRipped, PropsTorn, MinesTorn;
 
-	public static PlayerWeapon GoreVac() => new()
+	public static PlayerWeapon GoreVac( int slot = 4 ) => new()
 	{
-		Name = "GoreVac", DisplayName = "Gore Vac", Slot = 4, ModelName = "gorevac", Vacuum = true,
+		Name = "GoreVac", DisplayName = "Gore Vac", Slot = slot, ModelName = "gorevac", Vacuum = true,
 		Damage = 120f, FireRate = 3.5f, MagazineSize = 100, StartingReserve = 0, Automatic = false, ChargeTime = 0.7f,
 		Recoil = 2.6f, ShakePerShot = 0.4f, FovKickPerShot = 3f, MuzzleFlashScale = 0f,
 	};

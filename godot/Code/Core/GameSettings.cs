@@ -37,6 +37,9 @@ public static class GameSettings
 	/// <summary> The HUD's look (HudTheme name), picked in the dev menu. `--hudtheme <name or letter>` overrides it. </summary>
 	public static string HudTheme = Argument( "--hudtheme" ) ?? global::HudTheme.ArcadeDive.Name;
 
+	/// <summary> The robot being played (RobotClass id), picked at the dock. `--class <name>` overrides it. </summary>
+	public static string RobotClass = Argument( "--class" ) ?? global::RobotClass.RamBot.Id;
+
 	static string RifleArgument() => Argument( "--rifle" );
 
 	static string Argument( string flag )
@@ -69,6 +72,7 @@ public static class GameSettings
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
 		HudTheme = Argument( "--hudtheme" ) ?? (string)file.GetValue( "game", "hud_theme", HudTheme );
 		UiStyle.Theme = global::HudTheme.Find( HudTheme );
+		RobotClass = Argument( "--class" ) ?? (string)file.GetValue( "game", "robot_class", RobotClass );
 	}
 
 	public static void Save()
@@ -87,6 +91,7 @@ public static class GameSettings
 		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );
 		file.SetValue( "game", "hud_theme", HudTheme );
+		file.SetValue( "game", "robot_class", RobotClass );
 		file.Save( Path );
 	}
 

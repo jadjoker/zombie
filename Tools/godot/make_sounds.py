@@ -360,6 +360,24 @@ def build():
     s["trident_flesh"] = reverb(mix((squelch(0.45, 180, 1100, 2.0), 0.01, 1.0), (thump(0.12, 150, 60, 0.05), 0, 0.6), (blub(360, 1200, 0.07), 0.18, 0.5), (blub(300, 900, 0.06), 0.27, 0.35)), room=0.12, wet=0.1)
     s["trident_charge"] = mix((spectral(tone(1.0, 180, 720, "saw"), hi=2600) * bell(int(SR * 1.0), 0.92) * 0.5, 0, 1.0), (tone(1.0, 360, 1440) * bell(int(SR * 1.0), 0.95) * 0.35, 0, 1.0), (chime((1568, 2093), 0.05, 0.2), 0.97, 0.7))
     s["bubble_pop"] = mix((blub(900, 2600, 0.03), 0, 1.0), (click(5000, 0.012, 0.004), 0.022, 0.35))
+    # The Bubble Cannon: a breathy bloop as a bubble leaves the bell, a rising wobbly hum while a big one is blown,
+    # a deep gloop as an enemy is wrapped up, a rubbery boing off a wall, and a big bright pop with a fizz of spray.
+    wob = lambda sec, f0, f1, rate: tone(sec, f0, f1) * (1 + 0.35 * np.sin(2 * np.pi * rate * t(sec)))
+    s["bubble_blow"] = reverb(mix((wob(0.16, 220, 620, 22) * env(int(SR * 0.16), 0.004, 0.09), 0, 1.0),
+                                  (spectral(noise(0.14), lo=600, hi=3500) * bell(int(SR * 0.14), 0.2), 0, 0.35),
+                                  (blub(500, 1500, 0.04), 0.1, 0.5)), room=0.15, wet=0.15)
+    s["bubble_charge"] = mix((wob(0.8, 140, 420, 9) * bell(int(SR * 0.8), 0.9) * 0.6, 0, 1.0),
+                             (spectral(noise(0.8), lo=400, hi=2200) * bell(int(SR * 0.8), 0.85) * 0.25, 0, 1.0),
+                             (blub(700, 2000, 0.05), 0.76, 0.6))
+    s["bubble_trap"] = reverb(mix((wob(0.35, 160, 90, 14) * env(int(SR * 0.35), 0.006, 0.22), 0, 1.0),
+                                  (squelch(0.3, 200, 900, 0.5), 0.01, 0.45),
+                                  (blub(300, 700, 0.06), 0.18, 0.5)), room=0.25, wet=0.2)
+    s["bubble_bounce"] = mix((wob(0.22, 320, 180, 30) * env(int(SR * 0.22), 0.002, 0.12), 0, 1.0), (click(2400, 0.02, 0.006), 0, 0.3))
+    s["bubble_burst"] = reverb(mix((blub(600, 2800, 0.05), 0, 1.0), (click(6000, 0.02, 0.006), 0.03, 0.6),
+                                   (thump(0.25, 140, 50, 0.12), 0, 0.7),
+                                   (spectral(noise(0.5), lo=3000, hi=9000) * env(int(SR * 0.5), 0.004, 0.3), 0.03, 0.3),
+                                   *[(blub(rng.uniform(700, 1400), rng.uniform(1800, 3600), 0.025), 0.06 + i * 0.035, 0.35) for i in range(6)]),
+                               room=0.35, wet=0.25)
     # MC-51's missiles and the sea mines: a fizzing launch, a deep alien boom with a ringing tail, a tink off steel.
     s["missile_launch"] = mix((whoosh(0.5, 500, 2600, 0.25), 0, 0.9), (spectral(noise(0.5), lo=2500, hi=8000) * bell(int(SR * 0.5), 0.2) * 0.25, 0, 1.0), (tone(0.45, 180, 520) * bell(int(SR * 0.45), 0.3) * 0.3, 0, 1.0))
     boom = mix((thump(0.9, 110, 28, 0.55), 0, 1.0), (sweep_lp(noise(0.9), 5000, 200) * env(int(SR * 0.9), 0.002, 0.5), 0, 0.7), (zap(0.5, 1400, 160, 0.3) * 0.35, 0.02, 1.0), (chime((392, 587, 880), 0.03, 0.5), 0.05, 0.25))

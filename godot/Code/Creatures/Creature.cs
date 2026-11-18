@@ -27,6 +27,10 @@ public abstract partial class Creature : Node3D, ICreature
 	public virtual bool Pullable => Weight < 1000f;
 	/// <summary> Dragged by the Gore Vac (or blown away): moved this far (m) on top of its own movement. </summary>
 	public virtual void Pull( Vector3 delta ) => GlobalPosition += delta;
+	/// <summary> Caught in a Bubble Cannon bubble (BubbleTrap): it stops thinking while the bubble carries it. </summary>
+	public bool Bubbled;
+	/// <summary> Its brain is off: the dev menu froze enemies, or it is in a bubble. </summary>
+	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled;
 	public event Action<Creature> Killed;
 
 	protected Health health;

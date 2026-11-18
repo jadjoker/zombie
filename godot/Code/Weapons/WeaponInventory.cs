@@ -62,6 +62,37 @@ public partial class WeaponInventory : Node
 		Sfx.Play2D( "weapon_switch", 0.7f );
 	}
 
+	/// <summary>
+	/// A different robot was picked: its weapons take the place of every one held (the damage upgrades carry over).
+	/// </summary>
+	public void Replace( IEnumerable<PlayerWeapon> kit )
+	{
+		var level = weapons.Count > 0 ? weapons.Max( w => w.DamageLevel ) : 0;
+		foreach ( var old in GetParent().GetChildren().OfType<PlayerWeapon>().ToList() )
+		{
+			old.Active = false;
+			GetParent().RemoveChild( old );   // gone now, so the new weapons get their names (and its model goes with it)
+			old.QueueFree();
+		}
+		weapons.Clear();
+		Current = null;
+		var controller = GetParent<PlayerController>();
+		var melee = controller.GetChildren().OfType<PlayerMelee>().FirstOrDefault();
+		foreach ( var weapon in kit )
+		{
+			weapon.DamageLevel = level;
+			if ( melee is not null ) weapon.MeleeActive = () => melee.IsSwinging;
+			controller.AddChild( weapon );
+			weapons.Add( weapon );
+		}
+		weapons.Sort( ( a, b ) => a.Slot.CompareTo( b.Slot ) );
+		Select( weapons.FirstOrDefault(), force: true );
+		Sfx.Play2D( "weapon_switch", 0.7f );
+	}
+
+	/// <summary> Has the player got this weapon (by node name: "GoreVac", "Trident"). </summary>
+	public bool Has( string name ) => weapons.Any( w => w.Name == name );
+
 	/// <summary> Has the player got a weapon in this slot. </summary>
 	public bool HasSlot( int slot ) => weapons.Any( w => w.Slot == slot );
 

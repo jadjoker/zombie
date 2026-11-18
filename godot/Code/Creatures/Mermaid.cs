@@ -249,7 +249,7 @@ void fragment() {
 		var dt = (float)delta;
 		var t = (float)Clock.Now + phase;
 		Animate( t, dt );
-		if ( IsDead || DevFlags.FreezeEnemies ) return;
+		if ( IsDead || Frozen ) return;
 		if ( sinceFloor > 0.25f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition + Vector3.Up * 0.5f ); }
 
 		var prey = PlayerSurvivor.FindNearestAlive( GlobalPosition );

@@ -10,6 +10,10 @@ using Godot;
 /// Surge (mouse 4): hold to wind up (you hang in the water, bubbles swirling), release to dump the cell into one hard
 /// burst along your view (or up if Jump is held). Bursting into enemies slams them (the one you hit bursts and you
 /// carry on through it; everything near takes a shockwave); hitting a wall bounces you off. Numbers are the s&box ones.
+///
+/// Vac-Bot (RobotClass.Blink) has the reverse-thrust blink on mouse 4 instead: a tap bursts you the way you are
+/// moving (or the way you look), costing `BlinkCost` power. With `BlinkGunk` in the Gore Vac's tank it burns that
+/// for `BlinkGunkBoost` more distance and leaves a goo trail. It doesn't ram: it stops on whatever it meets.
 /// Child of the PlayerController.
 /// </summary>
 public partial class Jetpack : Node
@@ -38,6 +42,17 @@ public partial class Jetpack : Node
 	public float SlamRadius = 150f;
 	public float SlamDamage = 90f;
 	public float SlamMinSpeed = 550f;
+	public float BlinkCost = 34f;
+	public float BlinkSpeed = 1900f;
+	public float BlinkTime = 0.2f;
+	public int BlinkGunk = 6;
+	public float BlinkGunkBoost = 1.5f;
+	/// <summary> The burst under way is a blink (not a ramming surge). </summary>
+	public bool Blinking => Surging && blink;
+	/// <summary> Test counters. </summary>
+	public static int Blinks, GunkBlinks;
+	bool blink, blinkGunk;
+	Color blinkColour;
 
 	public SeaSpider DockedTo { get; private set; }
 	public float Power { get; private set; }
@@ -184,6 +199,13 @@ public partial class Jetpack : Node
 		var pressed = Input.IsActionJustPressed( "surge" ) || testSurge;
 		var released = Input.IsActionJustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
 		testSurge = false;
+		if ( RobotClass.Current.Blink )
+		{
+			Charging = false;
+			testHold = 0f;
+			if ( pressed ) TryBlink();
+			return;
+		}
 		if ( !Charging && pressed && !Surging )
 		{
 			if ( Stalled || Power < SurgeMinPower ) { TimeSinceRefused = 0f; testHold = 0f; return; }
@@ -240,6 +262,46 @@ public partial class Jetpack : Node
 		}
 	}
 
+	/// <summary> Vac-Bot's reverse-thrust blink: a short, very fast burst the way you move (or look). </summary>
+	void TryBlink()
+	{
+		if ( Surging ) return;
+		if ( Power < BlinkCost ) { TimeSinceRefused = 0f; return; }
+		var eyes = controller.EyeAngles;
+		var input = Input.GetVector( "left", "right", "backward", "forward" );
+		var direction = input.LengthSquared() > 0.04f ? (eyes.Forward * input.Y + eyes.Right.Flat().SafeNormal() * input.X).SafeNormal() : eyes.Forward;
+		if ( Input.IsActionPressed( "jump" ) ) direction = (direction + Vector3.Up * 0.8f).SafeNormal();
+		if ( controller.IsOnGround && direction.Y < 0.1f ) direction = (direction.Flat().SafeNormal() + Vector3.Up * 0.12f).SafeNormal();
+		if ( direction == Vector3.Zero ) direction = eyes.Forward;
+
+		var vac = controller.GetChildren().OfType<PlayerWeapon>().FirstOrDefault( w => w.Vacuum );
+		blinkGunk = vac is not null && vac.SpendGunk( BlinkGunk );
+		blinkColour = vac?.TankColour ?? GoreVacModel.Gunk;
+		blink = true;
+		Blinks++;
+		if ( blinkGunk ) GunkBlinks++;
+		rammed.Clear();
+		SurgeStrength = blinkGunk ? 1f : 0.7f;
+		surgeDirection = direction;
+		surgeSpeed = BlinkSpeed;
+		surgeTotal = surgeLeft = BlinkTime * (blinkGunk ? BlinkGunkBoost : 1f);
+		Power -= BlinkCost;
+		timeSinceThrust = 0f;
+		controller.PreventGrounding( 0.1f );
+		Sfx.Play( "surge", controller.GlobalPosition, 0.7f, 1.35f );
+		if ( blinkGunk ) Sfx.Play( "splat", controller.GlobalPosition, 0.5f, 0.8f );
+		Juice?.Shake( 0.2f );
+		Juice?.KickFov( 16f );
+		// The reverse thrust: a cone of bubbles (and goo) blown out behind.
+		var center = Feet + Vector3.Up * 36f * U.In;
+		for ( var i = 0; i < 16; i++ )
+		{
+			var spray = (-direction + Rng.InSphere( 0.5f )).SafeNormal();
+			WaterBubble.Create( center + spray * Rng.Float( 10f, 40f ) * U.In, Rng.Float( 0.9f, 2.4f ), i * 0.004f );
+			if ( blinkGunk ) GooDroplet.Spawn( center + spray * 0.3f, spray * Rng.Float( 4f, 9f ), blinkColour, Rng.Float( 1.5f, 3f ) );
+		}
+	}
+
 	void SurgeEffects()
 	{
 		if ( timeSinceSurgeFx < 0.02f ) return;
@@ -258,6 +320,7 @@ public partial class Jetpack : Node
 		}
 		else if ( Surging )
 		{
+			if ( blink && blinkGunk ) GooDroplet.Spawn( center - surgeDirection * 0.4f + Rng.InSphere( 0.15f ), -surgeDirection * Rng.Float( 2f, 5f ) + Rng.InSphere( 1.5f ), blinkColour, Rng.Float( 1.2f, 2.6f ) );
 			for ( var k = 0; k < 3; k++ )
 				WaterBubble.Create( center - surgeDirection * Rng.Float( 10f, 40f ) * U.In + Rng.InSphere( 12f * U.In ), Rng.Float( 0.8f, 2.2f + SurgeStrength ), 0f, Rng.Float( 0.8f, 1.6f ) );
 		}
@@ -413,6 +476,15 @@ public partial class Jetpack : Node
 			var speed = surgeSpeed * (1f - 0.3f * t * t * t);
 			if ( FindImpactBody( Feet, surgeDirection * (speed * dt + RamRadius) * U.In, out var hitAt, out var enemy ) )
 			{
+				if ( blink )
+				{
+					// A blink doesn't ram: it stops short of whatever it meets, with a little push back.
+					surgeLeft = 0f;
+					blink = false;
+					TimeSinceSurgeEnded = 0f;
+					controller.Velocity = -surgeDirection * 120f * U.In + Vector3.Up * 60f * U.In;
+					return;
+				}
 				if ( speed >= SlamMinSpeed ) { Slam( hitAt, enemy, speed ); if ( enemy is null || !Surging ) return; }
 				else { surgeLeft = 0f; return; }
 			}
@@ -423,11 +495,12 @@ public partial class Jetpack : Node
 			if ( surgeLeft <= 0f )
 			{
 				TimeSinceSurgeEnded = 0f;
-				controller.Velocity = surgeDirection * MathF.Min( surgeSpeed * 0.6f, 850f ) * U.In;
+				controller.Velocity = surgeDirection * MathF.Min( surgeSpeed * (blink ? 0.3f : 0.6f), 850f ) * U.In;
+				blink = false;
 			}
 			return;
 		}
-		if ( TimeSinceSurgeEnded < 0.4f && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
+		if ( TimeSinceSurgeEnded < 0.4f && !RobotClass.Current.Blink && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
 		{
 			var v = controller.Velocity;
 			if ( FindImpactBody( Feet, v * dt + v.Normalized() * RamRadius * U.In, out var hitAt, out var enemy ) && enemy is not null )

@@ -196,7 +196,32 @@ public partial class BuyStation : Node
 		return null;
 	}
 
-	public bool CanPress( PlayerSurvivor buyer ) => buyer is not null && buyer.IsAlive && !SoldOut;
+	public bool CanPress( PlayerSurvivor buyer ) => buyer is not null && buyer.IsAlive && !SoldOut && RobotClass.Sells( Kind );
+
+	public override void _Ready()
+	{
+		RobotClass.Changed += Refresh;
+		Refresh();
+	}
+
+	public override void _ExitTree() => RobotClass.Changed -= Refresh;
+
+	/// <summary>
+	/// A station that isn't for the robot being played (the weapon ones: weapons come with the robot) is hidden, its
+	/// collider off, so it can't be seen, bumped into or pressed.
+	/// </summary>
+	bool hidden;
+
+	void Refresh()
+	{
+		var on = RobotClass.Sells( Kind );
+		if ( on && !hidden ) return;   // the usual case: never touched
+		hidden = !on;
+		var root = GetParent()?.GetParent() as Node3D;
+		if ( root is null ) return;
+		root.Visible = on;
+		foreach ( var shape in root.FindChildren( "*", "CollisionShape3D", true, false ).OfType<CollisionShape3D>() ) shape.SetDeferred( CollisionShape3D.PropertyName.Disabled, !on );
+	}
 
 	public bool Press( PlayerSurvivor buyer )
 	{
@@ -214,8 +239,8 @@ public partial class BuyStation : Node
 	bool CanUse( PlayerSurvivor buyer ) => Kind switch
 	{
 		BuyStationKind.Ammo => Weapons( buyer ).Any( w => !w.Vacuum && (w.Ammo < w.MagazineSize || w.Reserve < w.StartingReserve) ),
-		BuyStationKind.Trident => Inventory( buyer ) is { } inventory && !inventory.HasSlot( 3 ),
-		BuyStationKind.GoreVac => Inventory( buyer ) is { } vacs && !vacs.HasSlot( 4 ),
+		BuyStationKind.Trident => Inventory( buyer ) is { } inventory && !inventory.Has( "Trident" ),
+		BuyStationKind.GoreVac => Inventory( buyer ) is { } vacs && !vacs.Has( "GoreVac" ),
 		_ => true,
 	};
 

@@ -31,7 +31,7 @@ public partial class DevMenu : CanvasLayer
 		var sb = new System.Text.StringBuilder();
 		foreach ( var f in typeof( DevFlags ).GetFields( System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static ) )
 			if ( f.FieldType == typeof( bool ) || f.FieldType == typeof( float ) || f.FieldType == typeof( int ) ) sb.Append( f.GetValue( null ) ).Append( '|' );
-		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' ).Append( Kraken.FightRadius ).Append( '|' );
+		sb.Append( Engine.TimeScale ).Append( '|' ).Append( CharacterSkins.Current ).Append( '|' ).Append( RifleModels.Current ).Append( '|' ).Append( GameSettings.RobotClass ).Append( '|' ).Append( Kraken.FightRadius ).Append( '|' );
 		if ( WaveDirector.Current is { } d ) sb.Append( d.Wave ).Append( d.State ).Append( d.SpawningPaused ).Append( d.KrakenChanceNext ).Append( d.SpawnKrakenWaves ).Append( '|' );
 		sb.Append( GlobalStylize.Current?.Style ).Append( '|' ).Append( Level.Current?.LevelName );
 		return sb.ToString();
@@ -484,8 +484,8 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Cheats", "heal health" ) ) Action( "Heal", () => { if ( player?.Health is { } h ) h.Heal( h.MaxHealth ); } );
 			if ( Show( "Cheats", "refill ammo" ) ) Action( "Refill ammo", () => { foreach ( var w in weapons ) w.RefillAmmo(); } );
 			if ( Show( "Cheats", "+1000 points money" ) ) Action( "+1000 points", () => player?.AddPoints( 1000 ) );
-			if ( Show( "Cheats", "give gore vac weapon vacuum" ) ) Action( "Give Gore Vac", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.HasSlot( 4 ) ) inv.Add( PlayerWeapon.GoreVac() ); } );
-			if ( Show( "Cheats", "give trident weapon" ) ) Action( "Give Trident", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.HasSlot( 3 ) ) inv.Add( PlayerWeapon.Trident() ); } );
+			if ( Show( "Cheats", "give gore vac weapon vacuum" ) ) Action( "Give Gore Vac", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.Has( "GoreVac" ) ) inv.Add( PlayerWeapon.GoreVac() ); } );
+			if ( Show( "Cheats", "give trident weapon" ) ) Action( "Give Trident", () => { if ( player?.Controller?.GetNodeOrNull<WeaponInventory>( "WeaponInventory" ) is { } inv && !inv.Has( "Trident" ) ) inv.Add( PlayerWeapon.Trident() ); } );
 		}
 
 		if ( Sec( "Player", "Pickups", "pickups perks drops give " + string.Join( " ", PlayerPerks.Table.Select( e => e.Name ) ) ) )
@@ -498,6 +498,13 @@ public partial class DevMenu : CanvasLayer
 			}
 			if ( Show( "Pickups", "clear all" ) ) Action( "Clear all pickups", () => PlayerPerks.Of( Controller )?.Clear() );
 			if ( Show( "Pickups", "drop chance x20" ) ) Chip( "Drop chances x20", PerkPickup.ChanceScale > 1f, () => PerkPickup.ChanceScale = PerkPickup.ChanceScale > 1f ? 1f : 20f );
+		}
+
+		if ( Sec( "Player", "Robot class", "class robot character ram-bot vac-bot rambot vacbot loadout kit" ) )
+		{
+			Section( "Robot class" );
+			Row( "Robot" );
+			foreach ( var robot in RobotClass.All ) { var r = robot; Pick( r.Name, RobotClass.Current == r, () => RobotClass.Pick( r, Controller ) ); }
 		}
 
 		if ( Sec( "Player", "Appearance", "robot paint outfit skin gun skin weapon rifle model design " + string.Join( " ", CharacterSkins.Names ) + " " + string.Join( " ", WeaponSkins.Names ) + " " + string.Join( " ", RifleModels.Names ) ) )

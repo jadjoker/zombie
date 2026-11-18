@@ -97,7 +97,31 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   for a charged next trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
-- The Gore Vac (slot 4, `Weapons/GoreVac.cs` as a `PlayerWeapon` partial with `Vacuum` set, model `GoreVacModel.cs` on
+- Robot classes (`Player/RobotClass.cs`): each robot has its own weapons and mouse 4 move; both swing the axe.
+  Ram-Bot: rifle and shotgun, the charged surge (`Jetpack`). Vac-Bot: the Gore Vac (slot 1) and the Bubble Cannon
+  (slot 2), and the reverse-thrust blink (`Jetpack.TryBlink`, `RobotClass.Blink`: a tap bursts you the way you move
+  for `BlinkCost` power, burning `BlinkGunk` from the tank for `BlinkGunkBoost` more distance and a goo trail; it
+  never rams). Picked on the dock at the start of a run (`Game/ClassPicker.cs`, pauses the game; 1 or 2, a click or
+  the pad; the pause menu's "Change robot" until the dive), in the dev menu (Player, Robot class), saved as
+  `game/robot_class`; `--class <name>` forces one (tests default to Ram-Bot). `RobotClass.Pick` swaps the kit
+  (`WeaponInventory.Replace`, damage upgrades kept). Weapon buy stations are hidden for every robot (`RobotClass.Sells`,
+  `BuyStation.Refresh`): weapons come with the robot. The trident has no robot now (dev menu Cheats still gives it).
+  The Bubble Cannon (`Weapons/BubbleCannon.cs`, model `BubbleCannonModel` on the Blaster rig; the globe's "Loaded"
+  bubble regrows after a shot and swells while charging): left click blows a `BubbleShot` (grows out of the bell,
+  stretches and wobbles, gentle homing via `GoreBall.NearestToLine`, drifts up, bounces off the world `Bounces` times).
+  Hold after a shot (`ChargeTime`) for a Mega Bubble: big and slow, it rolls through and wraps up to `MegaCatches`
+  light enemies, splashes heavy ones for triple. A `Pullable` enemy is caught in a `BubbleTrap`: `Creature.Bubbled`
+  turns its brain off (`Creature.Frozen` gates every creature's Think), it floats up (`RiseHeight`, `MegaRise`),
+  struggles (film bulges, it twists), bubbles push apart. A bubble fired into a trapped enemy inflates it (`Inflate`:
+  higher, longer). It pops after `HoldTime`, on a hit of `PopOnHit`+ (bleed ticks don't count), on right click
+  (`PopAll`), or in a chain from a pop near it (`ChainDelay`, each link `ChainBonus` harder); the pop splashes within
+  `PopRadius` and throws film shards and a fading ring (`BubbleFilm.Shards`, the film shader's `fade` instance
+  uniform); the enemy drops and takes `LandDamage` scaled by the height, shoving what is near. In-flight bubble
+  splashes spare bubbled enemies. Sounds: `bubble_blow`, `bubble_charge`, `bubble_trap`, `bubble_bounce`,
+  `bubble_burst` (`make_sounds.py`). The HUD shows "N BUBBLED". Bubbled crabs and spiders move freely (hits and
+  `Pull` skip the navmesh snap), so the Gore Vac can reel a bubble in.
+  Test: `--classes` (with `--shots`: the picker, a bubbled crab, a Mega Bubble, a pop, the gun).
+- The Gore Vac (slot 4, slot 1 for Vac-Bot, `Weapons/GoreVac.cs` as a `PlayerWeapon` partial with `Vacuum` set, model `GoreVacModel.cs` on
   the Blaster's rig like the trident) is all pushes and pulls. Controls (user's choice): right click sucks, left click
   shoots (hold it to charge the huge shot), reload blows. The suction has no range limit (`VacRange`; the pull weakens
   to half by `FalloffReach`) and shows as a `SuctionCone`: a spiral-shader water cone from the nozzle with silt specks

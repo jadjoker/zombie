@@ -158,6 +158,14 @@ public partial class PlayerWeapon : Node
 
 	public void AddAmmo( int amount ) => Reserve += amount;
 
+	/// <summary> Dropped (a different robot was picked): its first person model goes with it. </summary>
+	public override void _ExitTree()
+	{
+		if ( ViewModel is not null && IsInstanceValid( ViewModel ) ) ViewModel.QueueFree();
+		ViewModel = null;
+		if ( Bubbles ) BubbleTrap.PopAll( controller );
+	}
+
 	void OnEnabled()
 	{
 		if ( ViewModel is not null ) { ViewModel.Visible = true; ViewModel.Shown(); }
@@ -226,13 +234,14 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		UpdateAiming( dt );
+		if ( !Bubbles ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles instead
 
 		if ( Input.IsActionJustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
 		if ( DevFlags.Placing || melee ) return;   // left click is placing an enemy; the axe is out
 		if ( DockHouse.WeaponsHeld || DevMenu.IsOpen ) return;   // not during the dive, nor while clicking the dev menu
 		if ( MouseFree ) return;   // Esc released the mouse: the click that takes it back doesn't fire
+		if ( Bubbles && Input.IsActionJustPressed( "attack2" ) ) BubbleTrap.PopAll( controller, true );
 
 
 
@@ -256,7 +265,7 @@ public partial class PlayerWeapon : Node
 				else if ( held && heldSinceShot && Ammo > 0 && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
 					charging = true; chargeFull = false; sinceChargeStart = 0f;
-					Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus );
+					Sfx.Play2D( Bubbles ? "bubble_charge" : "trident_charge", 0.5f, bus: Sfx.GunBus );
 				}
 				if ( !held ) heldSinceShot = false;
 			}
@@ -287,6 +296,7 @@ public partial class PlayerWeapon : Node
 	/// <summary> The trident shooter shows its next trident in the mouth: gone just after a shot, back once one is loaded. </summary>
 	void ShowLoaded()
 	{
+		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
 		if ( !Projectile || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
 		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f;
@@ -342,13 +352,14 @@ public partial class PlayerWeapon : Node
 			ViewModel.Fire();
 			var barrel = ViewModel.Muzzle();
 			trailStart = barrel.Origin;
-			Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
+			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
 		}
-		else Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale, null, FlashTint );
+		else if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale, null, FlashTint );
 
 		hitThisShot.Clear();
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
-		if ( Projectile )
+		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
+		else if ( Projectile )
 		{
 			// The trident flies from the muzzle to whatever is under the crosshair (or as far as it reaches).
 			var aimDirection = (forward + Rng.InSphere( 1f ) * spread).Normalized();

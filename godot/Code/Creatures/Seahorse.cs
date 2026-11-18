@@ -121,7 +121,7 @@ public partial class Seahorse : Creature
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.AlbedoColor = Green.Lerp( Colors.White * 2.5f, flash ) with { A = 1f };
 
-		if ( IsDead || DevFlags.FreezeEnemies ) return;
+		if ( IsDead || Frozen ) return;
 		if ( sinceFloor > 0.25f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition + Vector3.Up * 0.5f ); }
 
 		var prey = PlayerSurvivor.FindNearestAlive( GlobalPosition );

@@ -272,7 +272,7 @@ public partial class Squilien : Creature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !DevFlags.FreezeEnemies ) Think( dt );
+		if ( !Frozen ) Think( dt );
 		if ( diedLocally ) return;
 		UpdateBlink();
 		if ( !bell.Gone ) CreatureGore.BleedTrail( bell.Position + Vector3.Down * BellRadius * 0.4f * U.In, GooColor, health.Fraction, ref bleedTimer );

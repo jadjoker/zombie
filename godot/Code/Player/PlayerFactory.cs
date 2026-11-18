@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// Builds the local player the way the s&box Player Template plus PlayerSurvivor.OnStart did: controller, movement
-/// kit, camera juice, weapon inventory with the rifle and shotgun, axe melee, survivor (health, points, afflictions),
+/// kit, camera juice, weapon inventory with the robot's weapons (RobotClass), axe melee, survivor (health, points, afflictions),
 /// plus the HUD layers.
 /// </summary>
 public static class PlayerFactory
@@ -15,8 +15,7 @@ public static class PlayerFactory
 		player.AddChild( new PlayerMovement() );
 		player.AddChild( new CameraJuice() );
 		player.AddChild( new WeaponInventory() );
-		player.AddChild( PlayerWeapon.Rifle() );
-		player.AddChild( PlayerWeapon.Shotgun() );
+		foreach ( var weapon in RobotClass.Current.Kit() ) player.AddChild( weapon );   // the picked robot's weapons
 		player.AddChild( new PlayerMelee() );
 		player.AddChild( new PlayerPerks() );
 		player.AddChild( new WaterFeel() );
@@ -35,6 +34,7 @@ public static class PlayerFactory
 		hud.AddChild( EnemyBars.Create() );   // health bars and damage numbers over enemies
 		if ( parent.GetTree().Root.FindChild( "DevMenu", true, false ) is null ) parent.AddChild( new DevMenu() );
 		if ( parent.GetTree().Root.FindChild( "PauseMenu", true, false ) is null ) parent.AddChild( new PauseMenu() );
+		if ( ClassPicker.Find( parent.GetTree() ) is null ) parent.AddChild( new ClassPicker() );   // after the pause menu: it sees Esc first
 		hud.AddChild( WeaponHud.Create( player ) );
 		hud.AddChild( GameHud.Create( survivor ) );
 		return player;

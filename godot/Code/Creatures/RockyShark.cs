@@ -436,7 +436,7 @@ public partial class RockyShark : PartCreature
 	{
 		var dt = (float)delta;
 		if ( parts is null || rig is null || !IsInstanceValid( rig ) || diedLocally ) return;
-		if ( !DevFlags.FreezeEnemies )
+		if ( !Frozen )
 		{
 			Think( dt );
 			UpdateBite();

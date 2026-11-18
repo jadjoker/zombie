@@ -74,6 +74,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--perfsplit" ) ) { await PerfSplitTest(); return; }
 		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
 		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
+		if ( args.Contains( "--classes" ) ) { await ClassTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--poseidongallery" ) ) { await PoseidonGalleryTest(); return; }

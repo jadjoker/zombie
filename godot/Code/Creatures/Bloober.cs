@@ -386,7 +386,7 @@ public partial class Bloober : Creature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !DevFlags.FreezeEnemies ) Think( (float)delta );
+		if ( !Frozen ) Think( (float)delta );
 		if ( diedLocally ) return;
 
 		var leaking = segments.Where( s => !s.Gone ).ToList();

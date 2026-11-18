@@ -31,7 +31,7 @@ public static class WeaponModels
 	public static (Node3D Root, AnimationPlayer Player, Skeleton3D Skeleton) Create( string name )
 	{
 		// The trident shooter has no file of its own: it is the Blaster's rig with its own gun (TridentModel).
-		var trident = name is "trident" or "gorevac";   // the Gore Vac borrows the same rig (GoreVacModel)
+		var trident = name is "trident" or "gorevac" or "bubble";   // the Gore Vac and Bubble Cannon borrow the same rig
 		var file = trident ? TridentModel.Rig : name;
 		var scene = GD.Load<PackedScene>( $"res://assets/models/weapons/{file}/{file}.fbx" );
 		var model = scene.Instantiate<Node3D>();
@@ -47,6 +47,7 @@ public static class WeaponModels
 		{
 			TridentModel.StripGun( model );
 			if ( skeleton is not null && name == "gorevac" ) GoreVacModel.Attach( skeleton );   // brings its own Muzzle node
+			else if ( skeleton is not null && name == "bubble" ) BubbleCannonModel.Attach( skeleton );
 			else if ( skeleton is not null ) TridentModel.Attach( skeleton );
 		}
 		var player = new AnimationPlayer { Name = "AnimationPlayer" };

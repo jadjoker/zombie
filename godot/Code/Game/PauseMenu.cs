@@ -13,6 +13,7 @@ public partial class PauseMenu : CanvasLayer
 	Button resume;
 	PanelContainer panel;
 	Label title;
+	Button changeRobot;
 	static readonly Color Accent = new( "5fffe0" );
 
 	public override void _Ready()
@@ -44,6 +45,9 @@ public partial class PauseMenu : CanvasLayer
 
 		resume = MenuButton( "Resume", () => SetOpen( false ) );
 		column.AddChild( resume );
+		// Before the dive the robot can still be changed.
+		changeRobot = MenuButton( "Change robot", () => { SetOpen( false ); ClassPicker.Find( GetTree() )?.SetOpen( true ); } );
+		column.AddChild( changeRobot );
 		column.AddChild( new HSeparator() );
 
 		column.AddChild( Slider( "Mouse sensitivity", GameSettings.MinSensitivity, GameSettings.MaxSensitivity, 0.05f, () => GameSettings.Sensitivity, v => GameSettings.Sensitivity = v, v => $"{v:0.00}x" ) );
@@ -155,6 +159,7 @@ public partial class PauseMenu : CanvasLayer
 		GetTree().Paused = open;
 		Input.MouseMode = open ? MenuMouse() : Input.MouseModeEnum.Captured;
 		UpdateHint();
+		changeRobot.Visible = DockHouse.Current is not null && DockHouse.WeaponsHeld;
 		if ( open ) resume.GrabFocus();
 		else GameSettings.Save();
 	}

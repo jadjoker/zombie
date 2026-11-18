@@ -390,7 +390,7 @@ public partial class SeaSpider : PartCreature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !DevFlags.FreezeEnemies ) Think( dt );
+		if ( !Frozen ) Think( dt );
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
@@ -1014,7 +1014,11 @@ public partial class SeaSpider : PartCreature
 	// ---- Getting shot ----
 
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
-	public override void Pull( Vector3 delta ) => agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
+	public override void Pull( Vector3 delta )
+	{
+		if ( Bubbled ) GlobalPosition += delta;
+		else agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
+	}
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{

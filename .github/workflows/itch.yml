@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: itch-publish
+  group: itch-${{ github.ref }}
   cancel-in-progress: true
 
 env:

@@ -536,11 +536,15 @@ public partial class GameHud : Control
 	void DrawTank( Rect2 frame, float percent )
 	{
 		var low = percent <= 30;
-		var glass = new StyleBoxFlat { BgColor = new Color( 0.04f, 0.16f, 0.24f, 0.4f ), BorderColor = new Color( 0.86f, 0.98f, 1f, 0.85f ), AntiAliasing = true };
-		glass.SetBorderWidthAll( Math.Max( 2, (int)(4f * Sc) ) );
-		glass.CornerRadiusTopLeft = glass.CornerRadiusTopRight = (int)(6f * Sc);
-		glass.CornerRadiusBottomLeft = glass.CornerRadiusBottomRight = (int)(20f * Sc);
-		DrawStyleBox( glass, frame );
+		if ( tankGlass is null || tankGlassScale != Sc )
+		{
+			tankGlassScale = Sc;
+			tankGlass = new StyleBoxFlat { BgColor = new Color( 0.04f, 0.16f, 0.24f, 0.4f ), BorderColor = new Color( 0.86f, 0.98f, 1f, 0.85f ), AntiAliasing = true };
+			tankGlass.SetBorderWidthAll( Math.Max( 2, (int)(4f * Sc) ) );
+			tankGlass.CornerRadiusTopLeft = tankGlass.CornerRadiusTopRight = (int)(6f * Sc);
+			tankGlass.CornerRadiusBottomLeft = tankGlass.CornerRadiusBottomRight = (int)(20f * Sc);
+		}
+		DrawStyleBox( tankGlass, frame );
 		var inner = frame.Grow( -4f * Sc );
 		var now = (float)Clock.Now;
 		var speed = player?.Controller?.Velocity.Length() ?? 0f;
@@ -549,15 +553,15 @@ public partial class GameHud : Control
 		{
 			if ( level <= 0f ) return;
 			var top = inner.End.Y - inner.Size.Y * level;
-			var points = new List<Vector2>();
+			var points = waterPoints;
 			for ( var i = 0; i <= 12; i++ )
 			{
 				var x = inner.Position.X + inner.Size.X * i / 12f;
-				points.Add( new Vector2( x, MathF.Min( inner.End.Y, top + MathF.Sin( now * 4f + i * 0.9f ) * slosh ) ) );
+				points[i] = new Vector2( x, MathF.Min( inner.End.Y, top + MathF.Sin( now * 4f + i * 0.9f ) * slosh ) );
 			}
-			points.Add( new Vector2( inner.End.X, inner.End.Y ) );
-			points.Add( new Vector2( inner.Position.X, inner.End.Y ) );
-			DrawColoredPolygon( points.ToArray(), colour );
+			points[13] = new Vector2( inner.End.X, inner.End.Y );
+			points[14] = new Vector2( inner.Position.X, inner.End.Y );
+			DrawColoredPolygon( points, colour );
 		}
 		Water( lagHealth / 100f, new Color( 1f, 0.8f, 0.75f, 0.45f ) );
 		Water( percent / 100f, Fill( low ) with { A = 0.9f } );
@@ -601,11 +605,16 @@ public partial class GameHud : Control
 		UiStyle.DrawTag( this, root + new Vector2( UiStyle.BigWidth( ShownHealth, S( 40 ) ) + 8f * Sc, 0f ), Theme.HealthWord + States, S( 12 ), CaptionColour( low, Theme.AccentSoft ), HorizontalAlignment.Left, -1f, true );
 	}
 
+	// Reused by the per-frame draws below (they built new ones every frame).
+	StyleBoxFlat tankGlass, tmBox;
+	float tankGlassScale;
+	readonly Vector2[] waterPoints = new Vector2[15];
+
 	/// <summary> A little ™ sticker, tilted. </summary>
 	void DrawTm( Vector2 at )
 	{
-		var box = new StyleBoxFlat { BgColor = Colors.White, AntiAliasing = true, ShadowColor = new Color( 0f, 0f, 0f, 0.4f ), ShadowSize = 2, ShadowOffset = new Vector2( 1f, 2f ) };
-		box.SetCornerRadiusAll( 5 );
+		if ( tmBox is null ) { tmBox = new StyleBoxFlat { BgColor = Colors.White, AntiAliasing = true, ShadowColor = new Color( 0f, 0f, 0f, 0.4f ), ShadowSize = 2, ShadowOffset = new Vector2( 1f, 2f ) }; tmBox.SetCornerRadiusAll( 5 ); }
+		var box = tmBox;
 		var size = new Vector2( 26f, 20f ) * Sc;
 		var r = new Rect2( at - size * 0.5f, size );
 		DrawStyleBox( box, r );

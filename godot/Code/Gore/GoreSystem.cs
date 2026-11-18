@@ -41,6 +41,7 @@ public partial class GoreSystem : Node
 	{
 		get
 		{
+			// Swept on every call (cheap: at most MaxGibs entries), so a piece freed earlier this frame is never handed out.
 			gibs.RemoveAll( g => !IsInstanceValid( g ) || g.IsQueuedForDeletion() );
 			return gibs;
 		}
@@ -51,33 +52,41 @@ public partial class GoreSystem : Node
 	/// (`cos` of its half angle) shrinks; the ones gone this frame are returned with their colour, so the gun can
 	/// count them in and draw the goo flying up the nozzle.
 	/// </summary>
+	readonly List<(Vector3 At, Color Colour)> slurped = new();
+
+	/// <summary> (The list returned is reused next call: read it straight away.) </summary>
 	public List<(Vector3 At, Color Colour)> Slurp( Vector3 from, Vector3 dir, float range, float cos, float dt )
 	{
-		var gone = new List<(Vector3, Color)>();
-		if ( decals.Count == 0 ) return gone;
-		var keep = new Queue<Node3D>();
-		while ( decals.Count > 0 )
+		slurped.Clear();
+		if ( decals.Count == 0 ) return slurped;
+		var removed = false;
+		foreach ( var d in decals )
 		{
-			var d = decals.Dequeue();
-			if ( !IsInstanceValid( d ) || d.IsQueuedForDeletion() ) continue;
+			if ( !IsInstanceValid( d ) || d.IsQueuedForDeletion() ) { removed = true; continue; }
 			var to = d.GlobalPosition - from;
 			var distance = to.Length();
-			if ( distance > range || distance < 0.01f || dir.Dot( to / distance ) < cos || d is not Decal decal ) { keep.Enqueue( d ); continue; }
+			if ( distance > range || distance < 0.01f || dir.Dot( to / distance ) < cos || d is not Decal decal ) continue;
 			// Nearer puddles go faster.
 			var shrink = dt * MathX.Lerp( 4f, 1.2f, distance / range );
 			var size = decal.Size;
 			var next = size.X - shrink * 24f * U.In * 1.9f;
 			if ( next <= 3f * U.In )
 			{
-				gone.Add( (decal.GlobalPosition, decal.Modulate) );
+				slurped.Add( (decal.GlobalPosition, decal.Modulate) );
 				decal.QueueFree();
+				removed = true;
 				continue;
 			}
 			decal.Size = size with { X = next, Z = next };
-			keep.Enqueue( d );
 		}
-		foreach ( var d in keep ) decals.Enqueue( d );
-		return gone;
+		// Only when something went is the queue rebuilt (in order, without the gone ones).
+		if ( removed )
+		{
+			var keep = decals.Where( d => IsInstanceValid( d ) && !d.IsQueuedForDeletion() ).ToList();
+			decals.Clear();
+			foreach ( var d in keep ) decals.Enqueue( d );
+		}
+		return slurped;
 	}
 
 	public void Register( Gib gib )

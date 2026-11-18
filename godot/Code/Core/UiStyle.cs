@@ -201,9 +201,32 @@ public static class UiStyle
 	}
 
 	/// <summary> A frame drawn in a _Draw: the panel, then the theme's details on top. `line` tints the accent. </summary>
+	/// <summary>
+	/// Style boxes reused by the per-frame draws (keyed by theme and scale): building new ones every frame for every
+	/// panel cost more than drawing them. Safe to change between draws: a draw copies the values at once.
+	/// </summary>
+	static readonly Dictionary<(HudTheme, float), (StyleBoxFlat Box, Color Bg, Color Border, Color Shadow)> frames = new();
+	static readonly Dictionary<(HudTheme, float), StyleBoxFlat> lines = new();
+	static StyleBoxFlat gloss;
+
+	static StyleBoxFlat CachedFrame( float scale )
+	{
+		var key = (theme, scale);
+		if ( !frames.TryGetValue( key, out var cached ) )
+		{
+			var made = Frame( scale );
+			frames[key] = cached = (made, made.BgColor, made.BorderColor, made.ShadowColor);
+		}
+		// Back to the theme's own colours: the last draw may have faded or tinted them.
+		cached.Box.BgColor = cached.Bg;
+		cached.Box.BorderColor = cached.Border;
+		cached.Box.ShadowColor = cached.Shadow;
+		return cached.Box;
+	}
+
 	public static void DrawFrame( CanvasItem c, Rect2 rect, float alpha = 1f, Color? line = null, float scale = 1f )
 	{
-		var frame = Frame( scale );
+		var frame = CachedFrame( scale );
 		frame.BgColor = frame.BgColor with { A = frame.BgColor.A * alpha };
 		frame.BorderColor = frame.BorderColor with { A = frame.BorderColor.A * alpha };
 		frame.ShadowColor = frame.ShadowColor with { A = frame.ShadowColor.A * alpha };
@@ -218,7 +241,9 @@ public static class UiStyle
 		switch ( theme.Frame )
 		{
 			case HudTheme.FrameLook.Suit:
-				var inner = FrameLine( scale, line );
+				var key = (theme, scale);
+				if ( !lines.TryGetValue( key, out var inner ) ) lines[key] = inner = FrameLine( scale );
+				inner.BorderColor = (line ?? Teal) with { A = 0.7f };
 				inner.BorderColor = inner.BorderColor with { A = inner.BorderColor.A * alpha };
 				c.DrawStyleBox( inner, rect.Grow( -5f * scale ) );
 				break;
@@ -242,8 +267,8 @@ public static class UiStyle
 				break;
 			case HudTheme.FrameLook.Glass:
 				// A gloss streak along the top.
-				var gloss = new StyleBoxFlat { BgColor = new Color( 1f, 1f, 1f, 0.16f * alpha ), AntiAliasing = true };
-				gloss.SetCornerRadiusAll( 99 );
+				if ( gloss is null ) { gloss = new StyleBoxFlat { AntiAliasing = true }; gloss.SetCornerRadiusAll( 99 ); }
+				gloss.BgColor = new Color( 1f, 1f, 1f, 0.16f * alpha );
 				c.DrawStyleBox( gloss, new Rect2( rect.Position + new Vector2( 14f, 5f ) * scale, new Vector2( MathF.Max( 0f, rect.Size.X * 0.55f ), 5f * scale ) ) );
 				if ( line is { } edge ) c.DrawRect( rect.Grow( -4f * scale ), edge with { A = 0.5f * alpha }, false, 1.5f * scale );
 				break;

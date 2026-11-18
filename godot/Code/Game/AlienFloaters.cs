@@ -48,6 +48,8 @@ public partial class AlienFloaters : Node3D
 		public FernState State;
 		public TimeSince SinceState = 99f;
 		public bool Struck;
+		/// <summary> Where it was put last frame (read back from here, not from the engine, every frame). </summary>
+		public Vector3? At;
 	}
 
 	readonly List<Floater> all = new();
@@ -197,7 +199,7 @@ public partial class AlienFloaters : Node3D
 			schools[f.School] = f.School.Home with { Y = SeaTerrain.HeightAt( f.School.Home ) + lift };
 		}
 		foreach ( var (school, home) in schools ) school.Home = home;
-		foreach ( var f in all.Where( f => f.Fern ) ) f.Node.GlobalPosition = f.School.Home;
+		foreach ( var f in all.Where( f => f.Fern ) ) f.Node.GlobalPosition = f.School.Home; foreach ( var f in all ) f.At = null;   // moved: read again
 	}
 
 	/// <summary> A shot found a bulb: it bursts at once, for points (and a pickup if it was gold). </summary>
@@ -269,15 +271,35 @@ public partial class AlienFloaters : Node3D
 		}
 	}
 
-	static float Nearest( List<Vector3> players, Vector3 at ) => players.Count == 0 ? float.MaxValue : players.Min( p => p.DistanceTo( at ) );
+	static float Nearest( List<Vector3> players, Vector3 at )
+	{
+		var best = float.MaxValue;
+		foreach ( var p in players ) best = MathF.Min( best, p.DistanceTo( at ) );
+		return best;
+	}
+
+	// Reused every frame (they were built afresh each frame).
+	readonly List<Vector3> chests = new(), feet = new();
+	/// <summary> Bulbs this far from every player move every other frame (their drift is slow; nobody can tell). </summary>
+	const float FarAway = 45f;
+	ulong frames;
 
 	public override void _Process( double delta )
 	{
 		var t = (float)Clock.Now;
-		var chests = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.Controller.GlobalPosition + Vector3.Up * 1f ).ToList();
-		var feet = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.Controller.GlobalPosition + Vector3.Up * 0.4f ).ToList();
-		foreach ( var f in all.ToList() )
+		frames++;
+		chests.Clear();
+		feet.Clear();
+		foreach ( var p in PlayerSurvivor.All )
 		{
+			if ( !p.IsAlive ) continue;
+			var at = p.Controller.GlobalPosition;
+			chests.Add( at + Vector3.Up * 1f );
+			feet.Add( at + Vector3.Up * 0.4f );
+		}
+		for ( var i = 0; i < all.Count; i++ )
+		{
+			var f = all[i];
 			if ( f.Fern ) { UpdateFern( f, feet, t ); continue; }
 			if ( f.IsPopped )
 			{
@@ -299,7 +321,10 @@ public partial class AlienFloaters : Node3D
 			var at = s.Home + drift + f.Offset + bob;
 
 			// A player too close sets it off: it swells and flashes, faster and faster, then bursts.
-			if ( !f.Puffing && Nearest( chests, f.Node.GlobalPosition ) < PuffRadius )
+			f.At ??= f.Node.GlobalPosition;
+			var nearest = Nearest( chests, f.At.Value );
+			if ( !f.Puffing && nearest > FarAway && ((frames + (ulong)i) & 1) == 1 ) continue;
+			if ( !f.Puffing && nearest < PuffRadius )
 			{
 				f.Puffing = true;
 				f.SincePuff = 0f;
@@ -313,18 +338,20 @@ public partial class AlienFloaters : Node3D
 				var flashRate = MathX.Lerp( 6f, 26f, k );
 				f.Bulb.MaterialOverride = MathF.Sin( (float)f.SincePuff * flashRate ) > 0f ? Hot : (f.Gold ? GoldGlow : f.BulbLook);
 				if ( k >= 1f ) { f.Bulb.MaterialOverride = f.Gold ? GoldGlow : f.BulbLook; f.Node.Scale = Vector3.One; Burst( f, null ); continue; }
-				at = f.Node.GlobalPosition;   // it stops drifting while it swells
+				at = f.At.Value;   // it stops drifting while it swells
 			}
 
 			var lean = new Basis( Vector3.Right, MathF.Sin( b * 1.7f ) * 0.15f ) * new Basis( Vector3.Forward, MathF.Cos( b * 1.3f ) * 0.12f );
 			f.Node.GlobalTransform = new Transform3D( new Basis( Vector3.Up, t * f.Spin + f.Phase ) * lean * Basis.FromScale( Vector3.One * scale ), at );
+			f.At = at;
 		}
 	}
 
 	/// <summary> A fern: resting (a slight sway), shuddering as a warning, then its spikes shoot out and draw back. </summary>
 	void UpdateFern( Floater f, List<Vector3> feet, float t )
 	{
-		var centre = f.Node.GlobalPosition;
+		f.At ??= f.Node.GlobalPosition;   // ferns stay put: read once
+		var centre = f.At.Value;
 		switch ( f.State )
 		{
 			case FernState.Rest:

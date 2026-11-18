@@ -259,6 +259,15 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 Wave-survival FPS in s&box, published as `jadjoker.risk_of_copyright`. Repo: github.com/jadjoker/zombie, branch `main`.
 Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part chunking and gore.
 
+- Performance (`--perf`, a window: frame times idle, in a gore-heavy fight, with the Gore Vac sucking and in a
+  shot barrage, plus per-label code times from `Core/Perf.cs`; `--perfsplit` shows what each big subtree and the
+  per-frame nodes cost). Patterns kept on purpose: goo drops are one `GooDroplet` system drawn as a MultiMesh (no node
+  per drop); `AlienBlast` shards and smoke are MultiMesh batches with shared per-colour materials; `GoreBall` reads
+  enemy part positions once per frame (`EnemyParts`); gibs set gravity/drag only on change and use continuous
+  collision only while fast; all `Sway` plants are moved by one driver; `UiStyle.DrawFrame` and the HUD widgets reuse
+  their style boxes; alien floaters far from the player update every other frame. Don't reintroduce per-frame
+  allocations (LINQ `ToList`, new StyleBoxes, group queries) in hot paths.
+
 ## Rules
 - The user often plays in the editor while agents work. Before saving code, editing the scene, or play_start,
   check `sbox-cli --call editor_status` and wait until `IsPlaying` is false (saving code hotloads into their game).

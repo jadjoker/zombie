@@ -154,6 +154,7 @@ public partial class Gib : RigidBody3D
 
 	public override void _Process( double delta )
 	{
+		using var perf = Perf.Time( "Gib process" );
 		if ( !IsFading && age > lifetime ) BeginFade();
 		if ( IsFading && piece is not null )
 		{
@@ -169,35 +170,60 @@ public partial class Gib : RigidBody3D
 	/// </summary>
 	void Buoyancy()
 	{
-		var water = WaterFeel.IsOn();
+		var water = WaterNow();
 		var surface = Sea.SurfaceY;
 		Floating = water && (surface is not float top || GlobalPosition.Y < top);
 		if ( !Floating )
 		{
 			// The body's defaults, as before buoyancy existed.
-			GravityScale = 1f;
-			LinearDamp = 0f;
-			AngularDamp = 0f;
+			SetCarry( 1f, 0f, 0f );
 			return;
 		}
-		var gravity = (float)ProjectSettings.GetSetting( "physics/3d/default_gravity", 9.8f );
-		LinearDamp = WaterDrag;
-		AngularDamp = 1.4f;
 		// Terminal speed under a constant push with linear drag is push / drag.
-		GravityScale = -Rise * WaterDrag / MathF.Max( 0.1f, gravity );
+		var lift = -Rise * WaterDrag / MathF.Max( 0.1f, Gravity );
 		if ( surface is float y && GlobalPosition.Y > y - 0.3f )
 		{
 			// At the surface: no more lift, and the climb dies away, so it rides there.
-			GravityScale = 0f;
+			lift = 0f;
 			if ( LinearVelocity.Y > 0f ) LinearVelocity = LinearVelocity with { Y = LinearVelocity.Y * 0.8f };
 		}
+		SetCarry( lift, WaterDrag, 1.4f );
 	}
+
+	/// <summary> Sets gravity scale and drag only when they change (each set is a call into the physics server). </summary>
+	void SetCarry( float gravityScale, float linearDamp, float angularDamp )
+	{
+		if ( gravityScale == carry.X && linearDamp == carry.Y && angularDamp == carry.Z ) return;
+		carry = new Vector3( gravityScale, linearDamp, angularDamp );
+		GravityScale = gravityScale;
+		LinearDamp = linearDamp;
+		AngularDamp = angularDamp;
+	}
+	Vector3 carry = new( float.NaN, float.NaN, float.NaN );
+
+	/// <summary> The project's gravity, read once (it was read from the project settings every tick for every piece). </summary>
+	static float Gravity => gravity ??= (float)ProjectSettings.GetSetting( "physics/3d/default_gravity", 9.8f );
+	static float? gravity;
+
+	/// <summary> Is this a water level: asked once per physics tick for all the pieces, not once per piece. </summary>
+	static bool WaterNow()
+	{
+		var frame = Engine.GetPhysicsFrames();
+		if ( frame != waterFrame ) { waterFrame = frame; waterOn = WaterFeel.IsOn(); }
+		return waterOn;
+	}
+	static ulong waterFrame = ulong.MaxValue;
+	static bool waterOn;
 
 	public override void _PhysicsProcess( double delta )
 	{
+		using var perf = Perf.Time( "Gib physics" );
 		if ( !IsFading ) Buoyancy();
 		if ( gore is null || IsFading ) return;
 		var speed = LinearVelocity.Length() / U.In;
+		// Continuous collision only while it is moving fast enough to tunnel through the floor (it is costly).
+		var fast = speed > 250f || age < 0.5f;
+		if ( fast != ContinuousCd ) ContinuousCd = fast;
 
 		// Goo trail while it's flying.
 		if ( Stuff != GibKind.Rock && age < 2f && speed > 200f && lastDrip > 0.11f )

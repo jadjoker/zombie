@@ -71,6 +71,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
 		if ( args.Contains( "--bulbs" ) ) { await BulbTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
+		if ( args.Contains( "--perfsplit" ) ) { await PerfSplitTest(); return; }
+		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
 		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }

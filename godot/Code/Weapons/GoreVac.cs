@@ -71,6 +71,13 @@ public partial class PlayerWeapon
 	/// <summary> Since the last piece went down the nozzle (the HUD's counter pops on it). </summary>
 	public TimeSince SinceGulp { get; private set; } = 9f;
 	readonly Dictionary<Gib, float> caught = new();
+	// Reused every frame (the suck loop allocated fresh lists and sets each frame).
+	readonly HashSet<Node> touchedBuffer = new();
+	readonly List<Node> staleBuffer = new();
+	readonly List<Gib> caughtBuffer = new();
+	readonly List<Creature> creatureBuffer = new();
+	readonly List<Node3D> propBuffer = new();
+	TimeSince sinceProps = 9f;
 	float gunkCarry, gulpWobble;
 	int gulpStreak;
 	bool triggerHeld;
@@ -100,6 +107,7 @@ public partial class PlayerWeapon
 
 	void UpdateVacuum( float dt, bool allowed )
 	{
+		using var perf = Perf.Time( "GoreVac update" );
 		var camera = controller.Camera;
 		if ( camera is null ) return;
 		var from = camera.GlobalPosition;
@@ -118,11 +126,17 @@ public partial class PlayerWeapon
 			Sfx.Play2D( "ui_click", 0.6f, 2.2f, Sfx.GunBus );
 			GetTree().CreateTimer( 0.09 ).Timeout += () => Sfx.Play2D( "ui_click", 0.6f, 2.6f, Sfx.GunBus );
 		}
-		var touched = new HashSet<Node>();
+		var touched = touchedBuffer;
+		touched.Clear();
 		if ( Sucking ) Suck( dt, from, forward, nozzle, touched );
 		else if ( caught.Count > 0 ) ReleaseCaught();
 		if ( Blowing ) Blow( dt, from, forward, nozzle );
-		foreach ( var key in tugs.Keys.Where( k => !touched.Contains( k ) ).ToList() ) tugs.Remove( key );
+		if ( tugs.Count > 0 )
+		{
+			staleBuffer.Clear();
+			foreach ( var key in tugs.Keys ) if ( !touched.Contains( key ) ) staleBuffer.Add( key );
+			foreach ( var key in staleBuffer ) tugs.Remove( key );
+		}
 		UpdateIncomingMine( dt );
 		UpdateLoopSounds();
 		UpdateWeight( dt );
@@ -155,6 +169,7 @@ public partial class PlayerWeapon
 	/// <summary> Pulls in gibs, puddles, enemies, loose limbs, floor props and mines in the cone. </summary>
 	void Suck( float dt, Vector3 from, Vector3 forward, Vector3 nozzle, HashSet<Node> touched )
 	{
+		using var perf = Perf.Time( "GoreVac suck" );
 		var gore = GoreSystem.Get( controller );
 		var pull = 1f - MathF.Exp( -7f * dt );
 		// Full or not, it keeps taking things in (when full, they are blown out the back: Vent).
@@ -162,7 +177,9 @@ public partial class PlayerWeapon
 			// Pieces in the cone are caught, and stay caught while the trigger is held (sweep the gun and they follow).
 			foreach ( var gib in gore.Gibs )
 				if ( !caught.ContainsKey( gib ) && !gib.IsFading && InCone( from, forward, gib.GlobalPosition, VacRange, VacCone, out _ ) ) caught[gib] = 0f;
-			foreach ( var gib in caught.Keys.ToList() )
+			caughtBuffer.Clear();
+			caughtBuffer.AddRange( caught.Keys );
+			foreach ( var gib in caughtBuffer )
 			{
 				if ( !IsInstanceValid( gib ) || gib.IsQueuedForDeletion() ) { caught.Remove( gib ); continue; }
 				SuckIn( gib, caught[gib] += dt, dt, forward, nozzle );
@@ -178,7 +195,9 @@ public partial class PlayerWeapon
 		}
 
 		// Enemies: dragged in by weight; a light, weak one at the nozzle is sucked apart (its gibs come straight in).
-		foreach ( var creature in Creature.Everyone.ToList() )
+		creatureBuffer.Clear();
+		creatureBuffer.AddRange( Creature.Everyone );
+		foreach ( var creature in creatureBuffer )
 		{
 			if ( !IsInstanceValid( creature ) || !creature.IsEnemy || creature.IsDead || !creature.Pullable ) continue;
 			var centre = creature.GlobalPosition + Vector3.Up * 0.3f;
@@ -217,8 +236,17 @@ public partial class PlayerWeapon
 		}
 
 		// The small things on the floor: torn up and sucked in like gibs (stone and shell: hardly worth a thing).
-		foreach ( var prop in GetTree().GetNodesInGroup( SeaDressing.LooseGroup ).OfType<Node3D>().ToList() )
+		// (The floor props are listed afresh twice a second, not every frame.)
+		if ( sinceProps > 0.5f || propBuffer.Count == 0 )
 		{
+			sinceProps = 0f;
+			propBuffer.Clear();
+			foreach ( var node in GetTree().GetNodesInGroup( SeaDressing.LooseGroup ) ) if ( node is Node3D n ) propBuffer.Add( n );
+		}
+		for ( var p = propBuffer.Count - 1; p >= 0; p-- )
+		{
+			var prop = propBuffer[p];
+			if ( !IsInstanceValid( prop ) || !prop.IsInGroup( SeaDressing.LooseGroup ) ) { propBuffer.RemoveAt( p ); continue; }
 			if ( !IsInstanceValid( prop ) || !InCone( from, forward, prop.GlobalPosition, VacRange, VacCone, out _ ) ) continue;
 			touched.Add( prop );
 			tugs[prop] = tugs.GetValueOrDefault( prop ) + dt;
@@ -236,18 +264,29 @@ public partial class PlayerWeapon
 
 		// A sea mine: held a moment, its chain snaps, and it flies into the nozzle (one at a time).
 		if ( !HasMine && incomingMine is null )
-			foreach ( var mine in SeaMine.All.OrderBy( m => m.BallPosition.DistanceSquaredTo( from ) ).ToList() )
+		{
+			// The nearest mine in reach and in the cone gets the tug.
+			SeaMine nearest = null;
+			var best = float.MaxValue;
+			foreach ( var mine in SeaMine.All )
 			{
-				if ( mine.Gone || !InCone( from, forward, mine.BallPosition, MineReach, VacCone - 0.05f, out _ ) ) continue;
-				touched.Add( mine );
-				tugs[mine] = tugs.GetValueOrDefault( mine ) + dt;
-				if ( tugs[mine] < MineTug ) continue;
-				tugs.Remove( mine );
-				incomingMine = mine.TearLoose();
-				incomingSpeed = 2f;
-				MinesTorn++;
-				break;
+				if ( mine.Gone || !InCone( from, forward, mine.BallPosition, MineReach, VacCone - 0.05f, out var d ) || d >= best ) continue;
+				best = d;
+				nearest = mine;
 			}
+			if ( nearest is not null )
+			{
+				touched.Add( nearest );
+				tugs[nearest] = tugs.GetValueOrDefault( nearest ) + dt;
+				if ( tugs[nearest] >= MineTug )
+				{
+					tugs.Remove( nearest );
+					incomingMine = nearest.TearLoose();
+					incomingSpeed = 2f;
+					MinesTorn++;
+				}
+			}
+		}
 
 		// The draw of the water itself: faint streaks rushing into the nozzle from the cone.
 		// The draw: sand lifted off the floor where the cone meets it, and silt rushing in through the water.
@@ -614,31 +653,49 @@ public partial class GoreBall : Node3D
 	}
 
 	/// <summary> The point on the nearest enemy part within `width` of a line (from, along `dir`, up to `length`), if any. </summary>
+	/// <summary>
+	/// Where every live enemy's parts are this frame: gathered once per frame and shared by every ball in flight (each
+	/// ball used to walk every creature part in the level itself, every frame).
+	/// </summary>
+	static readonly List<Vector3> enemyParts = new();
+	static ulong enemyPartsFrame = ulong.MaxValue;
+	static List<Vector3> EnemyParts()
+	{
+		var frame = Engine.GetProcessFrames();
+		if ( frame == enemyPartsFrame ) return enemyParts;
+		enemyPartsFrame = frame;
+		enemyParts.Clear();
+		foreach ( var part in CreaturePart.All )
+			if ( GodotObject.IsInstanceValid( part ) && part.Creature is Creature { IsEnemy: true, IsDead: false } ) enemyParts.Add( part.GlobalPosition );
+		return enemyParts;
+	}
+
 	public static Vector3? NearestToLine( Vector3 from, Vector3 dir, float length, float width )
 	{
 		Vector3? best = null;
 		var bestOff = width;
-		foreach ( var part in CreaturePart.All )
+		foreach ( var partAt in EnemyParts() )
 		{
-			if ( !GodotObject.IsInstanceValid( part ) || part.Creature is not Creature { IsEnemy: true, IsDead: false } ) continue;
-			var to = part.GlobalPosition - from;
+			var to = partAt - from;
 			var along = to.Dot( dir );
 			if ( along < 1f || along > length ) continue;
 			var off = (to - dir * along).Length() - along * 0.012f;   // a little wider the further out
-			if ( off < bestOff ) { bestOff = off; best = part.GlobalPosition; }
+			if ( off < bestOff ) { bestOff = off; best = partAt; }
 		}
 		return best;
 	}
 
 	static bool EnemyNear( Vector3 at, float reach )
 	{
-		foreach ( var part in CreaturePart.All )
-			if ( GodotObject.IsInstanceValid( part ) && part.Creature is Creature { IsEnemy: true, IsDead: false } && part.GlobalPosition.DistanceTo( at ) < reach ) return true;
+		var reach2 = reach * reach;
+		foreach ( var partAt in EnemyParts() )
+			if ( partAt.DistanceSquaredTo( at ) < reach2 ) return true;
 		return false;
 	}
 
 	public override void _Process( double delta )
 	{
+		using var perf = Perf.Time( "GoreBall" );
 		var dt = (float)delta;
 		var from = GlobalPosition;
 		if ( fuse >= 0f && (fuse -= dt) <= 0f ) { Burst( from, Vector3.Up ); return; }
@@ -819,6 +876,7 @@ public partial class SuctionCone : MeshInstance3D
 	/// <summary> `mode`: 1 sucking, -1 blowing, 0 off. </summary>
 	public void Show( float dt, Vector3 nozzle, Vector3 forward, float mode, Color tint )
 	{
+		using var perf = Perf.Time( "SuctionCone" );
 		if ( mode != 0f ) flow = mode;
 		shown = MathX.Approach( shown, MathF.Abs( mode ), dt * (mode != 0f ? 5f : 3f) );
 		Visible = shown > 0.01f && !DevFlags.HideWeapon;
@@ -846,7 +904,7 @@ public partial class SuctionCone : MeshInstance3D
 			var stretch = 0.035f + t * 0.05f;
 			mm.SetInstanceTransform( i, new Transform3D( Basis.FromScale( new Vector3( 0.035f, stretch * 2.4f, 0.035f ) ), at ) );
 			var fade = MathX.Clamp( t * 6f, 0f, 1f ) * MathX.Clamp( (1f - t) * 8f, 0f, 1f );
-			mm.SetInstanceColor( i, (i % 5 == 0 ? tint : water) with { A = 0.85f * fade * shown } );
+			mm.SetInstanceColor( i, (i % 5 == 0 ? tint : water) with { A = 0.5f * fade * shown } );
 		}
 	}
 
@@ -868,6 +926,6 @@ void fragment() {
 	float edge = pow(1.0 - abs(dot(normalize(NORMAL), normalize(VIEW))), 1.2);
 	float a = (spiral * 0.75 + streaks * 0.4) * ends * (0.5 + 0.5 * edge) * strength;
 	ALBEDO = tint.rgb;
-	ALPHA = clamp(a * 0.8, 0.0, 0.9);
+	ALPHA = clamp(a * 0.2, 0.0, 0.22);   // faint: the pieces being sucked in should show through it
 }";
 }

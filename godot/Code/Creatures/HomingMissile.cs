@@ -267,8 +267,14 @@ public partial class AlienBlast : Node3D
 	MeshInstance3D core, ball, shell;
 	StandardMaterial3D coreM, ballM, shellM;
 	readonly List<(MeshInstance3D Mesh, StandardMaterial3D Material, float Speed)> rings = new();
-	readonly List<(MeshInstance3D Mesh, Vector3 Velocity, StandardMaterial3D Material)> shards = new();
-	readonly List<(MeshInstance3D Mesh, Vector3 Velocity, StandardMaterial3D Material)> smoke = new();
+	// The shards and smoke puffs: drawn in batches (one MultiMesh per colour, sharing that colour's material, which all
+	// of them fade alike), so a blast is about a dozen draws, not thirty-odd.
+	const int ShardCount = 20, SmokeCount = 7;
+	readonly Vector3[] shardAt = new Vector3[ShardCount], shardVelocity = new Vector3[ShardCount];
+	readonly Basis[] shardTurn = new Basis[ShardCount];
+	readonly Vector3[] smokeAt = new Vector3[SmokeCount], smokeVelocity = new Vector3[SmokeCount];
+	readonly MultiMesh[] shardBatches = new MultiMesh[3], smokeBatches = new MultiMesh[2];
+	readonly StandardMaterial3D[] shardMaterials = new StandardMaterial3D[3], smokeMaterials = new StandardMaterial3D[2];
 	OmniLight3D light;
 
 	static readonly Color Yellow = new( 1f, 0.9f, 0.3f );
@@ -316,22 +322,29 @@ public partial class AlienBlast : Node3D
 			rings.Add( (ring, material, speed) );
 		}
 		var shardMesh = new PrismMesh { Size = new Vector3( 0.07f, 0.3f, 0.07f ) };
-		for ( var i = 0; i < 20; i++ )
+		var shardColours = new[] { Yellow, Green, Purple };
+		for ( var c = 0; c < 3; c++ )
 		{
-			var colour = i % 3 == 0 ? Yellow : i % 3 == 1 ? Green : Purple;
-			var material = Fire( colour, 5f );
+			shardMaterials[c] = Fire( shardColours[c], 5f );
+			shardBatches[c] = Batch( shardMesh, shardMaterials[c], (ShardCount - c + 2) / 3 );
+		}
+		for ( var i = 0; i < ShardCount; i++ )
+		{
 			var dir = Rng.OnSphere();
-			var shard = Add( shardMesh, material );
-			shard.Basis = new Basis( new Quaternion( Vector3.Up, MathF.Abs( dir.Dot( Vector3.Down ) ) > 0.99f ? Vector3.Up : dir ) );
-			shards.Add( (shard, dir * Rng.Float( 5f, 11f ) * size, material) );
+			shardTurn[i] = new Basis( new Quaternion( Vector3.Up, MathF.Abs( dir.Dot( Vector3.Down ) ) > 0.99f ? Vector3.Up : dir ) );
+			shardVelocity[i] = dir * Rng.Float( 5f, 11f ) * size;
 		}
-		for ( var i = 0; i < 7; i++ )
+		for ( var c = 0; c < 2; c++ )
 		{
-			var material = Fire( (i % 2 == 0 ? Purple : Green).Darkened( 0.55f ) with { A = 0.5f }, 0.6f );
-			var puff = Add( sphere, material );
-			puff.Position = Rng.InSphere( 0.3f * size );
-			smoke.Add( (puff, Rng.InSphere( 1.2f ) * size + Vector3.Up * Rng.Float( 0.8f, 1.8f ), material) );
+			smokeMaterials[c] = Fire( (c == 0 ? Purple : Green).Darkened( 0.55f ) with { A = 0.5f }, 0.6f );
+			smokeBatches[c] = Batch( sphere, smokeMaterials[c], (SmokeCount - c + 1) / 2 );
 		}
+		for ( var i = 0; i < SmokeCount; i++ )
+		{
+			smokeAt[i] = Rng.InSphere( 0.3f * size );
+			smokeVelocity[i] = Rng.InSphere( 1.2f ) * size + Vector3.Up * Rng.Float( 0.8f, 1.8f );
+		}
+		PoseBatches( 0f );
 		light = new OmniLight3D { LightColor = Green, LightEnergy = 6f * size, OmniRange = 9f * size, ShadowEnabled = false };
 		AddChild( light );
 
@@ -344,6 +357,26 @@ public partial class AlienBlast : Node3D
 			var d = c.GlobalPosition.DistanceTo( GlobalPosition );
 			if ( d < 18f * size ) c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( MathX.Clamp( 1f - d / (18f * size), 0.1f, 1f ) * size );
 		}
+	}
+
+	MultiMesh Batch( Mesh mesh, StandardMaterial3D material, int count )
+	{
+		var mm = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, InstanceCount = count, Mesh = mesh };
+		var view = new MultiMeshInstance3D { Multimesh = mm, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+		AddChild( view );
+		return mm;
+	}
+
+	/// <summary> Shard i goes in batch i % 3 (its colour), smoke puff i in batch i % 2, as the old one-node-each had them. </summary>
+	void PoseBatches( float t )
+	{
+		var ease = 1f - (1f - t) * (1f - t);
+		var shardScale = size * (1f - t * 0.7f);
+		for ( var i = 0; i < ShardCount; i++ )
+			shardBatches[i % 3].SetInstanceTransform( i / 3, new Transform3D( shardTurn[i].Scaled( Vector3.One * shardScale ), shardAt[i] ) );
+		var smokeScale = size * MathX.Lerp( 0.5f, 1.8f, ease );
+		for ( var i = 0; i < SmokeCount; i++ )
+			smokeBatches[i % 2].SetInstanceTransform( i / 2, new Transform3D( Basis.FromScale( Vector3.One * smokeScale ), smokeAt[i] ) );
 	}
 
 	public override void _Process( double delta )
@@ -363,20 +396,15 @@ public partial class AlienBlast : Node3D
 			mesh.Scale = Vector3.One * size * (0.5f + ease * speed);
 			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( 1f - t * 1.3f, 0f, 1f ) };
 		}
-		for ( var i = 0; i < shards.Count; i++ )
+		for ( var i = 0; i < ShardCount; i++ )
 		{
-			var (mesh, velocity, material) = shards[i];
-			mesh.Position += velocity * dt;
-			shards[i] = (mesh, velocity * MathF.Exp( -3.5f * dt ) + Vector3.Down * 1.5f * dt, material);
-			mesh.Scale = Vector3.One * size * (1f - t * 0.7f);
-			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( 1f - t * 1.1f, 0f, 1f ) };
+			shardAt[i] += shardVelocity[i] * dt;
+			shardVelocity[i] = shardVelocity[i] * MathF.Exp( -3.5f * dt ) + Vector3.Down * 1.5f * dt;
 		}
-		foreach ( var (mesh, velocity, material) in smoke )
-		{
-			mesh.Position += velocity * dt * (1f - t * 0.5f);
-			mesh.Scale = Vector3.One * size * MathX.Lerp( 0.5f, 1.8f, ease );
-			material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( MathF.Min( t * 6f, 1f - t ), 0f, 1f ) * 0.5f };
-		}
+		foreach ( var material in shardMaterials ) material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( 1f - t * 1.1f, 0f, 1f ) };
+		for ( var i = 0; i < SmokeCount; i++ ) smokeAt[i] += smokeVelocity[i] * dt * (1f - t * 0.5f);
+		foreach ( var material in smokeMaterials ) material.AlbedoColor = material.AlbedoColor with { A = MathX.Clamp( MathF.Min( t * 6f, 1f - t ), 0f, 1f ) * 0.5f };
+		PoseBatches( t );
 		light.LightEnergy = 6f * size * (1f - t) * (1f - t);
 		light.LightColor = Green.Lerp( Purple, t );
 		if ( t >= 1f ) QueueFree();

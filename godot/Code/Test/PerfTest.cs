@@ -1,0 +1,121 @@
+using Godot;
+
+/// <summary>
+/// --perf: frame times in a window, vsync off, through four scenes: standing idle, a gore-heavy fight (a dozen enemies
+/// blown apart at once), the Gore Vac sucking up that whole field, and a barrage of Gore Vac shots into a crowd. Prints
+/// the average, 95th percentile and worst frame, the engine's process and physics time, draw calls, node and gore
+/// counts, and the per-label code timings from Perf. Checks nothing; it is for comparing before and after a change.
+/// </summary>
+public partial class AutoTest
+{
+	async Task PerfTest()
+	{
+		DisplayServer.WindowSetVsyncMode( DisplayServer.VSyncMode.Disabled );
+		Engine.MaxFps = 0;
+		var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		me.Health.Invulnerable = true;
+		DevFlags.FreezeEnemies = true;
+		if ( WaveDirector.Current is { } director ) director.SpawningPaused = true;
+		DockHouse.Current?.SkipDive();
+		await WaitForNav();
+		await Wait( 1f );
+		var (spot, yaw) = OpenLane( 14f );
+		var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+		var right = ahead.Cross( Vector3.Up );
+		var gore = GoreSystem.Get( this );
+		void Stand()
+		{
+			player.GlobalPosition = spot + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+		}
+		void LookAt( Vector3 at )
+		{
+			var to = (at - player.Camera.GlobalPosition).Normalized();
+			player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( to.Y ) ), MathX.Deg( MathF.Atan2( -to.X, -to.Z ) ), 0f );
+		}
+		var field = spot + ahead * 7f;
+		Stand();
+		LookAt( field );
+
+		async Task Measure( string name, float seconds, Action everyFrame = null )
+		{
+			Perf.Clear();
+			Perf.Enabled = true;
+			var frames = new List<double>();
+			double process = 0, physics = 0, draws = 0;
+			var last = Time.GetTicksUsec();
+			var start = last;
+			while ( (Time.GetTicksUsec() - start) / 1e6 < seconds )
+			{
+				everyFrame?.Invoke();
+				await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+				var now = Time.GetTicksUsec();
+				frames.Add( (now - last) / 1000.0 );
+				last = now;
+				process += Performance.GetMonitor( Performance.Monitor.TimeProcess ) * 1000.0;
+				physics += Performance.GetMonitor( Performance.Monitor.TimePhysicsProcess ) * 1000.0;
+				draws += Performance.GetMonitor( Performance.Monitor.RenderTotalDrawCallsInFrame );
+			}
+			Perf.Enabled = false;
+			var n = Math.Max( 1, frames.Count );
+			var sorted = frames.OrderBy( f => f ).ToList();
+			var p95 = sorted[(int)Math.Min( sorted.Count - 1, sorted.Count * 0.95 )];
+			var droplets = GooDroplet.Live;
+			GD.Print( $"[autotest] perf {name}: {n} frames, avg {frames.Average():0.00} ms ({1000.0 / frames.Average():0} fps), p95 {p95:0.00} ms, worst {sorted[^1]:0.00} ms | process {process / n:0.00} ms, physics {physics / n:0.00} ms, draws {draws / n:0} | nodes {Performance.GetMonitor( Performance.Monitor.ObjectNodeCount ):0}, gibs {gore.Gibs.Count}, droplets {droplets}" );
+			foreach ( var (label, t) in Perf.Totals.OrderByDescending( kv => kv.Value.Ms ) )
+				GD.Print( $"[autotest] perf {name}:   {label,-16} {t.Ms / n:0.000} ms/frame ({t.Calls / (double)n:0.0} calls/frame)" );
+		}
+
+		// ---- Idle ----
+		await Measure( "idle", 3f );
+
+		// ---- A gore-heavy fight: a dozen enemies in front blown apart at once ----
+		var kinds = new[] { WaveDirector.EnemyKind.Crab, WaveDirector.EnemyKind.Bloober, WaveDirector.EnemyKind.Squilien };
+		var enemies = new List<Creature>();
+		for ( var i = 0; i < 12; i++ )
+		{
+			var at = Nav.Closest( player, field + right * ((i % 4) - 1.5f) * 2f + ahead * (i / 4 - 1) * 2f ) + Vector3.Up * 0.4f;
+			if ( WaveDirector.Current.SpawnAt( kinds[i % 3], at, spot ) is Creature c ) enemies.Add( c );
+		}
+		await Wait( 1.2f );
+		foreach ( var c in enemies.Where( c => IsInstanceValid( c ) && !c.IsDead ) )
+			c.ReceiveShot( 0, 99999f, ahead, c.GlobalPosition, player.Camera.GlobalPosition, me, false );
+		await Measure( "gore fight", 3f );
+
+		// ---- The Gore Vac sucking up the field ----
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		inventory.Add( PlayerWeapon.GoreVac() );
+		await Wait( 0.6f );
+		var vac = inventory.Current;
+		vac.ForceSuck = true;
+		Vector3 Centre()
+		{
+			var near = gore.Gibs.Where( g => g.GlobalPosition.DistanceTo( spot ) < 20f ).ToList();
+			return near.Count > 0 ? near.Aggregate( Vector3.Zero, ( a, g ) => a + g.GlobalPosition ) / near.Count : field;
+		}
+		await Measure( "gore vac suck", 4f, () => { Stand(); LookAt( Centre() ); } );
+		vac.ForceSuck = false;
+
+		// ---- A barrage of shots into a crowd ----
+		enemies.Clear();
+		for ( var i = 0; i < 8; i++ )
+		{
+			var at = Nav.Closest( player, field + right * ((i % 4) - 1.5f) * 2.2f + ahead * (i / 4) * 2.5f ) + Vector3.Up * 0.4f;
+			if ( WaveDirector.Current.SpawnAt( kinds[i % 3], at, spot ) is Creature c ) enemies.Add( c );
+		}
+		await Wait( 1f );
+		vac.InfiniteAmmo = true;
+		TimeSince sinceShot = 0f;
+		var target = 0;
+		await Measure( "gore vac barrage", 4f, () =>
+		{
+			Stand();
+			var alive = enemies.Where( c => IsInstanceValid( c ) && !c.IsDead ).ToList();
+			LookAt( alive.Count > 0 ? alive[target % alive.Count].GlobalPosition + Vector3.Up * 0.4f : field );
+			if ( sinceShot > 0.15f ) { sinceShot = 0f; target++; vac.TestSpit( target % 6 == 0 ); }
+		} );
+		vac.InfiniteAmmo = false;
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+}

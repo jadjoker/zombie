@@ -439,21 +439,52 @@ public partial class Sway : Node
 	Basis rest;
 	float phase;
 	bool started;
+	Node3D target;
+
+	// Every sway is driven from one place (there are a couple of hundred plants; each running its own per-frame
+	// callback cost more than the swaying itself). Same motion as before.
+	static readonly List<Sway> active = new();
+	static ulong drivenFrame = ulong.MaxValue;
 
 	public override void _Ready()
 	{
 		phase = Rng.Float( 0f, MathF.PI * 2f );
 		Period *= Rng.Float( 0.8f, 1.25f );
+		target = GetParent<Node3D>();
+		active.Add( this );
+		// Only the first sway in the list processes; it moves them all.
+		SetProcess( active.Count == 1 );
+	}
+
+	public override void _ExitTree()
+	{
+		active.Remove( this );
+		// If the driver went, hand the job to another.
+		if ( active.Count > 0 ) active[0].SetProcess( true );
 	}
 
 	public override void _Process( double delta )
 	{
+		var frame = Engine.GetProcessFrames();
+		if ( frame == drivenFrame ) return;
+		drivenFrame = frame;
+		var now = (float)Clock.Now;
+		for ( var i = active.Count - 1; i >= 0; i-- )
+		{
+			var s = active[i];
+			if ( !IsInstanceValid( s ) || !IsInstanceValid( s.target ) ) { active.RemoveAt( i ); continue; }
+			s.Pose( now );
+		}
+	}
+
+	void Pose( float now )
+	{
 		// The rest pose is taken on the first frame, not on entering the tree: copies of a plant get their own turn
 		// and size after they are added, which _Ready would miss (they all snapped back to the original's).
-		if ( !started ) { rest = GetParent<Node3D>().Basis; started = true; }
-		var t = (float)Clock.Now * MathF.PI * 2f / MathF.Max( 0.5f, Period ) + phase;
+		if ( !started ) { rest = target.Basis; started = true; }
+		var t = now * MathF.PI * 2f / MathF.Max( 0.5f, Period ) + phase;
 		var pitch = MathF.Sin( t ) * Amount;
 		var roll = MathF.Sin( t * 0.63f + 1.7f ) * Amount * 0.6f;
-		GetParent<Node3D>().Basis = rest * new Angles( pitch, 0f, roll ).ToBasis();
+		target.Basis = rest * new Angles( pitch, 0f, roll ).ToBasis();
 	}
 }

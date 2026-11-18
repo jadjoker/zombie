@@ -94,7 +94,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
   the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). A pull fires at once; keep holding 1 s after it (`PlayerWeapon.ChargeTime`)
-  for a charged next trident: faster, and it goes through up to `TridentBolt.MaxPierced` enemies. Its sounds (`trident_pierce`,
+  for a charged next trident (faster, magical). Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2) and goes through them. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Robot classes (`Player/RobotClass.cs`): each robot has its own weapons and mouse 4 move; both swing the axe.
@@ -104,8 +104,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   never rams). Picked on the dock at the start of a run (`Game/ClassPicker.cs`, pauses the game; 1 or 2, a click or
   the pad; the pause menu's "Change robot" until the dive), in the dev menu (Player, Robot class), saved as
   `game/robot_class`; `--class <name>` forces one (tests default to Ram-Bot). `RobotClass.Pick` swaps the kit
-  (`WeaponInventory.Replace`, damage upgrades kept). Weapon buy stations are hidden for every robot (`RobotClass.Sells`,
-  `BuyStation.Refresh`): weapons come with the robot. The trident has no robot now (dev menu Cheats still gives it).
+  (`WeaponInventory.Replace`, damage upgrades kept). No area builds a trident or Gore Vac station any more:
+  weapons come with the robot (`RobotClass.Sells` and `BuyStation.Refresh` still hide one if it turns up).
+  Trident-Bot (250 health, `Paint` "Trident": teal, #CB4154 shoulders): the trident shooter (slot 1) and the spear
+  (slot 2, `PlayerWeapon.Spear`, `SpearModel.cs`): a one-handed thrust (`ThrustCurve`: cock, lunge, overshoot, camera
+  jolt) at twice the axe's reach, and the energy shield in the left hand (`ShieldArm`, a `SkeletonModifier3D` that
+  bends the left arm to the shield's grip), raised with right click to take `BlockShare` (65%) of each hit. Healing in
+  third person brings bristlenose plecos with hearts (`HealPlecos.cs`). Vac-Bot's `Paint` is "Vac": green with purple
+  polka dots (`PlayerRig.Dots`, an object-space triplanar texture) and yellow shoulders. Test: `--tridentbot`.
   The Bubble Cannon (`Weapons/BubbleCannon.cs`, model `BubbleCannonModel` on the Blaster rig; the globe's "Loaded"
   bubble regrows after a shot and swells while charging): left click blows a `BubbleShot` (grows out of the bell,
   stretches and wobbles, gentle homing via `GoreBall.NearestToLine`, drifts up, bounces off the world `Bounces` times).
@@ -138,8 +144,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   gently, and go off near an enemy (`Proximity`); every burst is a mini explosion (`AlienBlast`, goo, damage, a shove).
   The huge shot throws four bomblets; a loaded mine goes first as a full blast. Shots kick the player back
   (`LastKick`); a full tank slows you by `FullTankSlow` and sways the view. Lumps a burst throws are `Gib.Recycled`
-  (worth 1 gunk), so there is no free ammo loop. Its station (`BuyStation.CreateGoreVacStation`, 1250) joins the first
-  area's row (`AddGoreVacStation`) and follows to areas 2 and 3 via `PlaceStations`. Dev menu: Cheats, Give Gore Vac.
+  (worth 1 gunk), so there is no free ammo loop. It is Vac-Bot's only (no station sells it). Dev menu: Cheats, Give Gore Vac.
   Test: `--gorevac` (spawning paused, the level's mines cleared; with `--shots` for pictures).
 - Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe

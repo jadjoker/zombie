@@ -91,8 +91,6 @@ public static class AreaThree
 			[BuyStationKind.Ammo] = arrival + new Vector3( -6f, 0f, -9f ),
 			[BuyStationKind.Health] = arrival + new Vector3( -2.2f, 0f, -11f ),
 			[BuyStationKind.Damage] = arrival + new Vector3( 2.2f, 0f, -11f ),
-			[BuyStationKind.Trident] = arrival + new Vector3( 6f, 0f, -9f ),
-			[BuyStationKind.GoreVac] = arrival + new Vector3( -9.6f, 0f, -6.8f ),
 		}, arrival, Atlantis.SurfaceAt );
 
 		// No snow in this snow globe.

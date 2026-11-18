@@ -39,8 +39,7 @@ public partial class AutoTest
 		Check( Kit() == "Rifle,Shotgun", $"Ram-Bot holds {Kit()}, not the rifle and shotgun" );
 		var weaponStations = GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>()
 			.Where( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind is BuyStationKind.GoreVac or BuyStationKind.Trident ).ToList();
-		Check( weaponStations.All( b => !(b.GetParent() as Node3D).Visible ), "a weapon station is still showing" );
-		Check( weaponStations.All( b => !b.GetNode<BuyStation>( "BuyStation" ).CanPress( me ) ), "a weapon station can still be pressed" );
+		Check( weaponStations.Count == 0, $"{weaponStations.Count} weapon stations in the level (weapons come with the robot)" );
 
 		// ---- Vac-Bot ----
 		RobotClass.Pick( RobotClass.VacBot, player );

@@ -47,12 +47,26 @@ public partial class PlayerWeapon : Node
 	public const float BlockShare = 0.65f;
 	public float SpearReach = 220f * U.In;   // the axe's reach is 110
 	public float SpearRadius = 18f * U.In;
-	public float SpearCooldown = 0.62f, SpearWindUp = 0.16f;
+	public float SpearCooldown = 0.55f, SpearWindUp = 0.14f;   // the hit lands at SpearWindUp, at the end of the lunge
 	TimeSince spearSwing = 99f;
 	bool spearStruck, spearLeft;
 	float shieldUp;
-	/// <summary> How far into its thrust the spear is (0 at rest), and how far the shield is raised, for the model. </summary>
-	public float SpearThrust => spearSwing < SpearCooldown ? MathF.Sin( MathX.Clamp( (float)spearSwing / SpearCooldown, 0f, 1f ) * MathF.PI ) : 0f;
+	/// <summary>
+	/// How far into its thrust the spear is, for the model: 0 at rest, a quick cock back (to -0.35), a violent lunge
+	/// that overshoots (1.2), settles at full reach and then comes back.
+	/// </summary>
+	public float SpearThrust => ThrustCurve( (float)spearSwing, SpearCooldown );
+
+	public static float ThrustCurve( float t, float length )
+	{
+		const float cock = 0.09f, lunge = 0.15f, settle = 0.22f;
+		if ( t < 0f || t >= length ) return 0f;
+		if ( t < cock ) { var k = t / cock; return -0.35f * k * k * (3f - 2f * k); }
+		if ( t < lunge ) { var k = 1f - (t - cock) / (lunge - cock); return MathX.Lerp( -0.35f, 1.2f, 1f - k * k * k ); }
+		if ( t < settle ) return MathX.Lerp( 1.2f, 1f, (t - lunge) / (settle - lunge) );
+		var r = (t - settle) / (length - settle);
+		return 1f - r * r * (3f - 2f * r);
+	}
 	public float ShieldRaise => shieldUp;
 	/// <summary> The firing sound (null: "{ModelName}_shoot"). </summary>
 	public string ShootSound;
@@ -364,6 +378,10 @@ public partial class PlayerWeapon : Node
 		{
 			spearStruck = true;
 			controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" )?.StrikeWith( SpearReach, SpearRadius, CurrentDamage, this );
+			// The lunge lands: a jolt through the camera and the pad.
+			juice?.Shake( 0.45f );
+			juice?.KickFov( 5f );
+			Controls.Rumble( 0.3f );
 		}
 		if ( ViewModel is not null ) SpearModel.Pose( ViewModel, SpearThrust, spearLeft, shieldUp, dt );
 	}
@@ -374,7 +392,7 @@ public partial class PlayerWeapon : Node
 		spearSwing = 0f;
 		spearStruck = false;
 		spearLeft = !spearLeft;
-		Sfx.Play2D( "axe_swing", 0.9f, 1.25f );
+		Sfx.Play2D( "axe_swing", 1f, Rng.Float( 0.95f, 1.08f ) );
 	}
 
 	/// <summary> Testing aid: raise or lower the shield as if right click were held. </summary>

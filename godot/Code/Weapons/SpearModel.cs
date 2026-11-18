@@ -1,9 +1,10 @@
 using Godot;
 
 /// <summary>
-/// The Trident-Bot's melee kit in first person: the trident as a spear in the hands of the Blaster's rig (its gun
-/// taken off, as for the trident shooter), and an energy shield on the left that comes up with right click. The
-/// thrust and the shield are posed in code (Pose), on top of the rig's own idle and draw animations.
+/// The Trident-Bot's melee kit in first person: the trident as a spear in the right hand of the Blaster's rig (its gun
+/// taken off, as for the trident shooter), and an energy shield in the left hand (`ShieldArm` bends the left arm to
+/// it), held low and raised to the middle with right click. The thrust and the shield are posed in code (Pose), on
+/// top of the rig's own idle and draw animations.
 /// Gun space is the Blender rifle's: inches, +X forward, +Z up, the grip at the origin.
 /// </summary>
 public static class SpearModel
@@ -19,6 +20,7 @@ public static class SpearModel
 		var body = new Node3D { Name = "Spear", Transform = new Transform3D( GunToBone.Scaled( Vector3.One * 0.01f ), Vector3.Zero ) };
 		onGun.AddChild( body );
 		BuildSpear( body );
+		skeleton.AddChild( new ShieldArm { Name = "Shield Arm" } );
 	}
 
 	/// <summary> A long black shaft with yellow bands and a purple grip, a gold crossbar and three barbed prongs with glowing tips. </summary>
@@ -58,9 +60,11 @@ public static class SpearModel
 		if ( vm.GetChildCount() == 0 ) return;
 		if ( vm.GetChild( 0 ) is Node3D model )
 		{
+			// A hard one-handed stab: cocked back and turned out, then driven forward and across with a corkscrew twist.
 			var across = left ? -1f : 1f;
-			model.Position = new Vector3( -0.06f * thrust * across, 0.03f * thrust - 0.05f * raise, -0.42f * thrust + 0.04f * raise );
-			model.Rotation = new Vector3( -0.08f * thrust, 0.12f * thrust * across, 0f );
+			var reach = MathF.Max( 0f, thrust );
+			model.Position = new Vector3( -0.09f * thrust * across, 0.05f * reach - 0.03f * MathF.Min( 0f, thrust ) - 0.05f * raise, -0.55f * thrust + 0.04f * raise );
+			model.Rotation = new Vector3( -0.14f * thrust, 0.2f * thrust * across, 0.45f * reach * across );
 		}
 		var shield = vm.GetNodeOrNull<Node3D>( "Energy Shield" ) ?? BuildShield( vm );
 		shield.Visible = true;
@@ -115,5 +119,84 @@ public static class SpearModel
 			mesh.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
 		}
 		return shield;
+	}
+}
+
+/// <summary>
+/// Bends the rig's left arm (upper_L, lower_L, hand_L) so the hand holds the energy shield's grip wherever the shield
+/// is, after the animation has posed it: a two-bone reach with the elbow down and out to the left. Without it the
+/// left hand would stay on the (stripped) gun's fore-end.
+/// </summary>
+public partial class ShieldArm : SkeletonModifier3D
+{
+	/// <summary> The grip on the back of the shield, in the shield's space (the boss side faces the camera). </summary>
+	static readonly Vector3 Grip = new( 0.01f, -0.015f, 0.06f );
+	int upper = -1, lower = -1, hand = -1;
+	ViewModel vm;
+
+	public override void _ProcessModificationWithDelta( double delta )
+	{
+		var skeleton = GetSkeleton();
+		if ( skeleton is null ) return;
+		if ( upper < 0 ) { upper = skeleton.FindBone( "upper_L" ); lower = skeleton.FindBone( "lower_L" ); hand = skeleton.FindBone( "hand_L" ); }
+		if ( upper < 0 || lower < 0 || hand < 0 ) return;
+		vm ??= FindViewModel();
+		if ( vm?.GetNodeOrNull<Node3D>( "Energy Shield" ) is not { Visible: true } shield ) return;
+
+		var toSkeleton = skeleton.GlobalTransform.AffineInverse();
+		var target = toSkeleton * (shield.GlobalTransform * Grip);
+		var pole = (toSkeleton.Basis * (vm.GlobalBasis * new Vector3( -1f, -1.2f, 0.3f ))).Normalized();
+
+		var gU = skeleton.GetBoneGlobalPose( upper );
+		var gL = skeleton.GetBoneGlobalPose( lower );
+		var gH = skeleton.GetBoneGlobalPose( hand );
+		var shoulder = gU.Origin;
+		var a = shoulder.DistanceTo( gL.Origin );
+		var b = gL.Origin.DistanceTo( gH.Origin );
+		if ( a < 1e-4f || b < 1e-4f ) return;
+
+		// Where the elbow goes: the triangle of the two bones and the reach, bent toward the pole.
+		var reach = target - shoulder;
+		var d = Math.Clamp( reach.Length(), MathF.Abs( a - b ) + 1e-3f, (a + b) * 0.999f );
+		var dir = reach.Normalized();
+		var cos = Math.Clamp( (a * a + d * d - b * b) / (2f * a * d), -1f, 1f );
+		var side = (pole - dir * pole.Dot( dir )).Normalized();
+		if ( side == Vector3.Zero ) side = pole;
+		var elbow = shoulder + dir * a * cos + side * a * MathF.Sqrt( 1f - cos * cos );
+		var wrist = shoulder + dir * d;
+
+		// Swing each bone onto its new line, keeping its own twist.
+		var q1 = Arc( gL.Origin - shoulder, elbow - shoulder );
+		var lowerBasis = new Basis( q1 ) * gL.Basis;
+		var handFromElbow = new Basis( q1 ) * (gH.Origin - gL.Origin);
+		var q2 = Arc( handFromElbow, wrist - elbow );
+		var upperG = new Transform3D( new Basis( q1 ) * gU.Basis, shoulder );
+		var lowerG = new Transform3D( new Basis( q2 ) * lowerBasis, elbow );
+		var handG = new Transform3D( new Basis( q2 * q1 ) * gH.Basis, wrist );
+
+		var parent = skeleton.GetBoneParent( upper );
+		var parentG = parent >= 0 ? skeleton.GetBoneGlobalPose( parent ) : Transform3D.Identity;
+		skeleton.SetBonePoseRotation( upper, Local( parentG, upperG ) );
+		skeleton.SetBonePoseRotation( lower, Local( upperG, lowerG ) );
+		skeleton.SetBonePoseRotation( hand, Local( lowerG, handG ) );
+	}
+
+	static Quaternion Local( Transform3D parent, Transform3D child ) => (parent.Basis.Orthonormalized().Inverse() * child.Basis.Orthonormalized()).GetRotationQuaternion();
+
+	/// <summary> The shortest turn taking direction `from` onto `to`. </summary>
+	static Quaternion Arc( Vector3 from, Vector3 to )
+	{
+		var f = from.Normalized();
+		var t = to.Normalized();
+		var dot = f.Dot( t );
+		if ( dot > 0.99999f ) return Quaternion.Identity;
+		if ( dot < -0.99999f ) return new Quaternion( f.Cross( Vector3.Up ).Length() > 0.01f ? f.Cross( Vector3.Up ).Normalized() : f.Cross( Vector3.Right ).Normalized(), MathF.PI );
+		return new Quaternion( f.Cross( t ).Normalized(), MathF.Acos( dot ) );
+	}
+
+	ViewModel FindViewModel()
+	{
+		for ( Node n = this; n is not null; n = n.GetParent() ) if ( n is ViewModel found ) return found;
+		return null;
 	}
 }

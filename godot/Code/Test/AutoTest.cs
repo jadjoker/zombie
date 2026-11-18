@@ -3021,7 +3021,7 @@ public partial class AutoTest : Node
 	/// <summary>
 	/// The Trident-Bot: picked, it has 250 health, the trident shooter in slot 1 and the spear and shield in slot 2;
 	/// the spear reaches a crab twice the axe's reach away; the shield takes 65% of a hit; a charged trident goes
-	/// through two crabs; healing in third person brings the plecos and their hearts. Pictures need a window.
+	/// one crab then seeks and goes through the next two; healing in third person brings the plecos and their hearts. Pictures need a window.
 	/// </summary>
 	async Task TridentBotTest()
 	{
@@ -3081,19 +3081,19 @@ public partial class AutoTest : Node
 		spear.TestBlock( false );
 		crab.QueueFree();
 
-		// The charged trident goes through two crabs in a row.
+		// A trident hits one crab, then seeks the next two closest (off to either side, not in its path) and goes through them.
 		inventory.Select( shooter, true );
 		await Wait( 0.6f );
 		var line = new List<JunkCrab>();
-		for ( var i = 0; i < 3; i++ ) line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -4f - i * 2.5f ) ), 5000f ) );
+		foreach ( var off in new[] { new Vector3( 0f, 0f, -5f ), new Vector3( 5f, 0f, -8f ), new Vector3( -5f, 0f, -11f ) } )
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + off ), 5000f ) );
 		await Wait( 0.6f );
-		// Fired level at crab height along the row (from eye height it would drop under the second crab).
-		var low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - line[2].GlobalPosition).Normalized() * 1.5f;
-		var along = (line[2].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		var low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - home).Flat().Normalized() * -2f;
+		var along = (line[0].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
 		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
-		await Wait( 1.2f );
-		GD.Print( $"[autotest] trident bot: the charged trident went through {TridentBolt.LastPierced}" );
-		Check( TridentBolt.LastPierced == TridentBolt.MaxPierced, $"the charged trident went through {TridentBolt.LastPierced} enemies, not {TridentBolt.MaxPierced}" );
+		await Wait( 1.5f );
+		GD.Print( $"[autotest] trident bot: the trident hit {TridentBolt.LastHits} crabs" );
+		Check( TridentBolt.LastHits == 1 + TridentBolt.SeekNext, $"the trident hit {TridentBolt.LastHits} crabs, not 1 and the next {TridentBolt.SeekNext} it should seek" );
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 
 		// Healing in third person: the plecos latch on and hearts pop.
@@ -3119,6 +3119,15 @@ public partial class AutoTest : Node
 			player.CameraOverride = _ => behind;
 			await Wait( 0.3f );
 			await Shot( "tridentbot_back" );
+			// The Vac-Bot's paint: green with purple polka dots, yellow shoulders.
+			RobotClass.Pick( RobotClass.VacBot, player );
+			await Wait( 0.5f );
+			player.CameraOverride = _ => at;
+			await Wait( 0.3f );
+			await Shot( "vacbot_paint" );
+			player.CameraOverride = _ => behind;
+			await Wait( 0.2f );
+			await Shot( "vacbot_back" );
 			player.CameraOverride = null;
 			var picker = ClassPicker.Find( GetTree() );
 			if ( picker is not null ) picker.Visible = true;

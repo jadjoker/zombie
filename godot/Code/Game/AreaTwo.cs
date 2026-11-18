@@ -66,8 +66,6 @@ public static class AreaTwo
 			[BuyStationKind.Ammo] = new( -6f, 0f, -27f ),
 			[BuyStationKind.Health] = new( -2.2f, 0f, -25f ),
 			[BuyStationKind.Damage] = new( 2.2f, 0f, -25f ),
-			[BuyStationKind.Trident] = new( 6f, 0f, -27f ),
-			[BuyStationKind.GoreVac] = new( -9.6f, 0f, -29.6f ),
 		}, ArrivalFlat, p => SeaTerrain.HeightAt( p ) );
 		Nav.Bake( level );
 		SeaMine.Lay( level );
@@ -94,8 +92,7 @@ public static class AreaTwo
 
 	/// <summary>
 	/// Moves the buy stations to a new area (playtest): the level's own three (with everything bought at them, so the
-	/// upgrades and their prices carry on) and the trident shooter's station (made here the first time) stand at the
-	/// given spots, set on the ground and facing `lookAt` (the arrival pad). Plants and props in the way are cleared.
+	/// upgrades and their prices carry on) stand at the given spots, set on the ground and facing `lookAt` (the arrival pad). Plants and props in the way are cleared.
 	/// </summary>
 	public static void PlaceStations( Node3D level, Dictionary<BuyStationKind, Vector3> spots, Vector3 lookAt, Func<Vector3, float> ground )
 	{
@@ -109,18 +106,6 @@ public static class AreaTwo
 			if ( body.GetParent() is not Node3D node ) continue;
 			var at = Ground( spot );
 			node.GlobalTransform = new Transform3D( Shapes.LookAt( Facing( at ) ), at );
-			used.Add( at );
-		}
-		if ( !level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Any( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind == BuyStationKind.Trident ) )
-		{
-			var at = Ground( spots[BuyStationKind.Trident] );
-			BuyStation.CreateTridentStation( level, at, Facing( at ), TridentCost );
-			used.Add( at );
-		}
-		if ( spots.TryGetValue( BuyStationKind.GoreVac, out var vacSpot ) && !level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Any( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind == BuyStationKind.GoreVac ) )
-		{
-			var at = Ground( vacSpot );
-			BuyStation.CreateGoreVacStation( level, at, Facing( at ) );
 			used.Add( at );
 		}
 		var cleared = ClearAround( level, used );

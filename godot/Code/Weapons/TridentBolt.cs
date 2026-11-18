@@ -4,7 +4,8 @@ using Godot;
 /// A trident in flight from the trident shooter: it leaves the muzzle for the point under the crosshair, flies fast
 /// with a slight drop, turning slowly about its shaft, streaming tiny bubbles under water. It hits the first thing in
 /// its way (traced each frame along its path, so it never skips through): an enemy takes the damage and the trident
-/// sticks in it (a charged one flies faster and goes on through, enemy after enemy); a loose piece is struck and pinned; the world gets an impact and the trident stays stuck there.
+/// goes on through, then heat seeks the next closest enemies (`SeekNext` of them), going through each, and sticks in
+/// the last (a charged one flies faster and is magical); a loose piece is struck and pinned; the world gets an impact and the trident stays stuck there.
 /// Stuck tridents shrink away after a few seconds.
 /// </summary>
 public partial class TridentBolt : Node3D
@@ -28,13 +29,18 @@ public partial class TridentBolt : Node3D
 	TimeSince sinceStuck;
 	Vector3 stuckScale = Vector3.One;
 	Godot.Collections.Array<Rid> exclude;
-	/// <summary> A charged shot: faster, and it goes on through the enemies it hits (up to MaxPierced). </summary>
+	/// <summary> A charged shot: faster and magical. </summary>
 	bool charged;
-	int pierced;
 	public const float ChargedSpeed = 1.8f;   // times Speed
-	public const int MaxPierced = 2;   // a charged trident goes through two enemies (6 before the playtest)
-	/// <summary> Tests: enemies the last charged trident went through. </summary>
-	public static int LastPierced;
+	/// <summary> After the first enemy it hits, a trident seeks this many more (the next closest each time) and goes through them. </summary>
+	public const int SeekNext = 2;
+	public const float SeekRange = 28f;       // metres from the last hit to the next enemy it will go for
+	public const float SeekTurn = 16f;        // radians a second it can turn while seeking
+	int hits;
+	readonly HashSet<Node> struck = new();
+	Creature seeking;
+	/// <summary> Tests: enemies the last trident hit (the first plus the ones it sought). </summary>
+	public static int LastHits;
 
 	/// <summary> Fires one from `muzzle` toward `target`. `cameraStart` is where the shot was aimed from (checked first, so a gun poked into a wall still hits the wall). </summary>
 	public static TridentBolt Launch( Node parent, Vector3 muzzle, Vector3 target, Vector3 aim, Vector3 cameraStart, float damage, PlayerController shooter, PlayerWeapon weapon, bool charged = false )
@@ -58,7 +64,8 @@ public partial class TridentBolt : Node3D
 		bolt.Face();
 		TridentModel.BuildTrident( bolt );
 		bolt.age = 0f;
-		if ( charged ) { LastPierced = 0; bolt.Enchant(); }
+		LastHits = 0;
+		if ( charged ) bolt.Enchant();
 		return bolt;
 	}
 
@@ -93,7 +100,17 @@ public partial class TridentBolt : Node3D
 		}
 
 		var from = GlobalPosition;
-		velocity += Vector3.Down * Drop * dt;
+		if ( seeking is not null && (!IsInstanceValid( seeking ) || seeking.IsDead) ) seeking = NextTarget( from );
+		if ( seeking is not null )
+		{
+			// Heat seeking: swing hard onto the next enemy, no drop.
+			var want = (AimAt( seeking, from ) - from).SafeNormal();
+			var heading = velocity.SafeNormal();
+			var angle = heading.AngleTo( want );
+			heading = heading.Slerp( want, MathF.Min( 1f, SeekTurn * dt / MathF.Max( angle, 0.001f ) ) ).Normalized();
+			velocity = heading * velocity.Length();
+		}
+		else velocity += Vector3.Down * Drop * dt;
 		var to = from + velocity * dt;
 		var tr = Trace.Ray( this, from, to, Layers.World | Layers.Creature | Layers.Gib, exclude );
 		if ( tr.Hit ) { Strike( tr ); return; }
@@ -210,11 +227,16 @@ public partial class TridentBolt : Node3D
 				weapon.MarkHit();
 				if ( shootable.IsDead ) weapon.MarkKill();
 			}
-			if ( charged && pierced < MaxPierced )
+			hits++;
+			LastHits = hits;
+			struck.Add( owner );
+			if ( seeking == owner ) seeking = null;
+			var next = hits <= SeekNext ? NextTarget( tr.HitPosition ) : null;
+			if ( next is not null )
 			{
-				// Through it and on: none of that creature's parts stop it again; a burst of bubbles out the far side.
-				pierced++;
-				LastPierced = pierced;
+				// Through it and on to the next closest enemy: none of this creature's parts stop it again; a burst of bubbles out the far side.
+				seeking = next;
+				age = 0f;
 				foreach ( var part in CreaturePart.All )
 					if ( part.ShotOwner == owner && IsInstanceValid( part ) ) exclude.Add( part.GetRid() );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );
@@ -235,6 +257,35 @@ public partial class TridentBolt : Node3D
 			Sfx.Play( "hit_world", tr.HitPosition, 0.8f, 0.8f );
 		}
 		StickAt( tr, direction );
+	}
+
+	/// <summary> The closest live enemy to `from` within SeekRange that this trident hasn't hit yet. </summary>
+	Creature NextTarget( Vector3 from )
+	{
+		Creature best = null;
+		var bestDistance = SeekRange;
+		foreach ( var c in Creature.Everyone )
+		{
+			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || struck.Contains( c ) ) continue;
+			var d = from.DistanceTo( c.GlobalPosition );
+			if ( d < bestDistance ) { bestDistance = d; best = c; }
+		}
+		return best;
+	}
+
+	/// <summary> Where to fly at an enemy: its nearest hit shape (the parts' colliders), else a little above its origin. </summary>
+	static Vector3 AimAt( Creature c, Vector3 from )
+	{
+		var best = c.GlobalPosition + Vector3.Up * 0.5f;
+		var bestDistance = float.MaxValue;
+		foreach ( var part in CreaturePart.All )
+		{
+			if ( part.ShotOwner != c || !IsInstanceValid( part ) || part.Collider is null ) continue;
+			var at = part.Collider.GlobalPosition;
+			var d = from.DistanceSquaredTo( at );
+			if ( d < bestDistance ) { bestDistance = d; best = at; }
+		}
+		return best;
 	}
 
 	/// <summary> Stays where it hit, points sunk in, carried along by what it hit if that moves (a creature, a piece). </summary>

@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary>
-/// --gorevac: the Gore Vac and its physics. Its station stands in the first area's row; held fire sucks loose gibs and
+/// --gorevac: the Gore Vac and its physics. Vac-Bot's slot 1 (no station sells it); held fire sucks loose gibs and
 /// goo puddles into the tank, drags a crab and a Bloober in, tears off a limb shot half away, sucks a weak crab apart,
 /// tears a starfish off the floor and a mine off its chain (loaded, then spat and blown up); a full tank slows you; a
 /// shot at the floor goes off as a mini explosion, one aimed beside a crab still gets it; the huge shot throws bomblets and hurts
@@ -20,9 +20,6 @@ public partial class AutoTest
 		DockHouse.Current?.SkipDive();
 		await WaitForNav();
 		await Wait( 0.5f );
-
-		var station = GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().FirstOrDefault( b => b.GetNodeOrNull<BuyStation>( "BuyStation" )?.Kind == BuyStationKind.GoreVac );
-		Check( station is not null, "there is no Gore Vac station in the first area" );
 
 		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
 		inventory.Add( PlayerWeapon.GoreVac() );
@@ -287,16 +284,6 @@ public partial class AutoTest
 		GD.Print( $"[autotest] gorevac: blowing for 1 s pushed the player {blown:0.00} m back" );
 		Check( blown > 0.5f, $"blowing moved the player only {blown:0.00} m back" );
 
-		// ---- The station, from the front ----
-		if ( station is not null && shots is not null )
-		{
-			var front = station.GetParent<Node3D>();
-			var face = (spot - front.GlobalPosition).Flat().Normalized();
-			FreeView( front.GlobalPosition + face * 4f + Vector3.Up * 2f, front.GlobalPosition + Vector3.Up * 1.4f );
-			await Wait( 0.5f );
-			await Shot( "gorevac_station" );
-			DevFlags.FreeCam = false;
-		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

@@ -33,6 +33,8 @@ function Update-FromGitHub {
 	if ($LASTEXITCODE -ne 0) { Write-Host "Update failed, running your current version." -ForegroundColor Yellow; return $true }
 	Write-Host "Updated: pulled $behind new commit(s)." -ForegroundColor Green
 	git log --oneline -n ([Math]::Min($behind, 5)) | ForEach-Object { Write-Host "  $_" }
+	Write-Host "Importing any new assets..."
+	& ($godot -replace '\.exe$', '_console.exe') --headless --path "$project" --import *> $null
 	return $true
 }
 

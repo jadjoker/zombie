@@ -64,6 +64,20 @@ public partial class PlayerMelee : Node
 		axe?.Play( leftSwing );
 	}
 
+	/// <summary> A strike from another weapon (the Trident-Bot's spear): its own reach, width and damage, hits marked on it. </summary>
+	public void StrikeWith( float reach, float radius, float damage, PlayerWeapon weapon )
+	{
+		var (oldReach, oldRadius, oldDamage) = (Reach, Radius, Damage);
+		(Reach, Radius, Damage) = (reach, radius, damage);
+		hitThisSwing.Clear();
+		strikeWeapon = weapon;
+		Strike();
+		strikeWeapon = null;
+		(Reach, Radius, Damage) = (oldReach, oldRadius, oldDamage);
+	}
+
+	PlayerWeapon strikeWeapon;
+
 	void Strike()
 	{
 		var camera = controller.Camera;
@@ -80,7 +94,7 @@ public partial class PlayerMelee : Node
 		var juice = controller.GetNodeOrNull<CameraJuice>( "CameraJuice" );
 		juice?.Shake( anyHit ? 0.45f : 0.12f );
 		juice?.KickFov( anyHit ? 2.5f : 0.8f );
-		if ( anyHit ) Weapon?.MarkHit();
+		if ( anyHit ) (strikeWeapon ?? Weapon)?.MarkHit();
 	}
 
 	bool Hit( TraceResult tr, Vector3 start, Vector3 direction )

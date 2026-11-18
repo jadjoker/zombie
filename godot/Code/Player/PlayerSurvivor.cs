@@ -38,14 +38,33 @@ public partial class PlayerSurvivor : Node
 		Points = StartingPoints;
 		Health = Controller.GetNodeOrNull<Health>( "Health" );
 		if ( Health is null ) { Health = new Health(); Controller.AddChild( Health ); }
-		startingMaxHealth = Health.MaxHealth;
+		// Each robot starts with its own health (the Trident-Bot is tougher), and a new pick resets to it.
+		startingMaxHealth = RobotClass.Current.BaseHealth;
+		Health.ResetTo( startingMaxHealth );
+		RobotClass.Changed += OnRobotPicked;
 		Health.Damaged += OnHurt;
 		Health.Died += OnDied;
 		if ( Afflictions is null ) Controller.AddChild( new PlayerAfflictions() );
 		All.Add( this );
 	}
 
-	public override void _ExitTree() => All.Remove( this );
+	public override void _ExitTree()
+	{
+		All.Remove( this );
+		RobotClass.Changed -= OnRobotPicked;
+	}
+
+	/// <summary> A robot was picked: its base health in place of the old one's (upgrades bought so far are kept), full. </summary>
+	void OnRobotPicked()
+	{
+		if ( Health is null || !IsInstanceValid( Health ) ) return;
+		var bought = Health.MaxHealth - startingMaxHealth;
+		startingMaxHealth = RobotClass.Current.BaseHealth;
+		Health.ResetTo( startingMaxHealth + MathF.Max( 0f, bought ) );
+	}
+
+	/// <summary> Health is coming back (the pause after a hit is over and it is not full): the third person plecos show. </summary>
+	public bool Healing => Health is not null && IsAlive && Health.TimeSinceDamaged > RegenDelay && Health.Current < Health.MaxHealth;
 
 	public void AddPoints( int amount )
 	{

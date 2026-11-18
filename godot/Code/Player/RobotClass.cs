@@ -9,7 +9,11 @@ using Godot;
 /// </summary>
 public sealed class RobotClass
 {
-	public string Id, Name, Tagline, Weapons, Movement;
+	public string Id, Name, Tagline, Weapons, Movement, Melee = "Axe";
+	/// <summary> Health at the start of a run (upgrades add to it). </summary>
+	public float BaseHealth = 100f;
+	/// <summary> The paint job its body wears (PlayerRig), whatever skin is picked in the dev menu; null keeps that skin. </summary>
+	public string Paint;
 	public Color Tint;
 	/// <summary> Mouse 4 is the quick reverse-thrust blink (Jetpack) instead of the charged surge. </summary>
 	public bool Blink;
@@ -31,7 +35,16 @@ public sealed class RobotClass
 		Kit = () => new[] { PlayerWeapon.GoreVac( 1 ), PlayerWeapon.BubbleCannon( 2 ) },
 	};
 
-	public static readonly RobotClass[] All = { RamBot, VacBot };
+	public static readonly RobotClass TridentBot = new()
+	{
+		Id = "tridentbot", Name = "Trident-Bot", Tagline = "Hold the line. Skewer what crosses it.",
+		Weapons = "Trident Shooter, Trident & Shield", Movement = "Charged surge: hold mouse 4, let go to ram through enemies",
+		Melee = "Trident thrust (twice the axe's reach), shield blocks 65% on right click; axe on mouse 5",
+		Tint = new Color( 0.12f, 0.75f, 0.72f ), BaseHealth = 250f, Paint = "Trident",
+		Kit = () => new[] { PlayerWeapon.Trident( 1 ), PlayerWeapon.TridentSpear( 2 ) },
+	};
+
+	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot };
 
 	public static RobotClass Find( string id ) => All.FirstOrDefault( c => string.Equals( c.Id, id, StringComparison.OrdinalIgnoreCase ) || string.Equals( c.Name, id, StringComparison.OrdinalIgnoreCase ) ) ?? RamBot;
 

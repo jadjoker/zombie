@@ -182,6 +182,14 @@ public partial class PlayerRig : Node
 				return muzzle.GlobalBasis.Y.Normalized();
 		return null;
 	}
+	/// <summary> Where the muzzle of the gun in the robot's hands is (third person), for the flash and tracers; null when none shows. </summary>
+	public Transform3D? WorldMuzzle()
+	{
+		foreach ( var (_, gun) in worldGuns )
+			if ( IsInstanceValid( gun.Root ) && gun.Root.IsVisibleInTree() && gun.Root.FindChild( "Muzzle", true, false ) is Node3D muzzle )
+				return muzzle.GlobalTransform;
+		return null;
+	}
 	PlayerWeapon Held => inventory?.Current;
 
 	public override void _Process( double delta )
@@ -279,6 +287,8 @@ public partial class PlayerRig : Node
 		["Default"] = new[] { new Color( 0.17f, 0.18f, 0.21f ), new Color( 0.74f, 0.78f, 0.82f ), new Color( 0.95f, 0.52f, 0.14f ), new Color( 0.88f, 0.90f, 0.93f ) },
 		["Rust"] = new[] { new Color( 0.20f, 0.16f, 0.14f ), new Color( 0.58f, 0.36f, 0.22f ), new Color( 0.78f, 0.66f, 0.30f ), new Color( 0.62f, 0.50f, 0.40f ) },
 		["Stealth"] = new[] { new Color( 0.08f, 0.08f, 0.10f ), new Color( 0.20f, 0.21f, 0.25f ), new Color( 0.75f, 0.12f, 0.14f ), new Color( 0.40f, 0.41f, 0.46f ) },
+		// The Trident-Bot: the white suit teal, the shoulders #CB4154.
+		["Trident"] = new[] { new Color( 0.08f, 0.16f, 0.18f ), new Color( 0.13f, 0.62f, 0.62f ), new Color( 0.796f, 0.255f, 0.329f ), new Color( 0.32f, 0.78f, 0.76f ) },
 		["Hazard"] = new[] { new Color( 0.14f, 0.14f, 0.16f ), new Color( 0.96f, 0.80f, 0.14f ), new Color( 0.12f, 0.12f, 0.14f ), new Color( 0.80f, 0.80f, 0.84f ) },
 		["Frost"] = new[] { new Color( 0.30f, 0.38f, 0.50f ), new Color( 0.90f, 0.94f, 0.98f ), new Color( 0.30f, 0.58f, 0.90f ), new Color( 0.80f, 0.88f, 0.96f ) },
 		["Gold"] = new[] { new Color( 0.20f, 0.17f, 0.14f ), new Color( 0.92f, 0.70f, 0.22f ), new Color( 0.70f, 0.12f, 0.14f ), new Color( 0.98f, 0.86f, 0.50f ) },
@@ -286,8 +296,10 @@ public partial class PlayerRig : Node
 
 	void ApplySkin()
 	{
-		if ( appliedSkin == CharacterSkins.Current ) return;
-		appliedSkin = CharacterSkins.Current;
+		// A robot with its own paint (the Trident-Bot's teal and red) wears it whatever skin is picked.
+		var wanted = RobotClass.Current.Paint ?? CharacterSkins.Current;
+		if ( appliedSkin == wanted ) return;
+		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
 		foreach ( var mesh in meshes )
 		{

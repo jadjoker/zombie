@@ -28,6 +28,8 @@ public partial class PlayerWeapon : Node
 	/// <summary> How charged the held shot is, 0 to 1 (for the HUD). </summary>
 	public float ChargeAmount => charging && ChargeTime > 0f ? MathX.Clamp( (float)sinceChargeStart / ChargeTime, 0f, 1f ) : 0f;
 	bool charging, chargeFull, chargedShot;
+	/// <summary> This shot came out of the gun in the robot's hands (third person). </summary>
+	bool thirdPersonMuzzle;
 	/// <summary> The trigger has stayed down since the last shot (holding on charges the next trident). </summary>
 	bool heldSinceShot;
 	TimeSince sinceChargeStart;
@@ -36,6 +38,22 @@ public partial class PlayerWeapon : Node
 	public float ShellTime = 0.5f;
 	/// <summary> Fires a flying trident (TridentBolt) instead of hitscan rays. </summary>
 	public bool Projectile;
+	/// <summary>
+	/// The Trident-Bot's melee slot: the trident held as a spear. Left click thrusts it (twice the axe's reach), right
+	/// click raises the energy shield, which takes BlockShare of every hit while it is up.
+	/// </summary>
+	public bool Spear;
+	public bool Blocking { get; private set; }
+	public const float BlockShare = 0.65f;
+	public float SpearReach = 220f * U.In;   // the axe's reach is 110
+	public float SpearRadius = 18f * U.In;
+	public float SpearCooldown = 0.62f, SpearWindUp = 0.16f;
+	TimeSince spearSwing = 99f;
+	bool spearStruck, spearLeft;
+	float shieldUp;
+	/// <summary> How far into its thrust the spear is (0 at rest), and how far the shield is raised, for the model. </summary>
+	public float SpearThrust => spearSwing < SpearCooldown ? MathF.Sin( MathX.Clamp( (float)spearSwing / SpearCooldown, 0f, 1f ) * MathF.PI ) : 0f;
+	public float ShieldRaise => shieldUp;
 	/// <summary> The firing sound (null: "{ModelName}_shoot"). </summary>
 	public string ShootSound;
 
@@ -120,14 +138,22 @@ public partial class PlayerWeapon : Node
 	/// The trident shooter (bought on the wreck site): slot 3, a few heavy tridents per load that fly to the crosshair
 	/// with a slight drop, one at a time.
 	/// </summary>
-	public static PlayerWeapon Trident() => new()
+	public static PlayerWeapon Trident( int slot = 3 ) => new()
 	{
-		Name = "Trident", DisplayName = "Trident Shooter", Slot = 3, ModelName = "trident",
+		Name = "Trident", DisplayName = "Trident Shooter", Slot = slot, ModelName = "trident",
 		Damage = 380f /* 140 at first (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
 		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
 		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
 		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,
 		Projectile = true, ShootSound = "harpoon", ChargeTime = 1f,
+	};
+
+	/// <summary> The Trident-Bot's second slot: the trident as a spear, and an energy shield (right click) that takes 65% of hits. </summary>
+	public static PlayerWeapon TridentSpear( int slot = 2 ) => new()
+	{
+		Name = "Trident Spear", DisplayName = "Trident & Shield", Slot = slot, ModelName = "spear",
+		Damage = 95f, FireRate = 1.6f, Range = 220f * U.In, MagazineSize = 1, StartingReserve = 0, Automatic = false,
+		MuzzleFlashScale = 0f, Spear = true,
 	};
 
 	public static PlayerWeapon Shotgun() => new()
@@ -174,6 +200,8 @@ public partial class PlayerWeapon : Node
 	void OnDisabled()
 	{
 		if ( ViewModel is not null ) ViewModel.Visible = false;
+		Blocking = false;
+		shieldUp = 0f;
 		CancelReload();
 		Sucking = false;
 		ReleaseCaught();
@@ -226,6 +254,12 @@ public partial class PlayerWeapon : Node
 		if ( IsReloading && ShellReload ) UpdateShellReload();
 		else if ( IsReloading && reloadFinished <= 0f ) FinishReload();
 
+		if ( Spear )
+		{
+			UpdateSpear( dt, !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree) );
+			return;
+		}
+
 		if ( Vacuum )
 		{
 			// The Gore Vac: no aiming or reloading; fire sucks and aim spits (GoreVac.cs).
@@ -254,7 +288,29 @@ public partial class PlayerWeapon : Node
 			chargeFrame = frame;
 			if ( IsReloading ) charging = false;
 			var held = Input.IsActionPressed( "attack1" );
-			if ( !charging )
+			if ( !charging && !Bubbles )
+			{
+				// The trident: a pull only starts the charge, nothing leaves yet. Let go to fire: charged if it filled,
+				// a plain shot if it didn't. (One trident a pull, never a plain one and then a charged one.)
+				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				{
+					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
+					else if ( Reserve > 0 ) StartReload();
+					else Sfx.Play2D( "dry_fire" );
+				}
+			}
+			else if ( charging && !Bubbles )
+			{
+				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
+				if ( !held )
+				{
+					charging = false;
+					chargedShot = chargeFull;
+					Shoot();
+					chargedShot = false;
+				}
+			}
+			else if ( !charging )
 			{
 				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
@@ -292,6 +348,38 @@ public partial class PlayerWeapon : Node
 	}
 
 	Node3D loaded;
+
+	/// <summary>
+	/// The spear and shield: left click thrusts (the hit lands a moment in, a fan of sweeps out to twice the axe's
+	/// reach, PlayerMelee.StrikeWith); right click holds the shield up, which takes BlockShare of each hit
+	/// (PlayerPerks.Absorb). No thrusting from behind the shield.
+	/// </summary>
+	void UpdateSpear( float dt, bool free )
+	{
+		Ammo = MagazineSize;
+		Blocking = free && (Input.IsActionPressed( "attack2" ) || forceBlock);
+		shieldUp = MathX.Lerp( shieldUp, Blocking ? 1f : 0f, 1f - MathF.Exp( -14f * dt ) );
+		if ( free && !Blocking && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
+		if ( !spearStruck && spearSwing >= SpearWindUp && spearSwing < SpearCooldown )
+		{
+			spearStruck = true;
+			controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" )?.StrikeWith( SpearReach, SpearRadius, CurrentDamage, this );
+		}
+		if ( ViewModel is not null ) SpearModel.Pose( ViewModel, SpearThrust, spearLeft, shieldUp, dt );
+	}
+
+	/// <summary> Thrusts the spear as if clicked (also the testing hook). </summary>
+	public void TestThrust()
+	{
+		spearSwing = 0f;
+		spearStruck = false;
+		spearLeft = !spearLeft;
+		Sfx.Play2D( "axe_swing", 0.9f, 1.25f );
+	}
+
+	/// <summary> Testing aid: raise or lower the shield as if right click were held. </summary>
+	public void TestBlock( bool up ) { Blocking = forceBlock = up; shieldUp = up ? 1f : 0f; }
+	bool forceBlock;
 
 	/// <summary> The trident shooter shows its next trident in the mouth: gone just after a shot, back once one is loaded. </summary>
 	void ShowLoaded()
@@ -354,9 +442,19 @@ public partial class PlayerWeapon : Node
 			trailStart = barrel.Origin;
 			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
 		}
+		else if ( controller.ThirdPerson && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held )
+		{
+			// Third person: the flash and the tracers come out of the gun in the robot's hands, not where the
+			// first person gun would be on screen.
+			trailStart = held.Origin;
+			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( held.Origin, held.Basis.Y, MuzzleFlashScale, null, FlashTint );
+			thirdPersonMuzzle = true;
+		}
 		else if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( trailStart, forward, MuzzleFlashScale, null, FlashTint );
 
 		hitThisShot.Clear();
+		var usedHeldMuzzle = thirdPersonMuzzle;
+		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
 		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
 		else if ( Projectile )
@@ -368,7 +466,7 @@ public partial class PlayerWeapon : Node
 			// In third person the camera hangs behind the robot: the trident leaves from in front of the robot's eyes.
 			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
 			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
-			var from = controller.ThirdPerson ? eyes + aimDirection * 0.6f : trailStart;
+			var from = controller.ThirdPerson && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
 			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this, chargedShot );
 			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }
 		}

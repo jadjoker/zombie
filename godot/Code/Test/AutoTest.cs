@@ -66,6 +66,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
 		if ( args.Contains( "--crab" ) ) { await CrabTest(); return; }
 		if ( args.Contains( "--mc51" ) ) { await Mc51LookTest(); return; }
+		if ( args.Contains( "--tridentbot" ) ) { await TridentBotTest(); return; }
 		if ( args.Contains( "--pickups" ) ) { await PickupTest(); return; }
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
@@ -2992,12 +2993,147 @@ public partial class AutoTest : Node
 			foreach ( var cl in hidden ) cl.Visible = true;
 			foreach ( var g in guns ) g.Visible = true;
 		}
+		// Third person: the shot's flash comes out of the gun in the robot's hands, not the first person spot.
+		player.ThirdPerson = true;
+		await Wait( 0.6f );
+		var gun = player.GetNode<WeaponInventory>( "WeaponInventory" ).Current;
+		var rig = player.GetChildren().OfType<PlayerRig>().First();
+		var muzzleAt = rig.WorldMuzzle();
+		Fx.FlashLife = 1f;
+		gun.TestFire();
+		var flash = GetTree().CurrentScene.GetChildren().OfType<Node3D>().LastOrDefault( n => n.Name.ToString().StartsWith( "Muzzle Flash" ) );
+		var gap = flash is null || muzzleAt is null ? 99f : flash.GlobalPosition.DistanceTo( muzzleAt.Value.Origin );
+		GD.Print( $"[autotest] third person flash: {gap:0.00} m from the held gun's muzzle" );
+		Check( gap < 0.35f, "in third person the muzzle flash is not on the gun in the robot's hands" );
+		if ( shots is not null )
+		{
+			await Wait( 0.05f );
+			await Shot( "third_person_flash" );
+		}
+		Fx.FlashLife = 0.08f;
+		player.ThirdPerson = false;
 		DevFlags.FreezeEnemies = false;
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}
 
 	/// <summary> MC-51's seahorse look: the teal mosaic body, the fins for hands and the curled tail, from the front, side and close. </summary>
+	/// <summary>
+	/// The Trident-Bot: picked, it has 250 health, the trident shooter in slot 1 and the spear and shield in slot 2;
+	/// the spear reaches a crab twice the axe's reach away; the shield takes 65% of a hit; a charged trident goes
+	/// through two crabs; healing in third person brings the plecos and their hearts. Pictures need a window.
+	/// </summary>
+	async Task TridentBotTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		WaveDirector.Current.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		RobotClass.Pick( RobotClass.TridentBot, player );
+		await Wait( 0.4f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+		var shooter = inventory.Weapons.FirstOrDefault( w => w.Slot == 1 );
+		var spear = inventory.Weapons.FirstOrDefault( w => w.Slot == 2 );
+		GD.Print( $"[autotest] trident bot: health {survivor.Health.MaxHealth:0}, slot 1 {shooter?.DisplayName}, slot 2 {spear?.DisplayName}" );
+		Check( MathF.Abs( survivor.Health.MaxHealth - 250f ) < 0.5f && survivor.Health.Current >= 249.5f, "the Trident-Bot does not start with 250 health" );
+		Check( shooter is { Projectile: true } && spear is { Spear: true }, "the Trident-Bot's slots are not the trident shooter and the spear" );
+		if ( shooter is null || spear is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
+
+		var home = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) );
+		player.GlobalPosition = home + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		DevFlags.FreezeEnemies = true;
+
+		// The spear: a crab 4.2 m off (past the axe's 2.8 m reach, inside the spear's 5.6 m) takes the thrust.
+		inventory.Select( spear, true );
+		await Wait( 0.5f );
+		var crab = JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -4.2f ) ), 5000f );
+		await Wait( 0.6f );
+		LookAt( crab.GlobalPosition + Vector3.Up * 0.35f );
+		await Wait( 0.1f );
+		var before = crab.Health.Current;
+		spear.TestThrust();
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] trident bot: the spear took {before - crab.Health.Current:0} off a crab {crab.GlobalPosition.DistanceTo( player.GlobalPosition ):0.0} m away" );
+		Check( crab.Health.Current < before, "the spear did not reach a crab past the axe's reach" );
+
+		// The shield: up, a 40 point hit costs 14.
+		spear.TestBlock( true );
+		var hp = survivor.Health.Current;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 40f, Attacker = crab, Position = player.GlobalPosition } );
+		var blockedLoss = hp - survivor.Health.Current;
+		GD.Print( $"[autotest] trident bot: a 40 hit behind the shield cost {blockedLoss:0.0}" );
+		Check( MathF.Abs( blockedLoss - 40f * (1f - PlayerWeapon.BlockShare) ) < 0.6f, "the shield does not take 65% of a hit" );
+		if ( shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl && cl.Name != "ClassPicker" ) cl.Visible = false;
+			await Wait( 0.3f );
+			await Shot( "tridentbot_shield" );
+			spear.TestBlock( false );
+			spear.TestThrust();
+			await Wait( 0.2f );
+			await Shot( "tridentbot_thrust" );
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = true;
+		}
+		spear.TestBlock( false );
+		crab.QueueFree();
+
+		// The charged trident goes through two crabs in a row.
+		inventory.Select( shooter, true );
+		await Wait( 0.6f );
+		var line = new List<JunkCrab>();
+		for ( var i = 0; i < 3; i++ ) line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -4f - i * 2.5f ) ), 5000f ) );
+		await Wait( 0.6f );
+		// Fired level at crab height along the row (from eye height it would drop under the second crab).
+		var low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - line[2].GlobalPosition).Normalized() * 1.5f;
+		var along = (line[2].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
+		await Wait( 1.2f );
+		GD.Print( $"[autotest] trident bot: the charged trident went through {TridentBolt.LastPierced}" );
+		Check( TridentBolt.LastPierced == TridentBolt.MaxPierced, $"the charged trident went through {TridentBolt.LastPierced} enemies, not {TridentBolt.MaxPierced}" );
+		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
+
+		// Healing in third person: the plecos latch on and hearts pop.
+		player.ThirdPerson = true;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 120f, Position = player.GlobalPosition } );
+		HealPlecos.Hearts = 0;
+		await Wait( survivor.RegenDelay + 1.6f );
+		var plecos = player.GetNodeOrNull<HealPlecos>( "HealPlecos" );
+		GD.Print( $"[autotest] trident bot: healing {survivor.Healing}, {plecos?.Attached ?? 0} plecos on, {HealPlecos.Hearts} hearts" );
+		Check( (plecos?.Attached ?? 0) >= 3 && HealPlecos.Hearts > 0, "no plecos or hearts while healing in third person" );
+		if ( shots is not null )
+		{
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = false;
+			var body = player.GlobalPosition + Vector3.Up * 1f;
+			var face = new Angles( 0f, player.EyeAngles.Yaw, 0f ).Forward;
+			var from = body + face * 1.6f + face.Cross( Vector3.Up ) * 0.7f + Vector3.Up * 0.3f;
+			var at = new Transform3D( Basis.LookingAt( (body - from).Normalized(), Vector3.Up ), from );
+			player.CameraOverride = _ => at;
+			await Wait( 0.3f );
+			await Shot( "tridentbot_plecos" );
+			var back = body - face * 2.2f + Vector3.Up * 0.4f;
+			var behind = new Transform3D( Basis.LookingAt( (body - back).Normalized(), Vector3.Up ), back );
+			player.CameraOverride = _ => behind;
+			await Wait( 0.3f );
+			await Shot( "tridentbot_back" );
+			player.CameraOverride = null;
+			var picker = ClassPicker.Find( GetTree() );
+			if ( picker is not null ) picker.Visible = true;
+			picker?.SetOpen( true );
+			await Wait( 0.3f );
+			await Shot( "class_picker" );
+			ClassPicker.Find( GetTree() )?.SetOpen( false );
+		}
+		player.ThirdPerson = false;
+		DevFlags.FreezeEnemies = false;
+		RobotClass.Pick( RobotClass.RamBot, player );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
 	async Task Mc51LookTest()
 	{
 		DockHouse.Current?.SkipDive();

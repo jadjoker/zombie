@@ -90,7 +90,13 @@ public partial class AutoTest
 			var loose = gore.Gibs.Where( g => g.GlobalPosition.DistanceTo( player.GlobalPosition ) < 9f ).ToList();
 			return loose.Count > 0 ? loose.Aggregate( Vector3.Zero, ( a, g ) => a + g.GlobalPosition ) / loose.Count : spot + ahead * 4f;
 		}
-		await Hold( GibCentre, 0.8f );
+		await Hold( GibCentre, 0.35f );
+		vac.ForceSuck = true;
+		await Shot( "gorevac_caught1" );
+		await Hold( GibCentre, 0.3f );
+		vac.ForceSuck = true;
+		await Shot( "gorevac_caught2" );
+		await Hold( GibCentre, 0.3f );
 		vac.ForceSuck = true;
 		await Shot( "gorevac_vortex" );
 		await Hold( GibCentre, 2.2f );
@@ -169,6 +175,14 @@ public partial class AutoTest
 		var torn = PlayerWeapon.PropsTorn;
 		await Hold( () => prop.GlobalPosition, 1.2f );
 		Check( PlayerWeapon.PropsTorn > torn, "the suction did not tear the starfish off the floor" );
+
+		// ---- A mine far off is out of reach (only close ones can be torn off) ----
+		var farMine = SeaMine.PlaceAt( scene, Floor( spot + ahead * 13f ), 1.2f );
+		await Wait( 0.2f );
+		await Hold( () => farMine.BallPosition, 1.5f );
+		Check( !vac.HasMine && !farMine.Gone, $"a mine 13 m away was torn off (reach is {PlayerWeapon.MineReach} m)" );
+		farMine.QueueFree();
+		await Wait( 0.1f );
 
 		// ---- A mine torn off its chain, loaded and spat ----
 		var mine = SeaMine.PlaceAt( scene, Floor( spot + ahead * 5f ), 1.2f );

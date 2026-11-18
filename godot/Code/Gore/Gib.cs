@@ -13,6 +13,28 @@ public partial class Gib : RigidBody3D
 	public Color? Goo => goo;
 	/// <summary> Spat out by the Gore Vac: sucked up again it is worth only a little (no endless ammo loop). </summary>
 	public bool Recycled;
+	/// <summary>
+	/// Caught by the Gore Vac: it stops bumping into things (so it can't snag on the floor or the player) and shrinks
+	/// toward `scale` of its size as it nears the nozzle. `Release` puts it back if the trigger is let go.
+	/// </summary>
+	public void Suck( float scale )
+	{
+		if ( piece is null || !IsInstanceValid( piece ) ) return;
+		if ( !sucked ) { sucked = true; suckRest = piece.Scale; CollisionMask = 0; }
+		piece.Scale = suckRest * MathX.Clamp( scale, 0.05f, 1f );
+	}
+
+	public void Release()
+	{
+		if ( !sucked ) return;
+		sucked = false;
+		CollisionMask = Layers.World | Layers.Gib;
+		if ( piece is not null && IsInstanceValid( piece ) ) piece.Scale = suckRest;
+	}
+
+	bool sucked;
+	Vector3 suckRest = Vector3.One;
+
 	/// <summary> No goo in it (a shell or a stone torn off the floor): it drips and splats nothing. </summary>
 	public void MakeDry() => goo = null;
 	/// <summary> Roughly how big it is (the radius of its collider, metres). </summary>

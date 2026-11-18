@@ -35,8 +35,15 @@ public partial class PlayerWeapon
 	public const float HoldOff = 1.8f;
 	/// <summary> A limb at or under this share of its health is torn off by the suction after a short tug. </summary>
 	public const float RipBelow = 0.5f, RipTug = 0.35f;
-	/// <summary> How long the suction has to hold a mine before its chain snaps. </summary>
-	public const float MineTug = 0.6f;
+	/// <summary> How long the suction has to hold a mine before its chain snaps, and how close it has to be (m). </summary>
+	public const float MineTug = 0.6f, MineReach = 6f;
+	/// <summary>
+	/// What things are worth in the tank (100 is full): a gib about 1 to 3 by its size, a lump the gun threw itself 0.3,
+	/// a puddle 0.6, a stone or shell 0.3, an enemy sucked apart 6. It takes a lot of pieces to fill.
+	/// </summary>
+	public const float GibGunkMin = 1f, GibGunkMax = 3f, RecycledGunk = 0.3f, PuddleGunk = 0.6f, DryGunk = 0.3f, EnemyGunk = 6f;
+	/// <summary> A caught piece shrinks over the last this many metres to the nozzle, and is swallowed this close. </summary>
+	const float ShrinkReach = 2.2f, SwallowAt = 0.3f;
 	/// <summary> How much slower a full tank makes you. </summary>
 	public const float FullTankSlow = 0.22f;
 
@@ -59,6 +66,11 @@ public partial class PlayerWeapon
 	};
 
 	TimeSince sinceFullWarning = 9f, sinceStreak, sinceGulp = 9f, sinceTrigger;
+	/// <summary> Since the last piece went down the nozzle (the HUD's counter pops on it). </summary>
+	public TimeSince SinceGulp { get; private set; } = 9f;
+	readonly Dictionary<Gib, float> caught = new();
+	float gunkCarry, gulpWobble;
+	int gulpStreak;
 	bool triggerHeld;
 	SuctionCone cone;
 	AudioStreamPlayer suckSound, blowSound;
@@ -104,6 +116,7 @@ public partial class PlayerWeapon
 		}
 		var touched = new HashSet<Node>();
 		if ( Sucking ) Suck( dt, from, forward, nozzle, touched );
+		else if ( caught.Count > 0 ) ReleaseCaught();
 		if ( Blowing ) Blow( dt, from, forward, nozzle );
 		foreach ( var key in tugs.Keys.Where( k => !touched.Contains( k ) ).ToList() ) tugs.Remove( key );
 		UpdateIncomingMine( dt );
@@ -143,22 +156,19 @@ public partial class PlayerWeapon
 		var full = Ammo >= MagazineSize;
 		if ( !full )
 		{
-			foreach ( var gib in gore.Gibs.ToList() )
+			// Pieces in the cone are caught, and stay caught while the trigger is held (sweep the gun and they follow).
+			foreach ( var gib in gore.Gibs )
+				if ( !caught.ContainsKey( gib ) && !gib.IsFading && InCone( from, forward, gib.GlobalPosition, VacRange, VacCone, out _ ) ) caught[gib] = 0f;
+			foreach ( var gib in caught.Keys.ToList() )
 			{
-				if ( !InCone( from, forward, gib.GlobalPosition, VacRange, VacCone, out _ ) ) continue;
-				var toNozzle = nozzle - gib.GlobalPosition;
-				var d = toNozzle.Length();
-				if ( d < 0.6f ) { Swallow( gib ); continue; }
-				var speed = MathX.Lerp( 18f, 7f, MathX.Clamp( d / FalloffReach, 0f, 1f ) );
-				gib.Sleeping = false;
-				gib.LinearVelocity = gib.LinearVelocity.Lerp( toNozzle / d * speed, pull );
-				gib.AngularVelocity += Rng.InSphere( 20f ) * dt;
+				if ( !IsInstanceValid( gib ) || gib.IsQueuedForDeletion() ) { caught.Remove( gib ); continue; }
+				SuckIn( gib, caught[gib] += dt, dt, forward, nozzle );
 			}
 			// Puddles on the floor shrink as they are slurped up; the ones gone fly up the nozzle as goo.
 			foreach ( var (at, colour) in gore.Slurp( from, forward, VacRange * 0.85f, VacCone - 0.1f, dt ) )
 			{
 				Slurped++;
-				AddGunk( 2f, colour );
+				AddGunk( PuddleGunk, colour );
 				for ( var i = 0; i < 4; i++ ) GpuFx.SandPuff( at + Rng.InSphere( 0.2f ), (nozzle - at).SafeNormal() * Rng.Float( 5f, 9f ) + Rng.InSphere( 1f ), colour, Rng.Float( 6f, 12f ), 0.7f );
 			}
 		}
@@ -176,7 +186,7 @@ public partial class PlayerWeapon
 				EnemiesSwallowed++;
 				var shooter = controller;
 				PlayerPerks.Hurt( creature, 9999f, centre, nozzle, shooter );
-				AddGunk( 12f, TankColour );
+				AddGunk( EnemyGunk, TankColour );
 				Sfx.Play2D( "gib", 0.9f, 0.8f, Sfx.GunBus );
 				juice?.Shake( 0.25f );
 				Controls.Rumble( 0.5f );
@@ -224,7 +234,7 @@ public partial class PlayerWeapon
 		if ( !HasMine && incomingMine is null )
 			foreach ( var mine in SeaMine.All.OrderBy( m => m.BallPosition.DistanceSquaredTo( from ) ).ToList() )
 			{
-				if ( mine.Gone || !InCone( from, forward, mine.BallPosition, VacRange, VacCone - 0.05f, out _ ) ) continue;
+				if ( mine.Gone || !InCone( from, forward, mine.BallPosition, MineReach, VacCone - 0.05f, out _ ) ) continue;
 				touched.Add( mine );
 				tugs[mine] = tugs.GetValueOrDefault( mine ) + dt;
 				if ( tugs[mine] < MineTug ) continue;
@@ -319,27 +329,93 @@ public partial class PlayerWeapon
 		controller.EyeAngles += new Angles( change.Y * 0.5f, change.X, 0f );
 	}
 
-	void Swallow( Gib gib )
+	/// <summary>
+	/// One caught piece on its way in: it eases off the floor, then speeds up as it nears the nozzle, swirling round the
+	/// aim with the vortex (tighter and faster the closer it gets), tumbling harder, stretched along its flight. Over the
+	/// last couple of metres it stops colliding and shrinks to a speck, then goes down the nozzle.
+	/// </summary>
+	void SuckIn( Gib gib, float held, float dt, Vector3 forward, Vector3 nozzle )
 	{
-		var colour = gib.Goo ?? new Color( 0.6f, 0.6f, 0.62f );
-		var value = gib.Recycled ? 1f : MathX.Clamp( gib.Radius / U.In * 1.6f, 3f, 14f );
-		if ( gib.Goo is not null ) AddGunk( value, colour );
-		else Ammo = Math.Min( MagazineSize, Ammo + 1 );
-		Swallowed++;
-		gib.QueueFree();
-		if ( sinceGulp > 0.07f )
+		var at = gib.GlobalPosition;
+		var toNozzle = nozzle - at;
+		var d = toNozzle.Length();
+		if ( d < SwallowAt ) { Swallow( gib ); return; }
+		var dir = toNozzle / d;
+		// The swirl: round the aim line, strongest in the middle stretch, gone at the mouth.
+		var offAxis = (at - nozzle) - forward * (at - nozzle).Dot( forward );
+		var tangent = offAxis.LengthSquared() > 0.0001f ? forward.Cross( offAxis ).Normalized() : Vector3.Zero;
+		var swirl = MathX.Clamp( d / 3f, 0f, 1f ) * MathX.Clamp( (8f - d) / 3f, 0f, 1f ) * 3.5f;
+		// The pull: it eases in over the first moment (so it lifts off rather than snapping away), then accelerates as it nears.
+		var ease = MathX.Clamp( held / 0.45f, 0f, 1f );
+		ease *= ease;
+		var near = 1f - MathX.Clamp( d / 8f, 0f, 1f );
+		var speed = MathX.Lerp( 2.5f, MathX.Lerp( 9f, 24f, near * near ), ease ) * MathX.Lerp( 0.5f, 1f, 1f - MathX.Clamp( d / FalloffReach, 0f, 1f ) );
+		var want = dir * speed + tangent * swirl * ease;
+		gib.Sleeping = false;
+		gib.LinearVelocity = gib.LinearVelocity.Lerp( want, 1f - MathF.Exp( -(6f + near * 14f) * dt ) );
+		gib.AngularVelocity = gib.AngularVelocity.Lerp( Rng.InSphere( 1f ).Normalized() * (6f + near * 30f), dt * 4f );
+		// The last stretch: no more bumping into things, and it shrinks away into the nozzle.
+		if ( d < ShrinkReach )
 		{
-			sinceGulp = 0f;
-			Sfx.Play2D( gib.Goo is null ? "mine_tink" : "splat", 0.45f, Rng.Float( 1.3f, 1.6f ), Sfx.GunBus );
-			Controls.Rumble( 0.12f );
+			var k = MathX.Clamp( (d - SwallowAt) / (ShrinkReach - SwallowAt), 0f, 1f );
+			gib.Suck( 0.12f + 0.88f * k * k * (3f - 2f * k) );
 		}
+		// A thin wisp of its goo trailing behind it.
+		if ( gib.Goo is Color goo && Rng.Float() < dt * 18f )
+			GpuFx.SandPuff( at, -gib.LinearVelocity * 0.15f, goo, Rng.Float( 2f, 4f ) * MathX.Lerp( 1f, 0.4f, near ), 0.35f );
 	}
 
-	void AddGunk( float amount, Color colour )
+	/// <summary> Lets go of everything caught (the trigger was released): they drop and regrow as they were. </summary>
+	void ReleaseCaught()
 	{
-		Ammo = Math.Min( MagazineSize, Ammo + (int)MathF.Ceiling( amount ) );
+		foreach ( var gib in caught.Keys ) if ( IsInstanceValid( gib ) ) gib.Release();
+		caught.Clear();
+	}
+
+	void Swallow( Gib gib )
+	{
+		caught.Remove( gib );
+		var colour = gib.Goo ?? new Color( 0.6f, 0.6f, 0.62f );
+		if ( gib.Goo is null ) AddGunk( DryGunk, null );
+		else AddGunk( gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax ), colour );
+		Swallowed++;
+		gib.QueueFree();
+		Gulp( colour, gib.Goo is null );
+	}
+
+	/// <summary>
+	/// The feel of a piece going down: a wet gulp that climbs in pitch while they keep coming (a streak), the tank's
+	/// goo bulging and sloshing, a spurt of goo into the mouth, a tick of rumble, the HUD counter popping.
+	/// </summary>
+	void Gulp( Color colour, bool dry )
+	{
+		SinceGulp = 0f;
+		gulpWobble = 1f;
+		gulpStreak = sinceGulp < 0.5f ? Math.Min( gulpStreak + 1, 14 ) : 0;
+		if ( sinceGulp > 0.05f )
+		{
+			sinceGulp = 0f;
+			var pitch = 1.1f + gulpStreak * 0.045f + Rng.Float( -0.04f, 0.04f );
+			Sfx.Play2D( dry ? "mine_tink" : "splat", 0.5f, pitch, Sfx.GunBus );
+			Sfx.Play2D( "bubble_pop", 0.35f, pitch * 1.1f, Sfx.GunBus );
+			Controls.Rumble( 0.1f + gulpStreak * 0.01f );
+		}
+		var nozzle = Nozzle();
+		var forward = -controller.Camera.GlobalBasis.Z;
+		for ( var i = 0; i < 2; i++ ) GpuFx.SandPuff( nozzle + forward * 0.15f, -forward * Rng.Float( 1f, 2f ) + Rng.InSphere( 0.5f ), colour, Rng.Float( 3f, 5f ), 0.25f );
+		juice?.Shake( 0.03f );
+	}
+
+	/// <summary> Adds gunk to the tank (fractions carry over), mixing in its colour (null: a dry piece, no colour). </summary>
+	void AddGunk( float amount, Color? colour )
+	{
+		gunkCarry += amount;
+		var whole = (int)MathF.Floor( gunkCarry );
+		gunkCarry -= whole;
+		Ammo = Math.Min( MagazineSize, Ammo + whole );
+		if ( colour is not Color c ) return;
 		// Mixed, but kept rich: green, pink and blue goo would average to a dull grey otherwise.
-		var mix = TankColour.Lerp( colour with { A = 1f }, MathX.Clamp( amount / 12f, 0.05f, 0.5f ) );
+		var mix = TankColour.Lerp( c with { A = 1f }, MathX.Clamp( amount / 4f, 0.05f, 0.4f ) );
 		TankColour = Color.FromHsv( mix.H, MathF.Max( mix.S, 0.75f ), MathF.Max( mix.V, 0.85f ) );
 	}
 
@@ -409,8 +485,10 @@ public partial class PlayerWeapon
 		if ( gunkFill is null ) return;
 		var want = Ammo / (float)MagazineSize;
 		shownFill = shownFill < 0f ? want : MathX.Lerp( shownFill, want, 1f - MathF.Exp( -8f * dt ) );
-		var slosh = Sucking || Blowing ? MathF.Sin( (float)Clock.Now * 30f ) * 0.02f : lastSway.X * 0.03f;
-		gunkFill.Scale = new Vector3( 1f, 1f, MathF.Max( 0.02f, shownFill + slosh ) );
+		gulpWobble = MathF.Max( 0f, gulpWobble - dt * 5f );
+		var slosh = (Sucking || Blowing ? MathF.Sin( (float)Clock.Now * 30f ) * 0.02f : lastSway.X * 0.03f) + MathF.Sin( (float)Clock.Now * 45f ) * 0.05f * gulpWobble;
+		var bulge = 1f + gulpWobble * 0.07f;
+		gunkFill.Scale = new Vector3( bulge, bulge, MathF.Max( 0.02f, shownFill + slosh ) );
 		gunkFill.Visible = shownFill > 0.01f;
 		if ( gunkMaterial is not null )
 		{

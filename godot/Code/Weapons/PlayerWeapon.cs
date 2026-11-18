@@ -168,6 +168,7 @@ public partial class PlayerWeapon : Node
 		if ( ViewModel is not null ) ViewModel.Visible = false;
 		CancelReload();
 		Sucking = false;
+		ReleaseCaught();
 		Blowing = false;
 		charging = false;
 		suckSound?.Stop();

@@ -106,7 +106,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `Creature.Pull` at `PullStrength / Weight` (Weight is max health; crab and spider override Pull to move their nav
   agent; bosses are not `Pullable`), held `HoldOff` from the nozzle; sucks a light weak one apart; tears off limbs at
   half health or less (`PartCreature.Limbs`); tears up starfish, shells and urchins (`SeaDressing.LooseGroup`) as dry
-  gibs; tears the nearest sea mine off its chain (`SeaMine.TearLoose`) and loads it. Shots (`GoreBall`) are made easy to
+  gibs; tears the nearest sea mine within `MineReach` off its chain (`SeaMine.TearLoose`) and loads it. Caught gibs
+  (`SuckIn`) ease off the floor, swirl in with the vortex, speed up, stop colliding and shrink (`Gib.Suck`) over the
+  last `ShrinkReach`, then `Gulp` (pitch climbing with a streak, tank slosh, HUD pop). It takes many pieces to fill:
+  `GibGunkMin`/`Max`, `PuddleGunk`, `EnemyGunk` (fractions carry over). Shots (`GoreBall`) are made easy to
   land: aim assist picks an enemy just beside the crosshair (`NearestToLine`), they fly fast and nearly straight, home
   gently, and go off near an enemy (`Proximity`); every burst is a mini explosion (`AlienBlast`, goo, damage, a shove).
   The huge shot throws four bomblets; a loaded mine goes first as a full blast. Shots kick the player back
@@ -170,7 +173,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - MC-51 is MC61's name in the game (the class and files keep `MC61`). His spin attack launches 5 to 8 `HomingMissile`s
   (`Code/Creatures/HomingMissile.cs`: slim bendy one-eyed rockets, black face, silver, rust and black body, 30 health, slower since playtest (dive 6.6 m/s), climb 6.7 to 10.7 s (as high as before) then dive, 15 damage) instead
   of cards; `AlienBlast` is the green, purple and yellow explosion. Sea mines (`Code/Game/SeaMine.cs`, `SeaMine.Lay`
-  after each area is built): 8 per area on the outskirts, chained and drifting, shots tink off, touching one costs 45.
+  after each area is built): `PerArea` (16) at random spots over the whole area every run (kept off the middle,
+  spawns, stations, the player and each other), on chains of random length (a `HighShare` high up, to 10 m), drifting;
+  shots tink off, touching one costs 45. One that goes off or is torn away is replaced at a new random spot after
+  `RespawnMin`/`Max` seconds, rising out of the sand (`QueueRespawn`; `RespawnScale` speeds it up for tests).
   Test: `--missiles` (shots need a window).
   MC-51's seahorse look: the body and tail wear `fx_mosaic.gdshader` (`FxMaterials.Mosaic`: teal, aqua and deep blue
   stained-glass cells in yellow leading; `MC61.Look` is `Surface.Mosaic`), the tail curls tighter and ends in a spiral

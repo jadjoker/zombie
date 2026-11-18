@@ -3127,12 +3127,20 @@ public partial class AutoTest : Node
 			var mine = SeaMine.All.FirstOrDefault();
 			if ( mine is not null )
 			{
-				var ballAt = mine.GlobalPosition + Vector3.Up * 1.6f;
+				var ballAt = mine.BallPosition;
 				var mineFrom = ballAt + new Vector3( 2.6f, 0.2f, 2.2f );
 				var mineView = new Transform3D( Basis.LookingAt( (ballAt - mineFrom).Normalized(), Vector3.Up ), mineFrom );
 				player.CameraOverride = _ => mineView;
 				await Wait( 0.3f );
 				await Shot( "sea_mine" );
+				// A wide view: the mines spread over the area at their different heights.
+				var high = SeaMine.All.OrderByDescending( m => m.Height ).First();
+				var wideAt = high.GlobalPosition + Vector3.Up * 4f;
+				var wideFrom = wideAt + new Vector3( 14f, 3f, 14f );
+				var wideView = new Transform3D( Basis.LookingAt( (wideAt - wideFrom).Normalized(), Vector3.Up ), wideFrom );
+				player.CameraOverride = _ => wideView;
+				await Wait( 0.3f );
+				await Shot( "sea_mines_wide" );
 			}
 			player.CameraOverride = null;
 			foreach ( var cl in hidden ) cl.Visible = true;
@@ -3173,22 +3181,34 @@ public partial class AutoTest : Node
 		var nearestToSpawn = SeaMine.All.Count > 0 && spawns.Count > 0 ? SeaMine.All.Min( m => spawns.Min( s => s.Flat().DistanceTo( m.GlobalPosition.Flat() ) ) ) : 99f;
 		GD.Print( $"[autotest] mines: {SeaMine.All.Count} laid, nearest {nearestToMiddle:0.0} m from the middle, {nearestToSpawn:0.0} m from a spawn point" );
 		Check( SeaMine.All.Count == SeaMine.PerArea, $"there are {SeaMine.All.Count} sea mines, not {SeaMine.PerArea}" );
-		Check( nearestToMiddle > 34f && nearestToSpawn > 7f, "a sea mine is in the middle or by a spawn point" );
+		Check( nearestToMiddle > 12f && nearestToSpawn > 7f, "a sea mine is in the middle or by a spawn point" );
+		var heights = SeaMine.All.Select( m => m.Height ).ToList();
+		GD.Print( $"[autotest] mines: chains {heights.Min():0.0} to {heights.Max():0.0} m, {heights.Count( h => h >= SeaMine.HighMin )} high up" );
+		Check( heights.Max() >= SeaMine.HighMin && heights.Min() <= SeaMine.LowMax, "the mines are not at varied heights (none low, or none high up)" );
 		if ( SeaMine.All.Count > 0 )
 		{
-			var mine = SeaMine.All[0];
-			var ballAt = mine.GlobalPosition + Vector3.Up * 1.8f;
+			var mine = SeaMine.All.OrderBy( m => m.Height ).First();   // a low one, to walk into
+			var ballAt = mine.BallPosition;
 			var ray = Trace.Ray( player, ballAt + new Vector3( 3f, 0.3f, 0f ), ballAt, Layers.World | Layers.Creature | Layers.Gib );
 			GD.Print( $"[autotest] mine: a shot at it hits {ray.Node?.Name ?? "nothing"}" );
 			Check( ray.Node is SeaMineShell, "a shot at a sea mine does not hit its shell" );
 			survivor.Health.Heal( 999f );
 			var whole = survivor.Health.Current;
 			SeaMine.Exploded = 0;
+			SeaMine.RespawnScale = 0.05f;   // its replacement comes up in about a second, not 12 to 22
 			player.GlobalPosition = mine.GlobalPosition + new Vector3( 0.3f, 0.4f, 0f );
 			player.Velocity = Vector3.Zero;
 			await Wait( 0.5f );
 			GD.Print( $"[autotest] mine: walked into it: exploded {SeaMine.Exploded}, health {whole:0} to {survivor.Health.Current:0}, {SeaMine.All.Count} mines left" );
 			Check( SeaMine.Exploded == 1 && MathF.Abs( whole - survivor.Health.Current - SeaMine.Damage ) < 0.5f && SeaMine.All.Count == SeaMine.PerArea - 1, "walking into a sea mine did not set it off for 45" );
+			// It comes back somewhere new.
+			var goneAt = mine is not null ? ballAt : Vector3.Zero;
+			var respawned = SeaMine.Respawned;
+			for ( var i = 0; i < 40 && SeaMine.Respawned == respawned; i++ ) await Wait( 0.1f );
+			SeaMine.RespawnScale = 1f;
+			Check( SeaMine.Respawned > respawned && SeaMine.All.Count == SeaMine.PerArea, $"the mine that went off was not replaced ({SeaMine.All.Count} of {SeaMine.PerArea})" );
+			var newest = SeaMine.All.LastOrDefault();
+			Check( newest is not null && newest.GlobalPosition.Flat().DistanceTo( goneAt.Flat() ) > 1f, "the replacement mine came back in the same spot" );
 		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();

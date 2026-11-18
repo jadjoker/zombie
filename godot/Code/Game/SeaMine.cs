@@ -8,7 +8,21 @@ using Godot;
 /// </summary>
 public partial class SeaMine : Node3D
 {
-	public const int PerArea = 8;
+	/// <summary> How many float in each area at once. </summary>
+	public const int PerArea = 16;
+	/// <summary> A mine that went off or was torn away is replaced, somewhere new, after this long (s). </summary>
+	public const float RespawnMin = 12f, RespawnMax = 22f;
+	/// <summary> Chains this long (m): most low, a good share high up in the water. </summary>
+	public const float LowMin = 1.2f, LowMax = 3.2f, HighMin = 5f, HighMax = 10f, HighShare = 0.35f;
+	/// <summary> Kept this far from the middle of the area, a spawn point, a station, the player and each other (m). </summary>
+	const float KeepMiddle = 14f, KeepSpawn = 9f, KeepStation = 12f, KeepPlayer = 14f, KeepApart = 9f;
+	public static int Respawned;
+	/// <summary> For tests: the respawn wait is scaled by this. </summary>
+	public static float RespawnScale = 1f;
+	/// <summary> Bumped by every Lay, so a respawn queued in an earlier area never lands in this one. </summary>
+	static int generation;
+	static Node3D level;
+	static readonly Random random = new();
 	public const float Damage = 45f;
 	public const float Radius = 0.55f;
 	/// <summary> How near a player's body (feet to head) must come to the ball's middle to set it off. </summary>
@@ -28,51 +42,82 @@ public partial class SeaMine : Node3D
 	public override void _EnterTree() => All.Add( this );
 	public override void _ExitTree() => All.Remove( this );
 
-	/// <summary> Clears any mines and lays this area's eight. Call after the ground and the stations are in place. </summary>
+	/// <summary>
+	/// Clears any mines and lays this area's lot at random spots (new ones every run) and random heights, some high up.
+	/// Call after the ground and the stations are in place.
+	/// </summary>
 	public static void Lay( Node3D level )
 	{
 		foreach ( var old in All.ToList() ) { old.GetParent()?.RemoveChild( old ); old.Free(); }
-		var random = new Random( 5151 + SeaTerrain.Area );
-		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
-		var spots = new List<Vector3>();
-		if ( SeaTerrain.Area == 3 )
-		{
-			// Atlantis: down in the outer dry canal, between the bridges and ramps, clear of the market stands.
-			foreach ( var degrees in new[] { 11.25f, 56.25f, 78.75f, 146.25f, 191.25f, 236.25f, 281.25f, 326.25f } )
-				spots.Add( Atlantis.Polar( R( 48.5f, 51.5f ), degrees + R( -2f, 2f ), Atlantis.CanalFloorY ) );
-		}
-		else
-		{
-			var keepOff = level.GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>().Select( n => (n.GlobalPosition, 8f) ).ToList();
-			keepOff.AddRange( level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Select( n => (n.GlobalPosition, 12f) ) );
-			if ( SeaTerrain.Area == 2 ) keepOff.Add( (AreaTwo.ArrivalFlat, 18f) );
-			for ( var k = 0; k < PerArea; k++ )
-			{
-				for ( var tries = 0; tries < 60; tries++ )
-				{
-					// Out on the edges: past the middle basin, each in its own slice of the circle.
-					var angle = (k + R( 0.15f, 0.85f )) / PerArea * MathF.Tau;
-					var radius = R( 38f, 68f );
-					var at = new Vector3( MathF.Cos( angle ) * radius, 0f, MathF.Sin( angle ) * radius );
-					if ( keepOff.Any( o => o.Item1.Flat().DistanceTo( at ) < o.Item2 ) ) continue;
-					if ( SeaTerrain.Area == 2 && AreaTwo.OnPlain( at, 5f ) ) continue;   // not on the wreck
-					if ( spots.Any( s => s.Flat().DistanceTo( at ) < 12f ) ) continue;
-					spots.Add( at with { Y = SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f } );
-					break;
-				}
-			}
-		}
-		foreach ( var spot in spots )
-		{
-			var mine = new SeaMine { Name = "Sea Mine", anchor = spot, height = R( 1.5f, 2.3f ) };
-			mine.phases = new Vector3( R( 0f, 6f ), R( 0f, 6f ), R( 0f, 6f ) );
-			mine.rates = new Vector3( R( 0.25f, 0.5f ), R( 0.3f, 0.6f ), R( 0.2f, 0.45f ) );
-			mine.sway = new Vector3( R( 0.25f, 0.5f ), R( 0.12f, 0.28f ), R( 0.25f, 0.5f ) );
-			level.AddChild( mine );
-			mine.GlobalPosition = spot;
-		}
-		GD.Print( $"[mines] {spots.Count} sea mines laid in area {SeaTerrain.Area}" );
+		generation++;
+		SeaMine.level = level;
+		var laid = 0;
+		for ( var k = 0; k < PerArea; k++ ) if ( PlaceRandom( level ) is not null ) laid++;
+		GD.Print( $"[mines] {laid} sea mines laid in area {SeaTerrain.Area}" );
 	}
+
+	static float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+
+	/// <summary> A random free spot on the floor for a mine in the current area, or null if none was found. </summary>
+	static Vector3? RandomSpot( Node3D level )
+	{
+		var keepOff = level.GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>().Select( n => (n.GlobalPosition, KeepSpawn) ).ToList();
+		keepOff.AddRange( level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Select( n => (n.GlobalPosition, KeepStation) ) );
+		keepOff.AddRange( PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => (p.WorldPosition, KeepPlayer) ) );
+		keepOff.AddRange( All.Where( m => !m.gone ).Select( m => (m.GlobalPosition, KeepApart) ) );
+		if ( SeaTerrain.Area == 2 ) keepOff.Add( (AreaTwo.ArrivalFlat, 18f) );
+		for ( var tries = 0; tries < 80; tries++ )
+		{
+			Vector3 at;
+			if ( SeaTerrain.Area == 3 )
+			{
+				// Atlantis: down in the dry canals (inner or outer).
+				at = Atlantis.Polar( random.NextDouble() < 0.35 ? R( 20.5f, 23.5f ) : R( 47.5f, 52.5f ), R( 0f, 360f ), Atlantis.CanalFloorY );
+			}
+			else
+			{
+				// Anywhere over the sea floor, out of the middle basin, inside the edge (spread evenly over the area).
+				var angle = R( 0f, MathF.Tau );
+				var radius = MathF.Sqrt( R( KeepMiddle * KeepMiddle, 88f * 88f ) );
+				at = new Vector3( MathF.Cos( angle ) * radius, 0f, MathF.Sin( angle ) * radius );
+				if ( SeaTerrain.Area == 2 && AreaTwo.OnPlain( at, 5f ) ) continue;   // not on the wreck
+				at.Y = SeaTerrain.Active ? SeaTerrain.HeightAt( at ) : 0f;
+			}
+			if ( keepOff.Any( o => o.Item1.Flat().DistanceTo( at.Flat() ) < o.Item2 ) ) continue;
+			return at;
+		}
+		return null;
+	}
+
+	/// <summary> A mine at a random free spot, on a chain of a random length (some high up). </summary>
+	static SeaMine PlaceRandom( Node3D level )
+	{
+		if ( level is null || !IsInstanceValid( level ) || RandomSpot( level ) is not { } spot ) return null;
+		var height = random.NextDouble() < HighShare ? R( HighMin, HighMax ) : R( LowMin, LowMax );
+		var mine = new SeaMine { Name = "Sea Mine", anchor = spot, height = height };
+		mine.phases = new Vector3( R( 0f, 6f ), R( 0f, 6f ), R( 0f, 6f ) );
+		mine.rates = new Vector3( R( 0.25f, 0.5f ), R( 0.3f, 0.6f ), R( 0.2f, 0.45f ) );
+		// Long chains sway a little wider.
+		var loose = 1f + (height - LowMin) * 0.06f;
+		mine.sway = new Vector3( R( 0.25f, 0.5f ), R( 0.12f, 0.28f ), R( 0.25f, 0.5f ) ) * loose;
+		level.AddChild( mine );
+		mine.GlobalPosition = spot;
+		return mine;
+	}
+
+	/// <summary> This mine is gone (went off, or torn away): another comes up somewhere new a little later. </summary>
+	void QueueRespawn()
+	{
+		var gen = generation;
+		GetTree().CreateTimer( R( RespawnMin, RespawnMax ) * RespawnScale, false ).Timeout += () =>
+		{
+			if ( gen != generation || level is null || !IsInstanceValid( level ) || All.Count( m => !m.gone ) >= PerArea ) return;
+			if ( PlaceRandom( level ) is { } fresh ) { Respawned++; fresh.rising = 0f; }
+		};
+	}
+
+	/// <summary> 0 to 1 while a fresh mine rises out of the sand on its chain (1: fully up). </summary>
+	float rising = 1f;
 
 	public override void _Ready()
 	{
@@ -130,10 +175,13 @@ public partial class SeaMine : Node3D
 	{
 		time += dt;
 		var offset = new Vector3( MathF.Sin( time * rates.X + phases.X ) * sway.X, MathF.Sin( time * rates.Y + phases.Y ) * sway.Y, MathF.Sin( time * rates.Z + phases.Z ) * sway.Z );
-		ball.Position = Vector3.Up * height + offset;
+		if ( rising < 1f ) rising = MathF.Min( 1f, rising + dt / 2.5f );
+		var up = height * (1f - (1f - rising) * (1f - rising));
+		ball.Position = Vector3.Up * up + offset * rising;
 		ball.Rotation = new Vector3( offset.Z * 0.25f, time * 0.08f, -offset.X * 0.25f );
 		// The chain hangs in a slight curve from the floor to the ball's underside.
 		var top = ball.Position + Vector3.Down * (Radius + 0.08f);
+		top.Y = MathF.Max( top.Y, 0.12f );
 		for ( var i = 0; i < links.Count; i++ )
 		{
 			var u = (i + 0.5f) / links.Count;
@@ -157,6 +205,7 @@ public partial class SeaMine : Node3D
 			if ( Geometry3D.GetClosestPointToSegment( centre, feet + Vector3.Up * 0.2f, feet + Vector3.Up * 1.7f ).DistanceTo( centre ) > Trigger ) continue;
 			gone = true;
 			Exploded++;
+			QueueRespawn();
 			AlienBlast.Spawn( GetTree().CurrentScene, centre, 1.8f );
 			foreach ( var near in PlayerSurvivor.All )
 			{
@@ -172,6 +221,8 @@ public partial class SeaMine : Node3D
 	/// <summary> Where the ball is (the chain sways it about). </summary>
 	public Vector3 BallPosition => ball is not null && IsInstanceValid( ball ) ? ball.GlobalPosition : GlobalPosition;
 	public bool Gone => gone;
+	/// <summary> How long its chain is (m): how high the ball floats over the floor. </summary>
+	public float Height => height;
 
 	/// <summary> A mine laid at a spot (tests; the areas use Lay). </summary>
 	public static SeaMine PlaceAt( Node parent, Vector3 floor, float height = 1.8f )
@@ -190,6 +241,7 @@ public partial class SeaMine : Node3D
 	{
 		if ( gone || ball is null ) return null;
 		gone = true;
+		QueueRespawn();
 		foreach ( var shell in ball.FindChildren( "*", "", true, false ).OfType<SeaMineShell>() ) shell.QueueFree();
 		var loose = ball;
 		loose.Reparent( GetTree().CurrentScene, true );

@@ -94,6 +94,10 @@ public partial class WeaponHud : Control
 		reserve.Text = Theme.ReserveSep + (weapon is { Vacuum: true } ? weapon.MagazineSize : weapon?.Reserve ?? 0) + (weapon is { HasMine: true } ? "  +MINE" : "");   // the Gore Vac: the tank out of 100
 		var low = weapon is not null && !weapon.IsReloading && (weapon.Vacuum ? weapon.Ammo < PlayerWeapon.BallCost : weapon.Ammo <= weapon.MagazineSize / 4);
 		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : Theme.PanelNumber );
+		// The Gore Vac: the tank's number pops each time a piece goes down.
+		var pop = weapon is { Vacuum: true } ? MathX.Clamp( 1f - (float)weapon.SinceGulp / 0.15f, 0f, 1f ) : 0f;
+		mag.PivotOffset = mag.Size * 0.5f;
+		mag.Scale = Vector2.One * (1f + pop * 0.22f);
 		ammoPanel.OffsetRight = -32f + VisorOverlay.Jitter;   // a big hit knocks it sideways
 		ammoPanel.Visible = weapon is not null;
 

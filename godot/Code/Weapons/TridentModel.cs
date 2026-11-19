@@ -21,21 +21,11 @@ public static class TridentModel
 	public static readonly Color Purple = new( 0.42f, 0.12f, 0.68f );
 	public static readonly Color Black = new( 0.035f, 0.035f, 0.045f );
 
-	static StandardMaterial3D yellow, green, purple;
+	static StandardMaterial3D yellow, green, purple, black;
 	static StandardMaterial3D Paint( Color c, float roughness ) => new() { AlbedoColor = c, Roughness = roughness, RimEnabled = true, Rim = 0.3f, RimTint = 0.6f };
-	/// <summary> Every yellow and black part wears the same yellow and black camo (object space, about a 10 inch tile). </summary>
-	public static StandardMaterial3D YellowPaint => yellow ??= Camo();
-	static StandardMaterial3D Camo()
-	{
-		var m = Paint( Colors.White, 0.5f );
-		m.AlbedoTexture = PlayerRig.YellowCamo;
-		m.Uv1Triplanar = true;
-		m.Uv1WorldTriplanar = false;
-		m.Uv1Scale = Vector3.One * 0.1f;
-		return m;
-	}
+	public static StandardMaterial3D YellowPaint => yellow ??= Paint( Yellow, 0.45f );
 	public static StandardMaterial3D PurplePaint => purple ??= Paint( Purple, 0.4f );
-	public static StandardMaterial3D BlackPaint => YellowPaint;
+	public static StandardMaterial3D BlackPaint => black ??= Paint( Black, 0.6f );
 	public static StandardMaterial3D GreenGlow => green ??= new StandardMaterial3D
 	{
 		AlbedoColor = Green, EmissionEnabled = true, Emission = Green, EmissionEnergyMultiplier = 2.5f, Roughness = 0.3f,

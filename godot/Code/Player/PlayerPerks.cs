@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary> The pickups creatures can drop besides ammo. </summary>
-public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast }
+public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce }
 
 /// <summary>
 /// The player's pickups (dropped by creatures, see <see cref="PerkPickup"/>): how many of each they hold, and what
@@ -18,6 +18,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Movement Buff: the first adds 0.5 m/s and 10% more stamina; each more adds 5% stamina.
 /// - Biden Blast: once a wave per pickup (up to three a wave), G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
 ///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
+/// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node
@@ -32,6 +33,7 @@ public partial class PlayerPerks : Node
 		(PerkKind.Shield, "Shield", "shield", 0.015f, new Color( 0.16f, 0.75f, 1f )),
 		(PerkKind.Move, "Movement Buff", "move", 0.0025f, new Color( 0.24f, 0.78f, 0.43f )),
 		(PerkKind.Blast, "Biden Blast", "blast", 0.0025f, new Color( 0.16f, 0.35f, 0.9f )),
+		(PerkKind.Pierce, "Trident Pierce", "pierce", 0.04f, new Color( 0.12f, 0.75f, 0.72f )),
 	};
 
 	public const float ReloadPerStack = 0.06f;
@@ -49,7 +51,12 @@ public partial class PlayerPerks : Node
 	public const float MoveSpeedBonus = 0.5f;   // metres per second
 	public const float BlastDamage = 500f, BlastRadius = 8f;
 
-	readonly int[] counts = new int[8];
+	readonly int[] counts = new int[Enum.GetValues<PerkKind>().Length];
+
+	/// <summary> Whether creatures drop this one for the robot being played (Trident Pierce is Trident-Bot's only). </summary>
+	public static bool Drops( PerkKind kind ) => kind != PerkKind.Pierce || RobotClass.Current == RobotClass.TridentBot;
+	/// <summary> More enemies a trident seeks after its first, one per Trident Pierce. </summary>
+	public int ExtraPierce => Count( PerkKind.Pierce );
 	public int Count( PerkKind kind ) => counts[(int)kind];
 
 	PlayerController controller;

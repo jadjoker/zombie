@@ -119,16 +119,30 @@ def blast_icon():
     return img
 
 
+def pierce_icon():
+    img, d = badge((30, 190, 185))
+    # A trident run through three enemies.
+    for x in (32, 52, 72):
+        circle(d, x, 64, 11, fill=None, outline=W, width=5)
+    line(d, [(12, 64), (90, 64)], 7)
+    line(d, [(90, 44), (90, 84)], 7)
+    for y, tip in ((44, 108), (64, 116), (84, 108)):
+        line(d, [(90, y), (tip - 8, y)], 6)
+        poly(d, [(tip - 10, y - 7), (tip, y), (tip - 10, y + 7)])
+    return img
+
+
 ICONS = {
     "reload": reload_icon, "firerate": firerate_icon, "explosive": explosive_icon, "electric": electric_icon,
     "chest": chest_icon, "shield": shield_icon, "move": move_icon, "blast": blast_icon,
+    "pierce": pierce_icon,
 }
 
 if __name__ == "__main__":
     os.makedirs(OUT, exist_ok=True)
     for name, make in ICONS.items():
         make().resize((128, 128), Image.LANCZOS).save(os.path.join(OUT, name + ".png"))
-    sheet = Image.new("RGBA", (128 * 8 + 9 * 12, 152), (16, 24, 36, 255))
+    sheet = Image.new("RGBA", (128 * len(ICONS) + (len(ICONS) + 1) * 12, 152), (16, 24, 36, 255))
     for i, name in enumerate(ICONS):
         sheet.paste(Image.open(os.path.join(OUT, name + ".png")), (12 + i * 140, 12), Image.open(os.path.join(OUT, name + ".png")))
     sheet.save(os.path.join(os.path.dirname(__file__), "pickup_icons_sheet.png"))

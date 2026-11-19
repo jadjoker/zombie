@@ -2786,7 +2786,8 @@ public partial class AutoTest : Node
 		var perks = PlayerPerks.Of( player );
 		Check( perks is not null, "the player has no PlayerPerks" );
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		var total = AmmoPickup.DropChance + PlayerPerks.Table.Sum( e => e.Chance );
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind != PerkKind.Pierce ).Sum( e => e.Chance );
+		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
 		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
 
@@ -3099,6 +3100,22 @@ public partial class AutoTest : Node
 		await Wait( 1.5f );
 		GD.Print( $"[autotest] trident bot: the trident hit {TridentBolt.LastHits} crabs" );
 		Check( TridentBolt.LastHits == 1 + TridentBolt.SeekNext, $"the trident hit {TridentBolt.LastHits} crabs, not 1 and the next {TridentBolt.SeekNext} it should seek" );
+		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
+
+		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
+		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
+		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
+		await Wait( 0.3f );
+		line.Clear();
+		foreach ( var off in new[] { new Vector3( 0f, 0f, -5f ), new Vector3( 5f, 0f, -8f ), new Vector3( -5f, 0f, -11f ), new Vector3( 4f, 0f, -14f ) } )
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + off ), 5000f ) );
+		await Wait( 0.6f );
+		low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - home).Flat().Normalized() * -2f;
+		along = (line[0].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
+		await Wait( 2f );
+		GD.Print( $"[autotest] trident bot: with a Trident Pierce the trident hit {TridentBolt.LastHits} crabs" );
+		Check( TridentBolt.LastHits == 2 + TridentBolt.SeekNext, $"with a Trident Pierce the trident hit {TridentBolt.LastHits} crabs, not {2 + TridentBolt.SeekNext}" );
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 
 		// Healing in third person: the plecos latch on and hearts pop.

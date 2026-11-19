@@ -34,6 +34,7 @@ public partial class PerkPickup : Node3D
 		roll -= AmmoPickup.DropChance;
 		foreach ( var entry in PlayerPerks.Table )
 		{
+			if ( !PlayerPerks.Drops( entry.Kind ) ) continue;
 			if ( roll < entry.Chance * ChanceScale ) { Drop( at, entry.Kind ); return; }
 			roll -= entry.Chance * ChanceScale;
 		}

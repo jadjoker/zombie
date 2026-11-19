@@ -245,10 +245,11 @@ public partial class AlienFloaters : Node3D
 
 	static PerkKind RandomPerk()
 	{
-		var total = PlayerPerks.Table.Sum( e => e.Chance );
+		var total = PlayerPerks.Table.Where( e => PlayerPerks.Drops( e.Kind ) ).Sum( e => e.Chance );
 		var roll = Rng.Float() * total;
 		foreach ( var e in PlayerPerks.Table )
 		{
+			if ( !PlayerPerks.Drops( e.Kind ) ) continue;
 			if ( roll < e.Chance ) return e.Kind;
 			roll -= e.Chance;
 		}

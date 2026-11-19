@@ -34,6 +34,8 @@ public partial class TridentBolt : Node3D
 	public const float ChargedSpeed = 1.8f;   // times Speed
 	/// <summary> After the first enemy it hits, a trident seeks this many more (the next closest each time) and goes through them. </summary>
 	public const int SeekNext = 2;
+	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 20% slower, so the chain can be seen). </summary>
+	public const float SeekSpeed = 0.8f;
 	public const float SeekRange = 28f;       // metres from the last hit to the next enemy it will go for
 	public const float SeekTurn = 40f;        // radians a second it can turn while seeking (at full speed a slow turn swung wide of the next enemy)
 	int hits;
@@ -231,14 +233,14 @@ public partial class TridentBolt : Node3D
 			LastHits = hits;
 			struck.Add( owner );
 			if ( seeking == owner ) seeking = null;
-			var next = hits <= SeekNext ? NextTarget( tr.HitPosition ) : null;
+			var next = hits <= SeekNext + (PlayerPerks.Of( shooter )?.ExtraPierce ?? 0) ? NextTarget( tr.HitPosition ) : null;
 			if ( next is not null )
 			{
 				// Through it and on to the next closest enemy: none of this creature's parts stop it again; a burst of bubbles out the far side.
 				seeking = next;
 				age = 0f;
 				// It comes out of the enemy already turned onto the next one, at the plain speed so it can follow it.
-				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed;
+				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed * SeekSpeed;
 				foreach ( var part in CreaturePart.All )
 					if ( part.ShotOwner == owner && IsInstanceValid( part ) ) exclude.Add( part.GetRid() );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );

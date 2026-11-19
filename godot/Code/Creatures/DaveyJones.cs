@@ -8,8 +8,8 @@ using Godot;
 /// - Vanish: he fades into thin air and 2 to 4 seconds later comes back behind the player and swipes at them;
 /// - Cannons: three ghost cannons rise round the player, light their fuses one after another and fire a cannonball
 ///   each, then fade away;
-/// - Sink: he slams the player into the ground; they sink slowly, taking 10 every 0.8 s, until they mash jump
-///   20 to 25 times to climb out.
+/// - Sink: he slams the player into the ground; they sink slowly, taking 10 a second, until they mash jump
+///   10 to 12 times to climb out.
 /// At half health he grabs the player, lifts them up and takes them down to his locker room under the map
 /// (<see cref="DaveyLocker"/>), where it is only the two of them; 6 seconds after he dies there the player is taken
 /// back up. Built in code (Sculpt), metres, facing -Z; drawn at <see cref="Size"/>.

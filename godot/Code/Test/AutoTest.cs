@@ -3066,6 +3066,8 @@ public partial class AutoTest : Node
 		var blockedLoss = hp - survivor.Health.Current;
 		GD.Print( $"[autotest] trident bot: a 40 hit behind the shield cost {blockedLoss:0.0}" );
 		Check( MathF.Abs( blockedLoss - 40f * (1f - PlayerWeapon.BlockShare) ) < 0.6f, "the shield does not take 65% of a hit" );
+		await Wait( 0.4f );
+		Check( ShieldArm.LastHidden, "the left hand still shows with the shield up" );
 		if ( shots is not null )
 		{
 			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )

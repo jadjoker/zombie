@@ -70,6 +70,7 @@ public static class SpearModel
 		var shield = vm.GetNodeOrNull<Node3D>( "Energy Shield" ) ?? BuildShield( vm );
 		shield.Visible = true;
 		var ease = raise * raise * (3f - 2f * raise);
+		shield.SetMeta( "raise", ease );
 		shield.Position = new Vector3( -0.44f, -0.52f, -0.14f ).Lerp( new Vector3( -0.24f, -0.09f, -0.46f ), ease );
 		shield.Rotation = new Vector3( MathX.Lerp( -0.25f, 0f, ease ), MathX.Lerp( 1.25f, 0.3f, ease ), MathX.Lerp( 0.15f, 0f, ease ) );
 		var t = (float)Clock.Now;
@@ -139,8 +140,13 @@ public partial class ShieldArm : SkeletonModifier3D
 {
 	/// <summary> Where the wrist goes, in the shield's space: behind the left half of the shield, the forearm through the strap. </summary>
 	static readonly Vector3 Grip = new( -0.05f, -0.03f, 0.07f );
+	/// <summary> Once the shield is this far up, the left arm is drawn shrunk to nothing, so no hand shows in first person. </summary>
+	const float HideArmAt = 0.25f;
+	static readonly string[] StrapParts = { "Strap", "Strap Link" };
 	int upper = -1, lower = -1, hand = -1;
 	ViewModel vm;
+	/// <summary> Whether the last frame hid the left arm (for the tests). </summary>
+	public static bool LastHidden { get; private set; }
 
 	public override void _ProcessModificationWithDelta( double delta )
 	{
@@ -149,6 +155,8 @@ public partial class ShieldArm : SkeletonModifier3D
 		if ( upper < 0 ) { upper = skeleton.FindBone( "upper_L" ); lower = skeleton.FindBone( "lower_L" ); hand = skeleton.FindBone( "hand_L" ); }
 		if ( upper < 0 || lower < 0 || hand < 0 ) return;
 		vm ??= FindViewModel();
+		skeleton.SetBonePoseScale( upper, Vector3.One );
+		LastHidden = false;
 		if ( vm?.GetNodeOrNull<Node3D>( "Energy Shield" ) is not { Visible: true } shield ) return;
 
 		var toSkeleton = skeleton.GlobalTransform.AffineInverse();
@@ -187,6 +195,14 @@ public partial class ShieldArm : SkeletonModifier3D
 		skeleton.SetBonePoseRotation( upper, Local( parentG, upperG ) );
 		skeleton.SetBonePoseRotation( lower, Local( upperG, lowerG ) );
 		skeleton.SetBonePoseRotation( hand, Local( lowerG, handG ) );
+
+		// Shield up: the arm, hand and strap leave the view entirely.
+		var hide = (float)shield.GetMeta( "raise", 0f ) > HideArmAt;
+		LastHidden = hide;
+		if ( hide ) skeleton.SetBonePoseScale( upper, Vector3.One * 0.001f );
+		foreach ( var name in StrapParts )
+			if ( shield.GetNodeOrNull<Node3D>( name ) is { } piece ) piece.Visible = !hide;
+		if ( hide ) return;
 
 		// The strap round the forearm just behind the wrist, and its link to the shield's back.
 		var world = skeleton.GlobalTransform;

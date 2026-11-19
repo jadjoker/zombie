@@ -289,38 +289,60 @@ public partial class PlayerRig : Node
 		["Stealth"] = new[] { new Color( 0.08f, 0.08f, 0.10f ), new Color( 0.20f, 0.21f, 0.25f ), new Color( 0.75f, 0.12f, 0.14f ), new Color( 0.40f, 0.41f, 0.46f ) },
 		// The Trident-Bot: the white suit teal, the shoulders #CB4154.
 		["Trident"] = new[] { new Color( 0.08f, 0.16f, 0.18f ), new Color( 0.13f, 0.62f, 0.62f ), new Color( 0.796f, 0.255f, 0.329f ), new Color( 0.32f, 0.78f, 0.76f ) },
-		// The Vac-Bot: the white suit green with purple polka dots (Dots), the shoulders yellow.
+		// The Vac-Bot: the white suit green camo with purple (Camo), the shoulders yellow.
 		["Vac"] = new[] { new Color( 0.10f, 0.16f, 0.09f ), new Color( 0.24f, 0.70f, 0.20f ), new Color( 1f, 0.84f, 0.10f ), new Color( 0.55f, 0.80f, 0.45f ) },
 		["Hazard"] = new[] { new Color( 0.14f, 0.14f, 0.16f ), new Color( 0.96f, 0.80f, 0.14f ), new Color( 0.12f, 0.12f, 0.14f ), new Color( 0.80f, 0.80f, 0.84f ) },
 		["Frost"] = new[] { new Color( 0.30f, 0.38f, 0.50f ), new Color( 0.90f, 0.94f, 0.98f ), new Color( 0.30f, 0.58f, 0.90f ), new Color( 0.80f, 0.88f, 0.96f ) },
 		["Gold"] = new[] { new Color( 0.20f, 0.17f, 0.14f ), new Color( 0.92f, 0.70f, 0.22f ), new Color( 0.70f, 0.12f, 0.14f ), new Color( 0.98f, 0.86f, 0.50f ) },
 	};
 
-	/// <summary> Paints whose body wears polka dots, and the dots' colour. </summary>
-	static readonly Dictionary<string, Color> Dots = new() { ["Vac"] = new Color( 0.66f, 0.26f, 0.95f ) };
+	/// <summary> Paints whose body wears camo: the dark blotch colour and the purple. </summary>
+	static readonly Dictionary<string, Color[]> Camo = new() { ["Vac"] = new[] { new Color( 0.08f, 0.32f, 0.10f ), new Color( 0.52f, 0.20f, 0.80f ) } };
 
-	/// <summary> One tile of polka dots (a staggered pair, so they tile as offset rows), soft edged. </summary>
-	static ImageTexture DotTexture( Color ground, Color dot )
+	/// <summary> One tile of camo: the ground with dark green and purple blotches from two wrapped noise fields. </summary>
+	static ImageTexture CamoTexture( Color ground, Color dark, Color purple )
 	{
-		const int size = 128;
-		const float radius = 13f;
+		const int size = 256;
 		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
-		var centres = new[] { new Vector2( 32f, 32f ), new Vector2( 96f, 96f ) };
 		for ( var y = 0; y < size; y++ )
 			for ( var x = 0; x < size; x++ )
 			{
-				var nearest = float.MaxValue;
-				foreach ( var c in centres )
-				{
-					// Wrapped distance, so the dots carry across the tile's edges.
-					var dx = MathF.Abs( x + 0.5f - c.X ); dx = MathF.Min( dx, size - dx );
-					var dy = MathF.Abs( y + 0.5f - c.Y ); dy = MathF.Min( dy, size - dy );
-					nearest = MathF.Min( nearest, MathF.Sqrt( dx * dx + dy * dy ) );
-				}
-				image.SetPixel( x, y, ground.Lerp( dot, Math.Clamp( radius + 0.5f - nearest, 0f, 1f ) ) );
+				var u = (x + 0.5f) / size;
+				var v = (y + 0.5f) / size;
+				var c = ground;
+				if ( TileNoise( u, v, 11 ) > 0.56f ) c = dark;
+				if ( TileNoise( u, v, 47 ) > 0.6f ) c = purple;
+				image.SetPixel( x, y, c );
 			}
 		image.GenerateMipmaps();
 		return ImageTexture.CreateFromImage( image );
+	}
+
+	/// <summary> Smooth value noise that wraps at the tile's edges, two octaves, 0 to 1. </summary>
+	static float TileNoise( float u, float v, int seed )
+	{
+		float sum = 0f, weight = 0f, amp = 1f;
+		for ( var cells = 4; cells <= 8; cells *= 2 )
+		{
+			var fx = u * cells; var fy = v * cells;
+			int x0 = (int)fx, y0 = (int)fy;
+			float tx = fx - x0, ty = fy - y0;
+			tx = tx * tx * (3f - 2f * tx); ty = ty * ty * (3f - 2f * ty);
+			float At( int x, int y ) => Hash( ((x % cells) + cells) % cells, ((y % cells) + cells) % cells, seed + cells );
+			var top = MathX.Lerp( At( x0, y0 ), At( x0 + 1, y0 ), tx );
+			var bottom = MathX.Lerp( At( x0, y0 + 1 ), At( x0 + 1, y0 + 1 ), tx );
+			sum += amp * MathX.Lerp( top, bottom, ty );
+			weight += amp;
+			amp *= 0.45f;
+		}
+		return sum / weight;
+	}
+
+	static float Hash( int x, int y, int seed )
+	{
+		var h = (uint)(x * 374761393 + y * 668265263 + seed * 2147483647);
+		h = (h ^ (h >> 13)) * 1274126177u;
+		return ((h ^ (h >> 16)) & 0xffff) / 65535f;
 	}
 
 	void ApplySkin()
@@ -330,8 +352,8 @@ public partial class PlayerRig : Node
 		if ( appliedSkin == wanted ) return;
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
-		var dots = Dots.TryGetValue( appliedSkin, out var dotColour ) ? DotTexture( paint[1], dotColour ) : null;
-		// About two dozen rows of small dots from head to foot, whatever units the model's meshes are in.
+		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] ) : null;
+		// About three tiles of camo from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
 		foreach ( var mesh in meshes )
 		{
@@ -349,14 +371,14 @@ public partial class PlayerRig : Node
 				};
 				if ( m is null ) continue;
 				m.Metallic = slot is "body" or "metal" ? 0.5f : 0.2f;
-				if ( slot == "body" && dots is not null )
+				if ( slot == "body" && camo is not null )
 				{
-					// Dots fixed to the model (object space triplanar), so they ride along as it moves.
-					m.AlbedoTexture = dots;
+					// Camo fixed to the model (object space triplanar), so it rides along as it moves.
+					m.AlbedoTexture = camo;
 					m.AlbedoColor = Colors.White;
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
-					m.Uv1Scale = Vector3.One * 12f / MathF.Max( 0.01f, extent );
+					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
 					m.Metallic = 0.25f;
 				}
 				mesh.SetSurfaceOverrideMaterial( i, m );

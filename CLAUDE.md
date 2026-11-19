@@ -110,8 +110,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   (slot 2, `PlayerWeapon.Spear`, `SpearModel.cs`): a one-handed thrust (`SpearGrip` bends the right wrist so the fist closes round the shaft; `ThrustCurve`: cock, lunge, overshoot, camera
   jolt) at twice the axe's reach, and the energy shield in the left hand (`ShieldArm`, a `SkeletonModifier3D` that
   bends the left arm to the shield, its forearm through a leather `Strap`; carried edge on at the side, raised to the left of the view with right click to take `BlockShare` (65%) of each hit. Healing in
-  third person brings bristlenose plecos with hearts (`HealPlecos.cs`). Vac-Bot's `Paint` is "Vac": green with purple
-  polka dots (`PlayerRig.Dots`, an object-space triplanar texture) and yellow shoulders. Test: `--tridentbot`.
+  third person brings bristlenose plecos with hearts (`HealPlecos.cs`). Vac-Bot's `Paint` is "Vac": green and purple
+  camo (`PlayerRig.Camo`, wrapped noise blotches as an object-space triplanar texture) and yellow shoulders. With the
+  shield up `ShieldArm` shrinks the left arm away and hides the strap, so no hand shows in first person. Test: `--tridentbot`.
   The Bubble Cannon (`Weapons/BubbleCannon.cs`, model `BubbleCannonModel` on the Blaster rig; the globe's "Loaded"
   bubble regrows after a shot and swells while charging): left click blows a `BubbleShot` (grows out of the bell,
   stretches and wobbles, gentle homing via `GoreBall.NearestToLine`, drifts up, bounces off the world `Bounces` times).

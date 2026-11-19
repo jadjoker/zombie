@@ -299,8 +299,16 @@ public partial class PlayerRig : Node
 	/// <summary> Paints whose body wears camo: the dark blotch colour and the purple. </summary>
 	static readonly Dictionary<string, Color[]> Camo = new() { ["Vac"] = new[] { new Color( 0.08f, 0.32f, 0.10f ), new Color( 0.52f, 0.20f, 0.80f ) } };
 
+	/// <summary> Paints whose dark frame wears yellow and black camo (the Trident-Bot, to match its trident). </summary>
+	static readonly HashSet<string> FrameCamo = new() { "Trident" };
+
+	/// <summary> The yellow and black camo: yellow ground, black and deep gold blotches. </summary>
+	public static readonly Color CamoYellow = new( 1f, 0.82f, 0.1f ), CamoBlack = new( 0.035f, 0.035f, 0.045f ), CamoGold = new( 0.62f, 0.44f, 0.04f );
+	static ImageTexture yellowCamo;
+	public static ImageTexture YellowCamo => yellowCamo ??= CamoTexture( CamoYellow, CamoBlack, CamoGold );
+
 	/// <summary> One tile of camo: the ground with dark green and purple blotches from two wrapped noise fields. </summary>
-	static ImageTexture CamoTexture( Color ground, Color dark, Color purple )
+	public static ImageTexture CamoTexture( Color ground, Color dark, Color purple )
 	{
 		const int size = 256;
 		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
@@ -352,6 +360,7 @@ public partial class PlayerRig : Node
 		if ( appliedSkin == wanted ) return;
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
+		var frameCamo = FrameCamo.Contains( appliedSkin );
 		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] ) : null;
 		// About three tiles of camo from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
@@ -380,6 +389,14 @@ public partial class PlayerRig : Node
 					m.Uv1WorldTriplanar = false;
 					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
 					m.Metallic = 0.25f;
+				}
+				if ( slot == "frame" && frameCamo )
+				{
+					m.AlbedoTexture = YellowCamo;
+					m.AlbedoColor = Colors.White;
+					m.Uv1Triplanar = true;
+					m.Uv1WorldTriplanar = false;
+					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
 				}
 				mesh.SetSurfaceOverrideMaterial( i, m );
 			}

@@ -3123,7 +3123,7 @@ public partial class AutoTest : Node
 			player.CameraOverride = _ => behind;
 			await Wait( 0.3f );
 			await Shot( "tridentbot_back" );
-			// The Vac-Bot's paint: green with purple polka dots, yellow shoulders.
+			// The Vac-Bot's paint: green and purple camo, yellow shoulders.
 			RobotClass.Pick( RobotClass.VacBot, player );
 			await Wait( 0.5f );
 			player.CameraOverride = _ => at;

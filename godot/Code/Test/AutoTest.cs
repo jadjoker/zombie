@@ -2788,6 +2788,7 @@ public partial class AutoTest : Node
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
 		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind != PerkKind.Pierce ).Sum( e => e.Chance );
 		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
+		Check( PlayerPerks.Table.All( e => e.Kind == PerkKind.Pierce || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
 		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
 
@@ -3104,6 +3105,7 @@ public partial class AutoTest : Node
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
 		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
+		Check( PlayerPerks.Table.All( e => e.Kind == PerkKind.Pierce || !PlayerPerks.Drops( e.Kind ) ), "Ram-Bot's pickups drop for Trident-Bot" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();

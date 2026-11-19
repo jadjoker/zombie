@@ -234,7 +234,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   speed and winds tighter to fire, the beam kicks him back as it fires, each missile snaps his snout up, a hit makes him
   flinch (at most once a second), and the hat rides on its own spring. `--mc51 --motion` adds frames of each move.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
-  chances). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
+  chances). Ammo drops for every robot; every other pickup is Ram-Bot's only, except Trident Pierce (Trident-Bot's only), by `PlayerPerks.Drops` (user's choice; a gold bulb gives Vac-Bot ammo). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip` (heat seeking, `SeekSpeed`), electric bullets `LightningArc` (25% chance, +5% per extra pickup), pirate chest, shield through `Health.Absorb`,
   movement buff, Trident Pierce (4%, Trident-Bot only: `PlayerPerks.Drops`; a trident seeks one more enemy each), the Biden Blast on the `blast` action (one a wave per pickup, up to `MaxBlastsPerWave` 3): G (RB on a pad, which fires it instead of the axe only while it is
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.

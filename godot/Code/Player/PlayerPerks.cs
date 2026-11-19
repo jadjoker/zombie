@@ -18,6 +18,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Movement Buff: the first adds 0.5 m/s and 10% more stamina; each more adds 5% stamina.
 /// - Biden Blast: once a wave per pickup (up to three a wave), G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
 ///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
+/// Every pickup above drops for Ram-Bot only; ammo drops for every robot.
 /// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
@@ -53,8 +54,11 @@ public partial class PlayerPerks : Node
 
 	readonly int[] counts = new int[Enum.GetValues<PerkKind>().Length];
 
-	/// <summary> Whether creatures drop this one for the robot being played (Trident Pierce is Trident-Bot's only). </summary>
-	public static bool Drops( PerkKind kind ) => kind != PerkKind.Pierce || RobotClass.Current == RobotClass.TridentBot;
+	/// <summary>
+	/// Whether creatures drop this one for the robot being played (user's choice): Trident Pierce is Trident-Bot's only, every
+	/// other pickup Ram-Bot's (the rifle and shotgun kit) only. Ammo drops for every robot.
+	/// </summary>
+	public static bool Drops( PerkKind kind ) => RobotClass.Current == (kind == PerkKind.Pierce ? RobotClass.TridentBot : RobotClass.RamBot);
 	/// <summary> More enemies a trident seeks after its first, one per Trident Pierce. </summary>
 	public int ExtraPierce => Count( PerkKind.Pierce );
 	public int Count( PerkKind kind ) => counts[(int)kind];

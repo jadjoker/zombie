@@ -239,13 +239,16 @@ public partial class AlienFloaters : Node3D
 		{
 			GoldPopped++;
 			Sfx.Play2D( "buy", 0.6f, 1.5f );
-			PerkPickup.DropAt( GetTree().CurrentScene, f.Node, at, RandomPerk() );
+			// A pickup the robot being played can have; ammo if there is none (Vac-Bot).
+			if ( RandomPerk() is { } kind ) PerkPickup.DropAt( GetTree().CurrentScene, f.Node, at, kind );
+			else AmmoPickup.Drop( f.Node );
 		}
 	}
 
-	static PerkKind RandomPerk()
+	static PerkKind? RandomPerk()
 	{
 		var total = PlayerPerks.Table.Where( e => PlayerPerks.Drops( e.Kind ) ).Sum( e => e.Chance );
+		if ( total <= 0f ) return null;
 		var roll = Rng.Float() * total;
 		foreach ( var e in PlayerPerks.Table )
 		{
@@ -253,7 +256,7 @@ public partial class AlienFloaters : Node3D
 			if ( roll < e.Chance ) return e.Kind;
 			roll -= e.Chance;
 		}
-		return PlayerPerks.Table[0].Kind;
+		return null;
 	}
 
 	/// <summary> Little glowing motes flying out from a burst, shrinking away. </summary>

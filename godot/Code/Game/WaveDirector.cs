@@ -224,8 +224,7 @@ public partial class WaveDirector : Node3D
 	/// His health against the MC-51 he replaces (6500 on wave 20): 11000 on wave 20 (user's choice), a little over a
 	/// first Kraken's 8000. Half of it is fought topside with the wave still coming, half alone in his locker.
 	/// </summary>
-	public float DaveyHealthScale = 11000f / 6500f;
-	public float DaveyHealth => DaveyHealthScale * (BossBaseHealth + BossHealthPerVisit * Math.Max( 0, DaveyWave / Math.Max( 1, BossEvery ) - 1 ));
+	public float DaveyHealth = 11000f;
 
 	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
 	public int PoseidonWave = 30;

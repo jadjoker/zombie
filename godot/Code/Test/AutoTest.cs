@@ -3554,6 +3554,7 @@ public partial class AutoTest : Node
 		survivor.Health.Heal( 999f );
 		var before = survivor.Health.Current;
 		d.ForceAttack( "vanish" );
+		Check( d.Line == "VANISH!" && d.TimeSinceLine < 0.5f, "Davey's vanish did not pop its name up" );
 		await Wait( 1f );
 		Check( d.Hidden, "Davey did not vanish" );
 		var gone = 0f;
@@ -3585,7 +3586,7 @@ public partial class AutoTest : Node
 		Check( Cannonball.Hits - hitsBefore >= 2 && survivor.Health.Current < before, "the cannonballs did not hit a player standing still" );
 		Check( DaveyCannon.All.Count == 0, "the cannons did not go away after firing" );
 
-		// Sink: slammed in, sinking, 10 every 0.8 s, out after mashing jump.
+		// Sink: slammed in, sinking, 10 every second, out after mashing jump.
 		survivor.Health.Heal( 999f );
 		player.GlobalPosition = home;
 		player.Velocity = Vector3.Zero;
@@ -3600,8 +3601,8 @@ public partial class AutoTest : Node
 		var lost = before - survivor.Health.Current;
 		GD.Print( $"[autotest] davey sink: down {sunk:0.00} m, lost {lost:0} in 2.5 s, {d.MashesNeeded} presses to get out" );
 		Check( sunk > 0.15f, "the player did not sink" );
-		Check( lost >= 20f && lost <= 40f, "the sink did not take 10 every 0.8 s" );
-		Check( d.MashesNeeded >= 20 && d.MashesNeeded <= 25, "the mash count is not 20 to 25" );
+		Check( lost >= 20f && lost <= 30f, "the sink did not take 10 a second" );
+		Check( d.MashesNeeded >= 10 && d.MashesNeeded <= 12, "the mash count is not 10 to 12" );
 		if ( shots is not null ) await Shot( "davey_sink" );
 		var needed = d.MashesNeeded;
 		for ( var i = 0; i < needed - 1; i++ ) { d.Mash(); await Wait( 0.03f ); }

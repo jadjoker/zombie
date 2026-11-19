@@ -162,13 +162,26 @@ public partial class HudOverlays : Control
 
 		var b = Boss;
 		boss.Visible = b is not null;
-		if ( b is not null && b.TimeSinceLine < 2.4f && !string.IsNullOrEmpty( b.Line ) )
+		// The boss's line or move name: MC-51's in pink, Davey's in green.
+		string line = null;
+		var lineAge = 99f;
+		var lineColour = new Color( "ff7ae3" );
+		if ( b is not null && !string.IsNullOrEmpty( b.Line ) ) { line = b.Line; lineAge = b.TimeSinceLine; }
+		foreach ( var dj in DaveyJones.All )
+			if ( IsInstanceValid( dj ) && !string.IsNullOrEmpty( dj.Line ) && dj.TimeSinceLine < lineAge )
+			{
+				line = dj.Line;
+				lineAge = dj.TimeSinceLine;
+				lineColour = new Color( "5cff6e" );
+			}
+		if ( line is not null && lineAge < 2.4f )
 		{
 			speech.Visible = true;
-			speech.Text = b.Line;
-			speech.Modulate = new Color( 1, 1, 1, MathX.Clamp( (2.4f - b.TimeSinceLine) / 0.5f, 0f, 1f ) );
+			speech.Text = line;
+			speech.AddThemeColorOverride( "font_color", lineColour );
+			speech.Modulate = new Color( 1, 1, 1, MathX.Clamp( (2.4f - lineAge) / 0.5f, 0f, 1f ) );
 			speech.PivotOffset = speech.Size * 0.5f;
-			speech.Scale = Vector2.One * (1f + MathX.Clamp( 1f - b.TimeSinceLine / 0.2f, 0f, 1f ) * 0.5f);
+			speech.Scale = Vector2.One * (1f + MathX.Clamp( 1f - lineAge / 0.2f, 0f, 1f ) * 0.5f);
 			speech.Rotation = MathX.Rad( MathF.Sin( now * 30f ) * 2f );
 		}
 		else speech.Visible = false;

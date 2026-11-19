@@ -30,7 +30,7 @@ public partial class DaveyJones : Creature
 	public float SwipeReach = 3.8f;
 	public float CannonDamage = 20f;
 	public float SinkDamage = 10f;
-	public float SinkTick = 0.8f;
+	public float SinkTick = 1f;
 	public float MaxBury = 1.05f;          // how far the player sinks, metres (their eyes stay just above the sand)
 	public float BuryTime = 9f;            // seconds to sink all the way
 	public float HeadMultiplier = 2f;
@@ -58,6 +58,10 @@ public partial class DaveyJones : Creature
 	float floorY;
 	TimeSince sinceFloor = 99f;
 	TimeSince sinceHit = 99f;
+	/// <summary> The move he is doing, shown big on the HUD like MC-51's lines. </summary>
+	public string Line { get; private set; } = "";
+	public TimeSince TimeSinceLine { get; private set; } = 999f;
+	void Say( string line ) { Line = line; TimeSinceLine = 0f; }
 	float fade = 1f;
 	float phase;
 
@@ -432,6 +436,7 @@ void fragment() {
 	void Vanish()
 	{
 		SetMode( Mode.Vanish );
+		Say( "VANISH!" );
 		velocity = Vector3.Zero;
 		Sfx.Play( "ghost_vanish", GlobalPosition, 1f );
 		gore?.GooBurst( GlobalPosition + Vector3.Up * Size, Vector3.Up, GooColor, 10, 200f, 0.8f );
@@ -475,6 +480,7 @@ void fragment() {
 	void Cannons()
 	{
 		SetMode( Mode.Cannons );
+		Say( "CANNON BALLS!" );
 		cannonsOut = false;
 		Sfx.Play( "ghost_appear", GlobalPosition, 0.7f, 0.6f );
 	}
@@ -500,6 +506,7 @@ void fragment() {
 	void SinkAttack()
 	{
 		SetMode( Mode.SinkWindUp );
+		Say( "SINK!" );
 		slammed = false;
 		Sfx.Play( "ghost_vanish", GlobalPosition, 0.8f, 1.4f );
 	}
@@ -516,7 +523,7 @@ void fragment() {
 		sinceBuried = 0f;
 		sinceTick = 0f;
 		Mashes = 0;
-		MashesNeeded = Rng.Int( 20, 25 );
+		MashesNeeded = Rng.Int( 10, 12 );
 		c.Scripted = true;
 		c.Velocity = Vector3.Zero;
 		Sfx.Play( "dive_impact", c.GlobalPosition, 1f, 0.8f );
@@ -604,6 +611,7 @@ void fragment() {
 		fading = false;
 		lifting = false;
 		SetMode( Mode.Grab );
+		Say( "TO DAVEY'S LOCKER!" );
 		Sfx.Play2D( "boss_spawn", 1f, 0.7f );
 		if ( AutoTest.Requested ) GD.Print( "[autotest] davey grabs the player for his locker" );
 	}
@@ -773,7 +781,7 @@ public partial class DaveyCannon : Node3D
 	PlayerSurvivor target;
 	float lightAt;
 	float damage;
-	TimeSince alive;
+	TimeSince alive = 0f;
 	bool lit, fired;
 	TimeSince sinceFired;
 	Node3D barrel, spark;
@@ -897,7 +905,7 @@ public partial class Cannonball : Node3D
 	Vector3 velocity;
 	float damage;
 	Creature owner;
-	TimeSince alive;
+	TimeSince alive = 0f;
 
 	public static void Shoot( Creature owner, Vector3 from, Vector3 velocity, float damage, PlayerSurvivor aimedAt )
 	{

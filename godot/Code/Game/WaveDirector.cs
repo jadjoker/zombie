@@ -220,7 +220,12 @@ public partial class WaveDirector : Node3D
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
 	public int DaveyWave = 20;
-	public float DaveyHealth = 12000f;
+	/// <summary>
+	/// His health against the MC-51 he replaces (6500 on wave 20): 1.5 times, so 9750, about a Kraken's (8000, more on
+	/// a later visit). Half of it is fought topside with the wave still coming, half alone in his locker.
+	/// </summary>
+	public float DaveyHealthScale = 1.5f;
+	public float DaveyHealth => DaveyHealthScale * (BossBaseHealth + BossHealthPerVisit * Math.Max( 0, DaveyWave / Math.Max( 1, BossEvery ) - 1 ));
 
 	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
 	public int PoseidonWave = 30;

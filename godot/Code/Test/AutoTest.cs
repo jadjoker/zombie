@@ -3519,7 +3519,7 @@ public partial class AutoTest : Node
 		var home = player.GlobalPosition;
 		survivor.Health.Invulnerable = false;
 
-		var d = DaveyJones.Spawn( scene, home + new Vector3( 0f, 2.1f, -9f ), 12000f );
+		var d = DaveyJones.Spawn( scene, home + new Vector3( 0f, 2.1f, -9f ), WaveDirector.Current.DaveyHealth );
 		await Wait( 1.2f );
 		d.OnlyWhenTold = true;
 		Check( !d.IsDead && !d.Hidden, "Davey did not come" );
@@ -3643,6 +3643,8 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] davey after: in locker {DaveyJones.InLocker}, player {player.GlobalPosition.DistanceTo( home ):0.0} m from where they were grabbed" );
 		Check( !DaveyJones.InLocker && player.GlobalPosition.DistanceTo( home ) < 6f, "the player was not taken back up after Davey died" );
 		Check( WaveDirector.Current.DaveyWave == 20, "Davey is not the wave 20 boss" );
+		GD.Print( $"[autotest] davey health on wave 20: {WaveDirector.Current.DaveyHealth:0}" );
+		Check( MathF.Abs( WaveDirector.Current.DaveyHealth - 9750f ) < 1f, "Davey's wave 20 health is not 1.5 times MC-51's" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

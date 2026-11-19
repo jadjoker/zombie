@@ -3644,7 +3644,7 @@ public partial class AutoTest : Node
 		Check( !DaveyJones.InLocker && player.GlobalPosition.DistanceTo( home ) < 6f, "the player was not taken back up after Davey died" );
 		Check( WaveDirector.Current.DaveyWave == 20, "Davey is not the wave 20 boss" );
 		GD.Print( $"[autotest] davey health on wave 20: {WaveDirector.Current.DaveyHealth:0}" );
-		Check( MathF.Abs( WaveDirector.Current.DaveyHealth - 9750f ) < 1f, "Davey's wave 20 health is not 1.5 times MC-51's" );
+		Check( MathF.Abs( WaveDirector.Current.DaveyHealth - 11000f ) < 1f, "Davey's wave 20 health is not 11000" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

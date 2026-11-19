@@ -91,7 +91,7 @@ public partial class DaveyJones : Creature
 
 	protected override void Setup()
 	{
-		BeginSetup( 9750f );
+		BeginSetup( 11000f );
 		phase = Rng.Float( 0f, MathF.Tau );
 		floorY = Sculpt.FloorBelow( this, GlobalPosition, 80f );
 		// He can't be taken past half health until he has dragged someone to his locker.

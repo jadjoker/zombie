@@ -359,6 +359,21 @@ def build():
     s["trident_pierce"] = reverb(mix((stab, 0, 1.0), (shing, 0.002, 0.45), (thump(0.16, 260, 70, 0.06), 0.0, 0.9), (click(4200, 0.03, 0.01), 0.0, 0.6)), room=0.18, wet=0.15)
     s["trident_flesh"] = reverb(mix((squelch(0.45, 180, 1100, 2.0), 0.01, 1.0), (thump(0.12, 150, 60, 0.05), 0, 0.6), (blub(360, 1200, 0.07), 0.18, 0.5), (blub(300, 900, 0.06), 0.27, 0.35)), room=0.12, wet=0.1)
     s["trident_charge"] = mix((spectral(tone(1.0, 180, 720, "saw"), hi=2600) * bell(int(SR * 1.0), 0.92) * 0.5, 0, 1.0), (tone(1.0, 360, 1440) * bell(int(SR * 1.0), 0.95) * 0.35, 0, 1.0), (chime((1568, 2093), 0.05, 0.2), 0.97, 0.7))
+    # Davey's cannons: a sputtering, crackling fuse, then a deep boom with a splintery crack and a rolling tail.
+    crackle = np.zeros(int(SR * 1.2))
+    for at in np.random.uniform(0, 1.15, 70):
+        i = int(at * SR)
+        c = click(np.random.uniform(2500, 6000), 0.012, 0.003) * np.random.uniform(0.3, 1.0)
+        crackle[i:i + len(c)] += c[:len(crackle) - i]
+    s["cannon_fuse"] = mix((spectral(noise(1.2), lo=2500, hi=9000) * (0.55 + 0.25 * np.sin(2 * np.pi * 13 * t(1.2))) * bell(int(SR * 1.2), 0.6) * 0.5, 0, 1.0),
+                           (crackle, 0, 0.6))
+    s["cannon_fire"] = reverb(drive(mix((thump(0.7, 90, 32, 0.5), 0, 1.0), (spectral(noise(0.5), hi=1800) * env(int(SR * 0.5), 0.002, 0.35), 0, 0.8),
+                                        (click(1800, 0.04, 0.02), 0, 0.6)), 2.5), room=0.9, wet=0.35)
+    # Davey fading away and coming back: an eerie falling (or rising) wail over a breathy whoosh.
+    s["ghost_vanish"] = reverb(mix((tone(0.9, 880, 220) * (1 + 0.3 * np.sin(2 * np.pi * 7 * t(0.9))) * bell(int(SR * 0.9), 0.3) * 0.4, 0, 1.0),
+                                   (whoosh(0.9, 2400, 400), 0, 0.6)), room=0.7, wet=0.4)
+    s["ghost_appear"] = reverb(mix((tone(0.7, 200, 700) * (1 + 0.3 * np.sin(2 * np.pi * 9 * t(0.7))) * bell(int(SR * 0.7), 0.75) * 0.4, 0, 1.0),
+                                   (whoosh(0.7, 300, 2600), 0, 0.6)), room=0.7, wet=0.4)
     s["bubble_pop"] = mix((blub(900, 2600, 0.03), 0, 1.0), (click(5000, 0.012, 0.004), 0.022, 0.35))
     # The Bubble Cannon: a breathy bloop as a bubble leaves the bell, a rising wobbly hum while a big one is blown,
     # a deep gloop as an enemy is wrapped up, a rubbery boing off a wall, and a big bright pop with a fizz of spray.

@@ -178,6 +178,17 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Test: `--poseidongallery` (body, face, three-quarter, side; `--motion` adds throw, summon and swim frames; needs a window).
   `SmoothKit` lofts and skinned tubes wind clockwise from outside (Godot's front faces); before this fix they were
   inside out and the far wall showed through. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
+- Davey ("Davey phone home", `Creatures/DaveyJones.cs`, `EnemyKind.Davey`): the wave 20 boss (`WaveDirector.DaveyWave`,
+  takes MC61's place, the last wave on the wreck site; health `DaveyHealth` 11000), an alien ghost pirate built in code: alien head with black
+  almond eyes, tricorne with a skull, ragged beard, belt and buckle, a wispy curling tail, a cutlass and a hook, all in
+  `GhostShader` (translucent, fresnel glow, `fade` for vanishing). Attacks: vanish (gone 2 to 4 s, back behind the
+  player, a swipe), cannons (`DaveyCannon`: three rise round the player, fuses lit one after another with
+  `cannon_fuse`, one `Cannonball` each, then fade), sink (the player is slammed in, sinks, 10 a second, mashes jump
+  10 to 12 times; `DaveyJones.Sinking`, the HUD's MASH prompt). His health stops at half until he grabs the player and
+  takes them to `Game/DaveyLocker.cs` (a plank room 150 m under the map with a locker marked "Davey's"); there spawning
+  stops and other creatures are `Frozen`; 6 s after he dies there the player goes back up (`ScreenFade`). Sounds
+  `cannon_fuse`, `cannon_fire`, `ghost_vanish`, `ghost_appear` (`make_sounds.py`). Dev menu: Enemies (spawn, attacks,
+  to half), World (Davey wave). Test: `--davey` (shots need a window).
 - Mermaids (`Code/Creatures/Mermaid.cs`, `EnemyKind.Mermaid`): Atlantis only (`WaveDirector.MermaidChance` of each wave
   there), about player height (`Mermaid.Scale` of Poseidon's units), Poseidon's tail (`Poseidon.BuildTail`) and drifting
   skin, a coral-grown scallop shell mask with glowing eyes and spiky teeth, fin hands. Women have red, blonde or black

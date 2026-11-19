@@ -162,13 +162,26 @@ public partial class HudOverlays : Control
 
 		var b = Boss;
 		boss.Visible = b is not null;
-		if ( b is not null && b.TimeSinceLine < 2.4f && !string.IsNullOrEmpty( b.Line ) )
+		// The boss's line or move name: MC-51's in pink, Davey's in green.
+		string line = null;
+		var lineAge = 99f;
+		var lineColour = new Color( "ff7ae3" );
+		if ( b is not null && !string.IsNullOrEmpty( b.Line ) ) { line = b.Line; lineAge = b.TimeSinceLine; }
+		foreach ( var dj in DaveyJones.All )
+			if ( IsInstanceValid( dj ) && !string.IsNullOrEmpty( dj.Line ) && dj.TimeSinceLine < lineAge )
+			{
+				line = dj.Line;
+				lineAge = dj.TimeSinceLine;
+				lineColour = new Color( "5cff6e" );
+			}
+		if ( line is not null && lineAge < 2.4f )
 		{
 			speech.Visible = true;
-			speech.Text = b.Line;
-			speech.Modulate = new Color( 1, 1, 1, MathX.Clamp( (2.4f - b.TimeSinceLine) / 0.5f, 0f, 1f ) );
+			speech.Text = line;
+			speech.AddThemeColorOverride( "font_color", lineColour );
+			speech.Modulate = new Color( 1, 1, 1, MathX.Clamp( (2.4f - lineAge) / 0.5f, 0f, 1f ) );
 			speech.PivotOffset = speech.Size * 0.5f;
-			speech.Scale = Vector2.One * (1f + MathX.Clamp( 1f - b.TimeSinceLine / 0.2f, 0f, 1f ) * 0.5f);
+			speech.Scale = Vector2.One * (1f + MathX.Clamp( 1f - lineAge / 0.2f, 0f, 1f ) * 0.5f);
 			speech.Rotation = MathX.Rad( MathF.Sin( now * 30f ) * 2f );
 		}
 		else speech.Visible = false;
@@ -279,11 +292,26 @@ public partial class HudOverlays : Control
 		// Boss health bars: a suit frame across the top with TARGET and the name, the percentage, and a row of pills.
 		var b = Boss;
 		if ( b is not null ) BossBar( 0f, "MC-51", b.HealthFraction, UiStyle.Pink, UiStyle.PinkTop );
+		else if ( DaveyJones.All.FirstOrDefault( g => !g.IsDead ) is { Health: not null } davey )
+			BossBar( 0f, "DAVEY PHONE HOME", davey.HealthFraction, new Color( "5cff6e" ), new Color( "d4ffd0" ) );
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
 			BossBar( 0f, "POSEIDON", poseidon.HealthFraction, new Color( "2fe0c8" ), new Color( "b8fff4" ) );
 		else if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } kraken )
 		{
 			BossBar( 28f, "KRAKEN", kraken.Health.Fraction, new Color( "3fd84f" ), new Color( "c4ffb0" ), kraken.HelmetOn ? kraken.HelmetFraction : -1f );
+		}
+
+		// Buried by Davey: mash jump to climb out.
+		if ( DaveyJones.Sinking is { } sinker && !PlayerSurvivor.LocalDead )
+		{
+			var mashPulse = 0.75f + 0.25f * MathF.Sin( now * 14f );
+			var mashY = Size.Y * 0.6f;
+			UiStyle.DrawBig( this, new Vector2( 0f, mashY ), $"MASH {Controls.Label( "jump" )}!", (int)UiStyle.S( 44f ), UiStyle.Gold with { A = mashPulse }, HorizontalAlignment.Center, Size.X );
+			var mashWidth = UiStyle.S( 340f );
+			var mashBar = new Rect2( c.X - mashWidth * 0.5f, mashY + UiStyle.S( 22f ), mashWidth, UiStyle.S( 16f ) );
+			DrawRect( mashBar.Grow( 3f ), new Color( 0f, 0f, 0f, 0.6f ) );
+			DrawRect( mashBar with { Size = mashBar.Size with { X = mashWidth * MathX.Clamp( sinker.Mashes / (float)Math.Max( 1, sinker.MashesNeeded ), 0f, 1f ) } }, new Color( "5cff6e" ) );
+			UiStyle.DrawTag( this, new Vector2( 0f, mashY + UiStyle.S( 46f ) ), $"{sinker.Mashes} / {sinker.MashesNeeded}", 18, UiStyle.Teal, HorizontalAlignment.Center, Size.X );
 		}
 
 		// The radio: the song's name for a few seconds when it changes.

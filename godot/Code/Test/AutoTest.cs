@@ -62,6 +62,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
 		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
+		if ( args.Contains( "--davey" ) ) { await DaveyTest(); return; }
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
 		if ( args.Contains( "--missiles" ) ) { await MissileTest(); return; }
 		if ( args.Contains( "--crab" ) ) { await CrabTest(); return; }
@@ -3492,6 +3493,159 @@ public partial class AutoTest : Node
 		Check( killed && !IsInstanceValid( victim ), "a mermaid did not die and burst" );
 		GD.Print( $"[autotest] mermaid burst; {GetTree().Root.FindChildren( "*", "RigidBody3D", true, false ).OfType<Gib>().Count()} loose pieces" );
 		foreach ( var m in mermaids.Where( IsInstanceValid ) ) m.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+		GD.Print( "[autotest] done" );
+		GetTree().Quit();
+	}
+
+	/// <summary>
+	/// Davey, the wave 20 ghost pirate: his look, then each attack (vanish and swipe from behind, three cannons
+	/// firing one after another, the sink and the mash out), the grab at half health into his locker room, and the
+	/// trip back up 6 seconds after he dies there.
+	/// </summary>
+	async Task DaveyTest()
+	{
+		DockHouse.Current?.SkipDive();
+		await Wait( 0.5f );
+		var survivor = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		var scene = GetTree().CurrentScene;
+		WaveDirector.Current.SpawningPaused = true;
+		AllyCommander.KeepAlly = false;
+		foreach ( var ally in SeaSpider.All.Where( s => !s.IsEnemy ).ToList() ) ally.QueueFree();
+		await WaitForNav();
+		player.GlobalPosition = Nav.Closest( player, new Vector3( 0f, 0f, 14f ) ) + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		player.EyeAngles = new Angles( 0f, 0f, 0f );
+		await Wait( 0.5f );
+		var home = player.GlobalPosition;
+		survivor.Health.Invulnerable = false;
+
+		var d = DaveyJones.Spawn( scene, home + new Vector3( 0f, 2.1f, -9f ), WaveDirector.Current.DaveyHealth );
+		await Wait( 1.2f );
+		d.OnlyWhenTold = true;
+		Check( !d.IsDead && !d.Hidden, "Davey did not come" );
+		if ( shots is not null )
+		{
+			var layers = GetTree().Root.FindChildren( "*", "CanvasLayer", true, false ).OfType<CanvasLayer>().Where( l => l.Visible ).ToList();
+			foreach ( var l in layers ) l.Visible = false;
+			DevFlags.FreezeEnemies = true;
+			var shotAt = Transform3D.Identity;
+			player.CameraOverride = _ => shotAt;
+			var facing = -d.GlobalBasis.Z.Flat().Normalized();
+			var side = Vector3.Up.Cross( facing );
+			var middle = d.GlobalPosition + Vector3.Up * 0.9f;
+			foreach ( var (name, at) in new[]
+			{
+				("davey", middle + facing * 6.5f + Vector3.Up * 0.3f),
+				("davey_side", middle + facing * 4.5f + side * 4.5f + Vector3.Up * 0.8f),
+				("davey_face", middle + Vector3.Up * 1.4f + facing * 3.2f),
+			} )
+			{
+				var look = name == "davey_face" ? middle + Vector3.Up * 1.6f : middle;
+				shotAt = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+				await Wait( 0.4f );
+				await Shot( name );
+			}
+			player.CameraOverride = null;
+			DevFlags.FreezeEnemies = false;
+			foreach ( var l in layers ) l.Visible = true;
+		}
+
+		// Vanish: gone for 2 to 4 seconds, back behind the player, a swipe.
+		survivor.Health.Heal( 999f );
+		var before = survivor.Health.Current;
+		d.ForceAttack( "vanish" );
+		Check( d.Line == "VANISH!" && d.TimeSinceLine < 0.5f, "Davey's vanish did not pop its name up" );
+		await Wait( 1f );
+		Check( d.Hidden, "Davey did not vanish" );
+		var gone = 0f;
+		while ( d.Hidden && gone < 6f ) { await Wait( 0.1f ); gone += 0.1f; }
+		GD.Print( $"[autotest] davey: gone for {gone + 0.4f:0.0} s, behind the player: {d.LastAppearBehind}" );
+		Check( gone >= 1.4f && gone <= 4.2f, "Davey was not gone 2 to 4 seconds" );
+		Check( d.LastAppearBehind, "Davey did not come back behind the player" );
+		await Wait( 1.2f );
+		GD.Print( $"[autotest] davey swipe: health {before:0} to {survivor.Health.Current:0}" );
+		Check( d.Swipes == 1 && survivor.Health.Current < before, "Davey's swipe from behind did not hit" );
+
+		// Cannons: three, fired one after another, then gone.
+		survivor.Health.Heal( 999f );
+		player.GlobalPosition = home;
+		player.Velocity = Vector3.Zero;
+		DaveyCannon.FireTimes.Clear();
+		var hitsBefore = Cannonball.Hits;
+		before = survivor.Health.Current;
+		await Wait( 0.3f );
+		d.ForceAttack( "cannons" );
+		await Wait( 1.2f );
+		Check( DaveyCannon.All.Count == 3, $"Davey raised {DaveyCannon.All.Count} cannons, not 3" );
+		if ( shots is not null ) { await Wait( 0.4f ); await Shot( "davey_cannons" ); }
+		for ( var i = 0; i < 60 && DaveyCannon.All.Count > 0; i++ ) await Wait( 0.1f );
+		await Wait( 0.6f );
+		var times = DaveyCannon.FireTimes.OrderBy( x => x ).ToList();
+		GD.Print( $"[autotest] davey cannons fired at {string.Join( ", ", times.Select( x => (x - times.FirstOrDefault()).ToString( "0.00" ) ) )}; {Cannonball.Hits - hitsBefore} hit; health {before:0} to {survivor.Health.Current:0}" );
+		Check( times.Count == 3 && times[1] - times[0] > 0.4f && times[2] - times[1] > 0.4f, "the cannons did not fire one after another" );
+		Check( Cannonball.Hits - hitsBefore >= 2 && survivor.Health.Current < before, "the cannonballs did not hit a player standing still" );
+		Check( DaveyCannon.All.Count == 0, "the cannons did not go away after firing" );
+
+		// Sink: slammed in, sinking, 10 every second, out after mashing jump.
+		survivor.Health.Heal( 999f );
+		player.GlobalPosition = home;
+		player.Velocity = Vector3.Zero;
+		await Wait( 0.3f );
+		before = survivor.Health.Current;
+		d.ForceAttack( "sink" );
+		await Wait( 1.2f );
+		Check( DaveyJones.Sinking == d && player.Scripted, "Davey did not slam the player into the ground" );
+		var top = player.GlobalPosition.Y;
+		await Wait( 2.5f );
+		var sunk = top - player.GlobalPosition.Y;
+		var lost = before - survivor.Health.Current;
+		GD.Print( $"[autotest] davey sink: down {sunk:0.00} m, lost {lost:0} in 2.5 s, {d.MashesNeeded} presses to get out" );
+		Check( sunk > 0.15f, "the player did not sink" );
+		Check( lost >= 20f && lost <= 30f, "the sink did not take 10 a second" );
+		Check( d.MashesNeeded >= 10 && d.MashesNeeded <= 12, "the mash count is not 10 to 12" );
+		if ( shots is not null ) await Shot( "davey_sink" );
+		var needed = d.MashesNeeded;
+		for ( var i = 0; i < needed - 1; i++ ) { d.Mash(); await Wait( 0.03f ); }
+		Check( DaveyJones.Sinking == d, "the player got out before mashing enough" );
+		d.Mash();
+		await Wait( 0.3f );
+		Check( DaveyJones.Sinking is null && !player.Scripted, "mashing jump did not free the player" );
+
+		// Half health: grabbed and taken to his locker room under the map.
+		survivor.Health.Heal( 999f );
+		player.GlobalPosition = home;
+		player.Velocity = Vector3.Zero;
+		await Wait( 1.5f );
+		d.Health.OnDamage( new DamageInfo { Damage = 99999f } );
+		Check( !d.IsDead && MathF.Abs( d.Health.Fraction - 0.5f ) < 0.01f, "Davey went past half health before his locker" );
+		for ( var i = 0; i < 50 && !DaveyJones.InLocker; i++ ) await Wait( 0.1f );
+		await Wait( 1.2f );
+		GD.Print( $"[autotest] davey locker: in {DaveyJones.InLocker}, player at {player.GlobalPosition}, Davey at {d.GlobalPosition}" );
+		Check( DaveyJones.InLocker && player.GlobalPosition.Y < home.Y - 100f && !player.Scripted, "Davey did not take the player down to his locker" );
+		Check( d.GlobalPosition.DistanceTo( player.GlobalPosition ) < 16f, "Davey is not in the locker room with the player" );
+		if ( shots is not null )
+		{
+			var layers = GetTree().Root.FindChildren( "*", "CanvasLayer", true, false ).OfType<CanvasLayer>().Where( l => l.Visible ).ToList();
+			foreach ( var l in layers ) l.Visible = false;
+			var at = DaveyLocker.PlayerSpot + Vector3.Up * 1.7f + Vector3.Right * 1.5f;
+			var look = DaveyLocker.Centre + new Vector3( 0f, 1.6f, -DaveyLocker.Half );
+			var view = new Transform3D( Basis.LookingAt( (look - at).Normalized(), Vector3.Up ), at );
+			player.CameraOverride = _ => view;
+			await Wait( 0.4f );
+			await Shot( "davey_locker" );
+			player.CameraOverride = null;
+			foreach ( var l in layers ) l.Visible = true;
+		}
+		d.Health.OnDamage( new DamageInfo { Damage = 99999f } );
+		Check( d.IsDead, "Davey did not die in his locker" );
+		await Wait( 4f );
+		Check( DaveyJones.InLocker, "the player left the locker before 6 seconds" );
+		await Wait( 3.5f );
+		GD.Print( $"[autotest] davey after: in locker {DaveyJones.InLocker}, player {player.GlobalPosition.DistanceTo( home ):0.0} m from where they were grabbed" );
+		Check( !DaveyJones.InLocker && player.GlobalPosition.DistanceTo( home ) < 6f, "the player was not taken back up after Davey died" );
+		Check( WaveDirector.Current.DaveyWave == 20, "Davey is not the wave 20 boss" );
+		GD.Print( $"[autotest] davey health on wave 20: {WaveDirector.Current.DaveyHealth:0}" );
+		Check( MathF.Abs( WaveDirector.Current.DaveyHealth - 11000f ) < 1f, "Davey's wave 20 health is not 11000" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

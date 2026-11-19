@@ -60,6 +60,36 @@ public partial class AutoTest
 			await Wait( 0.3f );
 			GD.Print( $"[autotest] split: post {post.Name,-23}        hidden: {without:0.00} ms ({baseline - without:+0.00} ms)" );
 		}
+		// GPU against CPU, and each environment effect and the sun's shadows switched off in turn.
+		var vp = GetViewport().GetViewportRid();
+		RenderingServer.ViewportSetMeasureRenderTime( vp, true );
+		await Frame( 0.5f );
+		GD.Print( $"[autotest] split: gpu {RenderingServer.ViewportGetMeasuredRenderTimeGpu( vp ):0.00} ms, render cpu {RenderingServer.ViewportGetMeasuredRenderTimeCpu( vp ):0.00} ms" );
+		var env = GetViewport().World3D.Environment ?? scene.FindChildren( "*", "WorldEnvironment", true, false ).OfType<WorldEnvironment>().FirstOrDefault()?.Environment;
+		var sunLight = scene.FindChildren( "*", "DirectionalLight3D", true, false ).OfType<DirectionalLight3D>().FirstOrDefault( l => l.ShadowEnabled );
+		if ( env is not null )
+		{
+			foreach ( var prop in new[] { "ssao_enabled", "ssil_enabled", "volumetric_fog_enabled", "glow_enabled", "fog_enabled", "sdfgi_enabled", "ssr_enabled" } )
+			{
+				if ( !(bool)env.Get( prop ) ) continue;
+				env.Set( prop, false );
+				var without = await Frame( 1.2f );
+				var gpu = RenderingServer.ViewportGetMeasuredRenderTimeGpu( vp );
+				env.Set( prop, true );
+				await Wait( 0.3f );
+				GD.Print( $"[autotest] split: env {prop,-24}        off: {without:0.00} ms ({baseline - without:+0.00;-0.00} ms), gpu {gpu:0.00}" );
+			}
+		}
+		if ( sunLight is not null )
+		{
+			sunLight.ShadowEnabled = false;
+			var without = await Frame( 1.2f );
+			sunLight.ShadowEnabled = true;
+			GD.Print( $"[autotest] split: sun shadows                      off: {without:0.00} ms ({baseline - without:+0.00;-0.00} ms)" );
+		}
+		var shadowed = scene.FindChildren( "*", "Light3D", true, false ).OfType<Light3D>().Count( l => l is not DirectionalLight3D && l.ShadowEnabled && l.IsVisibleInTree() );
+		var lights = scene.FindChildren( "*", "Light3D", true, false ).OfType<Light3D>().Count( l => l is not DirectionalLight3D && l.IsVisibleInTree() );
+		GD.Print( $"[autotest] split: {lights} omni/spot lights visible, {shadowed} with shadows" );
 		// Who runs code every frame: nodes processing, by type.
 		var all = new List<Node>();
 		void Walk( Node n ) { all.Add( n ); foreach ( var k in n.GetChildren() ) Walk( k ); }

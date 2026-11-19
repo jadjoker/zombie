@@ -18,7 +18,7 @@ function Update-FromGitHub {
 
 	$behind = [int](git rev-list --count HEAD..origin/main)
 	$ahead = [int](git rev-list --count origin/main..HEAD)
-	$dirty = git status --porcelain
+	$dirty = git status --porcelain --untracked-files=no
 	if ($behind -eq 0) { Write-Host "Already up to date."; return $true }
 
 	if ($dirty -or $ahead -gt 0) {

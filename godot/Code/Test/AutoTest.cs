@@ -3076,6 +3076,8 @@ public partial class AutoTest : Node
 			spear.TestThrust();
 			await Wait( 0.2f );
 			await Shot( "tridentbot_thrust" );
+			await Wait( 0.7f );
+			await Shot( "tridentbot_rest" );   // the shield carried at the side
 			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = true;
 		}
 		spear.TestBlock( false );

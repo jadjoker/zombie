@@ -331,7 +331,7 @@ public partial class PlayerRig : Node
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
 		var dots = Dots.TryGetValue( appliedSkin, out var dotColour ) ? DotTexture( paint[1], dotColour ) : null;
-		// About a dozen rows of dots from head to foot, whatever units the model's meshes are in.
+		// About two dozen rows of small dots from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
 		foreach ( var mesh in meshes )
 		{
@@ -356,7 +356,7 @@ public partial class PlayerRig : Node
 					m.AlbedoColor = Colors.White;
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
-					m.Uv1Scale = Vector3.One * 6f / MathF.Max( 0.01f, extent );
+					m.Uv1Scale = Vector3.One * 12f / MathF.Max( 0.01f, extent );
 					m.Metallic = 0.25f;
 				}
 				mesh.SetSurfaceOverrideMaterial( i, m );

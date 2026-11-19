@@ -21,6 +21,7 @@ public static class SpearModel
 		onGun.AddChild( body );
 		BuildSpear( body );
 		skeleton.AddChild( new ShieldArm { Name = "Shield Arm" } );
+		skeleton.AddChild( new SpearGrip { Name = "Spear Grip", Spear = body } );
 	}
 
 	/// <summary> A long black shaft with yellow bands and a purple grip, a gold crossbar and three barbed prongs with glowing tips. </summary>
@@ -52,8 +53,8 @@ public static class SpearModel
 	}
 
 	/// <summary>
-	/// Each frame: the thrust drives the spear forward and a little across (alternate sides), and the shield rises
-	/// from low on the left to cover the middle of the view. thrust and raise go 0 to 1.
+	/// Each frame: the thrust drives the spear forward and a little across (alternate sides), and the shield comes up
+	/// from the player's side (edge on, nearly out of view) to the left of the view. thrust and raise go 0 to 1.
 	/// </summary>
 	public static void Pose( ViewModel vm, float thrust, bool left, float raise, float dt )
 	{
@@ -69,8 +70,8 @@ public static class SpearModel
 		var shield = vm.GetNodeOrNull<Node3D>( "Energy Shield" ) ?? BuildShield( vm );
 		shield.Visible = true;
 		var ease = raise * raise * (3f - 2f * raise);
-		shield.Position = new Vector3( -0.34f, -0.42f, -0.32f ).Lerp( new Vector3( -0.05f, -0.06f, -0.46f ), ease );
-		shield.Rotation = new Vector3( MathX.Lerp( -0.7f, 0f, ease ), MathX.Lerp( 0.6f, 0.08f, ease ), MathX.Lerp( 0.4f, 0f, ease ) );
+		shield.Position = new Vector3( -0.44f, -0.52f, -0.14f ).Lerp( new Vector3( -0.24f, -0.09f, -0.46f ), ease );
+		shield.Rotation = new Vector3( MathX.Lerp( -0.25f, 0f, ease ), MathX.Lerp( 1.25f, 0.3f, ease ), MathX.Lerp( 0.15f, 0f, ease ) );
 		var t = (float)Clock.Now;
 		if ( shield.GetNodeOrNull<MeshInstance3D>( "Glass" ) is { MaterialOverride: StandardMaterial3D glass } )
 			glass.AlbedoColor = glass.AlbedoColor with { A = 0.16f + 0.2f * ease + 0.04f * MathF.Sin( t * 7f ) };
@@ -113,6 +114,13 @@ public static class SpearModel
 				}
 			}
 		Sculpt.Blob( shield, new Vector3( 0f, 0f, 0.012f ), new Vector3( 0.05f, 0.05f, 0.02f ), gold, name: "Boss" );
+		// The arm strap: a leather band round the forearm, riveted to the back of the shield by a short link.
+		// ShieldArm places both on the arm each frame.
+		var leather = Sculpt.Paint( new Color( 0.32f, 0.2f, 0.12f ), 0.7f, 0.1f );
+		var strap = new MeshInstance3D { Name = "Strap", Mesh = new TorusMesh { InnerRadius = 0.033f, OuterRadius = 0.043f, Rings = 24, RingSegments = 6 }, MaterialOverride = leather, TopLevel = true };
+		shield.AddChild( strap );
+		strap.AddChild( new MeshInstance3D { Name = "Buckle", Mesh = new BoxMesh { Size = new Vector3( 0.018f, 0.014f, 0.014f ) }, MaterialOverride = gold, Position = new Vector3( 0.043f, 0f, 0f ) } );
+		shield.AddChild( new MeshInstance3D { Name = "Strap Link", Mesh = new BoxMesh { Size = new Vector3( 0.026f, 1f, 0.007f ) }, MaterialOverride = leather, TopLevel = true } );
 		foreach ( var mesh in shield.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
 		{
 			mesh.Layers = ViewModel.ViewLayer;
@@ -129,9 +137,8 @@ public static class SpearModel
 /// </summary>
 public partial class ShieldArm : SkeletonModifier3D
 {
-	/// <summary> Where the hand holds the shield, in the shield's space: its left rim, just behind (a hand on the boss
-	/// sat right in front of the camera and hid the view). </summary>
-	static readonly Vector3 Grip = new( -0.15f, -0.03f, 0.03f );
+	/// <summary> Where the wrist goes, in the shield's space: behind the left half of the shield, the forearm through the strap. </summary>
+	static readonly Vector3 Grip = new( -0.05f, -0.03f, 0.07f );
 	int upper = -1, lower = -1, hand = -1;
 	ViewModel vm;
 
@@ -180,12 +187,29 @@ public partial class ShieldArm : SkeletonModifier3D
 		skeleton.SetBonePoseRotation( upper, Local( parentG, upperG ) );
 		skeleton.SetBonePoseRotation( lower, Local( upperG, lowerG ) );
 		skeleton.SetBonePoseRotation( hand, Local( lowerG, handG ) );
+
+		// The strap round the forearm just behind the wrist, and its link to the shield's back.
+		var world = skeleton.GlobalTransform;
+		var wristW = world * wrist;
+		var along = (wristW - world * elbow).Normalized();
+		var ringAt = wristW - along * 0.04f;
+		if ( shield.GetNodeOrNull<Node3D>( "Strap" ) is { } strap )
+			strap.GlobalTransform = new Transform3D( new Basis( Arc( Vector3.Up, along ) ), ringAt );
+		if ( shield.GetNodeOrNull<Node3D>( "Strap Link" ) is { } link )
+		{
+			var onShield = shield.ToLocal( ringAt ) with { Z = 0.004f };
+			var to = shield.ToGlobal( onShield );
+			var span = to - ringAt;
+			var length = span.Length();
+			if ( length > 1e-4f )
+				link.GlobalTransform = new Transform3D( new Basis( Arc( Vector3.Up, span ) ) * Basis.FromScale( new Vector3( 1f, length, 1f ) ), ringAt + span * 0.5f );
+		}
 	}
 
-	static Quaternion Local( Transform3D parent, Transform3D child ) => (parent.Basis.Orthonormalized().Inverse() * child.Basis.Orthonormalized()).GetRotationQuaternion();
+	internal static Quaternion Local( Transform3D parent, Transform3D child ) => (parent.Basis.Orthonormalized().Inverse() * child.Basis.Orthonormalized()).GetRotationQuaternion();
 
 	/// <summary> The shortest turn taking direction `from` onto `to`. </summary>
-	static Quaternion Arc( Vector3 from, Vector3 to )
+	internal static Quaternion Arc( Vector3 from, Vector3 to )
 	{
 		var f = from.Normalized();
 		var t = to.Normalized();
@@ -199,5 +223,47 @@ public partial class ShieldArm : SkeletonModifier3D
 	{
 		for ( Node n = this; n is not null; n = n.GetParent() ) if ( n is ViewModel found ) return found;
 		return null;
+	}
+}
+
+/// <summary>
+/// The right hand closed round the spear: the rig's hand is posed for a pistol grip (its fist runs up and down), so
+/// this bends the wrist until the fist points along the spear, then slides the spear so its grip runs through the fist.
+/// </summary>
+public partial class SpearGrip : SkeletonModifier3D
+{
+	public Node3D Spear;
+	static readonly Basis GunToBone = new( new Vector3( 0f, 1f, 0f ), new Vector3( -1f, 0f, 0f ), new Vector3( 0f, 0f, 1f ) );
+	/// <summary> Gun space (inches): the pistol grip's axis, leaning back 18 degrees at its foot, and the fist's middle. </summary>
+	static readonly Vector3 FistAxis = new Vector3( 0.31f, 0f, 0.95f ).Normalized();
+	static readonly Vector3 FistMiddle = new( -0.6f, 0f, -3.6f );
+	/// <summary> The point on the spear (gun space) that sits in the fist: the middle of its purple grip. </summary>
+	static readonly Vector3 SpearHold = new( 0.5f, 0f, 0.6f );
+	int gun = -1, hand = -1;
+
+	public override void _ProcessModificationWithDelta( double delta )
+	{
+		var skeleton = GetSkeleton();
+		if ( skeleton is null || !IsInstanceValid( Spear ) ) return;
+		if ( gun < 0 ) { gun = skeleton.FindBone( "gun" ); hand = skeleton.FindBone( "hand_R" ); }
+		if ( gun < 0 || hand < 0 ) return;
+
+		var gunToSkeleton = skeleton.GetBoneGlobalPose( gun ) * new Transform3D( GunToBone.Scaled( Vector3.One * 0.01f ), Vector3.Zero );
+		var gH = skeleton.GetBoneGlobalPose( hand );
+		var fistAxis = (gunToSkeleton.Basis * FistAxis).Normalized();
+		var forward = (gunToSkeleton.Basis * Vector3.Right).Normalized();
+		// Bend the wrist: turn the hand about the wrist so the fist runs along the spear.
+		var turn = ShieldArm.Arc( fistAxis, forward );
+		var wrist = gH.Origin;
+		var handG = new Transform3D( new Basis( turn ) * gH.Basis, wrist );
+		var parent = skeleton.GetBoneParent( hand );
+		var parentG = parent >= 0 ? skeleton.GetBoneGlobalPose( parent ) : Transform3D.Identity;
+		skeleton.SetBonePoseRotation( hand, ShieldArm.Local( parentG, handG ) );
+
+		// Slide the spear (it rides the gun bone) so its grip sits in the turned fist.
+		var fist = wrist + new Basis( turn ) * (gunToSkeleton * FistMiddle - wrist);
+		var holdNow = gunToSkeleton * SpearHold;
+		var shiftGun = gunToSkeleton.AffineInverse().Basis * (fist - holdNow);
+		Spear.Transform = new Transform3D( GunToBone.Scaled( Vector3.One * 0.01f ), GunToBone.Scaled( Vector3.One * 0.01f ) * shiftGun );
 	}
 }

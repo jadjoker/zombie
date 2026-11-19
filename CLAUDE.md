@@ -107,9 +107,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   (`WeaponInventory.Replace`, damage upgrades kept). No area builds a trident or Gore Vac station any more:
   weapons come with the robot (`RobotClass.Sells` and `BuyStation.Refresh` still hide one if it turns up).
   Trident-Bot (250 health, `Paint` "Trident": teal, #CB4154 shoulders): the trident shooter (slot 1) and the spear
-  (slot 2, `PlayerWeapon.Spear`, `SpearModel.cs`): a one-handed thrust (`ThrustCurve`: cock, lunge, overshoot, camera
+  (slot 2, `PlayerWeapon.Spear`, `SpearModel.cs`): a one-handed thrust (`SpearGrip` bends the right wrist so the fist closes round the shaft; `ThrustCurve`: cock, lunge, overshoot, camera
   jolt) at twice the axe's reach, and the energy shield in the left hand (`ShieldArm`, a `SkeletonModifier3D` that
-  bends the left arm to the shield's grip), raised with right click to take `BlockShare` (65%) of each hit. Healing in
+  bends the left arm to the shield, its forearm through a leather `Strap`; carried edge on at the side, raised to the left of the view with right click to take `BlockShare` (65%) of each hit. Healing in
   third person brings bristlenose plecos with hearts (`HealPlecos.cs`). Vac-Bot's `Paint` is "Vac": green with purple
   polka dots (`PlayerRig.Dots`, an object-space triplanar texture) and yellow shoulders. Test: `--tridentbot`.
   The Bubble Cannon (`Weapons/BubbleCannon.cs`, model `BubbleCannonModel` on the Blaster rig; the globe's "Loaded"
@@ -283,6 +283,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).
 - Commits reference the migration (#26) or playtest (#27) issue. Chat-only tasks need no issue.
+- Merging: once a change passes CI on its `claude/**` branch, merge it to `main` (which publishes) without asking (user's standing instruction).
 
 # The original s&box project
 

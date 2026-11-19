@@ -179,8 +179,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `SmoothKit` lofts and skinned tubes wind clockwise from outside (Godot's front faces); before this fix they were
   inside out and the far wall showed through. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
 - Davey ("Davey phone home", `Creatures/DaveyJones.cs`, `EnemyKind.Davey`): the wave 20 boss (`WaveDirector.DaveyWave`,
-  takes MC61's place, the last wave on the wreck site; health `DaveyHealth` 11000), an alien ghost pirate built in code: alien head with black
-  almond eyes, tricorne with a skull, ragged beard, belt and buckle, a wispy curling tail, a cutlass and a hook, all in
+  takes MC61's place, the last wave on the wreck site; health `DaveyHealth` 11000), an alien ghost pirate built in code: smooth lofted alien head with black
+  almond eyes and a shut mouth, a man's lofted torso, a full beard, a bicorne (`HatMesh`: teal, gold trim, skull and crossbones, red feather), belt and buckle, one skinned curling tail (`SmoothKit.SkinChain`), a cutlass and a hook, all in
   `GhostShader` (translucent, fresnel glow, `fade` for vanishing). Attacks: vanish (gone 2 to 4 s, back behind the
   player, a swipe), cannons (`DaveyCannon`: three rise round the player, fuses lit one after another with
   `cannon_fuse`, one `Cannonball` each, then fade), sink (the player is slammed in, sinks, 10 a second, mashes jump

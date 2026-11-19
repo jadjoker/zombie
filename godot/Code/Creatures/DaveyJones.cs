@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// Davey ("Davey phone home"), the wave 20 boss on the wreck site: an alien ghost pirate. A big-headed alien face with
-/// black almond eyes, a tricorne hat, a ragged beard, a belt, and a body that trails off into a wispy curling tail; a
+/// black almond eyes, a bicorne hat, a full beard, a belt, and a man's torso that trails off into a smooth curling tail; a
 /// hook for one hand and a cutlass in the other. Translucent and glowing green (<see cref="GhostShader"/>).
 /// His attacks:
 /// - Vanish: he fades into thin air and 2 to 4 seconds later comes back behind the player and swipes at them;
@@ -82,6 +82,7 @@ public partial class DaveyJones : Creature
 
 	Node3D body, head, shoulderR, elbowR, shoulderL, elbowL, hat;
 	readonly List<Node3D> tail = new();
+	Skeleton3D tailBones;
 	readonly List<ShaderMaterial> ghosts = new();
 	readonly List<CreaturePart> hitParts = new();
 	OmniLight3D light;
@@ -166,85 +167,77 @@ void fragment() {
 		body = new Node3D { Name = "Body", Scale = Vector3.One * Size };
 		AddChild( body );
 
-		// Chest and shoulders, the belt round the waist with its square buckle.
-		Sculpt.Blob( body, new Vector3( 0f, 0.62f, 0f ), new Vector3( 1.05f, 1.3f, 0.78f ), skin, name: "Chest" );
-		foreach ( var side in new[] { -1f, 1f } ) Sculpt.Blob( body, new Vector3( side * 0.5f, 1.05f, 0f ), Vector3.One * 0.38f, skin );
-		var belt = new MeshInstance3D { Name = "Belt", Mesh = new TorusMesh { InnerRadius = 0.4f, OuterRadius = 0.5f, Rings = 24, RingSegments = 8 }, MaterialOverride = dark };
+		// A man's torso, lofted smooth: waist, belly, broad chest, shoulders, neck. The belt round the waist, its buckle.
+		var torso = SmoothKit.Smooth( new List<(float, float, float, float)>
+		{
+			(-0.08f, 0.36f, 0.28f, 0f), (0.12f, 0.4f, 0.3f, 0f), (0.4f, 0.43f, 0.31f, -0.01f), (0.75f, 0.5f, 0.33f, -0.03f),
+			(1.02f, 0.53f, 0.31f, -0.02f), (1.18f, 0.44f, 0.26f, 0f), (1.3f, 0.17f, 0.15f, 0f), (1.46f, 0.13f, 0.13f, 0f),
+		} );
+		SmoothKit.Put( body, SmoothKit.Cached( "davey torso", () => SmoothKit.Loft( torso ) ), skin, "Chest" );
+		foreach ( var side in new[] { -1f, 1f } ) SmoothKit.Ball( body, new Vector3( side * 0.52f, 1.08f, 0f ), new Vector3( 0.34f, 0.3f, 0.32f ), skin, name: "Shoulder" );
+		var belt = new MeshInstance3D { Name = "Belt", Mesh = new TorusMesh { InnerRadius = 0.4f, OuterRadius = 0.48f, Rings = 32, RingSegments = 12 }, MaterialOverride = dark };
 		body.AddChild( belt );
 		belt.Position = new Vector3( 0f, 0.12f, 0f );
-		belt.Scale = new Vector3( 1.05f, 1.4f, 0.8f );
-		Sculpt.Block( body, new Vector3( 0f, 0.12f, -0.41f ), new Vector3( 0.26f, 0.2f, 0.06f ), pale, name: "Buckle" );
-		Sculpt.Block( body, new Vector3( 0f, 0.12f, -0.44f ), new Vector3( 0.12f, 0.08f, 0.02f ), dark );
+		belt.Scale = new Vector3( 1.0f, 1.4f, 0.75f );
+		Sculpt.Block( body, new Vector3( 0f, 0.12f, -0.36f ), new Vector3( 0.26f, 0.2f, 0.06f ), pale, name: "Buckle" );
+		Sculpt.Block( body, new Vector3( 0f, 0.12f, -0.39f ), new Vector3( 0.12f, 0.08f, 0.02f ), dark );
 
-		// The tail: a chain of shrinking lumps that curls back, ending in wisps.
+		// The tail: one smooth skinned mesh down a chain of joints that curls back, tapering to a point.
 		Node3D link = body;
 		var at = new Vector3( 0f, -0.05f, 0f );
 		for ( var i = 0; i < 8; i++ )
 		{
 			var joint = Sculpt.Joint( link, at, $"Tail{i}" );
 			tail.Add( joint );
-			var r = MathX.Lerp( 0.48f, 0.12f, i / 7f );
-			Sculpt.Blob( joint, new Vector3( 0f, -0.14f, 0f ), new Vector3( r * 2f, 0.42f, r * 1.7f ), skin );
 			link = joint;
 			at = new Vector3( 0f, -0.27f, 0f );
 		}
-		for ( var k = -1; k <= 1; k++ )
+		tailBones = SmoothKit.SkinChain( body, tail, 0.27f, 0.22f, 0.3f, t =>
 		{
-			var tip = new Vector3( k * 0.12f, -0.75f, 0.1f + MathF.Abs( k ) * 0.1f );
-			Sculpt.Cone( link, new Vector3( k * 0.04f, -0.2f, 0f ), tip, 0.06f, skin, 6, "Wisp" );
-		}
+			var k = MathF.Pow( 1f - t, 0.85f );
+			return (0.38f * k + 0.008f, 0.3f * k + 0.008f);
+		}, skin, "davey tail", 48, 24 );
 
-		// The head: an alien's, a big round crown narrowing to a small chin, black almond eyes slanting up.
+		// The head: an alien's, lofted smooth from a small chin to a big round crown; black almond eyes slanting up.
 		head = Sculpt.Joint( body, new Vector3( 0f, 1.38f, 0f ), "Head" );
-		Sculpt.Blob( head, new Vector3( 0f, 0.42f, 0f ), new Vector3( 0.88f, 0.76f, 0.8f ), skin, name: "Crown" );
-		Sculpt.Cone( head, new Vector3( 0f, 0.36f, -0.02f ), new Vector3( 0f, -0.1f, -0.12f ), 0.37f, skin, 16, "Chin" );
+		var skull = SmoothKit.Smooth( new List<(float, float, float, float)>
+		{
+			(-0.1f, 0.03f, 0.03f, -0.12f), (-0.06f, 0.1f, 0.1f, -0.11f), (0.05f, 0.17f, 0.16f, -0.08f), (0.2f, 0.3f, 0.28f, -0.03f),
+			(0.4f, 0.43f, 0.39f, 0f), (0.6f, 0.44f, 0.4f, 0.02f), (0.76f, 0.36f, 0.33f, 0.02f), (0.87f, 0.18f, 0.17f, 0.02f), (0.9f, 0.01f, 0.01f, 0.02f),
+		} );
+		SmoothKit.Put( head, SmoothKit.Cached( "davey head", () => SmoothKit.Loft( skull ) ), skin, "Crown" );
 		foreach ( var side in new[] { -1f, 1f } )
 		{
 			var turn = new Basis( Vector3.Back, side * 0.5f ) * new Basis( Vector3.Up, -side * 0.38f );
-			Sculpt.Blob( head, new Vector3( side * 0.18f, 0.3f, -0.31f ), new Vector3( 0.34f, 0.17f, 0.1f ), eyes, turn, "Eye" );
-			Sculpt.Blob( head, new Vector3( side * 0.13f, 0.34f, -0.36f ), Vector3.One * 0.04f, shine, name: "Glint" );
+			SmoothKit.Ball( head, new Vector3( side * 0.18f, 0.3f, -0.33f ), new Vector3( 0.34f, 0.17f, 0.1f ), eyes, turn, "Eye" );
+			SmoothKit.Ball( head, new Vector3( side * 0.13f, 0.34f, -0.38f ), Vector3.One * 0.04f, shine, name: "Glint" );
 			// Scowling brows.
-			Sculpt.Limb( head, new Vector3( side * 0.06f, 0.42f, -0.36f ), new Vector3( side * 0.3f, 0.5f, -0.3f ), 0.025f, 0.02f, dark, "Brow" );
+			SmoothKit.Tube( head, new Vector3( side * 0.06f, 0.42f, -0.375f ), new Vector3( side * 0.3f, 0.5f, -0.32f ), 0.025f, 0.018f, dark, "Brow" );
 		}
-		// A snarl with a few teeth, then the ragged beard from the jaw down.
-		Sculpt.Blob( head, new Vector3( 0f, 0.08f, -0.26f ), new Vector3( 0.2f, 0.07f, 0.05f ), eyes, name: "Mouth" );
-		for ( var k = -1; k <= 1; k++ )
-			Sculpt.Cone( head, new Vector3( k * 0.05f, 0.1f, -0.28f ), new Vector3( k * 0.05f, 0.06f, -0.285f ), 0.016f, shine, 5, "Tooth" );
-		for ( var i = 0; i < 11; i++ )
-		{
-			var a = MathX.Lerp( -1.9f, 1.9f, i / 10f );
-			var root = new Vector3( MathF.Sin( a ) * 0.3f, 0.1f - MathF.Abs( a ) * 0.05f, -MathF.Cos( a ) * 0.24f );
-			var drop = 0.45f + 0.2f * MathF.Cos( a ) + (i % 2) * 0.12f;
-			var tip = root * 1.25f + new Vector3( 0f, -drop, -0.06f );
-			Sculpt.Cone( head, root, tip, 0.1f, beard, 6, "Beard" );
-		}
-		Sculpt.Blob( head, new Vector3( 0f, -0.05f, -0.16f ), new Vector3( 0.5f, 0.35f, 0.3f ), beard, name: "Beard" );
-
-		// The tricorne: crown, a wide brim, its sides cocked up, a skull and crossbones on the front.
-		hat = Sculpt.Joint( head, new Vector3( 0f, 0.72f, 0f ), "Hat" );
-		hat.Rotation = new Vector3( 0.12f, 0f, 0.05f );
-		Sculpt.Limb( hat, new Vector3( 0f, 0f, 0f ), new Vector3( 0f, 0.36f, 0f ), 0.42f, 0.36f, dark, "Crown" );
-		Sculpt.Blob( hat, new Vector3( 0f, 0.36f, 0f ), new Vector3( 0.72f, 0.18f, 0.72f ), dark );
-		Sculpt.Blob( hat, new Vector3( 0f, 0.02f, 0f ), new Vector3( 1.55f, 0.07f, 1.15f ), dark, name: "Brim" );
-		for ( var k = 0; k < 3; k++ )
-		{
-			var a = k * MathF.Tau / 3f;
-			var outward = new Vector3( MathF.Sin( a ), 0f, -MathF.Cos( a ) );
-			var turn = Shapes.LookAt( outward ) * new Basis( Vector3.Right, -0.5f );
-			Sculpt.Blob( hat, outward * 0.55f + Vector3.Up * 0.16f, new Vector3( 0.95f, 0.34f, 0.08f ), dark, turn, "Cock" );
-		}
-		Sculpt.Blob( hat, new Vector3( 0f, 0.2f, -0.58f ), new Vector3( 0.13f, 0.14f, 0.06f ), shine, name: "Skull" );
+		// The mouth shut in a hard line, a moustache over it, and a full beard from the jaw to a point.
 		foreach ( var side in new[] { -1f, 1f } )
 		{
-			Sculpt.Blob( hat, new Vector3( side * 0.03f, 0.21f, -0.615f ), Vector3.One * 0.035f, eyes );
-			Sculpt.Limb( hat, new Vector3( side * 0.12f, 0.08f, -0.6f ), new Vector3( -side * 0.12f, 0.32f, -0.6f ), 0.018f, 0.018f, shine, "Bone" );
+			SmoothKit.Tube( head, new Vector3( 0f, 0.085f, -0.262f ), new Vector3( side * 0.075f, 0.072f, -0.245f ), 0.013f, 0.011f, eyes, "Mouth" );
+			SmoothKit.Tube( head, new Vector3( side * 0.02f, 0.135f, -0.29f ), new Vector3( side * 0.17f, 0.07f, -0.24f ), 0.035f, 0.016f, beard, "Moustache" );
 		}
+		SmoothKit.Ball( head, new Vector3( 0f, -0.06f, -0.13f ), new Vector3( 0.48f, 0.36f, 0.32f ), beard, name: "Beard" );
+		for ( var i = 0; i < 5; i++ )
+		{
+			var a = MathX.Lerp( -0.9f, 0.9f, i / 4f );
+			var root = new Vector3( MathF.Sin( a ) * 0.17f, -0.06f, -0.13f - MathF.Cos( a ) * 0.12f );
+			var drop = 0.42f + 0.16f * MathF.Cos( a * 1.4f );
+			var tip = new Vector3( root.X * 0.45f, root.Y - drop, root.Z - 0.08f );
+			SmoothKit.Tube( head, root, tip, 0.1f, 0.022f, beard, "Beard" );
+		}
+
+		// The hat: a bicorne worn side to side, dark with gold trim, a skull and crossbones and a red feather, all ghostly.
+		BuildHat( shine, eyes );
 
 		// Arms: cuffed sleeves; the right fist holds a cutlass, the left arm ends in a hook.
 		(shoulderR, elbowR) = Arm( 1f, skin, cuff );
 		(shoulderL, elbowL) = Arm( -1f, skin, cuff );
 		var fist = Sculpt.Joint( elbowR, new Vector3( 0f, -0.52f, 0f ), "Fist" );
-		Sculpt.Blob( fist, Vector3.Zero, new Vector3( 0.2f, 0.18f, 0.2f ), skin, name: "Hand" );
+		SmoothKit.Ball( fist, Vector3.Zero, new Vector3( 0.21f, 0.19f, 0.21f ), skin, name: "Hand" );
 		Sculpt.Limb( fist, new Vector3( 0f, 0f, 0.1f ), new Vector3( 0f, 0f, -0.12f ), 0.035f, 0.035f, pale, "Grip" );
 		Sculpt.Block( fist, new Vector3( 0f, 0f, -0.14f ), new Vector3( 0.06f, 0.24f, 0.05f ), pale, name: "Guard" );
 		var blade = new Vector3( 0f, 0f, -0.16f );
@@ -285,15 +278,123 @@ void fragment() {
 		light.Position = new Vector3( 0f, 0.8f, -0.6f );
 	}
 
+	// The bicorne's shape: from the front a crescent with blunt points, from the side a wedge closing to a ridge.
+	const float HatHalfWidth = 0.86f, HatHeight = 0.52f, HatDepth = 0.4f;
+	static float HatBottom( float x ) { var q = 1f - (x / HatHalfWidth) * (x / HatHalfWidth); return 0.07f * q; }
+	static float HatTop( float x ) { var q = MathF.Max( 0f, 1f - (x / HatHalfWidth) * (x / HatHalfWidth) ); return HatBottom( x ) + HatHeight * MathF.Pow( q, 0.75f ) + 0.05f; }
+	static float HatHalfDepth( float x ) { var q = MathF.Max( 0f, 1f - (x / HatHalfWidth) * (x / HatHalfWidth) ); return HatDepth * MathF.Sqrt( q ) + 0.035f; }
+	/// <summary> A point on the hat: across at x, up the face at v (0 the brim edge, 1 the ridge), on the front (-1) or back (1). </summary>
+	static Vector3 HatPoint( float x, float v, float side ) =>
+		new( x, MathX.Lerp( HatBottom( x ), HatTop( x ), v ), side * HatHalfDepth( x ) * (1f - v * v) );
+
+	static ArrayMesh HatMesh()
+	{
+		const int across = 40, up = 14;
+		var mesh = new ArrayMesh();
+		// Surface 0 the felt, 1 the gold trim round the edge.
+		foreach ( var trim in new[] { false, true } )
+		{
+			var st = new SurfaceTool();
+			st.Begin( Mesh.PrimitiveType.Triangles );
+			void Tri( Vector3 a, Vector3 b, Vector3 c, Vector3 outward )
+			{
+				// Godot's front faces wind clockwise seen from outside.
+				if ( (b - a).Cross( c - a ).Dot( outward ) > 0f ) (b, c) = (c, b);
+				st.AddVertex( a ); st.AddVertex( b ); st.AddVertex( c );
+			}
+			foreach ( var side in new[] { -1f, 1f } )
+				for ( var i = 0; i < across; i++ )
+					for ( var j = 0; j < up; j++ )
+					{
+						var v0 = j / (float)up;
+						var v1 = (j + 1f) / up;
+						var x0 = MathX.Lerp( -HatHalfWidth, HatHalfWidth, i / (float)across ) * 0.999f;
+						var x1 = MathX.Lerp( -HatHalfWidth, HatHalfWidth, (i + 1f) / across ) * 0.999f;
+						var edge = v0 >= 0.84f || MathF.Abs( (x0 + x1) * 0.5f ) > HatHalfWidth * 0.9f;
+						if ( edge != trim ) continue;
+						var p00 = HatPoint( x0, v0, side );
+						var p10 = HatPoint( x1, v0, side );
+						var p01 = HatPoint( x0, v1, side );
+						var p11 = HatPoint( x1, v1, side );
+						var outward = new Vector3( 0f, 0.3f, side );
+						Tri( p00, p10, p11, outward );
+						Tri( p00, p11, p01, outward );
+					}
+			if ( trim )
+				foreach ( var end in new[] { -1f, 1f } )
+					for ( var j = 0; j < up; j++ )
+					{
+						// The blunt gold points at each end.
+						var x = end * HatHalfWidth * 0.999f;
+						var v0 = j / (float)up;
+						var v1 = (j + 1f) / up;
+						var outward = new Vector3( end, 0f, 0f );
+						Tri( HatPoint( x, v0, -1f ), HatPoint( x, v1, -1f ), HatPoint( x, v1, 1f ), outward );
+						Tri( HatPoint( x, v0, -1f ), HatPoint( x, v1, 1f ), HatPoint( x, v0, 1f ), outward );
+					}
+			if ( !trim )
+				for ( var i = 0; i < across; i++ )
+				{
+					// The underside, closed over the head.
+					var x0 = MathX.Lerp( -HatHalfWidth, HatHalfWidth, i / (float)across ) * 0.999f;
+					var x1 = MathX.Lerp( -HatHalfWidth, HatHalfWidth, (i + 1f) / across ) * 0.999f;
+					Tri( HatPoint( x0, 0f, -1f ), HatPoint( x1, 0f, -1f ), HatPoint( x1, 0f, 1f ), Vector3.Down );
+					Tri( HatPoint( x0, 0f, -1f ), HatPoint( x1, 0f, 1f ), HatPoint( x0, 0f, 1f ), Vector3.Down );
+				}
+			st.GenerateNormals();
+			st.Commit( mesh );
+		}
+		return mesh;
+	}
+
+	void BuildHat( Material bone, Material socket )
+	{
+		var feltGhost = Ghost( new Color( 0.1f, 0.34f, 0.36f ), 0.55f );
+		var gold = Ghost( new Color( 1f, 0.75f, 0.2f ), 0.6f );
+		var red = Ghost( new Color( 0.95f, 0.18f, 0.15f ), 0.55f );
+		hat = Sculpt.Joint( head, new Vector3( 0f, 0.6f, 0.02f ), "Hat" );
+		hat.Rotation = new Vector3( 0.1f, 0f, 0.05f );
+		var shell = SmoothKit.Put( hat, SmoothKit.Cached( "davey bicorne", HatMesh ), feltGhost, "Bicorne" );
+		shell.SetSurfaceOverrideMaterial( 0, feltGhost );
+		shell.SetSurfaceOverrideMaterial( 1, gold );
+		shell.MaterialOverride = null;
+
+		// Skull and crossbones on the front face, tipped back with its slope.
+		var mid = HatPoint( 0f, 0.42f, -1f );
+		var above = HatPoint( 0f, 0.52f, -1f );
+		var slope = (above - mid).Normalized();
+		var face = new Basis( Vector3.Right, MathF.Atan2( -slope.Z, slope.Y ) );
+		var badge = Sculpt.Joint( hat, mid + new Vector3( 0f, 0f, -0.02f ), "Badge" );
+		badge.Basis = face;
+		SmoothKit.Ball( badge, new Vector3( 0f, 0.05f, 0f ), new Vector3( 0.15f, 0.13f, 0.05f ), bone, name: "Skull" );
+		SmoothKit.Ball( badge, new Vector3( 0f, -0.02f, 0f ), new Vector3( 0.09f, 0.06f, 0.045f ), bone, name: "Jaw" );
+		foreach ( var side in new[] { -1f, 1f } )
+		{
+			SmoothKit.Ball( badge, new Vector3( side * 0.034f, 0.05f, -0.022f ), new Vector3( 0.045f, 0.04f, 0.02f ), socket, name: "Socket" );
+			SmoothKit.Tube( badge, new Vector3( side * 0.12f, -0.13f, 0f ), new Vector3( -side * 0.12f, -0.03f, 0f ), 0.016f, 0.016f, bone, "Bone" );
+			SmoothKit.Ball( badge, new Vector3( side * 0.125f, -0.135f, 0f ), Vector3.One * 0.035f, bone, name: "Knuckle" );
+			SmoothKit.Ball( badge, new Vector3( -side * 0.125f, -0.025f, 0f ), Vector3.One * 0.035f, bone, name: "Knuckle" );
+		}
+
+		// The feather: tucked in behind the right side, sweeping up and out.
+		var quill = Sculpt.Joint( hat, HatPoint( 0.3f, 0.45f, 1f ) + new Vector3( 0f, 0f, -0.04f ), "Feather" );
+		quill.Rotation = new Vector3( 0.15f, 0f, -0.55f );
+		var plume = SmoothKit.Smooth( new List<(float, float, float, float)>
+		{
+			(0f, 0.015f, 0.012f, 0f), (0.12f, 0.06f, 0.014f, 0.01f), (0.3f, 0.085f, 0.015f, 0.04f), (0.48f, 0.07f, 0.013f, 0.09f),
+			(0.6f, 0.035f, 0.01f, 0.14f), (0.66f, 0.005f, 0.005f, 0.17f),
+		} );
+		SmoothKit.Put( quill, SmoothKit.Cached( "davey feather", () => SmoothKit.Loft( plume ) ), red, "Plume" );
+	}
+
 	(Node3D Shoulder, Node3D Elbow) Arm( float side, Material skin, Material cuff )
 	{
 		var shoulder = Sculpt.Joint( body, new Vector3( side * 0.58f, 1.05f, 0f ), side > 0 ? "Shoulder R" : "Shoulder L" );
-		Sculpt.Limb( shoulder, Vector3.Zero, new Vector3( 0f, -0.52f, 0f ), 0.14f, 0.11f, skin, "Upper Arm" );
+		SmoothKit.Tube( shoulder, Vector3.Zero, new Vector3( 0f, -0.52f, 0f ), 0.14f, 0.11f, skin, "Upper Arm" );
 		var elbow = Sculpt.Joint( shoulder, new Vector3( 0f, -0.52f, 0f ), "Elbow" );
-		Sculpt.Blob( elbow, Vector3.Zero, Vector3.One * 0.22f, skin );
-		Sculpt.Limb( elbow, Vector3.Zero, new Vector3( 0f, -0.36f, 0f ), 0.11f, 0.1f, skin, "Forearm" );
+		SmoothKit.Tube( elbow, Vector3.Zero, new Vector3( 0f, -0.36f, 0f ), 0.11f, 0.095f, skin, "Forearm" );
 		// The cuff: a wide band with two stripes.
-		Sculpt.Limb( elbow, new Vector3( 0f, -0.34f, 0f ), new Vector3( 0f, -0.48f, 0f ), 0.15f, 0.16f, cuff, "Cuff" );
+		SmoothKit.Tube( elbow, new Vector3( 0f, -0.34f, 0f ), new Vector3( 0f, -0.48f, 0f ), 0.15f, 0.16f, cuff, "Cuff" );
 		foreach ( var y in new[] { -0.38f, -0.44f } )
 			Sculpt.Limb( elbow, new Vector3( 0f, y, 0f ), new Vector3( 0f, y - 0.015f, 0f ), 0.165f, 0.165f, skin, "Stripe" );
 		return (shoulder, elbow);
@@ -734,6 +835,7 @@ void fragment() {
 		body.Position = new Vector3( 0f, MathF.Sin( t * 1.6f ) * 0.12f, 0f );
 		for ( var i = 0; i < tail.Count; i++ )
 			tail[i].Rotation = new Vector3( -0.17f - 0.05f * MathF.Sin( t * 2f - i * 0.6f ), 0f, 0.16f * MathF.Sin( t * 1.7f - i * 0.7f ) );
+		if ( tailBones is not null ) SmoothKit.PoseChain( tailBones, tail );
 		head.Rotation = new Vector3( 0.05f * MathF.Sin( t * 1.1f ), 0.1f * MathF.Sin( t * 0.7f ), 0f );
 
 		// Arms: idle (cutlass up, hook out), swipe (up and back, then across), cannons and sink (both up, then down).

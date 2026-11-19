@@ -210,13 +210,17 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
 	public float MermaidChance = 0.5f;
 	public float MermaidBaseHealth = 208f;
 	public float MermaidHealthPerWave = 32.5f;
+
+	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
+	public int DaveyWave = 20;
+	public float DaveyHealth = 12000f;
 
 	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
 	public int PoseidonWave = 30;
@@ -290,6 +294,14 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) p.GlobalBasis = Shapes.LookAt( toPlayer );
 			p.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return p;
+		},
+		[EnemyKind.Davey] = ( d, at, health ) =>
+		{
+			var g = DaveyJones.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 2.1f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) g.GlobalBasis = Shapes.LookAt( toPlayer );
+			g.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return g;
 		},
 		[EnemyKind.Spider] = ( d, at, health ) =>
 		{
@@ -380,11 +392,11 @@ public partial class WaveDirector : Node3D
 		if ( bossPending )
 		{
 			if ( !SpawnBossWaves ) bossPending = false;
-			// Wave 30 is Poseidon's instead of MC61's.
-			else if ( !SpawningPaused && Spawn( Wave == PoseidonWave ? EnemyKind.Poseidon : EnemyKind.Boss ) ) bossPending = false;
+			// Wave 20 is Davey's and wave 30 Poseidon's instead of MC61's.
+			else if ( !SpawningPaused && Spawn( Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : EnemyKind.Boss ) ) bossPending = false;
 		}
 
-		if ( krakenPending && !SpawningPaused )
+		if ( krakenPending && !SpawningPaused && !DaveyJones.InLocker )
 		{
 			var spot = KrakenSpot();
 			var toward = PlayerSurvivor.FindNearestAlive( spot )?.WorldPosition ?? spot + Vector3.Forward;
@@ -393,7 +405,7 @@ public partial class WaveDirector : Node3D
 
 		if ( toSpawn > 0 && alive.Count < MaxAlive && timeSinceSpawn >= SpawnInterval )
 		{
-			if ( !SpawningPaused )
+			if ( !SpawningPaused && !DaveyJones.InLocker )
 			{
 				noSpotLastTry = false;
 				if ( TrySpawnEnemy() ) { toSpawn--; failedSpawns = 0; }
@@ -560,6 +572,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Seahorse => SeahorseBaseHealth + SeahorseHealthPerWave * Wave,
 			EnemyKind.Mermaid => MermaidBaseHealth + MermaidHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
+			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};

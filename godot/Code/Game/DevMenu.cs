@@ -464,6 +464,9 @@ public partial class DevMenu : CanvasLayer
 			Action( "Ink now", () => { foreach ( var k in Kraken.All ) k.ForceInk(); } );
 			Action( "Shatter the dome", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead ) k.BreakHelmet(); } );
 			Action( "Teleport to Kraken", () => { if ( Kraken.All.FirstOrDefault( k => !k.IsDead ) is { } k && Controller is { } c ) { c.GlobalPosition = Nav.Closest( c, k.GlobalPosition - k.GlobalBasis.Z * 18f ) + Vector3.Up * 0.1f; c.Velocity = Vector3.Zero; } } );
+			foreach ( var attack in new[] { "vanish", "cannons", "sink" } )
+				Action( $"Davey: {attack}", () => { foreach ( var davey in DaveyJones.All ) davey.ForceAttack( attack ); } );
+			Action( "Davey to half (his locker)", () => { foreach ( var davey in DaveyJones.All ) if ( !davey.IsDead && davey.Health is { } h ) h.OnDamage( new DamageInfo { Damage = h.MaxHealth } ); } );
 			foreach ( var attack in new[] { "trident", "whirlpool", "seahorses", "vanish" } )
 				Action( $"Poseidon: {attack}", () => { foreach ( var p in Poseidon.All ) p.ForceAttack( attack ); } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
@@ -607,6 +610,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { NextBossWave: > 0 } ) Action( $"Boss wave ({d.NextBossWave})", () => d.JumpToWave( d.NextBossWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Kraken next wave (now {d.KrakenChanceNext * 100f:0}%)", () => d.ForceKrakenNextWave() );
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
+			if ( d is { OpenWorld: false } ) Action( $"Davey wave ({d.DaveyWave})", () => d.JumpToWave( d.DaveyWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
 			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area != 3 ) Action( "Teleport to Atlantis (stage 3, wave 21)", () => d.DevGoToAtlantis( Controller ) );
@@ -668,6 +672,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
 		new( "Seahorse", WaveDirector.EnemyKind.Seahorse ),
 		new( "Poseidon", WaveDirector.EnemyKind.Poseidon ),
+		new( "Davey (ghost pirate)", WaveDirector.EnemyKind.Davey ),
 		new( "Mermaid", WaveDirector.EnemyKind.Mermaid ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };

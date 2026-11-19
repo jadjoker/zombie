@@ -30,7 +30,7 @@ public abstract partial class Creature : Node3D, ICreature
 	/// <summary> Caught in a Bubble Cannon bubble (BubbleTrap): it stops thinking while the bubble carries it. </summary>
 	public bool Bubbled;
 	/// <summary> Its brain is off: the dev menu froze enemies, or it is in a bubble. </summary>
-	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled;
+	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled || (DaveyJones.InLocker && this is not DaveyJones);
 	public event Action<Creature> Killed;
 
 	protected Health health;

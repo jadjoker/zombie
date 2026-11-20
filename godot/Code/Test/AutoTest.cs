@@ -3148,13 +3148,14 @@ public partial class AutoTest : Node
 		var surgeBefore = TridentSurge.Shown;
 		var jetpack = player.GetNode<Jetpack>( "Jetpack" );
 		var pushed = false;
+		var startYaw = player.EyeAngles.Yaw;
 		foreach ( var (surgeGun, third) in new[] { (spear, false), (spear, true), (shooter, false), (shooter, true) } )
 		{
 			inventory.Select( surgeGun, true );
 			player.ThirdPerson = third;
 			player.GlobalPosition = home;   // back to the open lane (the first surge ends near plants)
 			player.Velocity = Vector3.Zero;
-			if ( third ) player.EyeAngles = new Angles( 0f, player.EyeAngles.Yaw + 150f, 0f );   // away from the stations, over open sand
+			if ( third ) player.EyeAngles = new Angles( 0f, startYaw + 150f, 0f );   // away from the stations, over open sand
 			await Wait( 5f );   // power back
 			var shotName = $"tridentbot_surge_{(surgeGun == spear ? "spear" : "shooter")}{(third ? "_3p" : "")}";
 			jetpack.TestSurge( 0.5f );

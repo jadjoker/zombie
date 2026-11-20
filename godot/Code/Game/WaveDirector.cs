@@ -642,40 +642,20 @@ public partial class WaveDirector : Node3D
 		nextWaveAt = 0.1f;
 	}
 
+	/// <summary>
+	/// A new game after a game over: the level is built afresh, back on the dock, in every area. (Area 1 used to be reset
+	/// in place, and things were missed: pickups still lying about were taken in the new run, station prices and
+	/// purchase counts carried over.)
+	/// </summary>
 	public void Restart()
 	{
-		if ( State != WaveState.GameOver ) return;
-		// Back from the wreck site: a new game starts from the first area (the level is built afresh).
-		if ( SeaTerrain.Area >= 2 ) { GetTree().ReloadCurrentScene(); return; }
-		foreach ( var node in alive.ToList() ) if ( IsInstanceValid( node ) ) node.QueueFree();
-		// Every enemy of every kind (spiders too); an ally spider stays.
-		foreach ( var enemy in Creature.Everyone.Where( x => x.IsEnemy ).ToList() ) enemy.QueueFree();
-		// A teleporter left from a death while it waited after wave 10 would take the new game to the wreck site.
-		if ( Teleporter.Current is { } teleporter && IsInstanceValid( teleporter ) ) teleporter.QueueFree();
-		WaitingForTeleport = false;
-		failedSpawns = 0;
-		credited = 0;
-		KrakenWave = krakenPending = krakenForced = false;
-		KrakenVisits = 0;
-		krakenRoundsSince = 0;
-		alive.Clear();
-		Wave = 0;
-		Kills = 0;
-		originSet = false;
-		visitedCells.Clear();
-		CellsExplored = 0;
-		FarthestDistance = 0f;
-		SurvivalSeconds = 0f;
-		toSpawn = 0;
-		bossPending = false;
-		BossWave = false;
-		FloatRound = false;
-		State = WaveState.Intermission;
-		nextWaveAt = FirstWaveDelay;
-		foreach ( var gib in GetTree().CurrentScene.FindChildren( "*", "RigidBody3D", true, false ).OfType<Gib>().ToList() ) gib.QueueFree();
-		var index = 0;
-		foreach ( var survivor in PlayerSurvivor.All.ToList() ) survivor.Respawn( RespawnPosition( index++ ), fullReset: true );
+		if ( State != WaveState.GameOver || restarting ) return;
+		restarting = true;
+		GameSettings.Save();
+		GetTree().ReloadCurrentScene();
 	}
+
+	bool restarting;
 
 	/// <summary> Where the Nth survivor comes back: around the director's spot, 90 units apart. </summary>
 	Vector3 RespawnPosition( int index ) =>

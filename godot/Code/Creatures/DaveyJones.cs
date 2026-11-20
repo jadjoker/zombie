@@ -90,7 +90,15 @@ public partial class DaveyJones : Creature
 	public static DaveyJones Spawn( Node parent, Vector3 position, float maxHealth ) =>
 		Place( new DaveyJones { Name = "Davey" }, parent, position, maxHealth );
 
-	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
+	protected override void Track( bool add )
+	{
+		if ( add ) All.Add( this );
+		else
+		{
+			All.Remove( this );
+			if ( Sinking == this ) Sinking = null;   // freed mid-sink (a restart): the next run must not see it
+		}
+	}
 
 	public float HealthFraction => health?.Fraction ?? 0f;
 

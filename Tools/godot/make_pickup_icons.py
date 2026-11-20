@@ -145,10 +145,27 @@ def reach_icon():
     return img
 
 
+def trident(d, x, top, bottom, half, prong, width, tip):
+    line(d, [(x, bottom), (x, top + prong)], width)
+    line(d, [(x - half, top + prong), (x + half, top + prong)], width)
+    for px in (x - half, x, x + half):
+        line(d, [(px, top + prong), (px, top + tip)], max(2, width - 1))
+        poly(d, [(px - tip * 0.6, top + tip), (px, top), (px + tip * 0.6, top + tip)])
+
+
+def swarm_icon():
+    img, d = badge((240, 190, 40))
+    # The big trident with three small ones flying off it.
+    trident(d, 48, 22, 110, 16, 22, 7, 12)
+    for x, y in ((84, 26), (100, 54), (84, 82)):
+        trident(d, x, y, y + 30, 7, 10, 4, 7)
+    return img
+
+
 ICONS = {
     "reload": reload_icon, "firerate": firerate_icon, "explosive": explosive_icon, "electric": electric_icon,
     "chest": chest_icon, "shield": shield_icon, "move": move_icon, "blast": blast_icon,
-    "pierce": pierce_icon, "reach": reach_icon,
+    "pierce": pierce_icon, "reach": reach_icon, "swarm": swarm_icon,
 }
 
 if __name__ == "__main__":

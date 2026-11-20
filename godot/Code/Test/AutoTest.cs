@@ -2786,10 +2786,10 @@ public partial class AutoTest : Node
 		var perks = PlayerPerks.Of( player );
 		Check( perks is not null, "the player has no PlayerPerks" );
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach) ).Sum( e => e.Chance );
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm) ).Sum( e => e.Chance );
 		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
 		Check( !PlayerPerks.Drops( PerkKind.Reach ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Reach ).Chance == 0.01f, "Trident Reach is not a 1% drop for Trident-Bot only" );
-		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
+		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
 		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
 
@@ -3113,7 +3113,7 @@ public partial class AutoTest : Node
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
 		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
-		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just Trident Pierce, Trident Reach, the shield and the chest" );
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just its trident pickups, the shield and the chest" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();
@@ -3166,6 +3166,27 @@ public partial class AutoTest : Node
 				Check( TridentBolt.LastHits == (pass == 0 ? 1 : 2), $"with {reach} Trident Reach the trident hit {TridentBolt.LastHits} crabs {gap:0.0} m apart" );
 			foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 		}
+		PlayerPerks.Of( player ).Clear();
+
+		// Trident Swarm: at most three; with the roll forced, three small tridents come off the first enemy only (not the ones sought after).
+		for ( var i = 0; i < 5; i++ ) PlayerPerks.Of( player ).Give( PerkKind.Swarm );
+		Check( PlayerPerks.Of( player ).Count( PerkKind.Swarm ) == PlayerPerks.MaxSwarm, $"Trident Swarm stacked to {PlayerPerks.Of( player ).Count( PerkKind.Swarm )}, not {PlayerPerks.MaxSwarm}" );
+		Check( !PlayerPerks.Drops( PerkKind.Swarm ), "Trident Swarm still drops with all three taken" );
+		TridentBolt.ForceSplinterChance = 1f;
+		TridentBolt.Splinters = TridentBolt.SplinterHits = 0;
+		line.Clear();
+		foreach ( var off in new[] { new Vector3( 0f, 0f, -5f ), new Vector3( 5f, 0f, -8f ), new Vector3( -5f, 0f, -11f ), new Vector3( 4f, 0f, -14f ), new Vector3( -4f, 0f, -7f ) } )
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + off ), 5000f ) );
+		await Wait( 0.6f );
+		low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - home).Flat().Normalized() * -2f;
+		along = (line[0].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
+		await Wait( 3f );
+		GD.Print( $"[autotest] trident bot: Trident Swarm let out {TridentBolt.Splinters} small tridents, they hit {TridentBolt.SplinterHits}; the big one hit {TridentBolt.LastHits}" );
+		Check( TridentBolt.Splinters == PlayerPerks.MaxSwarm, $"Trident Swarm let out {TridentBolt.Splinters} small tridents, not {PlayerPerks.MaxSwarm} (first hit only)" );
+		Check( TridentBolt.SplinterHits >= 2, $"the small tridents hit only {TridentBolt.SplinterHits} enemies" );
+		TridentBolt.ForceSplinterChance = null;
+		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 		PlayerPerks.Of( player ).Clear();
 
 		// The surge: a magic trident leads it.

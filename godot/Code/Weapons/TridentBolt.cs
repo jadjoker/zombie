@@ -44,6 +44,13 @@ public partial class TridentBolt : Node3D
 	Creature seeking;
 	/// <summary> Tests: enemies the last trident hit (the first plus the ones it sought). </summary>
 	public static int LastHits;
+	/// <summary> A small trident from Trident Swarm: half damage, seeks one enemy, never splits again. </summary>
+	bool small;
+	public const float SplinterChance = 0.2f, SplinterDamage = 0.5f, SplinterScale = 0.55f;
+	/// <summary> Tests: forces the Trident Swarm roll (null in play). </summary>
+	public static float? ForceSplinterChance;
+	/// <summary> Tests: small tridents let out, and enemies they hit. </summary>
+	public static int Splinters, SplinterHits;
 
 	/// <summary> Fires one from `muzzle` toward `target`. `cameraStart` is where the shot was aimed from (checked first, so a gun poked into a wall still hits the wall). </summary>
 	public static TridentBolt Launch( Node parent, Vector3 muzzle, Vector3 target, Vector3 aim, Vector3 cameraStart, float damage, PlayerController shooter, PlayerWeapon weapon, bool charged = false )
@@ -77,7 +84,7 @@ public partial class TridentBolt : Node3D
 	{
 		var forward = velocity.SafeNormal();
 		if ( forward == Vector3.Zero ) return;
-		GlobalBasis = Shapes.LookAt( forward ) * new Basis( Vector3.Back, roll );
+		GlobalBasis = Shapes.LookAt( forward ) * new Basis( Vector3.Back, roll ) * Basis.FromScale( Vector3.One * (small ? SplinterScale : 1f) );
 	}
 
 	public override void _Process( double delta )
@@ -232,10 +239,13 @@ public partial class TridentBolt : Node3D
 				if ( shootable.IsDead ) weapon.MarkKill();
 			}
 			hits++;
-			LastHits = hits;
+			if ( small ) SplinterHits++;
+			else LastHits = hits;
 			struck.Add( owner );
 			if ( seeking == owner ) seeking = null;
-			var next = hits <= SeekNext + (PlayerPerks.Of( shooter )?.ExtraPierce ?? 0) ? NextTarget( tr.HitPosition ) : null;
+			// Trident Swarm: only on the first enemy a trident hits, not on the ones it seeks after.
+			if ( !small && hits == 1 && owner is Creature first ) Splinter( tr.HitPosition, first );
+			var next = !small && hits <= SeekNext + (PlayerPerks.Of( shooter )?.ExtraPierce ?? 0) ? NextTarget( tr.HitPosition ) : null;
 			if ( next is not null )
 			{
 				// Through it and on to the next closest enemy: none of this creature's parts stop it again; a burst of bubbles out the far side.
@@ -243,8 +253,7 @@ public partial class TridentBolt : Node3D
 				age = 0f;
 				// It comes out of the enemy already turned onto the next one, at the plain speed so it can follow it.
 				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed * SeekSpeed;
-				foreach ( var part in CreaturePart.All )
-					if ( part.ShotOwner == owner && IsInstanceValid( part ) ) exclude.Add( part.GetRid() );
+				ExcludeParts( owner, exclude );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );
 				GlobalPosition = tr.HitPosition + direction * 0.05f;
 				AlienBlast.Spawn( GetTree().CurrentScene, tr.HitPosition, 0.45f );   // a little magic flash as it goes through
@@ -263,6 +272,56 @@ public partial class TridentBolt : Node3D
 			Sfx.Play( "hit_world", tr.HitPosition, 0.8f, 0.8f );
 		}
 		StickAt( tr, direction );
+	}
+
+	static void ExcludeParts( Node owner, Godot.Collections.Array<Rid> list )
+	{
+		foreach ( var part in CreaturePart.All )
+			if ( part.ShotOwner == owner && IsInstanceValid( part ) ) list.Add( part.GetRid() );
+	}
+
+	/// <summary>
+	/// Trident Swarm: one roll of `SplinterChance` per pickup (up to `PlayerPerks.MaxSwarm`); each that comes up lets a
+	/// small trident out of the enemy at half damage, fanned out and seeking the nearest other enemy (a different one each
+	/// while there are enough) at the same seeking speed as the big one.
+	/// </summary>
+	void Splinter( Vector3 at, Creature first )
+	{
+		var count = Math.Min( PlayerPerks.Of( shooter )?.Count( PerkKind.Swarm ) ?? 0, PlayerPerks.MaxSwarm );
+		if ( count == 0 || !IsInstanceValid( shooter ) ) return;
+		var range = SeekRange + (PlayerPerks.Of( shooter )?.ExtraSeekRange ?? 0f);
+		var taken = new HashSet<Creature>();
+		for ( var i = 0; i < count; i++ )
+		{
+			if ( Rng.Float() >= (ForceSplinterChance ?? SplinterChance) ) continue;
+			Creature target = null, spare = null;
+			float best = range, bestSpare = range;
+			foreach ( var c in Creature.Everyone )
+			{
+				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || c == first ) continue;
+				var d = at.DistanceTo( c.GlobalPosition );
+				if ( !taken.Contains( c ) && d < best ) { best = d; target = c; }
+				if ( d < bestSpare ) { bestSpare = d; spare = c; }
+			}
+			target ??= spare;
+			if ( target is null ) return;
+			taken.Add( target );
+			var heading = ((AimAt( target, at ) - at).SafeNormal() + Rng.InSphere( 0.7f )).SafeNormal();
+			var bolt = new TridentBolt
+			{
+				Name = "Small Trident", small = true, damage = damage * SplinterDamage, shooter = shooter, weapon = weapon,
+				velocity = heading * Speed * SeekSpeed, cameraStart = at, checkedStart = true, seeking = target,
+				exclude = exclude.Duplicate(),
+			};
+			ExcludeParts( first, bolt.exclude );
+			bolt.struck.Add( first );
+			GetTree().CurrentScene.AddChild( bolt );
+			bolt.GlobalPosition = at;
+			bolt.Face();
+			TridentModel.BuildTrident( bolt );
+			bolt.age = 0f;
+			Splinters++;
+		}
 	}
 
 	/// <summary> The closest live enemy to `from` within SeekRange (plus Trident Reach) that this trident hasn't hit yet. </summary>
@@ -299,7 +358,7 @@ public partial class TridentBolt : Node3D
 		stuck = true;
 		sinceStuck = 0f;
 		// The points a little way into what it hit.
-		GlobalPosition = tr.HitPosition - direction * (TipReach - SinkIn);
+		GlobalPosition = tr.HitPosition - direction * (TipReach - SinkIn) * (small ? SplinterScale : 1f);
 		Face();
 		if ( tr.Node is { } hit && IsInstanceValid( hit ) && hit.IsInsideTree() && (Shootables.Find( hit ) is not null || hit is Gib) )
 			CallDeferred( MethodName.Pin, hit );

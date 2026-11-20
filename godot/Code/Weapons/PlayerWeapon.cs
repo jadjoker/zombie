@@ -68,6 +68,8 @@ public partial class PlayerWeapon : Node
 		return 1f - r * r * (3f - 2f * r);
 	}
 	public float ShieldRaise => shieldUp;
+	/// <summary> Trident-Bot's surge thrust (TridentSurge): the held weapon cocked back (below 0) or driven forward (to 1.2). </summary>
+	public float SurgePose;
 	/// <summary> The firing sound (null: "{ModelName}_shoot"). </summary>
 	public string ShootSound;
 
@@ -383,7 +385,7 @@ public partial class PlayerWeapon : Node
 			juice?.KickFov( 5f );
 			Controls.Rumble( 0.3f );
 		}
-		if ( ViewModel is not null ) SpearModel.Pose( ViewModel, SpearThrust, spearLeft, shieldUp, dt );
+		if ( ViewModel is not null ) SpearModel.Pose( ViewModel, MathF.Abs( SurgePose ) > MathF.Abs( SpearThrust ) ? SurgePose : SpearThrust, spearLeft, shieldUp, dt );
 	}
 
 	/// <summary> Thrusts the spear as if clicked (also the testing hook). </summary>

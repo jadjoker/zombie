@@ -3026,11 +3026,11 @@ public partial class AutoTest : Node
 	/// the spear reaches a crab twice the axe's reach away; the shield takes 65% of a hit; a charged trident goes
 	/// one crab then seeks and goes through the next two; healing in third person brings the plecos and their hearts. Pictures need a window.
 	/// </summary>
-	void SurgeReport( PlayerController player, Jetpack jetpack )
+	void SurgeReport( PlayerController player, Jetpack jetpack, PlayerWeapon gun )
 	{
-		var t = player.GetNode<TridentSurge>( "TridentSurge" ).Trident;
+		var g = player.GetNode<TridentSurge>( "TridentSurge" ).Glow;
 		var cam = GetViewport().GetCamera3D();
-		GD.Print( $"[autotest] surge: charging {jetpack.Charging} surging {jetpack.Surging} power {jetpack.Power:0} stalled {jetpack.Stalled} trident {t.Visible} at {t.GlobalPosition} scale {t.Scale.X:0.00} player {player.GlobalPosition} cam {cam?.GlobalPosition} behind {cam?.IsPositionBehind( t.GlobalPosition )} screen {cam?.UnprojectPosition( t.GlobalPosition )}" );
+		GD.Print( $"[autotest] surge ({gun.DisplayName}): charging {jetpack.Charging} surging {jetpack.Surging} pose {gun.SurgePose:0.00} glow {g.Visible} at {g.GlobalPosition} cam {cam?.GlobalPosition} screen {cam?.UnprojectPosition( g.GlobalPosition )}" );
 	}
 
 	async Task TridentBotTest()
@@ -3147,23 +3147,28 @@ public partial class AutoTest : Node
 		// The surge: a magic trident leads it.
 		var surgeBefore = TridentSurge.Shown;
 		var jetpack = player.GetNode<Jetpack>( "Jetpack" );
-		foreach ( var third in new[] { false, true } )
+		var pushed = false;
+		foreach ( var (surgeGun, third) in new[] { (spear, false), (spear, true), (shooter, false), (shooter, true) } )
 		{
+			inventory.Select( surgeGun, true );
 			player.ThirdPerson = third;
 			player.GlobalPosition = home;   // back to the open lane (the first surge ends near plants)
 			player.Velocity = Vector3.Zero;
 			await Wait( 5f );   // power back
+			var shotName = $"tridentbot_surge_{(surgeGun == spear ? "spear" : "shooter")}{(third ? "_3p" : "")}";
 			jetpack.TestSurge( 0.5f );
 			await Wait( 0.3f );
-			SurgeReport( player, jetpack );
-			await Shot( third ? "tridentbot_surge_charge_3p" : "tridentbot_surge_charge" );
+			SurgeReport( player, jetpack, surgeGun );
+			await Shot( shotName + "_charge" );
 			await Wait( 0.3f );
-			SurgeReport( player, jetpack );
-			await Shot( third ? "tridentbot_surge_3p" : "tridentbot_surge" );
+			SurgeReport( player, jetpack, surgeGun );
+			pushed |= surgeGun.SurgePose > 0.5f;
+			await Shot( shotName );
 			await Wait( 0.6f );
 		}
 		player.ThirdPerson = false;
-		Check( TridentSurge.Shown > surgeBefore, "no magic trident led Trident-Bot's surge" );
+		Check( pushed, "the surge did not thrust the weapon in hand forward" );
+		Check( TridentSurge.Shown > surgeBefore, "no violet glow on the weapon in Trident-Bot's surge" );
 
 		// Healing in third person: the plecos latch on and hearts pop.
 		player.ThirdPerson = true;

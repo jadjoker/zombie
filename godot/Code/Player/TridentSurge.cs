@@ -1,54 +1,52 @@
 using Godot;
 
 /// <summary>
-/// Trident-Bot's surge: a magic trident (the charged trident's violet aura, light and sparkles) appears in front of the
-/// robot while it winds up, then leads the surge on a glowing tether as if it pulls the robot along. Shown in first
-/// person (ahead of the camera) and third person (ahead of the body).
+/// Trident-Bot's surge: the weapon in its hand does the thrust. Winding up cocks it back; the surge drives it forward
+/// (a lunge with an overshoot) and holds it out ahead as if it pulls the robot along, then it comes back. The spear
+/// thrusts with the spear, the trident shooter with the shooter. The head glows with the charged trident's violet aura
+/// and light, and sparkles stream off it. First person moves the view model, third person the gun in the robot's hands.
 /// </summary>
 public partial class TridentSurge : Node
 {
-	const float Reach = 2.2f;          // metres ahead of the robot (third person)
-	const float FirstReach = 2.6f;     // metres ahead of the view (first person: clear of the gun)
-	const float FadeTime = 0.3f;       // seconds to fade out after the surge
+	const float FadeTime = 0.3f;       // seconds to bring the weapon back after the surge
 	static readonly Color Violet = new( 0.6f, 0.45f, 1f );
+	/// <summary> Where the spear's head is in its body (s&box units, the body's own frame). </summary>
+	static readonly Vector3 SpearHead = new( 48f, 0f, 0.6f );
 
 	PlayerController controller;
 	Jetpack jetpack;
-	Node3D trident;
-	MeshInstance3D tether;
-	StandardMaterial3D tetherMaterial;
+	Node3D glow;
 	OmniLight3D wash;
-	float show;
+	float show, pose;
+	bool wasSurging;
+	TimeSince sinceSurge = 99f;
 	TimeSince sinceSparkle = 0f;
-	/// <summary> Tests: frames the trident was out. </summary>
+	PlayerWeapon posed;
+	/// <summary> Tests: frames the surge glow was out. </summary>
 	public static int Shown;
-	/// <summary> Tests: the trident and the tether. </summary>
-	public Node3D Trident => trident;
+	/// <summary> Tests: the glow on the weapon's head. </summary>
+	public Node3D Glow => glow;
 
 	public override void _Ready()
 	{
 		Name = "TridentSurge";
 		controller = GetParent<PlayerController>();
-		trident = new Node3D { Name = "Surge Trident", Visible = false, TopLevel = true };
-		var model = new Node3D { Name = "Model", Scale = Vector3.One * 1.6f };
-		trident.AddChild( model );
-		TridentModel.BuildTrident( model );
-		TridentBolt.Enchant( model );
-		AddChild( trident );
-		tetherMaterial = new StandardMaterial3D
+		glow = new Node3D { Name = "Surge Glow", Visible = false, TopLevel = true };
+		var aura = new StandardMaterial3D
 		{
-			AlbedoColor = new Color( 0.75f, 0.45f, 1f, 0.55f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+			AlbedoColor = new Color( 0.7f, 0.4f, 1f, 0.3f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
 			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, EmissionEnabled = true, Emission = new Color( 0.75f, 0.45f, 1f ), EmissionEnergyMultiplier = 3f,
 			CullMode = BaseMaterial3D.CullModeEnum.Disabled,
 		};
-		tetherMaterial.SetMeta( "no_caustics", true );
-		tether = new MeshInstance3D
+		aura.SetMeta( "no_caustics", true );
+		glow.AddChild( new MeshInstance3D
 		{
-			Name = "Surge Tether", Mesh = new CylinderMesh { TopRadius = 0.012f, BottomRadius = 0.02f, Height = 1f, RadialSegments = 8, Rings = 1 },
-			MaterialOverride = tetherMaterial, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Visible = false, TopLevel = true,
-		};
-		AddChild( tether );
-		wash = new OmniLight3D { Name = "Surge Glow", LightColor = Violet, LightEnergy = 0f, OmniRange = 4f, ShadowEnabled = false, TopLevel = true };
+			Name = "Magic Aura", Mesh = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 16, Rings = 8 }, MaterialOverride = aura,
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Scale = Vector3.One * 0.16f,
+		} );
+		glow.AddChild( new OmniLight3D { LightColor = Violet, LightEnergy = 2.5f, OmniRange = 3f, ShadowEnabled = false } );
+		AddChild( glow );
+		wash = new OmniLight3D { Name = "Surge Wash", LightColor = Violet, LightEnergy = 0f, OmniRange = 4f, ShadowEnabled = false, TopLevel = true };
 		AddChild( wash );
 	}
 
@@ -56,62 +54,59 @@ public partial class TridentSurge : Node
 	{
 		var dt = (float)delta;
 		jetpack ??= controller.GetNodeOrNull<Jetpack>( "Jetpack" );
+		var held = controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
 		var on = RobotClass.Current == RobotClass.TridentBot && jetpack is not null && !jetpack.Blinking && (jetpack.Charging || jetpack.Surging)
-			&& !PlayerSurvivor.LocalDead;
+			&& !PlayerSurvivor.LocalDead && held is not null;
 		show = on ? MathX.Clamp( show + dt / 0.12f, 0f, 1f ) : MathX.Clamp( show - dt / FadeTime, 0f, 1f );
-		var visible = show > 0.01f;
-		trident.Visible = tether.Visible = visible;
-		wash.LightEnergy = 3f * show;
-		if ( !visible ) return;
-		Shown++;
 
-		// Where it leads: the surge's way once it goes, the aim while winding up (level in third person, so it stays in view).
-		var camera = controller.Camera;
-		var first = !controller.ThirdPerson && camera is not null;
-		var aim = first ? -camera.GlobalBasis.Z : controller.EyeAngles.Forward.Flat().SafeNormal();
-		var direction = jetpack.Surging ? jetpack.SurgeDirection : aim;
-		if ( direction == Vector3.Zero ) direction = aim;
-		var charge = jetpack.Surging ? 1f : jetpack.Charge;
-
-		// First person: from just under the view, the trident out ahead and a little low of the crosshair;
-		// third person: from the robot's chest.
-		Vector3 holdAt;
-		float reach;
-		if ( first )
+		// The pose: cocked back while winding up, a lunge that overshoots as the surge goes, held out, then back.
+		var surging = on && jetpack.Surging;
+		if ( surging && !wasSurging ) sinceSurge = 0f;
+		wasSurging = surging;
+		float want;
+		if ( surging )
 		{
-			holdAt = camera.GlobalPosition - camera.GlobalBasis.Y * 0.28f;
-			reach = FirstReach;
+			var t = (float)sinceSurge;
+			want = t < 0.07f ? MathX.Lerp( -0.35f, 1.2f, t / 0.07f ) : MathX.Lerp( 1.2f, 1f, MathX.Clamp( (t - 0.07f) / 0.1f, 0f, 1f ) );
+			pose = want;
 		}
 		else
 		{
-			holdAt = controller.GlobalPosition + Vector3.Up * 40f * U.In;
-			reach = Reach;
+			want = on ? -0.35f * Smooth( jetpack.Charge ) : 0f;
+			pose = MathX.Lerp( pose, want, 1f - MathF.Exp( -(on ? 20f : 9f) * dt ) );
 		}
+		if ( posed is not null && posed != held && IsInstanceValid( posed ) ) posed.SurgePose = 0f;
+		posed = held;
+		if ( held is not null ) held.SurgePose = MathF.Abs( pose ) < 0.002f ? 0f : pose;
 
-		// It pulls ahead: further out and steadier as the charge builds, straining at full surge.
-		reach *= MathX.Lerp( 0.75f, 1f, charge ) * MathX.Lerp( 0.6f, 1f, show );
-		var shake = jetpack.Surging ? 0.015f : 0.04f * (1f - charge);
-		var tip = holdAt + direction * reach + Rng.InSphere( shake );
-		trident.GlobalTransform = new Transform3D( Shapes.LookAt( direction ) * new Basis( Vector3.Back, (float)Clock.Now * 4f ), tip );
-		trident.Scale = Vector3.One * MathX.Lerp( 0.4f, 1f, show * MathX.Lerp( 0.6f, 1f, charge ) );
+		var visible = show > 0.01f;
+		glow.Visible = visible;
+		wash.LightEnergy = 2.5f * show;
+		if ( !visible ) return;
+		Shown++;
 
-		// The tether from the robot to the trident's butt.
-		var butt = tip - direction * 0.55f * trident.Scale.X * 1.6f;
-		var span = butt - holdAt;
-		var length = span.Length();
-		if ( length > 0.05f )
-		{
-			var up = span / length;
-			var side = MathF.Abs( up.Dot( Vector3.Up ) ) > 0.95f ? Vector3.Right : Vector3.Up.Cross( up ).Normalized();
-			tether.GlobalTransform = new Transform3D( new Basis( side, up * length, side.Cross( up ) ), holdAt + span * 0.5f );
-		}
-		tetherMaterial.AlbedoColor = new Color( 0.75f, 0.45f, 1f, 0.55f * show );
-		wash.GlobalPosition = holdAt + direction * reach * 0.5f;
-
+		// The glow sits on the weapon's head: the spear's prongs or the shooter's muzzle, in whichever view shows.
+		if ( Head( held ) is not { } head ) { glow.Visible = false; return; }
+		glow.GlobalPosition = head;
+		glow.Scale = Vector3.One * MathX.Lerp( 0.3f, 1f, show ) * (1f + 0.08f * MathF.Sin( (float)Clock.Now * 18f ));
+		var forward = jetpack.Surging ? jetpack.SurgeDirection : controller.EyeAngles.Forward;
+		wash.GlobalPosition = head - forward * 0.4f;
 		if ( sinceSparkle > (jetpack.Surging ? 0.03f : 0.08f) )
 		{
 			sinceSparkle = 0f;
-			TridentBolt.Sparkles( GetTree(), holdAt.Lerp( tip, 0.45f ), tip );   // not right at the camera
+			TridentBolt.Sparkles( GetTree(), head, head + forward * 0.5f );
 		}
+	}
+
+	static float Smooth( float k ) { k = MathX.Clamp( k, 0f, 1f ); return k * k * (3f - 2f * k); }
+
+	/// <summary> The weapon's head in the world: in first person on the view model, in third person on the gun in hand. </summary>
+	Vector3? Head( PlayerWeapon weapon )
+	{
+		Node3D root = !controller.ThirdPerson ? weapon.ViewModel : controller.FindChild( $"World {weapon.DisplayName}", true, false ) as Node3D;
+		if ( root is null || !root.IsVisibleInTree() ) return null;
+		if ( weapon.Spear && root.FindChild( "Spear", true, false ) is Node3D spear ) return spear.GlobalTransform * SpearHead;
+		if ( root.FindChild( "Muzzle", true, false ) is Node3D muzzle ) return muzzle.GlobalPosition;
+		return null;
 	}
 }

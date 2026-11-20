@@ -140,7 +140,9 @@ public partial class ViewModel : Node3D
 		var settle = new Vector3( 1f, 0f, 0f ) * MathF.Sin( aim * MathF.PI ) * -1.2f;
 		// The player's own choice of how far out the gun sits (pause menu); the aimed pose is left alone so the sights line up.
 		var reach = new Vector3( GameSettings.GunDistance, 0f, GameSettings.GunHeight ) * (1f - aim);
-		var offset = Vector3.Zero.Lerp( aimOffset, aim ) + settle + tuck + bob + lag + reach;
+		// Trident-Bot's surge drives the gun forward (the spear poses its own thrust).
+		var surge = weapon is { Spear: false } ? new Vector3( 12f * weapon.SurgePose, 0f, 0f ) : Vector3.Zero;
+		var offset = Vector3.Zero.Lerp( aimOffset, aim ) + settle + tuck + bob + lag + reach + surge;
 
 		Position = U.Sbox( offset );
 		Basis = new Angles( 0f, aimYaw * aim, 0f ).ToBasis() * new Angles( inertia.Y * 0.35f * steady, inertia.X * 0.35f * steady, 0f ).ToBasis();

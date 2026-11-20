@@ -576,6 +576,8 @@ public partial class PlayerRig : Node
 			gun.Root.GlobalPosition = rigRoot.GlobalTransform * U.Sbox( handAt );
 			var r = BoneWorld( gun.Skeleton, "hand_R" );
 			gun.Root.GlobalPosition += rigRoot.GlobalTransform * U.Sbox( handAt ) - r;
+			// Trident-Bot's surge thrust: the weapon driven forward along the aim, the hands going with it.
+			if ( weapon.SurgePose != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SurgePose * 0.35f;
 			gripR = Char( BoneWorld( gun.Skeleton, "hand_R" ) );
 			gripL = Char( BoneWorld( gun.Skeleton, "hand_L" ) );
 			var anim = weapon.IsReloading ? "reload" : "idle";

@@ -94,7 +94,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
   the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). A pull fires at once; keep holding 1 s after it (`PlayerWeapon.ChargeTime`)
-  for a charged next trident (faster, magical). Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce pickup) at `SeekSpeed` (0.8 of Speed) and goes through them. Its sounds (`trident_pierce`,
+  for a charged next trident (faster, magical). Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce pickup) at `SeekSpeed` (0.64 of Speed; only enemies stop it while seeking) and goes through them. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Robot classes (`Player/RobotClass.cs`): each robot has its own weapons and mouse 4 move; both swing the axe.

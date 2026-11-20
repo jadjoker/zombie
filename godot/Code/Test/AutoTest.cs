@@ -3120,6 +3120,23 @@ public partial class AutoTest : Node
 		Check( TridentBolt.LastHits == 2 + TridentBolt.SeekNext, $"with a Trident Pierce the trident hit {TridentBolt.LastHits} crabs, not {2 + TridentBolt.SeekNext}" );
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 
+		// Stacked: three pickups seek three more, and crabs that burst into gibs on the way don't stop the chain.
+		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
+		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
+		await Wait( 0.3f );
+		line.Clear();
+		foreach ( var off in new[] { new Vector3( 0f, 0f, -5f ), new Vector3( 5f, 0f, -8f ), new Vector3( -5f, 0f, -11f ), new Vector3( 4f, 0f, -14f ), new Vector3( -4f, 0f, -17f ), new Vector3( 3f, 0f, -20f ) } )
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + off ), 1f ) );
+		await Wait( 0.6f );
+		low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - home).Flat().Normalized() * -2f;
+		along = (line[0].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+		TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
+		await Wait( 3f );
+		GD.Print( $"[autotest] trident bot: with three Trident Pierces the trident hit {TridentBolt.LastHits} crabs" );
+		Check( TridentBolt.LastHits == 4 + TridentBolt.SeekNext, $"with three Trident Pierces the trident hit {TridentBolt.LastHits} crabs, not {4 + TridentBolt.SeekNext}" );
+		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
+		PlayerPerks.Of( player ).Clear();
+
 		// Healing in third person: the plecos latch on and hearts pop.
 		player.ThirdPerson = true;
 		survivor.Health.OnDamage( new DamageInfo { Damage = 120f, Position = player.GlobalPosition } );

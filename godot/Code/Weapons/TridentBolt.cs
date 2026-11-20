@@ -34,9 +34,9 @@ public partial class TridentBolt : Node3D
 	public const float ChargedSpeed = 1.8f;   // times Speed
 	/// <summary> After the first enemy it hits, a trident seeks this many more (the next closest each time) and goes through them. </summary>
 	public const int SeekNext = 2;
-	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 20% slower, so the chain can be seen). </summary>
-	public const float SeekSpeed = 0.8f;
-	public const float SeekRange = 28f;       // metres from the last hit to the next enemy it will go for
+	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 20% slower, then 20% slower again, so the chain can be seen). </summary>
+	public const float SeekSpeed = 0.64f;
+	public const float SeekRange = 40f;       // metres from the last hit to the next enemy it will go for
 	public const float SeekTurn = 40f;        // radians a second it can turn while seeking (at full speed a slow turn swung wide of the next enemy)
 	int hits;
 	readonly HashSet<Node> struck = new();
@@ -114,7 +114,8 @@ public partial class TridentBolt : Node3D
 		}
 		else velocity += Vector3.Down * Drop * dt;
 		var to = from + velocity * dt;
-		var tr = Trace.Ray( this, from, to, Layers.World | Layers.Creature | Layers.Gib, exclude );
+		// While seeking it only hits enemies: gibs from the last kill, kelp and hills used to stop the chain short.
+		var tr = Trace.Ray( this, from, to, seeking is not null ? Layers.Creature : Layers.World | Layers.Creature | Layers.Gib, exclude );
 		if ( tr.Hit ) { Strike( tr ); return; }
 		GlobalPosition = to;
 		roll += 5f * dt;

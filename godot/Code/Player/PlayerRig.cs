@@ -573,6 +573,9 @@ public partial class PlayerRig : Node
 			var handAt = pivot + aimS * new Vector3( 10f, -4.5f, -7f );
 			// Turn the gun with the aim, then slide it so its right-hand bone lands at the hand spot.
 			gun.Root.GlobalBasis = rigRoot.GlobalBasis * ToG( aimS );
+			// Trident-Bot's surge thrust: the weapon points along the aim in the world, whatever the diving body is doing
+			// (measured from the body on its belly, the aim clamps and the weapon pointed at the sand).
+			if ( weapon.SurgePose > 0f ) gun.Root.GlobalBasis = AlongAim( controller.EyeAngles.Forward );
 			gun.Root.GlobalPosition = rigRoot.GlobalTransform * U.Sbox( handAt );
 			var r = BoneWorld( gun.Skeleton, "hand_R" );
 			gun.Root.GlobalPosition += rigRoot.GlobalTransform * U.Sbox( handAt ) - r;
@@ -713,6 +716,19 @@ public partial class PlayerRig : Node
 		if ( gun.Player.HasAnimation( "idle" ) ) gun.Player.Play( "idle" );
 		worldGuns[weapon] = gun;
 		return gun;
+	}
+
+	/// <summary> A gun basis with its barrel along `aim` and its top as near up as it can be. </summary>
+	static Basis AlongAim( Vector3 aim )
+	{
+		var barrel = (M * new Vector3( 1f, 0f, 0f )).Normalized();
+		var top = (M * new Vector3( 0f, 0f, 1f )).Normalized();
+		aim = aim.Normalized();
+		var up = (Vector3.Up - aim * aim.Dot( Vector3.Up )).Normalized();
+		if ( up.LengthSquared() < 0.01f ) up = Vector3.Back;
+		var from = new Basis( barrel, top, barrel.Cross( top ) );
+		var to = new Basis( aim, up, aim.Cross( up ) );
+		return to * from.Inverse();
 	}
 
 	static Vector3 BoneWorld( Skeleton3D skel, string name )

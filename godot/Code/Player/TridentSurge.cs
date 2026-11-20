@@ -21,6 +21,8 @@ public partial class TridentSurge : Node
 	TimeSince sinceSparkle = 0f;
 	/// <summary> Tests: frames the trident was out. </summary>
 	public static int Shown;
+	/// <summary> Tests: the trident and the tether. </summary>
+	public Node3D Trident => trident;
 
 	public override void _Ready()
 	{

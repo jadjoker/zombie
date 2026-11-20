@@ -3026,6 +3026,13 @@ public partial class AutoTest : Node
 	/// the spear reaches a crab twice the axe's reach away; the shield takes 65% of a hit; a charged trident goes
 	/// one crab then seeks and goes through the next two; healing in third person brings the plecos and their hearts. Pictures need a window.
 	/// </summary>
+	void SurgeReport( PlayerController player, Jetpack jetpack )
+	{
+		var t = player.GetNode<TridentSurge>( "TridentSurge" ).Trident;
+		var cam = GetViewport().GetCamera3D();
+		GD.Print( $"[autotest] surge: charging {jetpack.Charging} surging {jetpack.Surging} power {jetpack.Power:0} stalled {jetpack.Stalled} trident {t.Visible} at {t.GlobalPosition} scale {t.Scale.X:0.00} player {player.GlobalPosition} cam {cam?.GlobalPosition} behind {cam?.IsPositionBehind( t.GlobalPosition )} screen {cam?.UnprojectPosition( t.GlobalPosition )}" );
+	}
+
 	async Task TridentBotTest()
 	{
 		DockHouse.Current?.SkipDive();
@@ -3143,11 +3150,13 @@ public partial class AutoTest : Node
 		foreach ( var third in new[] { false, true } )
 		{
 			player.ThirdPerson = third;
-			await Wait( 1.5f );   // power back
+			await Wait( 5f );   // power back
 			jetpack.TestSurge( 0.5f );
 			await Wait( 0.3f );
+			SurgeReport( player, jetpack );
 			await Shot( third ? "tridentbot_surge_charge_3p" : "tridentbot_surge_charge" );
 			await Wait( 0.3f );
+			SurgeReport( player, jetpack );
 			await Shot( third ? "tridentbot_surge_3p" : "tridentbot_surge" );
 			await Wait( 0.6f );
 		}

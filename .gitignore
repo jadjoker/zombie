@@ -39,3 +39,4 @@ Tools/godot_shots/
 
 # Godot export builds
 build/
+__pycache__/

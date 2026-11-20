@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary> The pickups creatures can drop besides ammo. </summary>
-public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce }
+public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce, Reach }
 
 /// <summary>
 /// The player's pickups (dropped by creatures, see <see cref="PerkPickup"/>): how many of each they hold, and what
@@ -20,6 +20,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 ///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
 /// Every pickup above drops for Ram-Bot only, except the shield and the pirate chest, which (like ammo) drop for every robot.
 /// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
+/// - Trident Reach (Trident-Bot only, 1%): each one lets a trident look 1 m further for the next enemy to seek.
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node
@@ -35,6 +36,7 @@ public partial class PlayerPerks : Node
 		(PerkKind.Move, "Movement Buff", "move", 0.0025f, new Color( 0.24f, 0.78f, 0.43f )),
 		(PerkKind.Blast, "Biden Blast", "blast", 0.0025f, new Color( 0.16f, 0.35f, 0.9f )),
 		(PerkKind.Pierce, "Trident Pierce", "pierce", 0.04f, new Color( 0.12f, 0.75f, 0.72f )),
+		(PerkKind.Reach, "Trident Reach", "reach", 0.01f, new Color( 0.62f, 0.4f, 1f )),
 	};
 
 	public const float ReloadPerStack = 0.06f;
@@ -56,16 +58,19 @@ public partial class PlayerPerks : Node
 
 	/// <summary>
 	/// Whether creatures drop this one for the robot being played (user's choice): the shield and the pirate chest drop for
-	/// every robot (like ammo), Trident Pierce for Trident-Bot only, every other pickup for Ram-Bot (the rifle and shotgun kit) only.
+	/// every robot (like ammo), Trident Pierce and Trident Reach for Trident-Bot only, every other pickup for Ram-Bot (the rifle and shotgun kit) only.
 	/// </summary>
 	public static bool Drops( PerkKind kind ) => kind switch
 	{
 		PerkKind.Shield or PerkKind.Chest => true,
-		PerkKind.Pierce => RobotClass.Current == RobotClass.TridentBot,
+		PerkKind.Pierce or PerkKind.Reach => RobotClass.Current == RobotClass.TridentBot,
 		_ => RobotClass.Current == RobotClass.RamBot,
 	};
 	/// <summary> More enemies a trident seeks after its first, one per Trident Pierce. </summary>
 	public int ExtraPierce => Count( PerkKind.Pierce );
+	/// <summary> Metres more a trident looks for the next enemy to seek, per Trident Reach. </summary>
+	public const float ReachPerStack = 1f;
+	public float ExtraSeekRange => ReachPerStack * Count( PerkKind.Reach );
 	public int Count( PerkKind kind ) => counts[(int)kind];
 
 	PlayerController controller;

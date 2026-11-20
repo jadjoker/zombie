@@ -2786,9 +2786,10 @@ public partial class AutoTest : Node
 		var perks = PlayerPerks.Of( player );
 		Check( perks is not null, "the player has no PlayerPerks" );
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind != PerkKind.Pierce ).Sum( e => e.Chance );
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach) ).Sum( e => e.Chance );
 		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
-		Check( PlayerPerks.Table.All( e => e.Kind == PerkKind.Pierce || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
+		Check( !PlayerPerks.Drops( PerkKind.Reach ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Reach ).Chance == 0.01f, "Trident Reach is not a 1% drop for Trident-Bot only" );
+		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
 		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
 
@@ -3112,7 +3113,7 @@ public partial class AutoTest : Node
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
 		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
-		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just Trident Pierce, the shield and the chest" );
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just Trident Pierce, Trident Reach, the shield and the chest" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();
@@ -3142,6 +3143,29 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] trident bot: with three Trident Pierces the trident hit {TridentBolt.LastHits} crabs" );
 		Check( TridentBolt.LastHits == 4 + TridentBolt.SeekNext, $"with three Trident Pierces the trident hit {TridentBolt.LastHits} crabs, not {4 + TridentBolt.SeekNext}" );
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
+		PlayerPerks.Of( player ).Clear();
+
+		// Trident Reach: a crab past SeekRange is left alone, and enough pickups (1 m each) bring it in reach.
+		Check( PlayerPerks.Drops( PerkKind.Reach ), "Trident Reach does not drop for Trident-Bot" );
+		for ( var pass = 0; pass < 2; pass++ )
+		{
+			line.Clear();
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -5f ) ), 5000f ) );
+			line.Add( JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, home + new Vector3( 0f, 0f, -5f - TridentBolt.SeekRange - 3f ) ), 5000f ) );
+			await Wait( 0.6f );
+			var gap = line[0].GlobalPosition.DistanceTo( line[1].GlobalPosition );
+			if ( pass == 1 ) for ( var i = 0; i < (int)MathF.Ceiling( gap - TridentBolt.SeekRange ) + 2; i++ ) PlayerPerks.Of( player ).Give( PerkKind.Reach );
+			await Wait( 0.2f );
+			low = line[0].GlobalPosition + Vector3.Up * 0.3f + (line[0].GlobalPosition - home).Flat().Normalized() * -2f;
+			along = (line[0].GlobalPosition + Vector3.Up * 0.3f - low).Normalized();
+			TridentBolt.Launch( GetTree().CurrentScene, low, low + along * 20f, along, low, shooter.CurrentDamage, player, shooter, true );
+			await Wait( 4.5f );
+			var reach = PlayerPerks.Of( player ).Count( PerkKind.Reach );
+			GD.Print( $"[autotest] trident bot: crabs {gap:0.0} m apart, {reach} Trident Reach, the trident hit {TridentBolt.LastHits}" );
+			if ( gap > TridentBolt.SeekRange + 0.5f )
+				Check( TridentBolt.LastHits == (pass == 0 ? 1 : 2), $"with {reach} Trident Reach the trident hit {TridentBolt.LastHits} crabs {gap:0.0} m apart" );
+			foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
+		}
 		PlayerPerks.Of( player ).Clear();
 
 		// The surge: a magic trident leads it.

@@ -36,7 +36,8 @@ public partial class TridentBolt : Node3D
 	public const int SeekNext = 2;
 	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 45% of Speed, so the chain can be seen). </summary>
 	public const float SeekSpeed = 0.45f;
-	public const float SeekRange = 40f;       // metres from the last hit to the next enemy it will go for
+	/// <summary> Metres from the last hit to the next enemy it will go for (user's choice: 20, so it starts weak), plus 1 per Trident Reach. </summary>
+	public const float SeekRange = 20f;
 	public const float SeekTurn = 40f;        // radians a second it can turn while seeking (at full speed a slow turn swung wide of the next enemy)
 	int hits;
 	readonly HashSet<Node> struck = new();
@@ -264,11 +265,11 @@ public partial class TridentBolt : Node3D
 		StickAt( tr, direction );
 	}
 
-	/// <summary> The closest live enemy to `from` within SeekRange that this trident hasn't hit yet. </summary>
+	/// <summary> The closest live enemy to `from` within SeekRange (plus Trident Reach) that this trident hasn't hit yet. </summary>
 	Creature NextTarget( Vector3 from )
 	{
 		Creature best = null;
-		var bestDistance = SeekRange;
+		var bestDistance = SeekRange + (PlayerPerks.Of( shooter )?.ExtraSeekRange ?? 0f);
 		foreach ( var c in Creature.Everyone )
 		{
 			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || struck.Contains( c ) ) continue;

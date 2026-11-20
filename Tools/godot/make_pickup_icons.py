@@ -132,10 +132,23 @@ def pierce_icon():
     return img
 
 
+def reach_icon():
+    img, d = badge((160, 100, 255))
+    # A trident with range rings spreading out ahead of its prongs.
+    for r in (26, 40, 54):
+        d.arc((p(64 - r, 50 - r), p(64 + r, 50 + r)), 215, 325, fill=W, width=5 * S)
+    line(d, [(64, 112), (64, 60)], 7)
+    line(d, [(46, 66), (82, 66)], 7)
+    for x in (46, 64, 82):
+        line(d, [(x, 66), (x, 48)], 6)
+        poly(d, [(x - 7, 50), (x, 38), (x + 7, 50)])
+    return img
+
+
 ICONS = {
     "reload": reload_icon, "firerate": firerate_icon, "explosive": explosive_icon, "electric": electric_icon,
     "chest": chest_icon, "shield": shield_icon, "move": move_icon, "blast": blast_icon,
-    "pierce": pierce_icon,
+    "pierce": pierce_icon, "reach": reach_icon,
 }
 
 if __name__ == "__main__":

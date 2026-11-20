@@ -94,7 +94,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
   the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). A pull fires at once; keep holding 1 s after it (`PlayerWeapon.ChargeTime`)
-  for a charged next trident (faster, magical). Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce pickup) at `SeekSpeed` (0.45 of Speed; only enemies stop it while seeking) and goes through them. Its sounds (`trident_pierce`,
+  for a charged next trident (faster, magical). Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce pickup) within `SeekRange` (20 m, +1 m per Trident Reach pickup) at `SeekSpeed` (0.45 of Speed; only enemies stop it while seeking) and goes through them. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Robot classes (`Player/RobotClass.cs`): each robot has its own weapons and mouse 4 move; both swing the axe.
@@ -234,9 +234,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   speed and winds tighter to fire, the beam kicks him back as it fires, each missile snaps his snout up, a hit makes him
   flinch (at most once a second), and the hat rides on its own spring. `--mc51 --motion` adds frames of each move.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
-  chances). Ammo, the shield and the pirate chest drop for every robot; Trident Pierce for Trident-Bot only; every other pickup for Ram-Bot only (`PlayerPerks.Drops`, user's choice). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
+  chances). Ammo, the shield and the pirate chest drop for every robot; Trident Pierce and Trident Reach for Trident-Bot only; every other pickup for Ram-Bot only (`PlayerPerks.Drops`, user's choice). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
   explosive round `ThrownClip` (heat seeking, `SeekSpeed`), electric bullets `LightningArc` (25% chance, +5% per extra pickup), pirate chest, shield through `Health.Absorb`,
-  movement buff, Trident Pierce (4%, Trident-Bot only: `PlayerPerks.Drops`; a trident seeks one more enemy each), the Biden Blast on the `blast` action (one a wave per pickup, up to `MaxBlastsPerWave` 3): G (RB on a pad, which fires it instead of the axe only while it is
+  movement buff, Trident Pierce (4%, Trident-Bot only: `PlayerPerks.Drops`; a trident seeks one more enemy each), Trident Reach (1%, Trident-Bot only: 1 m more seeking range each), the Biden Blast on the `blast` action (one a wave per pickup, up to `MaxBlastsPerWave` 3): G (RB on a pad, which fires it instead of the axe only while it is
   ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Quality of life batch: `Creatures/Blinker.cs` blinks eyes on creatures with no lids of their own (Bloober, Rocky Shark,
   Kraken, Poseidon, mermaids, seahorses, missiles: it squashes each eye's meshes shut). The Junk Crab's eyes are on ant

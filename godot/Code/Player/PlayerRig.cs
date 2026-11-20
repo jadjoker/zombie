@@ -590,7 +590,7 @@ public partial class PlayerRig : Node
 			// Trident-Bot's surge thrust: the weapon driven forward along the aim, the hands going with it.
 			if ( weapon.SurgePose != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SurgePose * 0.35f;
 			// The spear's own thrust (left click): cocked back, then stabbed out ahead along the aim, the arm going with it.
-			else if ( weapon.Spear && weapon.SpearThrust != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SpearThrust * 0.45f;
+			else if ( weapon.Spear && weapon.SpearThrust != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SpearThrust * 0.24f;   // no further than the arms reach, so the fists stay on the shaft
 			if ( spearBody is not null )
 			{
 				// Both fists round the shaft: the right on the grip, the left a hand's width ahead. The wrist sits a

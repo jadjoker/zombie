@@ -3137,6 +3137,23 @@ public partial class AutoTest : Node
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 		PlayerPerks.Of( player ).Clear();
 
+		// The surge: a magic trident leads it.
+		var surgeBefore = TridentSurge.Shown;
+		var jetpack = player.GetNode<Jetpack>( "Jetpack" );
+		foreach ( var third in new[] { false, true } )
+		{
+			player.ThirdPerson = third;
+			await Wait( 1.5f );   // power back
+			jetpack.TestSurge( 0.5f );
+			await Wait( 0.3f );
+			await Shot( third ? "tridentbot_surge_charge_3p" : "tridentbot_surge_charge" );
+			await Wait( 0.3f );
+			await Shot( third ? "tridentbot_surge_3p" : "tridentbot_surge" );
+			await Wait( 0.6f );
+		}
+		player.ThirdPerson = false;
+		Check( TridentSurge.Shown > surgeBefore, "no magic trident led Trident-Bot's surge" );
+
 		// Healing in third person: the plecos latch on and hearts pop.
 		player.ThirdPerson = true;
 		survivor.Health.OnDamage( new DamageInfo { Damage = 120f, Position = player.GlobalPosition } );

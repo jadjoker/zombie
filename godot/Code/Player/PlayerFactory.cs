@@ -20,6 +20,7 @@ public static class PlayerFactory
 		player.AddChild( new PlayerPerks() );
 		player.AddChild( new WaterFeel() );
 		player.AddChild( new Jetpack() );
+		player.AddChild( new TridentSurge() );   // Trident-Bot: the magic trident that leads its surge
 		player.AddChild( new AllyCommander() );
 		player.AddChild( new PlayerUse() );
 		player.AddChild( new MoveModeFloat() );

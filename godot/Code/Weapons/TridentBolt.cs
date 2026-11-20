@@ -34,8 +34,8 @@ public partial class TridentBolt : Node3D
 	public const float ChargedSpeed = 1.8f;   // times Speed
 	/// <summary> After the first enemy it hits, a trident seeks this many more (the next closest each time) and goes through them. </summary>
 	public const int SeekNext = 2;
-	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 20% slower, then 20% slower again, so the chain can be seen). </summary>
-	public const float SeekSpeed = 0.64f;
+	/// <summary> Seeking after the first hit flies at this share of Speed (user's choice: 45% of Speed, so the chain can be seen). </summary>
+	public const float SeekSpeed = 0.45f;
 	public const float SeekRange = 40f;       // metres from the last hit to the next enemy it will go for
 	public const float SeekTurn = 40f;        // radians a second it can turn while seeking (at full speed a slow turn swung wide of the next enemy)
 	int hits;
@@ -67,7 +67,7 @@ public partial class TridentBolt : Node3D
 		TridentModel.BuildTrident( bolt );
 		bolt.age = 0f;
 		LastHits = 0;
-		if ( charged ) bolt.Enchant();
+		if ( charged ) Enchant( bolt );
 		return bolt;
 	}
 
@@ -121,14 +121,14 @@ public partial class TridentBolt : Node3D
 		roll += 5f * dt;
 		Face();
 		if ( UnderWater( to ) ) { Bubbles( from, to ); if ( charged ) Bubbles( from, to ); }
-		if ( charged ) Sparkles( from, to );
+		if ( charged ) Sparkles( GetTree(), from, to );
 		if ( age > MaxFlight ) QueueFree();
 	}
 
 	static StandardMaterial3D[] sparkleMaterials;
 
 	/// <summary> A charged trident is magical: a violet and sea-green aura round its head, and a light that travels with it. </summary>
-	void Enchant()
+	public static void Enchant( Node3D on )
 	{
 		var aura = new StandardMaterial3D
 		{
@@ -142,17 +142,17 @@ public partial class TridentBolt : Node3D
 			Name = "Magic Aura", Mesh = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 16, Rings = 8 }, MaterialOverride = aura,
 			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Scale = new Vector3( 0.32f, 0.32f, 1.6f ), Position = new Vector3( 0f, 0f, -0.35f ),
 		};
-		AddChild( glow );
-		AddChild( new OmniLight3D { LightColor = new Color( 0.6f, 0.45f, 1f ), LightEnergy = 2.5f, OmniRange = 3.5f, ShadowEnabled = false } );
+		on.AddChild( glow );
+		on.AddChild( new OmniLight3D { LightColor = new Color( 0.6f, 0.45f, 1f ), LightEnergy = 2.5f, OmniRange = 3.5f, ShadowEnabled = false } );
 	}
 
 	/// <summary> Glittering specks in violet, sea green and gold left along a charged trident's path, twinkling out. </summary>
-	void Sparkles( Vector3 from, Vector3 to )
+	public static void Sparkles( SceneTree tree, Vector3 from, Vector3 to )
 	{
 		sparkleMaterials ??= new[] { new Color( 0.75f, 0.45f, 1f ), new Color( 0.4f, 1f, 0.75f ), new Color( 1f, 0.85f, 0.35f ) }
 			.Select( c => new StandardMaterial3D { AlbedoColor = c, ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = 4f } ).ToArray();
 		var count = Math.Clamp( (int)(from.DistanceTo( to ) / 0.25f), 1, 8 );
-		var scene = GetTree().CurrentScene;
+		var scene = tree.CurrentScene;
 		for ( var i = 0; i < count; i++ )
 		{
 			var speck = new MeshInstance3D

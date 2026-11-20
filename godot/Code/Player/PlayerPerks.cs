@@ -21,7 +21,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// Every pickup above drops for Ram-Bot only, except the shield and the pirate chest, which (like ammo) drop for every robot.
 /// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
 /// - Trident Reach (Trident-Bot only, 1%): each one lets a trident look 1 m further for the next enemy to seek.
-/// - Trident Swarm (Trident-Bot only, 2%, at most 3): each one is a 20% chance, when a trident first hits an enemy, of a small
+/// - Trident Swarm (Trident-Bot only, 1%, at most 3): each one is a 20% chance, when a trident first hits an enemy, of a small
 ///   trident at half damage that seeks a nearby enemy (`TridentBolt.Splinter`).
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
@@ -39,7 +39,7 @@ public partial class PlayerPerks : Node
 		(PerkKind.Blast, "Biden Blast", "blast", 0.0025f, new Color( 0.16f, 0.35f, 0.9f )),
 		(PerkKind.Pierce, "Trident Pierce", "pierce", 0.04f, new Color( 0.12f, 0.75f, 0.72f )),
 		(PerkKind.Reach, "Trident Reach", "reach", 0.01f, new Color( 0.62f, 0.4f, 1f )),
-		(PerkKind.Swarm, "Trident Swarm", "swarm", 0.02f, new Color( 0.95f, 0.75f, 0.15f )),
+		(PerkKind.Swarm, "Trident Swarm", "swarm", 0.01f, new Color( 0.95f, 0.75f, 0.15f )),
 	};
 
 	public const float ReloadPerStack = 0.06f;

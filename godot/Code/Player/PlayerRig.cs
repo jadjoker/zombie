@@ -583,14 +583,29 @@ public partial class PlayerRig : Node
 			// (measured from the body on its belly, the aim clamps and the weapon pointed at the sand).
 			if ( weapon.SurgePose > 0f || (weapon.Spear && weapon.SpearThrust > 0f) ) gun.Root.GlobalBasis = AlongAim( controller.EyeAngles.Forward );
 			gun.Root.GlobalPosition = rigRoot.GlobalTransform * U.Sbox( handAt );
-			var r = BoneWorld( gun.Skeleton, "hand_R" );
+			// The spear is held by its shaft: the purple grip lands in the right hand (the rig's hand bones sit off the shaft).
+			var spearBody = weapon.Spear ? SpearBody( weapon, gun.Root ) : null;
+			var r = spearBody is not null ? spearBody.GlobalTransform * SpearGripAt : BoneWorld( gun.Skeleton, "hand_R" );
 			gun.Root.GlobalPosition += rigRoot.GlobalTransform * U.Sbox( handAt ) - r;
 			// Trident-Bot's surge thrust: the weapon driven forward along the aim, the hands going with it.
 			if ( weapon.SurgePose != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SurgePose * 0.35f;
 			// The spear's own thrust (left click): cocked back, then stabbed out ahead along the aim, the arm going with it.
 			else if ( weapon.Spear && weapon.SpearThrust != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SpearThrust * 0.45f;
-			gripR = Char( BoneWorld( gun.Skeleton, "hand_R" ) );
-			gripL = Char( BoneWorld( gun.Skeleton, "hand_L" ) );
+			if ( spearBody is not null )
+			{
+				// Both fists round the shaft: the right on the grip, the left a hand's width ahead. The wrist sits a
+				// little above and behind the shaft so the closed fist wraps it.
+				var t = spearBody.GlobalTransform;
+				var along = t.Basis.X.Normalized();
+				var lift = Vector3.Up * 0.035f - along * 0.04f;
+				gripR = Char( t * SpearGripAt + lift );
+				gripL = Char( t * SpearLeftAt + lift );
+			}
+			else
+			{
+				gripR = Char( BoneWorld( gun.Skeleton, "hand_R" ) );
+				gripL = Char( BoneWorld( gun.Skeleton, "hand_L" ) );
+			}
 			var anim = weapon.IsReloading ? "reload" : "idle";
 			if ( gun.Player.HasAnimation( anim ) && gun.Player.CurrentAnimation != anim ) gun.Player.Play( anim );
 		}
@@ -737,6 +752,17 @@ public partial class PlayerRig : Node
 		var from = new Basis( barrel, top, barrel.Cross( top ) );
 		var to = new Basis( aim, up, aim.Cross( up ) );
 		return to * from.Inverse();
+	}
+
+	/// <summary> Where the hands hold the spear, in its body's own frame (s&box units along the shaft): the purple grip and a hand's width ahead. </summary>
+	static readonly Vector3 SpearGripAt = new( 0.5f, 0f, 0.6f ), SpearLeftAt = new( 13f, 0f, 0.6f );
+	readonly Dictionary<PlayerWeapon, Node3D> spearBodies = new();
+	Node3D SpearBody( PlayerWeapon weapon, Node3D root )
+	{
+		if ( spearBodies.TryGetValue( weapon, out var body ) && IsInstanceValid( body ) && body.IsInsideTree() && root.IsAncestorOf( body ) ) return body;
+		body = root.FindChild( "Spear", true, false ) as Node3D;
+		if ( body is not null ) spearBodies[weapon] = body;
+		return body;
 	}
 
 	static Vector3 BoneWorld( Skeleton3D skel, string name )

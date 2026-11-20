@@ -3105,7 +3105,7 @@ public partial class AutoTest : Node
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
 		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
-		Check( PlayerPerks.Table.All( e => e.Kind == PerkKind.Pierce || !PlayerPerks.Drops( e.Kind ) ), "Ram-Bot's pickups drop for Trident-Bot" );
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just Trident Pierce, the shield and the chest" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();

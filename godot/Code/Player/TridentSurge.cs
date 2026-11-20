@@ -111,7 +111,7 @@ public partial class TridentSurge : Node
 		if ( sinceSparkle > (jetpack.Surging ? 0.03f : 0.08f) )
 		{
 			sinceSparkle = 0f;
-			TridentBolt.Sparkles( GetTree(), holdAt, tip );
+			TridentBolt.Sparkles( GetTree(), holdAt.Lerp( tip, 0.45f ), tip );   // not right at the camera
 		}
 	}
 }

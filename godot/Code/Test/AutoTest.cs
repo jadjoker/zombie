@@ -3150,6 +3150,8 @@ public partial class AutoTest : Node
 		foreach ( var third in new[] { false, true } )
 		{
 			player.ThirdPerson = third;
+			player.GlobalPosition = home;   // back to the open lane (the first surge ends near plants)
+			player.Velocity = Vector3.Zero;
 			await Wait( 5f );   // power back
 			jetpack.TestSurge( 0.5f );
 			await Wait( 0.3f );

@@ -3148,16 +3148,30 @@ public partial class AutoTest : Node
 		var surgeBefore = TridentSurge.Shown;
 		var jetpack = player.GetNode<Jetpack>( "Jetpack" );
 		var pushed = false;
-		var startYaw = player.EyeAngles.Yaw;
-		foreach ( var (surgeGun, third) in new[] { (spear, false), (spear, true), (shooter, false), (shooter, true) } )
+		// Third person runs down an open lane (the stand by the stations ran the robot into the ammo station), once from
+		// behind and once with the camera alongside, so the way it holds the weapon shows.
+		var (lane, laneYaw) = OpenLane( 22f );
+		var laneDir = new Vector3( -MathF.Sin( MathX.Rad( laneYaw ) ), 0f, -MathF.Cos( MathX.Rad( laneYaw ) ) );
+		foreach ( var (surgeGun, view) in new[] { (spear, 0), (spear, 1), (spear, 2), (shooter, 0), (shooter, 1), (shooter, 2) } )
 		{
 			inventory.Select( surgeGun, true );
-			player.ThirdPerson = third;
-			player.GlobalPosition = home;   // back to the open lane (the first surge ends near plants)
+			player.ThirdPerson = view > 0;
+			player.GlobalPosition = view > 0 ? lane + Vector3.Up * 0.1f : home;
 			player.Velocity = Vector3.Zero;
-			if ( third ) player.EyeAngles = new Angles( 0f, startYaw + 150f, 0f );   // away from the stations, over open sand
+			if ( view > 0 ) player.EyeAngles = new Angles( 0f, laneYaw, 0f );
 			await Wait( 5f );   // power back
-			var shotName = $"tridentbot_surge_{(surgeGun == spear ? "spear" : "shooter")}{(third ? "_3p" : "")}";
+			var shotName = $"tridentbot_surge_{(surgeGun == spear ? "spear" : "shooter")}{(view == 1 ? "_3p" : view == 2 ? "_side" : "")}";
+			if ( view == 2 )
+			{
+				// Alongside: level with the robot, 3.5 m to its right, keeping pace with it.
+				var right = new Vector3( -laneDir.Z, 0f, laneDir.X );
+				player.CameraOverride = _ =>
+				{
+					var chest = player.GlobalPosition + Vector3.Up * 0.9f;
+					var from = chest + right * 3.5f + laneDir * 0.6f + Vector3.Up * 0.3f;
+					return new Transform3D( Basis.LookingAt( (chest + laneDir * 0.6f - from).Normalized(), Vector3.Up ), from );
+				};
+			}
 			jetpack.TestSurge( 0.5f );
 			await Wait( 0.3f );
 			SurgeReport( player, jetpack, surgeGun );
@@ -3167,6 +3181,7 @@ public partial class AutoTest : Node
 			pushed |= surgeGun.SurgePose > 0.5f;
 			await Shot( shotName );
 			await Wait( 0.6f );
+			player.CameraOverride = null;
 		}
 		player.ThirdPerson = false;
 		Check( pushed, "the surge did not thrust the weapon in hand forward" );

@@ -7,7 +7,8 @@ using Godot;
 /// </summary>
 public partial class TridentSurge : Node
 {
-	const float Reach = 1.7f;          // metres ahead of the robot
+	const float Reach = 2.2f;          // metres ahead of the robot (third person)
+	const float FirstReach = 2.6f;     // metres ahead of the view (first person: clear of the gun)
 	const float FadeTime = 0.3f;       // seconds to fade out after the surge
 	static readonly Color Violet = new( 0.6f, 0.45f, 1f );
 
@@ -29,7 +30,7 @@ public partial class TridentSurge : Node
 		Name = "TridentSurge";
 		controller = GetParent<PlayerController>();
 		trident = new Node3D { Name = "Surge Trident", Visible = false, TopLevel = true };
-		var model = new Node3D { Name = "Model", Scale = Vector3.One * 1.3f };
+		var model = new Node3D { Name = "Model", Scale = Vector3.One * 1.6f };
 		trident.AddChild( model );
 		TridentModel.BuildTrident( model );
 		TridentBolt.Enchant( model );
@@ -64,28 +65,38 @@ public partial class TridentSurge : Node
 		if ( !visible ) return;
 		Shown++;
 
-		// Where it leads: the surge's way once it goes, the aim while winding up.
-		var aim = controller.EyeAngles.Forward;
+		// Where it leads: the surge's way once it goes, the aim while winding up (level in third person, so it stays in view).
+		var camera = controller.Camera;
+		var first = !controller.ThirdPerson && camera is not null;
+		var aim = first ? -camera.GlobalBasis.Z : controller.EyeAngles.Forward.Flat().SafeNormal();
 		var direction = jetpack.Surging ? jetpack.SurgeDirection : aim;
 		if ( direction == Vector3.Zero ) direction = aim;
 		var charge = jetpack.Surging ? 1f : jetpack.Charge;
 
-		// First person: from just under the view; third person: from the robot's chest.
-		var camera = controller.Camera;
+		// First person: from just under the view, the trident out ahead and a little low of the crosshair;
+		// third person: from the robot's chest.
 		Vector3 holdAt;
-		if ( !controller.ThirdPerson && camera is not null )
-			holdAt = camera.GlobalPosition + Vector3.Down * 0.3f + camera.GlobalBasis.X * 0.12f;
-		else holdAt = controller.GlobalPosition + Vector3.Up * 36f * U.In;
+		float reach;
+		if ( first )
+		{
+			holdAt = camera.GlobalPosition - camera.GlobalBasis.Y * 0.28f;
+			reach = FirstReach;
+		}
+		else
+		{
+			holdAt = controller.GlobalPosition + Vector3.Up * 40f * U.In;
+			reach = Reach;
+		}
 
 		// It pulls ahead: further out and steadier as the charge builds, straining at full surge.
-		var reach = Reach * MathX.Lerp( 0.7f, 1f, charge ) * MathX.Lerp( 0.6f, 1f, show );
+		reach *= MathX.Lerp( 0.75f, 1f, charge ) * MathX.Lerp( 0.6f, 1f, show );
 		var shake = jetpack.Surging ? 0.015f : 0.04f * (1f - charge);
 		var tip = holdAt + direction * reach + Rng.InSphere( shake );
 		trident.GlobalTransform = new Transform3D( Shapes.LookAt( direction ) * new Basis( Vector3.Back, (float)Clock.Now * 4f ), tip );
 		trident.Scale = Vector3.One * MathX.Lerp( 0.4f, 1f, show * MathX.Lerp( 0.6f, 1f, charge ) );
 
 		// The tether from the robot to the trident's butt.
-		var butt = tip - direction * 0.55f * trident.Scale.X * 1.3f;
+		var butt = tip - direction * 0.55f * trident.Scale.X * 1.6f;
 		var span = butt - holdAt;
 		var length = span.Length();
 		if ( length > 0.05f )

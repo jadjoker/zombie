@@ -172,6 +172,8 @@ public partial class PlayerRig : Node
 
 	/// <summary> For tests: how far into the slide's dive it is (0 upright, 1 flat on its belly). </summary>
 	public float DiveAmount => diveAmount;
+	/// <summary> How far Trident-Bot's surge lifts its head and back off flat (added to the surge direction). </summary>
+	public const float TridentSurgeLift = 0.55f;
 	/// <summary> For tests: which way the body's head points. </summary>
 	public Vector3 BodyUp => rigRoot.GlobalBasis.Orthonormalized().Y;
 	/// <summary> For tests: the way the gun in the robot's hands is pointing (its barrel), when it is shown. </summary>
@@ -459,7 +461,7 @@ public partial class PlayerRig : Node
 			pos = feet + Vector3.Up * hips + bob - rot * (Vector3.Up * hips);
 		}
 
-		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) || slidePropTime > 0f ? 1f : 0f, dt * ((jet?.Thrusting ?? false) || slidePropTime > 0f ? 6f : 3f) );
+		jetBlend = MathX.Approach( jetBlend, (jet?.Thrusting ?? false) || (jet?.Surging ?? false) || slidePropTime > 0f ? 1f : 0f, dt * ((jet?.Surging ?? false) ? 12f : (jet?.Thrusting ?? false) || slidePropTime > 0f ? 6f : 3f) );   // the props snap out for a surge
 		chargeBlend = MathX.Lerp( chargeBlend, jet?.Charging ?? false ? jet.Charge : 0f, 1f - MathF.Exp( -12f * dt ) );
 		surgeBlend = MathX.Approach( surgeBlend, jet?.Surging ?? false ? 1f : 0f, dt * ((jet?.Surging ?? false) ? 10f : 3f) );
 		propSpin = (propSpin + dt * 1800f * jetBlend * (1f + 1.5f * chargeBlend + ((jet?.Surging ?? false) ? 1f : 0f))) % 360f;
@@ -470,6 +472,8 @@ public partial class PlayerRig : Node
 			if ( surgeBlend > 0.001f )
 			{
 				var dir = jet.SurgeDirection.IsNearlyZero() ? -yawRot.Z : jet.SurgeDirection.Normalized();
+				// Trident-Bot rides its thrust with its head and back up a little, looking ahead past the weapon.
+				if ( RobotClass.Current == RobotClass.TridentBot ) dir = (dir + Vector3.Up * TridentSurgeLift).Normalized();
 				// Head toward the burst, belly toward the ground (or forward when going straight up).
 				var belly = Vector3.Down - dir * Vector3.Down.Dot( dir );
 				if ( belly.Length() < 0.2f ) belly = -yawRot.Z;
@@ -514,7 +518,8 @@ public partial class PlayerRig : Node
 		var aimPitch = MathX.Clamp( controller.EyeAngles.Pitch, -80f, 80f );
 		// Diving, the body is on its belly: the gun still points where the player is aiming, measured from the body.
 		var aimYawChar = 0f;
-		var diveBlend = MathX.Clamp( diveAmount, 0f, 1f );
+		// The surge tilts the body too: Trident-Bot's head looks and its weapon points the real way, measured from the body.
+		var diveBlend = MathX.Clamp( MathF.Max( diveAmount, RobotClass.Current == RobotClass.TridentBot ? surgeBlend : 0f ), 0f, 1f );
 		if ( diveBlend > 0.001f )
 		{
 			var aimChar = CharDir( -controller.EyeAngles.ToBasis().Z );

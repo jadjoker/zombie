@@ -106,8 +106,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `game/robot_class`; `--class <name>` forces one (tests default to Ram-Bot). `RobotClass.Pick` swaps the kit
   (`WeaponInventory.Replace`, damage upgrades kept). No area builds a trident or Gore Vac station any more:
   weapons come with the robot (`RobotClass.Sells` and `BuyStation.Refresh` still hide one if it turns up).
-  Trident-Bot (250 health, `Paint` "Trident": teal, #CB4154 shoulders, its dark frame in yellow and black camo
-  (`PlayerRig.FrameCamo`, `YellowCamo`); its surge thrusts the weapon in hand, spear or shooter, forward with a violet glow on its head, `TridentSurge.cs`, `PlayerWeapon.SurgePose`): the trident shooter (slot 1) and the spear
+  Trident-Bot (250 health, `Paint` "Trident": teal, #CB4154 shoulders, a plain yellow frame and black metal (the camo
+  was dropped, user's choice); in third person the spear's thrust and the surge stab the weapon out along the aim (`PlayerRig.AlongAim`); its surge thrusts the weapon in hand, spear or shooter, forward with a violet glow on its head, `TridentSurge.cs`, `PlayerWeapon.SurgePose`): the trident shooter (slot 1) and the spear
   (slot 2, `PlayerWeapon.Spear`, `SpearModel.cs`): a one-handed thrust (`SpearGrip` bends the right wrist so the fist closes round the shaft; `ThrustCurve`: cock, lunge, overshoot, camera
   jolt) at twice the axe's reach, and the energy shield in the left hand (`ShieldArm`, a `SkeletonModifier3D` that
   bends the left arm to the shield, its forearm through a leather `Strap`; carried edge on at the side, raised to the left of the view with right click to take `BlockShare` (65%) of each hit. Healing in

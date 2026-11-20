@@ -3183,6 +3183,29 @@ public partial class AutoTest : Node
 			await Wait( 0.6f );
 			player.CameraOverride = null;
 		}
+		// The spear's own thrust in third person, from alongside: stabbed out ahead with the arm.
+		inventory.Select( spear, true );
+		player.ThirdPerson = true;
+		player.GlobalPosition = lane + Vector3.Up * 0.1f;
+		player.Velocity = Vector3.Zero;
+		player.EyeAngles = new Angles( 0f, laneYaw, 0f );
+		await Wait( 1f );
+		{
+			var right = new Vector3( -laneDir.Z, 0f, laneDir.X );
+			player.CameraOverride = _ =>
+			{
+				var chest = player.GlobalPosition + Vector3.Up * 0.9f;
+				var from = chest + right * 3.5f + laneDir * 0.6f + Vector3.Up * 0.3f;
+				return new Transform3D( Basis.LookingAt( (chest + laneDir * 0.6f - from).Normalized(), Vector3.Up ), from );
+			};
+			await Wait( 0.2f );
+			await Shot( "tridentbot_thrust_side_rest" );
+			spear.TestThrust();
+			await Wait( 0.16f );
+			await Shot( "tridentbot_thrust_side" );
+			await Wait( 0.6f );
+			player.CameraOverride = null;
+		}
 		player.ThirdPerson = false;
 		Check( pushed, "the surge did not thrust the weapon in hand forward" );
 		Check( TridentSurge.Shown > surgeBefore, "no violet glow on the weapon in Trident-Bot's surge" );

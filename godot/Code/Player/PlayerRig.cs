@@ -290,7 +290,8 @@ public partial class PlayerRig : Node
 		["Rust"] = new[] { new Color( 0.20f, 0.16f, 0.14f ), new Color( 0.58f, 0.36f, 0.22f ), new Color( 0.78f, 0.66f, 0.30f ), new Color( 0.62f, 0.50f, 0.40f ) },
 		["Stealth"] = new[] { new Color( 0.08f, 0.08f, 0.10f ), new Color( 0.20f, 0.21f, 0.25f ), new Color( 0.75f, 0.12f, 0.14f ), new Color( 0.40f, 0.41f, 0.46f ) },
 		// The Trident-Bot: the white suit teal, the shoulders #CB4154.
-		["Trident"] = new[] { new Color( 0.08f, 0.16f, 0.18f ), new Color( 0.13f, 0.62f, 0.62f ), new Color( 0.796f, 0.255f, 0.329f ), new Color( 0.32f, 0.78f, 0.76f ) },
+		["Trident"] = new[] { new Color( 1f, 0.82f, 0.1f ),   // frame: the trident's yellow (was yellow and black camo)
+			 new Color( 0.13f, 0.62f, 0.62f ), new Color( 0.796f, 0.255f, 0.329f ), new Color( 0.035f, 0.035f, 0.045f ) },   // metal: black, so the frame reads yellow and black
 		// The Vac-Bot: the white suit green camo with purple (Camo), the shoulders yellow.
 		["Vac"] = new[] { new Color( 0.10f, 0.16f, 0.09f ), new Color( 0.24f, 0.70f, 0.20f ), new Color( 1f, 0.84f, 0.10f ), new Color( 0.55f, 0.80f, 0.45f ) },
 		["Hazard"] = new[] { new Color( 0.14f, 0.14f, 0.16f ), new Color( 0.96f, 0.80f, 0.14f ), new Color( 0.12f, 0.12f, 0.14f ), new Color( 0.80f, 0.80f, 0.84f ) },
@@ -301,8 +302,8 @@ public partial class PlayerRig : Node
 	/// <summary> Paints whose body wears camo: the dark blotch colour and the purple. </summary>
 	static readonly Dictionary<string, Color[]> Camo = new() { ["Vac"] = new[] { new Color( 0.08f, 0.32f, 0.10f ), new Color( 0.52f, 0.20f, 0.80f ) } };
 
-	/// <summary> Paints whose dark frame wears yellow and black camo (the Trident-Bot, to match its trident). </summary>
-	static readonly HashSet<string> FrameCamo = new() { "Trident" };
+	/// <summary> Paints whose dark frame wears yellow and black camo (none now: Trident-Bot went back to plain yellow, user's choice). </summary>
+	static readonly HashSet<string> FrameCamo = new();
 
 	/// <summary> The yellow and black camo: yellow ground, black and deep gold blotches. </summary>
 	public static readonly Color CamoYellow = new( 1f, 0.82f, 0.1f ), CamoBlack = new( 0.035f, 0.035f, 0.045f ), CamoGold = new( 0.62f, 0.44f, 0.04f );
@@ -580,12 +581,14 @@ public partial class PlayerRig : Node
 			gun.Root.GlobalBasis = rigRoot.GlobalBasis * ToG( aimS );
 			// Trident-Bot's surge thrust: the weapon points along the aim in the world, whatever the diving body is doing
 			// (measured from the body on its belly, the aim clamps and the weapon pointed at the sand).
-			if ( weapon.SurgePose > 0f ) gun.Root.GlobalBasis = AlongAim( controller.EyeAngles.Forward );
+			if ( weapon.SurgePose > 0f || (weapon.Spear && weapon.SpearThrust > 0f) ) gun.Root.GlobalBasis = AlongAim( controller.EyeAngles.Forward );
 			gun.Root.GlobalPosition = rigRoot.GlobalTransform * U.Sbox( handAt );
 			var r = BoneWorld( gun.Skeleton, "hand_R" );
 			gun.Root.GlobalPosition += rigRoot.GlobalTransform * U.Sbox( handAt ) - r;
 			// Trident-Bot's surge thrust: the weapon driven forward along the aim, the hands going with it.
 			if ( weapon.SurgePose != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SurgePose * 0.35f;
+			// The spear's own thrust (left click): cocked back, then stabbed out ahead along the aim, the arm going with it.
+			else if ( weapon.Spear && weapon.SpearThrust != 0f ) gun.Root.GlobalPosition += controller.EyeAngles.Forward * weapon.SpearThrust * 0.45f;
 			gripR = Char( BoneWorld( gun.Skeleton, "hand_R" ) );
 			gripL = Char( BoneWorld( gun.Skeleton, "hand_L" ) );
 			var anim = weapon.IsReloading ? "reload" : "idle";

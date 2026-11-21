@@ -3632,7 +3632,9 @@ public partial class AutoTest : Node
 			if ( part is not null ) part.ReceiveShot( 50f, part, -front, hit.HitPosition, from, player, true );
 			GD.Print( $"[autotest] mermaid shield: the shot hit {part?.Name ?? "nothing"} (index {part?.Index}), health {before:0} to {m.Health.Current:0}, blocked {m.Blocked}" );
 			Check( part is { Index: Mermaid.ShieldIndex } && m.Health.Current >= before && m.Blocked == 1, "a trident mermaid's shield did not stop a shot from the front" );
-			var head = m.GlobalPosition + Vector3.Up * 0.52f;
+			// Aim at the head's own hit shape: its height moves with the swim and the stab pose.
+			var headPart = CreaturePart.All.FirstOrDefault( p => p.Creature == m && p.Index == 0 );
+			var head = headPart?.Collider?.GlobalPosition ?? m.GlobalPosition + Vector3.Up * 0.52f;
 			var headHit = Trace.Ray( player, head + front * 4f, head - front, Layers.Creature ).Node as CreaturePart;
 			Check( headHit is { Index: 0 }, $"a trident mermaid's head is not open over its shield (hit {headHit?.Name ?? "nothing"})" );
 			// Keep shooting the same spot: the cell cracks and shatters, then shots go through the hole.

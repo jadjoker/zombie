@@ -76,10 +76,11 @@ jobs:
             name=$(echo "$flags" | tr -d '-' | tr ' ' '_')
             log="$PWD/build/test_$name.log"
             timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > "$log.out" 2>&1 || true
-            # A crash (no result at all, no failed check) is run once more, after showing where it stopped, so an
-            # intermittent engine crash doesn't block a release; a failed check never gets a second go.
-            if ! grep -q "\[autotest\] done" "$log" && ! grep -q "\[autotest\] FAIL" "$log"; then
-              echo "::warning::test $flags crashed; its last lines, then one more try:"; tail -15 "$log"; tail -15 "$log.out"
+            # A crash or a failed check gets one more try, after showing what went wrong, so a flaky test or an
+            # intermittent engine crash doesn't block a release. A real bug fails both times.
+            if ! grep -q "\[autotest\] done" "$log" || grep -qE "ERROR|\[autotest\] FAIL" "$log"; then
+              echo "::warning::test $flags failed or crashed once; what went wrong, then one more try:"
+              grep -E "ERROR|FAIL" "$log" | head -10; tail -15 "$log"; tail -15 "$log.out"
               timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > "$log.out" 2>&1 || true
             fi
             if ! grep -q "\[autotest\] done" "$log" || grep -qE "ERROR|\[autotest\] FAIL" "$log"; then

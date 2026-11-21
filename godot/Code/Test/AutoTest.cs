@@ -3185,6 +3185,8 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] trident bot: Trident Swarm let out {TridentBolt.Splinters} small tridents, they hit {TridentBolt.SplinterHits}; the big one hit {TridentBolt.LastHits}" );
 		Check( TridentBolt.Splinters == PlayerPerks.MaxSwarm, $"Trident Swarm let out {TridentBolt.Splinters} small tridents, not {PlayerPerks.MaxSwarm} (first hit only)" );
 		Check( TridentBolt.SplinterHits >= 2, $"the small tridents hit only {TridentBolt.SplinterHits} enemies" );
+		Check( TridentBolt.SplinterAims.Distinct().Count() == TridentBolt.SplinterAims.Count && !TridentBolt.SplinterAims.Contains( TridentBolt.MainNext ),
+			"the small tridents went for the same enemy as each other or as the big trident" );
 		TridentBolt.ForceSplinterChance = null;
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 		PlayerPerks.Of( player ).Clear();

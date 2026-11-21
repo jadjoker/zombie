@@ -51,6 +51,19 @@ public partial class TridentBolt : Node3D
 	public static float? ForceSplinterChance;
 	/// <summary> Tests: small tridents let out, and enemies they hit. </summary>
 	public static int Splinters, SplinterHits;
+	/// <summary> Tests: the enemies the small tridents first went for, and the one the big trident sought next. </summary>
+	public static readonly List<Node> SplinterAims = new();
+	public static Node MainNext;
+	/// <summary> Tridents in flight, so seeking ones can spread over different enemies. </summary>
+	static readonly List<TridentBolt> flying = new();
+	public override void _EnterTree() => flying.Add( this );
+	public override void _ExitTree() => flying.Remove( this );
+	/// <summary> Another trident in flight is already going for this enemy. </summary>
+	bool Claimed( Creature c )
+	{
+		foreach ( var b in flying ) if ( b != this && !b.stuck && b.seeking == c ) return true;
+		return false;
+	}
 
 	/// <summary> Fires one from `muzzle` toward `target`. `cameraStart` is where the shot was aimed from (checked first, so a gun poked into a wall still hits the wall). </summary>
 	public static TridentBolt Launch( Node parent, Vector3 muzzle, Vector3 target, Vector3 aim, Vector3 cameraStart, float damage, PlayerController shooter, PlayerWeapon weapon, bool charged = false )
@@ -75,6 +88,8 @@ public partial class TridentBolt : Node3D
 		TridentModel.BuildTrident( bolt );
 		bolt.age = 0f;
 		LastHits = 0;
+		SplinterAims.Clear();
+		MainNext = null;
 		if ( charged ) Enchant( bolt );
 		return bolt;
 	}
@@ -110,14 +125,16 @@ public partial class TridentBolt : Node3D
 		}
 
 		var from = GlobalPosition;
-		if ( seeking is not null && (!IsInstanceValid( seeking ) || seeking.IsDead) ) seeking = NextTarget( from );
+		if ( seeking is not null && (!IsInstanceValid( seeking ) || seeking.IsDead) ) seeking = small ? RandomTarget( from, null ) : NextTarget( from );
 		if ( seeking is not null )
 		{
 			// Heat seeking: swing hard onto the next enemy, no drop.
 			var want = (AimAt( seeking, from ) - from).SafeNormal();
 			var heading = velocity.SafeNormal();
 			var angle = heading.AngleTo( want );
-			heading = heading.Slerp( want, MathF.Min( 1f, SeekTurn * dt / MathF.Max( angle, 0.001f ) ) ).Normalized();
+			// A small one swings wide for a moment first, so the swarm spreads out before each goes for its own enemy.
+			var turn = small && age < 0.18f ? 5f : SeekTurn;
+			heading = heading.Slerp( want, MathF.Min( 1f, turn * dt / MathF.Max( angle, 0.001f ) ) ).Normalized();
 			velocity = heading * velocity.Length();
 		}
 		else velocity += Vector3.Down * Drop * dt;
@@ -244,8 +261,9 @@ public partial class TridentBolt : Node3D
 			struck.Add( owner );
 			if ( seeking == owner ) seeking = null;
 			// Trident Swarm: only on the first enemy a trident hits, not on the ones it seeks after.
-			if ( !small && hits == 1 && owner is Creature first ) Splinter( tr.HitPosition, first );
 			var next = !small && hits <= SeekNext + (PlayerPerks.Of( shooter )?.ExtraPierce ?? 0) ? NextTarget( tr.HitPosition ) : null;
+			if ( !small && hits == 1 ) MainNext = next;
+			if ( !small && hits == 1 && owner is Creature first ) Splinter( tr.HitPosition, first, next );
 			if ( next is not null )
 			{
 				// Through it and on to the next closest enemy: none of this creature's parts stop it again; a burst of bubbles out the far side.
@@ -282,39 +300,36 @@ public partial class TridentBolt : Node3D
 
 	/// <summary>
 	/// Trident Swarm: one roll of `SplinterChance` per pickup (up to `PlayerPerks.MaxSwarm`); each that comes up lets a
-	/// small trident out of the enemy at half damage, fanned out and seeking the nearest other enemy (a different one each
-	/// while there are enough) at the same seeking speed as the big one.
+	/// small trident out of the enemy at half damage. They fan out sideways from the big one, then each goes for a random
+	/// enemy in range that nothing else is after (not the big trident's next, not each other's), at the same seeking
+	/// speed as the big one. Only when there are too few enemies do they double up.
 	/// </summary>
-	void Splinter( Vector3 at, Creature first )
+	void Splinter( Vector3 at, Creature first, Creature mainNext )
 	{
 		var count = Math.Min( PlayerPerks.Of( shooter )?.Count( PerkKind.Swarm ) ?? 0, PlayerPerks.MaxSwarm );
 		if ( count == 0 || !IsInstanceValid( shooter ) ) return;
-		var range = SeekRange + (PlayerPerks.Of( shooter )?.ExtraSeekRange ?? 0f);
-		var taken = new HashSet<Creature>();
+		var forward = velocity.SafeNormal();
+		var side = forward.Cross( Vector3.Up ).SafeNormal();
+		if ( side == Vector3.Zero ) side = Vector3.Right;
+		var spin = Rng.Float( 0f, MathF.Tau );
 		for ( var i = 0; i < count; i++ )
 		{
 			if ( Rng.Float() >= (ForceSplinterChance ?? SplinterChance) ) continue;
-			Creature target = null, spare = null;
-			float best = range, bestSpare = range;
-			foreach ( var c in Creature.Everyone )
-			{
-				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || c == first ) continue;
-				var d = at.DistanceTo( c.GlobalPosition );
-				if ( !taken.Contains( c ) && d < best ) { best = d; target = c; }
-				if ( d < bestSpare ) { bestSpare = d; spare = c; }
-			}
-			target ??= spare;
-			if ( target is null ) return;
-			taken.Add( target );
-			var heading = ((AimAt( target, at ) - at).SafeNormal() + Rng.InSphere( 0.7f )).SafeNormal();
 			var bolt = new TridentBolt
 			{
 				Name = "Small Trident", small = true, damage = damage * SplinterDamage, shooter = shooter, weapon = weapon,
-				velocity = heading * Speed * SeekSpeed, cameraStart = at, checkedStart = true, seeking = target,
-				exclude = exclude.Duplicate(),
+				cameraStart = at, checkedStart = true, exclude = exclude.Duplicate(),
 			};
-			ExcludeParts( first, bolt.exclude );
 			bolt.struck.Add( first );
+			var target = bolt.RandomTarget( at, mainNext );
+			if ( target is null ) return;
+			bolt.seeking = target;
+			SplinterAims.Add( target );
+			// Out to the side, each its own way round the big trident's line, then onto its enemy.
+			var a = spin + i * MathF.Tau / count;
+			var outward = (side * MathF.Cos( a ) + forward.Cross( side ).SafeNormal() * MathF.Sin( a ) * 0.6f).SafeNormal();
+			bolt.velocity = ((AimAt( target, at ) - at).SafeNormal() * 0.5f + outward).SafeNormal() * Speed * SeekSpeed;
+			ExcludeParts( first, bolt.exclude );
 			GetTree().CurrentScene.AddChild( bolt );
 			bolt.GlobalPosition = at;
 			bolt.Face();
@@ -324,18 +339,40 @@ public partial class TridentBolt : Node3D
 		}
 	}
 
+	/// <summary>
+	/// A small trident's pick: a random live enemy in range this one hasn't hit that no other trident is after (and not
+	/// `avoid`); failing that, any in range it hasn't hit.
+	/// </summary>
+	Creature RandomTarget( Vector3 from, Creature avoid )
+	{
+		var range = SeekRange + (PlayerPerks.Of( shooter )?.ExtraSeekRange ?? 0f);
+		Creature pick = null, fallback = null;
+		int free = 0, any = 0;
+		foreach ( var c in Creature.Everyone )
+		{
+			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || struck.Contains( c ) || from.DistanceTo( c.GlobalPosition ) > range ) continue;
+			if ( Rng.Int( 0, any++ ) == 0 ) fallback = c;   // one at random from all of them, in one pass
+			if ( c == avoid || Claimed( c ) ) continue;
+			if ( Rng.Int( 0, free++ ) == 0 ) pick = c;
+		}
+		return pick ?? fallback;
+	}
+
 	/// <summary> The closest live enemy to `from` within SeekRange (plus Trident Reach) that this trident hasn't hit yet. </summary>
 	Creature NextTarget( Vector3 from )
 	{
 		Creature best = null;
 		var bestDistance = SeekRange + (PlayerPerks.Of( shooter )?.ExtraSeekRange ?? 0f);
+		var spareDistance = bestDistance;
+		Creature spare = null;
 		foreach ( var c in Creature.Everyone )
 		{
 			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || struck.Contains( c ) ) continue;
 			var d = from.DistanceTo( c.GlobalPosition );
-			if ( d < bestDistance ) { bestDistance = d; best = c; }
+			if ( d < bestDistance && !Claimed( c ) ) { bestDistance = d; best = c; }
+			if ( d < spareDistance ) { spareDistance = d; spare = c; }
 		}
-		return best;
+		return best ?? spare;
 	}
 
 	/// <summary> Where to fly at an enemy: the middle of its hit shapes (the parts' colliders), else a little above its origin. </summary>

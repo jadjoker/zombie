@@ -306,6 +306,8 @@ public partial class Squilien : Creature
 
 	/// <summary> Inches a second: no tentacle segment moves faster than this (a sudden turn of the bell used to fling them). </summary>
 	const float MaxTentacleSpeed = 400f;
+	/// <summary> How fast (per second) the tentacles take up the bell's speed: high enough that a stroke swings them, not flings them. </summary>
+	const float TentacleDrag = 10f;
 	const float StrokeTime = 0.25f, RelaxTime = 0.7f, JellyStiffness = 170f, JellyDamping = 7f;
 	static float Ease( float k ) { k = MathX.Clamp( k, 0f, 1f ); return k * k * (3f - 2f * k); }
 
@@ -348,11 +350,11 @@ public partial class Squilien : Creature
 					var wave = MathF.Sin( time * 1.1f - i * 0.7f + tentacle.Phase );
 					force += tangent * wave * (10f + 22f * along);
 					force += outward * MathF.Cos( time * 0.8f - i * 0.6f + tentacle.Phase * 1.3f ) * (6f + 10f * along);
-					force -= outward * 90f * MathF.Max( 0f, squeeze ) * (0.3f + along);
+					force -= outward * 35f * MathF.Max( 0f, squeeze ) * (0.3f + along);
 					// Thick water that the bell carries along: drag pulls them toward the bell's own speed, so they hang under it
 					// while it cruises and only swing out when it speeds up or slows (drag against still water streamed them out flat).
 					var carried = velocity;
-					var vel = carried + (piece.Velocity + force * h - carried) * MathF.Exp( -4f * h );
+					var vel = carried + (piece.Velocity + force * h - carried) * MathF.Exp( -TentacleDrag * h );
 					if ( vel.LengthSquared() > MaxTentacleSpeed * MaxTentacleSpeed ) vel = vel.Normalized() * MaxTentacleSpeed;
 					var next = pos + vel * h;
 					var offset = next - parent;

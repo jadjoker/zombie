@@ -57,6 +57,7 @@ public partial class AutoTest
 			var took = MathF.Max( 0.01f, (float)(Clock.Now - before) );
 			for ( var k = 0; k < Math.Min( tips.Count, now.Count ); k++ ) fastestTip = MathF.Max( fastestTip, now[k].DistanceTo( tips[k] ) / took );
 			tips = now;
+			if ( i % 5 == 4 ) GD.Print( $"[autotest] jelly: at {i * 0.1f + 0.1f:0.0} s the tips are at most {fastestTip:0.0} m/s so far" );
 		}
 		player.ThirdPerson = false;
 		player.CameraOverride = null;

@@ -3513,7 +3513,14 @@ public partial class AutoTest : Node
 		{
 			var mine = SeaMine.All.OrderBy( m => m.Height ).First();   // a low one, to walk into
 			var ballAt = mine.BallPosition;
-			var ray = Trace.Ray( player, ballAt + new Vector3( 3f, 0.3f, 0f ), ballAt, Layers.World | Layers.Creature | Layers.Gib );
+			// From above and from the sides: one low on a slope has the hill in the way from some sides (that is the
+			// ground, not the mine), so it counts if a clear line hits the shell.
+			TraceResult ray = default;
+			foreach ( var off in new[] { new Vector3( 0f, 3f, 0f ), new Vector3( 3f, 0.3f, 0f ), new Vector3( -3f, 0.3f, 0f ), new Vector3( 0f, 0.3f, 3f ), new Vector3( 0f, 0.3f, -3f ) } )
+			{
+				ray = Trace.Ray( player, ballAt + off, ballAt, Layers.World | Layers.Creature | Layers.Gib );
+				if ( ray.Node is SeaMineShell ) break;
+			}
 			GD.Print( $"[autotest] mine: a shot at it hits {ray.Node?.Name ?? "nothing"}" );
 			Check( ray.Node is SeaMineShell, "a shot at a sea mine does not hit its shell" );
 			survivor.Health.Heal( 999f );

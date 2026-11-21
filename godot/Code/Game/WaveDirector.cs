@@ -221,7 +221,7 @@ public partial class WaveDirector : Node3D
 	/// <summary> Deep sea anglers: from the second stage on (the wreck site and Atlantis), a share of each wave. Health a little over a Rocky Shark's. </summary>
 	public bool SpawnAnglers = true;
 	public float AnglerChance = 0.14f;
-	public float AnglerBaseHealth = 280f;
+	public float AnglerBaseHealth = 320f;
 	public float AnglerHealthPerWave = 38f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>

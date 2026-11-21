@@ -91,6 +91,7 @@ public partial class Squilien : Creature
 	/// <summary> The bell's squeeze, 0 relaxed (wide and flat) to 1 squeezed (tall and narrow): a springy follower of `beat`, so it overshoots and wobbles like jelly. </summary>
 	float squeeze, squeezeVel;
 	TimeSince sinceStroke = 99f;
+	Vector3 stroke;
 	/// <summary> Tests: the widest and narrowest the bell has been (its width over its rest width). </summary>
 	public float WidestBell = 0f, NarrowestBell = 9f;
 	/// <summary> Tests: the fastest a tentacle segment has moved (m/s), to see they no longer whip. </summary>
@@ -339,9 +340,9 @@ public partial class Squilien : Creature
 					force += tangent * wave * (10f + 22f * along);
 					force += outward * MathF.Cos( time * 0.8f - i * 0.6f + tentacle.Phase * 1.3f ) * (6f + 10f * along);
 					force -= outward * 90f * MathF.Max( 0f, squeeze ) * (0.3f + along);
-					// Thick water, but water the bell carries along: drag pulls them toward most of the bell's own speed, so they
-					// hang and trail a little behind it (drag against still water streamed them out flat behind a moving bell).
-					var carried = velocity * 0.8f;
+					// Thick water that the bell carries along: drag pulls them toward the bell's own speed, so they hang under it
+					// while it cruises and only swing out when it speeds up or slows (drag against still water streamed them out flat).
+					var carried = velocity;
 					var vel = carried + (piece.Velocity + force * h - carried) * MathF.Exp( -4f * h );
 					if ( vel.LengthSquared() > MaxTentacleSpeed * MaxTentacleSpeed ) vel = vel.Normalized() * MaxTentacleSpeed;
 					var next = pos + vel * h;
@@ -397,8 +398,10 @@ public partial class Squilien : Creature
 				var around = flat.Normalized().Rotated( Vector3.Up, MathX.Rad( orbitSign * OrbitSpeed * PulseInterval * 2f ) );
 				goal = target.WorldPosition + (around * PreferredDistance + Vector3.Up * HoverHeight) * U.In;
 			}
-			velocity += (goal - GlobalPosition).SafeNormal() * PulseThrust * strength;
+			stroke = (goal - GlobalPosition).SafeNormal() * PulseThrust * strength;
 		}
+		// The push comes through the squeeze, not in one frame (a one-frame kick yanked the tentacles).
+		if ( sinceStroke < StrokeTime ) velocity += stroke * MathF.Min( dt, StrokeTime - (float)sinceStroke ) / StrokeTime;
 		velocity *= MathF.Exp( -Drag * dt );
 		velocity += Vector3.Down * 12f * dt;
 		Move( dt );
@@ -454,6 +457,7 @@ public partial class Squilien : Creature
 		var lead = target.Controller.Velocity.Flat() / U.In * flight * 0.6f;
 		var launch = ((aim - origin) / U.In + lead).SafeNormal() * InkSpeed + Vector3.Up * 0.5f * InkGravity * flight;
 		nextThrow = ThrowCooldown * Rng.Float( 0.8f, 1.2f );
+		stroke = Vector3.Zero;   // a throw squeezes the bell but does not swim
 		PulseCount++;
 		InkBall.Spawn( origin, launch, InkGravity, InkColor, InkDamage, this );
 		gore.GooBurst( origin, launch.SafeNormal(), InkColor, 4, 120f, 0.8f );

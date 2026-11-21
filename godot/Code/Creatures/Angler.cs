@@ -6,14 +6,14 @@ using Godot;
 /// of hex facets like a fly's, and on a long stalk off its brow a whole lantern glowing green. It swims slowly, the
 /// lantern bobbing ahead of it. Attacks: it swings the lantern at you on its stalk (a wind-up, then a whip), and up
 /// close it opens its jaw wide and lunges in to chomp; from further off its jaw gapes and it shoots a barbed claw on a line
-/// (up to 6 m) that pierces the player and slowly reels them in for a bite. Built in code (SmoothKit lofts, Sculpt shapes), metres, facing
+/// (up to 8 m) that pierces the player and slowly reels them in for a bite. Built in code (SmoothKit lofts, Sculpt shapes), metres, facing
 /// -Z. Its eyes are the weak spots; the lantern takes more than the body.
 /// </summary>
 public partial class Angler : Creature
 {
 	public static readonly List<Angler> All = new();
 
-	public float Speed = 2.6f;             // m/s: slow and steady
+	public float Speed = 2.91f;            // m/s: slow and steady
 	public float HoverHeight = 1.5f;       // body centre over the floor: the mouth at the player's chest
 	public float SwingRange = 4.4f;        // from the mouth: the lantern reaches this far
 	public float SwingDamage = 16f;
@@ -21,10 +21,10 @@ public partial class Angler : Creature
 	public float ChompRange = 2.4f;
 	public float ChompDamage = 24f;
 	public float ChompCooldown = 2.2f;
-	public float HookRange = 6f;          // the claw on its line shoots this far out of the mouth
-	public float HookSpeed = 15f;         // m/s out
+	public float HookRange = 8f;          // the claw on its line shoots this far out of the mouth
+	public float HookSpeed = 18f;         // m/s out
 	public float HookDamage = 8f;         // when it pierces
-	public float ReelSpeed = 1.6f;        // m/s: slowly in
+	public float ReelSpeed = 1.89f;       // m/s: slowly in
 	public float HookBiteDamage = 30f;    // the bite at the end of the reel
 	public float HookCooldown = 8f;
 	public float HookBreak = 0.1f;        // a share of its health shot off while reeling snaps the line

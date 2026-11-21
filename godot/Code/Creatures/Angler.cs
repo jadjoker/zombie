@@ -319,17 +319,32 @@ void fragment() {
 		AddChild( hookLine );
 	}
 
+	/// <summary>
+	/// The middle of the open mouth, between the upper lip and the dropped jaw, a little back from the teeth: where the
+	/// hook line comes out. It follows the jaw and the body's own pitch, so it stays in the gape.
+	/// </summary>
+	Vector3 GapeAt
+	{
+		get
+		{
+			if ( body is null || jaw is null ) return MouthAt;
+			var top = body.GlobalTransform * new Vector3( 0f, -0.2f, -0.78f );
+			var bottom = jaw.GlobalTransform * new Vector3( 0f, -0.06f, -0.66f );
+			return (top + bottom) * 0.5f;
+		}
+	}
+
 	/// <summary> Places the hook and stretches the line from the mouth to it. </summary>
 	void PoseHook()
 	{
 		if ( hook is null ) return;
-		var mouth = MouthAt;
+		var mouth = GapeAt;
 		var facing = (-GlobalBasis.Z).SafeNormal();
 		if ( line == Line.Stowed )
 		{
 			// Back in the mouth, just behind the teeth; it slides forward as the jaw opens to fire.
 			hook.Visible = jawOpen > 0.3f;
-			hook.GlobalTransform = new Transform3D( Shapes.LookAt( facing ), GlobalTransform * new Vector3( 0f, -0.28f, -0.7f - 0.2f * jawOpen ) );
+			hook.GlobalTransform = new Transform3D( Shapes.LookAt( facing ), mouth - facing * (0.35f - 0.25f * MathF.Min( jawOpen, 1f )) );
 			hookLine.Visible = false;
 			return;
 		}
@@ -540,7 +555,7 @@ void fragment() {
 	Vector3 HookThink( PlayerSurvivor prey, Vector3 chest, float dt )
 	{
 		var a = (float)sinceAct;
-		var mouth = MouthAt;
+		var mouth = GapeAt;
 		switch ( line )
 		{
 			case Line.Stowed:

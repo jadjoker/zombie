@@ -286,6 +286,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Draw signal) for panels and `UiStyle.Menu` as a menu's theme; colours are `UiStyle.Teal`, `Gold`, `Ink` and
   friends (theme properties), not inline hex. Test: `--hudshots` (firing, a boss bar, the pause menu; needs a
   window); add `--allthemes` for one shot per theme, switched live.
+- The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
+  relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
+  whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
 - Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, imports, builds, plays through `play_dev.bat`).

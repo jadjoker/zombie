@@ -3,7 +3,9 @@ using Godot;
 /// <summary>
 /// Port of the s&box Squilien: a floating jellyfish-squid. A squashed dome bell with glowing spots, big slanted alien
 /// eyes that blink a little out of step, a frill of curved spines and a glowing crown; tentacles hang underneath as a
-/// soft verlet chain that lags, whips and flares on every swim stroke. It keeps its distance, circling you in pulses,
+/// soft verlet chain. It swims like a real jellyfish (user's reference video): each stroke the bell squeezes tall and
+/// narrow and pushes, then relaxes wide and flat with a jelly wobble (an underdamped spring), and the tentacles just
+/// trail and sway slowly behind it, drawing in a little as the bell squeezes (they used to whip about). It keeps its distance, circling you in pulses,
 /// and lobs ink balls (two in a row ink your view). Tentacle segments can be shot off; the bell is the body.
 /// Numbers are the s&box ones (inches).
 /// </summary>
@@ -86,7 +88,13 @@ public partial class Squilien : Creature
 	TimeUntil nextThrow;
 	float orbitSign = 1f;
 	int seenPulses;
-	float squeeze;
+	/// <summary> The bell's squeeze, 0 relaxed (wide and flat) to 1 squeezed (tall and narrow): a springy follower of `beat`, so it overshoots and wobbles like jelly. </summary>
+	float squeeze, squeezeVel;
+	TimeSince sinceStroke = 99f;
+	/// <summary> Tests: the widest and narrowest the bell has been (its width over its rest width). </summary>
+	public float WidestBell = 0f, NarrowestBell = 9f;
+	/// <summary> Tests: the fastest a tentacle segment has moved (m/s), to see they no longer whip. </summary>
+	public float FastestTentacle;
 	TimeSince bleedTimer;
 
 	public static Squilien Spawn( Node parent, Vector3 position, float maxHealth )
@@ -276,19 +284,32 @@ public partial class Squilien : Creature
 		if ( diedLocally ) return;
 		UpdateBlink();
 		if ( !bell.Gone ) CreatureGore.BleedTrail( bell.Position + Vector3.Down * BellRadius * 0.4f * U.In, GooColor, health.Fraction, ref bleedTimer );
-		if ( PulseCount != seenPulses ) { seenPulses = PulseCount; squeeze = 1f; }
-		squeeze = MathX.Approach( squeeze, 0f, dt * 2.2f );
+		if ( PulseCount != seenPulses ) { seenPulses = PulseCount; sinceStroke = 0f; }
+		// The stroke: a quick squeeze (a quarter second), then a slow relax; the bell follows it on a soft spring.
+		var t = (float)sinceStroke;
+		var beat = t < StrokeTime ? Ease( t / StrokeTime ) : 1f - Ease( MathX.Clamp( (t - StrokeTime) / RelaxTime, 0f, 1f ) );
+		var step = MathF.Min( dt, 1f / 30f );
+		squeezeVel += ((beat - squeeze) * JellyStiffness - squeezeVel * JellyDamping) * step;
+		squeeze += squeezeVel * step;
 		PoseBody( dt );
 	}
+
+	const float StrokeTime = 0.25f, RelaxTime = 0.7f, JellyStiffness = 170f, JellyDamping = 7f;
+	static float Ease( float k ) { k = MathX.Clamp( k, 0f, 1f ); return k * k * (3f - 2f * k); }
 
 	void PoseBody( float frame )
 	{
 		var dt = MathF.Max( frame, 0.0001f );
-		var s = squeeze * squeeze;
+		var s = squeeze;
 		bell.Position = GlobalPosition;
 		bell.Go.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized(), GlobalPosition );
 		var r = BellRadius * (1f - 0.12f * bell.Hurt);
-		bell.Skin.Scale = Shapes.Ellipsoid( (1f - 0.2f * s) * r, (1f - 0.2f * s) * r, (0.75f + 0.15f * s) * r );
+		// Relaxed: wide and flat. Squeezed: narrow and tall. The spring's overshoot is the jelly wobble.
+		var wide = 1.1f - 0.3f * s;
+		var tall = 0.68f + 0.3f * s;
+		WidestBell = MathF.Max( WidestBell, wide );
+		NarrowestBell = MathF.Min( NarrowestBell, wide );
+		bell.Skin.Scale = Shapes.Ellipsoid( wide * r, wide * r, tall * r );
 		Tint( bell );
 
 		var time = (float)Clock.Now;
@@ -311,17 +332,19 @@ public partial class Squilien : Creature
 					var pos = piece.Position / U.In;
 					var force = Vector3.Down * 140f;
 					force += (parent + Vector3.Down * SegmentLength - pos) * MathX.Lerp( 70f, 25f, along );
-					var wave = MathF.Sin( time * 2.4f - i * 1.1f + tentacle.Phase );
-					force += tangent * wave * (60f + 110f * along);
-					force += outward * MathF.Cos( time * 1.7f - i * 0.9f + tentacle.Phase * 1.3f ) * (30f + 40f * along);
-					force += (outward * 500f + Vector3.Up * 380f) * squeeze * (0.4f + along);
+					// A slow, soft sway that runs down the tentacle (no whipping), and a little drawing in as the bell squeezes.
+					var wave = MathF.Sin( time * 1.1f - i * 0.7f + tentacle.Phase );
+					force += tangent * wave * (10f + 22f * along);
+					force += outward * MathF.Cos( time * 0.8f - i * 0.6f + tentacle.Phase * 1.3f ) * (6f + 10f * along);
+					force -= outward * 90f * MathF.Max( 0f, squeeze ) * (0.3f + along);
 					var vel = piece.Velocity + force * h;
-					vel *= MathF.Exp( -2.2f * h );
+					vel *= MathF.Exp( -4f * h );   // thick water: they trail behind the bell and settle
 					var next = pos + vel * h;
 					var offset = next - parent;
 					if ( offset.LengthSquared() < 0.01f ) offset = Vector3.Down;
 					next = parent + offset.Normalized() * SegmentLength;
 					piece.Velocity = (next - pos) / h;
+					FastestTentacle = MathF.Max( FastestTentacle, piece.Velocity.Length() * U.In );
 					piece.Position = next * U.In;
 					parent = next;
 				}

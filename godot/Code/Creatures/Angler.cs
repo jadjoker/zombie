@@ -189,9 +189,9 @@ void fragment() {
 		{
 			var s = i / 7f - 1f;
 			var root = new Vector3( 0.5f * s, -0.1f, -0.3f - 0.6f * (1f - s * s) );
-			var length = (i % 2 == 0 ? 0.26f : 0.15f) * (1.15f - 0.35f * MathF.Abs( s )) * (0.85f + 0.3f * (float)random.NextDouble());
+			var length = (i % 2 == 0 ? 0.4f : 0.22f) * (1.15f - 0.35f * MathF.Abs( s )) * (0.85f + 0.3f * (float)random.NextDouble());
 			var tip = root + new Vector3( s * 0.04f, -length, -0.05f );
-			Sculpt.Cone( body, root, tip, 0.028f + length * 0.07f, tooth, 6, "Tooth" );
+			Sculpt.Cone( body, root, tip, 0.03f + length * 0.08f, tooth, 6, "Tooth" );
 		}
 
 		// The lower jaw: a jutting underbite on a hinge, its teeth standing up long and crooked.
@@ -202,9 +202,9 @@ void fragment() {
 		{
 			var s = i / 6f - 1f;
 			var root = new Vector3( 0.48f * s, -0.06f, -0.2f - 0.82f * (1f - s * s) );
-			var length = (i % 2 == 0 ? 0.42f : 0.24f) * (1.2f - 0.4f * MathF.Abs( s )) * (0.8f + 0.4f * (float)random.NextDouble());
+			var length = (i % 2 == 0 ? 0.62f : 0.32f) * (1.2f - 0.4f * MathF.Abs( s )) * (0.8f + 0.4f * (float)random.NextDouble());
 			var tip = root + new Vector3( s * 0.06f + ((float)random.NextDouble() - 0.5f) * 0.06f, length, -0.09f - length * 0.25f );
-			Sculpt.Cone( jaw, root, tip, 0.032f + length * 0.07f, tooth, 6, "Fang" );
+			Sculpt.Cone( jaw, root, tip, 0.034f + length * 0.08f, tooth, 6, "Fang" );
 		}
 
 		// The eyes: two bulging compound domes high on the head.

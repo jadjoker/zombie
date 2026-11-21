@@ -31,7 +31,9 @@ public partial class AutoTest
 
 		if ( shots is not null )
 		{
-			foreach ( var n in GetTree().Root.FindChildren( "*", "CanvasLayer", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = false;
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+				else if ( n is ViewModel or ViewModelAxe && n is Node3D vm ) vm.Visible = false;
 			Transform3D? view = null;
 			player.CameraOverride = _ => view;
 			async Task From( string name, Vector3 offset, Vector3? lookAt = null )

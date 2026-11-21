@@ -21,6 +21,7 @@ public partial class Angler : Creature
 	public float ChompRange = 2.4f;
 	public float ChompDamage = 24f;
 	public float ChompCooldown = 2.2f;
+	public const float ModelScale = 1.05f;  // the whole model (body, jaw, eyes, stalk, lantern) is drawn this much bigger
 	public float HookRange = 8f;          // the claw on its line shoots this far out of the mouth
 	public float HookSpeed = 18f;         // m/s out
 	public float HookDamage = 8f;         // when it pierces
@@ -187,7 +188,7 @@ void fragment() {
 		var tooth = Sculpt.Paint( ToothColor, 0.25f );
 		var metal = Sculpt.Paint( new Color( 0.1f, 0.11f, 0.13f ), 0.35f, 0.7f );
 		var fins = SmoothKit.FinMaterial( Teal, Purple, 0.78f, 0.35f );
-		body = new Node3D { Name = "Body" };
+		body = new Node3D { Name = "Body", Scale = Vector3.One * ModelScale };
 		AddChild( body );
 
 		// The body: one smooth loft from the tail stalk to the nose, tall and round (rings: along, half width, half
@@ -451,7 +452,7 @@ void fragment() {
 		stalk[0].Rotation = new Vector3( swingPose * 0.22f, 0f, 0f );
 		// The lantern hangs level from its handle, swinging on it with the stalk's motion.
 		SmoothKit.Spring( ref lanternTilt, ref lanternTiltVel, -swingVel * 0.25f, 1.4f, 0.25f, dt );
-		lantern.GlobalBasis = GlobalBasis.Orthonormalized() * new Basis( Vector3.Right, lanternTilt ) * Basis.FromScale( Vector3.One * 1.35f );
+		lantern.GlobalBasis = GlobalBasis.Orthonormalized() * new Basis( Vector3.Right, lanternTilt ) * Basis.FromScale( Vector3.One * 1.35f * ModelScale );
 		var flicker = 1f + 0.08f * MathF.Sin( t * 13f ) + 0.05f * MathF.Sin( t * 29f );
 		lanternLight.LightEnergy = 2.6f * flicker * (act == Act.Swing ? 1.4f : 1f);
 

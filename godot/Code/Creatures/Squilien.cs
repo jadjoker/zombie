@@ -96,6 +96,15 @@ public partial class Squilien : Creature
 	public float WidestBell = 0f, NarrowestBell = 9f;
 	/// <summary> Tests: the fastest a tentacle segment has moved (m/s), to see they no longer whip. </summary>
 	public float FastestTentacle;   // relative to the bell
+	/// <summary> Tests: where each tentacle's tip is, from the bell's centre (metres). </summary>
+	public IEnumerable<Vector3> TentacleTips()
+	{
+		foreach ( var t in tentacles )
+		{
+			var last = t.Pieces.LastOrDefault( p => !p.Gone );
+			if ( last is not null ) yield return last.Position - GlobalPosition;
+		}
+	}
 	TimeSince bleedTimer;
 
 	public static Squilien Spawn( Node parent, Vector3 position, float maxHealth )

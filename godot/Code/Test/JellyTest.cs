@@ -37,7 +37,10 @@ public partial class AutoTest
 				if ( n is CanvasLayer cl ) cl.Visible = false;
 				else if ( n is ViewModel or ViewModelAxe && n is Node3D vm ) vm.Visible = false;
 			player.CameraOverride = _ => view;
+			player.ThirdPerson = true;   // no first person gun in the frames
 		}
+		var tips = jelly.TentacleTips().ToList();
+		var fastestTip = 0f;
 		for ( var i = 0; i < 30; i++ )
 		{
 			var at = jelly.GlobalPosition + Vector3.Down * 0.5f;
@@ -48,13 +51,19 @@ public partial class AutoTest
 				foreach ( var child in player.Camera.GetChildren() ) if ( child is Node3D held ) held.Visible = false;   // the gun in first person
 				await Shot( $"jelly_{i:00}" );
 			}
+			var before = Clock.Now;
 			await Wait( 0.1f );
+			var now = jelly.TentacleTips().ToList();
+			var took = MathF.Max( 0.01f, (float)(Clock.Now - before) );
+			for ( var k = 0; k < Math.Min( tips.Count, now.Count ); k++ ) fastestTip = MathF.Max( fastestTip, now[k].DistanceTo( tips[k] ) / took );
+			tips = now;
 		}
+		player.ThirdPerson = false;
 		player.CameraOverride = null;
-		GD.Print( $"[autotest] jelly: {jelly.PulseCount - strokes} strokes in 3 s, bell width {jelly.NarrowestBell:0.00} to {jelly.WidestBell:0.00} of its rest, fastest tentacle {jelly.FastestTentacle:0.0} m/s against the bell" );
+		GD.Print( $"[autotest] jelly: {jelly.PulseCount - strokes} strokes in 3 s, bell width {jelly.NarrowestBell:0.00} to {jelly.WidestBell:0.00} of its rest, tentacle tips at most {fastestTip:0.0} m/s against the bell" );
 		Check( jelly.PulseCount - strokes >= 2, "the squilien did not swim strokes" );
 		Check( jelly.NarrowestBell < 0.88f && jelly.WidestBell > 1.02f, "the squilien's bell does not squeeze narrow and relax wide" );
-		Check( jelly.FastestTentacle < 5f, $"the squilien's tentacles whip at {jelly.FastestTentacle:0.0} m/s" );
+		Check( fastestTip < 3f, $"the squilien's tentacle tips whip about at {fastestTip:0.0} m/s" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

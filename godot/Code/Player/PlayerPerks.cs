@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary> The pickups creatures can drop besides ammo. </summary>
-public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce, Reach, Swarm }
+public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce, Reach, Swarm, Bulwark }
 
 /// <summary>
 /// The player's pickups (dropped by creatures, see <see cref="PerkPickup"/>): how many of each they hold, and what
@@ -23,6 +23,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Trident Reach (Trident-Bot only, 1%): each one lets a trident look 1 m further for the next enemy to seek.
 /// - Trident Swarm (Trident-Bot only, 1%, at most 3): when a trident first hits an enemy, small half-damage tridents may come
 ///   out and seek other enemies: 1 stack 30% of one; 2 stacks 50% of one, 30% of two; 3 stacks 70%, 50%, 30% (`TridentBolt.Splinter`).
+/// - Shield Bulwark (Trident-Bot only, 1%, at most 15): the raised energy shield takes 1% more of each hit (65% up to 80%).
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node
@@ -40,6 +41,7 @@ public partial class PlayerPerks : Node
 		(PerkKind.Pierce, "Trident Pierce", "pierce", 0.04f, new Color( 0.12f, 0.75f, 0.72f )),
 		(PerkKind.Reach, "Trident Reach", "reach", 0.01f, new Color( 0.62f, 0.4f, 1f )),
 		(PerkKind.Swarm, "Trident Swarm", "swarm", 0.01f, new Color( 0.95f, 0.75f, 0.15f )),
+		(PerkKind.Bulwark, "Shield Bulwark", "bulwark", 0.01f, new Color( 0.35f, 0.85f, 1f )),
 	};
 
 	public const float ReloadPerStack = 0.06f;
@@ -67,19 +69,27 @@ public partial class PlayerPerks : Node
 	{
 		PerkKind.Shield or PerkKind.Chest => true,
 		PerkKind.Pierce or PerkKind.Reach => RobotClass.Current == RobotClass.TridentBot,
-		PerkKind.Swarm => RobotClass.Current == RobotClass.TridentBot && SwarmRoom(),
+		PerkKind.Swarm or PerkKind.Bulwark => RobotClass.Current == RobotClass.TridentBot && Room( kind ),
 		_ => RobotClass.Current == RobotClass.RamBot,
 	};
 	/// <summary> More enemies a trident seeks after its first, one per Trident Pierce. </summary>
 	public int ExtraPierce => Count( PerkKind.Pierce );
 	/// <summary> Trident Swarm stacks this many times at most; it stops dropping once every player has them all. </summary>
 	public const int MaxSwarm = 3;
-	static bool SwarmRoom()
+	/// <summary> Shield Bulwark stacks this many times at most (1% more blocked each). </summary>
+	public const int MaxBulwark = 15;
+	public const float BulwarkPerStack = 0.01f;
+	/// <summary> The most of a kind one player can hold (most have no limit). </summary>
+	public static int Cap( PerkKind kind ) => kind switch { PerkKind.Swarm => MaxSwarm, PerkKind.Bulwark => MaxBulwark, _ => int.MaxValue };
+	/// <summary> Some player can still take one more of this kind (a capped kind stops dropping once everyone is full). </summary>
+	static bool Room( PerkKind kind )
 	{
 		foreach ( var survivor in PlayerSurvivor.All )
-			if ( (Of( survivor.Controller )?.Count( PerkKind.Swarm ) ?? 0) < MaxSwarm ) return true;
+			if ( (Of( survivor.Controller )?.Count( kind ) ?? 0) < Cap( kind ) ) return true;
 		return false;
 	}
+	/// <summary> The share of a hit the raised energy shield takes: `PlayerWeapon.BlockShare` plus 1% per Shield Bulwark. </summary>
+	public float BlockShare => PlayerWeapon.BlockShare + BulwarkPerStack * Math.Min( Count( PerkKind.Bulwark ), MaxBulwark );
 	/// <summary> Metres more a trident looks for the next enemy to seek, per Trident Reach. </summary>
 	public const float ReachPerStack = 1f;
 	public float ExtraSeekRange => ReachPerStack * Count( PerkKind.Reach );
@@ -152,7 +162,7 @@ public partial class PlayerPerks : Node
 		Taken++;
 		if ( survivor is null ) Hook();
 		if ( kind == PerkKind.Chest ) { survivor?.RewardPoints( ChestPoints ); return; }
-		if ( kind == PerkKind.Swarm && counts[(int)kind] >= MaxSwarm ) return;
+		if ( counts[(int)kind] >= Cap( kind ) ) return;
 		counts[(int)kind]++;
 		if ( kind == PerkKind.Shield ) { Shield = ShieldMax; shieldBroken = false; }
 		Apply();
@@ -167,10 +177,10 @@ public partial class PlayerPerks : Node
 	/// <summary> The shield takes a hit first: what is left over goes on to health. Poison and the like go straight through. </summary>
 	float Absorb( DamageInfo damage )
 	{
-		// The Trident-Bot's energy shield, raised: it takes 65% of the hit before anything else.
+		// The Trident-Bot's energy shield, raised: it takes 65% of the hit (more with Shield Bulwark) before anything else.
 		if ( damage.Attacker is not PlayerAfflictions && controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { Spear: true, Blocking: true } )
 		{
-			damage.Damage *= 1f - PlayerWeapon.BlockShare;
+			damage.Damage *= 1f - BlockShare;
 			Blocked++;
 			Sfx.Play2D( "glass_hit", 0.45f, 1.4f );
 		}

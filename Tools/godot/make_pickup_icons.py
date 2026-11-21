@@ -162,10 +162,24 @@ def swarm_icon():
     return img
 
 
+def bulwark_icon():
+    img, d = badge((70, 200, 255))
+    # The energy shield: a hexagon of hex cells, with a plus for more blocked.
+    def hexagon(cx, cy, r, fill=W):
+        poly(d, [(cx + r * math.cos(math.pi / 6 + i * math.pi / 3), cy + r * math.sin(math.pi / 6 + i * math.pi / 3)) for i in range(6)], fill)
+    hexagon(58, 66, 42)
+    hexagon(58, 66, 34, fill=(70, 200, 255, 255))
+    for cx, cy in ((58, 66), (58, 46), (58, 86), (41, 56), (75, 56), (41, 76), (75, 76)):
+        hexagon(cx, cy, 8)
+    line(d, [(98, 18), (98, 44)], 7)
+    line(d, [(85, 31), (111, 31)], 7)
+    return img
+
+
 ICONS = {
     "reload": reload_icon, "firerate": firerate_icon, "explosive": explosive_icon, "electric": electric_icon,
     "chest": chest_icon, "shield": shield_icon, "move": move_icon, "blast": blast_icon,
-    "pierce": pierce_icon, "reach": reach_icon, "swarm": swarm_icon,
+    "pierce": pierce_icon, "reach": reach_icon, "swarm": swarm_icon, "bulwark": bulwark_icon,
 }
 
 if __name__ == "__main__":

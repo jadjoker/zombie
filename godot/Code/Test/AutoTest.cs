@@ -2786,10 +2786,10 @@ public partial class AutoTest : Node
 		var perks = PlayerPerks.Of( player );
 		Check( perks is not null, "the player has no PlayerPerks" );
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm) ).Sum( e => e.Chance );
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark) ).Sum( e => e.Chance );
 		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
 		Check( !PlayerPerks.Drops( PerkKind.Reach ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Reach ).Chance == 0.01f, "Trident Reach is not a 1% drop for Trident-Bot only" );
-		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
+		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
 		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
 
@@ -3077,6 +3077,17 @@ public partial class AutoTest : Node
 		var blockedLoss = hp - survivor.Health.Current;
 		GD.Print( $"[autotest] trident bot: a 40 hit behind the shield cost {blockedLoss:0.0}" );
 		Check( MathF.Abs( blockedLoss - 40f * (1f - PlayerWeapon.BlockShare) ) < 0.6f, "the shield does not take 65% of a hit" );
+		// Shield Bulwark: 1% more each, at most 15 (80%).
+		var bulwarkPerks = PlayerPerks.Of( player );
+		for ( var i = 0; i < 20; i++ ) bulwarkPerks.Give( PerkKind.Bulwark );
+		Check( bulwarkPerks.Count( PerkKind.Bulwark ) == PlayerPerks.MaxBulwark && !PlayerPerks.Drops( PerkKind.Bulwark ), $"Shield Bulwark stacked to {bulwarkPerks.Count( PerkKind.Bulwark )}, not {PlayerPerks.MaxBulwark}, or still drops" );
+		survivor.Health.ResetTo( survivor.Health.MaxHealth );
+		hp = survivor.Health.Current;
+		survivor.Health.OnDamage( new DamageInfo { Damage = 40f, Attacker = crab, Position = player.GlobalPosition } );
+		var bulwarkLoss = hp - survivor.Health.Current;
+		GD.Print( $"[autotest] trident bot: with {PlayerPerks.MaxBulwark} Shield Bulwark a 40 hit behind the shield cost {bulwarkLoss:0.0}" );
+		Check( MathF.Abs( bulwarkLoss - 40f * 0.2f ) < 0.6f, $"with 15 Shield Bulwark the shield took {1f - bulwarkLoss / 40f:P0} of a hit, not 80%" );
+		bulwarkPerks.Clear();
 		await Wait( 0.4f );
 		Check( ShieldArm.LastHidden, "the left hand still shows with the shield up" );
 		if ( shots is not null )
@@ -3113,7 +3124,7 @@ public partial class AutoTest : Node
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
 		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
-		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just its trident pickups, the shield and the chest" );
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just its trident pickups, the shield and the chest" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();

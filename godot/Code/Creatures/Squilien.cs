@@ -94,7 +94,7 @@ public partial class Squilien : Creature
 	/// <summary> Tests: the widest and narrowest the bell has been (its width over its rest width). </summary>
 	public float WidestBell = 0f, NarrowestBell = 9f;
 	/// <summary> Tests: the fastest a tentacle segment has moved (m/s), to see they no longer whip. </summary>
-	public float FastestTentacle;
+	public float FastestTentacle;   // relative to the bell
 	TimeSince bleedTimer;
 
 	public static Squilien Spawn( Node parent, Vector3 position, float maxHealth )
@@ -294,6 +294,8 @@ public partial class Squilien : Creature
 		PoseBody( dt );
 	}
 
+	/// <summary> Inches a second: no tentacle segment moves faster than this (a sudden turn of the bell used to fling them). </summary>
+	const float MaxTentacleSpeed = 400f;
 	const float StrokeTime = 0.25f, RelaxTime = 0.7f, JellyStiffness = 170f, JellyDamping = 7f;
 	static float Ease( float k ) { k = MathX.Clamp( k, 0f, 1f ); return k * k * (3f - 2f * k); }
 
@@ -330,21 +332,25 @@ public partial class Squilien : Creature
 					if ( piece.Gone ) break;
 					var along = i / (float)Math.Max( 1, tentacle.Pieces.Count - 1 );
 					var pos = piece.Position / U.In;
-					var force = Vector3.Down * 140f;
-					force += (parent + Vector3.Down * SegmentLength - pos) * MathX.Lerp( 70f, 25f, along );
+					var force = Vector3.Down * 220f;
+					force += (parent + Vector3.Down * SegmentLength - pos) * MathX.Lerp( 110f, 45f, along );
 					// A slow, soft sway that runs down the tentacle (no whipping), and a little drawing in as the bell squeezes.
 					var wave = MathF.Sin( time * 1.1f - i * 0.7f + tentacle.Phase );
 					force += tangent * wave * (10f + 22f * along);
 					force += outward * MathF.Cos( time * 0.8f - i * 0.6f + tentacle.Phase * 1.3f ) * (6f + 10f * along);
 					force -= outward * 90f * MathF.Max( 0f, squeeze ) * (0.3f + along);
-					var vel = piece.Velocity + force * h;
-					vel *= MathF.Exp( -4f * h );   // thick water: they trail behind the bell and settle
+					// Thick water, but water the bell carries along: drag pulls them toward most of the bell's own speed, so they
+					// hang and trail a little behind it (drag against still water streamed them out flat behind a moving bell).
+					var carried = velocity * 0.8f;
+					var vel = carried + (piece.Velocity + force * h - carried) * MathF.Exp( -4f * h );
+					if ( vel.LengthSquared() > MaxTentacleSpeed * MaxTentacleSpeed ) vel = vel.Normalized() * MaxTentacleSpeed;
 					var next = pos + vel * h;
 					var offset = next - parent;
 					if ( offset.LengthSquared() < 0.01f ) offset = Vector3.Down;
 					next = parent + offset.Normalized() * SegmentLength;
 					piece.Velocity = (next - pos) / h;
-					FastestTentacle = MathF.Max( FastestTentacle, piece.Velocity.Length() * U.In );
+					if ( piece.Velocity.LengthSquared() > MaxTentacleSpeed * MaxTentacleSpeed ) piece.Velocity = piece.Velocity.Normalized() * MaxTentacleSpeed;
+					FastestTentacle = MathF.Max( FastestTentacle, (piece.Velocity - velocity).Length() * U.In );
 					piece.Position = next * U.In;
 					parent = next;
 				}

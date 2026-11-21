@@ -33,7 +33,9 @@ public partial class AutoTest
 		Transform3D? view = null;
 		if ( shots is not null )
 		{
-			foreach ( var n in GetTree().Root.FindChildren( "*", "CanvasLayer", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = false;
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) )
+				if ( n is CanvasLayer cl ) cl.Visible = false;
+				else if ( n is ViewModel or ViewModelAxe && n is Node3D vm ) vm.Visible = false;
 			player.CameraOverride = _ => view;
 		}
 		for ( var i = 0; i < 30; i++ )
@@ -45,10 +47,10 @@ public partial class AutoTest
 			await Wait( 0.1f );
 		}
 		player.CameraOverride = null;
-		GD.Print( $"[autotest] jelly: {jelly.PulseCount - strokes} strokes in 3 s, bell width {jelly.NarrowestBell:0.00} to {jelly.WidestBell:0.00} of its rest, fastest tentacle {jelly.FastestTentacle:0.0} m/s" );
+		GD.Print( $"[autotest] jelly: {jelly.PulseCount - strokes} strokes in 3 s, bell width {jelly.NarrowestBell:0.00} to {jelly.WidestBell:0.00} of its rest, fastest tentacle {jelly.FastestTentacle:0.0} m/s against the bell" );
 		Check( jelly.PulseCount - strokes >= 2, "the squilien did not swim strokes" );
 		Check( jelly.NarrowestBell < 0.88f && jelly.WidestBell > 1.02f, "the squilien's bell does not squeeze narrow and relax wide" );
-		Check( jelly.FastestTentacle < 6f, $"the squilien's tentacles whip at {jelly.FastestTentacle:0.0} m/s" );
+		Check( jelly.FastestTentacle < 4f, $"the squilien's tentacles whip at {jelly.FastestTentacle:0.0} m/s" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

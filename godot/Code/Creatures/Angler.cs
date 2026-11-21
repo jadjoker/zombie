@@ -5,7 +5,8 @@ using Godot;
 /// green scaled fish with purple spots, a jutting underbite full of huge needle teeth, two bulging compound eyes made
 /// of hex facets like a fly's, and on a long stalk off its brow a whole lantern glowing green. It swims slowly, the
 /// lantern bobbing ahead of it. Attacks: it swings the lantern at you on its stalk (a wind-up, then a whip), and up
-/// close it opens its jaw wide and lunges in to chomp. Built in code (SmoothKit lofts, Sculpt shapes), metres, facing
+/// close it opens its jaw wide and lunges in to chomp; from further off its jaw gapes and it shoots a barbed claw on a line
+/// (up to 6 m) that pierces the player and slowly reels them in for a bite. Built in code (SmoothKit lofts, Sculpt shapes), metres, facing
 /// -Z. Its eyes are the weak spots; the lantern takes more than the body.
 /// </summary>
 public partial class Angler : Creature
@@ -20,11 +21,18 @@ public partial class Angler : Creature
 	public float ChompRange = 2.4f;
 	public float ChompDamage = 24f;
 	public float ChompCooldown = 2.2f;
+	public float HookRange = 6f;          // the claw on its line shoots this far out of the mouth
+	public float HookSpeed = 15f;         // m/s out
+	public float HookDamage = 8f;         // when it pierces
+	public float ReelSpeed = 1.6f;        // m/s: slowly in
+	public float HookBiteDamage = 30f;    // the bite at the end of the reel
+	public float HookCooldown = 8f;
+	public float HookBreak = 0.1f;        // a share of its health shot off while reeling snaps the line
 	public float EyeMultiplier = 2.2f;
 	public float LanternMultiplier = 1.5f;
 
 	/// <summary> Tests: swings and chomps that landed on a player. </summary>
-	public static int SwingHits, ChompHits;
+	public static int SwingHits, ChompHits, HookCatches, HookBites;
 	public static float LastSwingMiss;   // how far the lantern was from the chest on the last swing (tests)
 	bool lastChomped;
 
@@ -38,7 +46,17 @@ public partial class Angler : Creature
 	static readonly Color GooColor = new( 0.35f, 1f, 0.5f );
 	public override GibRecipe Gibs => GibRecipes.Angler( GooColor, Blue, Green, ToothColor );
 
-	enum Act { Swim, Swing, Chomp }
+	enum Act { Swim, Swing, Chomp, Hook }
+
+	// The hook: aimed out of the gaping mouth, flying, caught in a player and reeling them in, or coming back empty.
+	enum Line { Stowed, Out, Reel, Back }
+	Line line = Line.Stowed;
+	Node3D hook;
+	MeshInstance3D hookLine;
+	Vector3 hookAt, hookDir;
+	float hookOut, reelStartHealth;
+	PlayerSurvivor hooked;
+	TimeSince sinceHook = 99f;
 
 	Node3D body, jaw, tailFin;
 	readonly List<Node3D> stalk = new();
@@ -245,6 +263,7 @@ void fragment() {
 			stalk.Add( next );
 			parent = next;
 		}
+		BuildHook( tooth );
 		lantern = BuildLantern( metal );
 		parent.AddChild( lantern );
 		var lanternPart = CreaturePart.Create( this, 4, "Angler Lantern", 0.24f );
@@ -262,6 +281,76 @@ void fragment() {
 		jaw.AddChild( jawPart );
 		jawPart.Position = new Vector3( 0f, -0.15f, -0.6f );
 	}
+
+	/// <summary>
+	/// The hook it shoots out of its mouth: a bony shank with three curved, barbed claws, on a pale gut line. Both are
+	/// top level so they fly free of the body; stowed, the hook sits in the mouth and the line is hidden.
+	/// </summary>
+	void BuildHook( Material tooth )
+	{
+		hook = new Node3D { Name = "Hook", TopLevel = true };
+		AddChild( hook );
+		var bone = Sculpt.Paint( new Color( 0.82f, 0.8f, 0.7f ), 0.35f );
+		var tip = Sculpt.Glow( LanternGreen, 1.6f );
+		Sculpt.Limb( hook, new Vector3( 0f, 0f, 0.28f ), new Vector3( 0f, 0f, -0.08f ), 0.045f, 0.035f, bone, "Shank" );
+		Sculpt.Blob( hook, new Vector3( 0f, 0f, 0.3f ), new Vector3( 0.1f, 0.1f, 0.1f ), bone, name: "Eye" );
+		for ( var k = 0; k < 3; k++ )
+		{
+			// Each claw sweeps forward and out, then curls back to a barbed point.
+			var around = new Basis( Vector3.Forward, k * MathF.Tau / 3f );
+			var a = around * new Vector3( 0f, 0f, -0.06f );
+			var b = around * new Vector3( 0f, 0.13f, -0.2f );
+			var c = around * new Vector3( 0f, 0.2f, -0.12f );
+			var d = around * new Vector3( 0f, 0.15f, 0.02f );
+			Sculpt.Limb( hook, a, b, 0.035f, 0.03f, bone, "Claw" );
+			Sculpt.Limb( hook, b, c, 0.03f, 0.022f, bone, "Claw" );
+			Sculpt.Cone( hook, c, d, 0.022f, tooth, 6, "Point" );
+			Sculpt.Cone( hook, c + around * new Vector3( 0f, -0.02f, 0.03f ), around * new Vector3( 0f, 0.08f, -0.06f ), 0.014f, tip, 5, "Barb" );
+		}
+		hookLine = new MeshInstance3D
+		{
+			Name = "HookLine",
+			TopLevel = true,
+			Mesh = new CylinderMesh { TopRadius = 0.018f, BottomRadius = 0.018f, Height = 1f, RadialSegments = 6, Rings = 1 },
+			MaterialOverride = Sculpt.Paint( new Color( 0.9f, 0.85f, 0.75f ), 0.4f ),
+			Visible = false,
+			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+		};
+		AddChild( hookLine );
+	}
+
+	/// <summary> Places the hook and stretches the line from the mouth to it. </summary>
+	void PoseHook()
+	{
+		if ( hook is null ) return;
+		var mouth = MouthAt;
+		var facing = (-GlobalBasis.Z).SafeNormal();
+		if ( line == Line.Stowed )
+		{
+			// Back in the mouth, just behind the teeth; it slides forward as the jaw opens to fire.
+			hook.Visible = jawOpen > 0.3f;
+			hook.GlobalTransform = new Transform3D( Shapes.LookAt( facing ), GlobalTransform * new Vector3( 0f, -0.28f, -0.7f - 0.2f * jawOpen ) );
+			hookLine.Visible = false;
+			return;
+		}
+		hook.Visible = true;
+		hook.GlobalTransform = new Transform3D( Shapes.LookAt( hookDir ), hookAt );
+		var span = hookAt + hookDir * 0.3f - mouth;
+		var length = span.Length();
+		hookLine.Visible = length > 0.05f;
+		if ( !hookLine.Visible ) return;
+		hookLine.GlobalTransform = new Transform3D( Shapes.LookAt( span / length ) * new Basis( Vector3.Right, -MathF.PI / 2f ) * Basis.FromScale( new Vector3( 1f, length, 1f ) ), mouth + span * 0.5f );
+	}
+
+	/// <summary> Lets go of a hooked player (the line snapped, it bit, it died). </summary>
+	void ReleaseHook()
+	{
+		if ( hooked?.Controller is { } c && IsInstanceValid( c ) ) c.Scripted = false;
+		hooked = null;
+		if ( line == Line.Reel ) line = Line.Back;
+	}
+
+	protected override void Cleanup() => ReleaseHook();
 
 	/// <summary>
 	/// A whole lantern on the end of the stalk: a ring handle, a domed cap with a little chimney, a green glowing glass
@@ -322,8 +411,10 @@ void fragment() {
 		var jawWant = 0.12f + 0.06f * MathF.Sin( t * 1.3f );   // a slow, gaping breath
 		var swingWant = 0f;
 		if ( act == Act.Chomp ) jawWant = a < 0.38f ? 1f : a < 0.5f ? 0f : 0.05f;
+		if ( act == Act.Hook ) jawWant = line == Line.Reel || a < 0.6f || line == Line.Out ? 1.15f : 0.2f;
+		if ( act == Act.Hook && struck ) jawWant = 0f;   // the bite
 		if ( act == Act.Swing ) swingWant = a < 0.5f ? -1f : a < 0.8f ? 1.4f : 0f;
-		SmoothKit.Spring( ref jawOpen, ref jawVel, jawWant, act == Act.Chomp && a >= 0.38f ? 6f : 2.5f, 0.6f, dt );
+		SmoothKit.Spring( ref jawOpen, ref jawVel, jawWant, (act == Act.Chomp && a >= 0.38f) || (act == Act.Hook && struck) ? 6f : 2.5f, 0.6f, dt );
 		SmoothKit.Spring( ref swingPose, ref swingVel, swingWant, act == Act.Swing && a >= 0.5f ? 3.2f : 1.4f, 0.45f, dt );
 
 		// Swimming: a slow bob and roll, the tail fan and pectorals beating, the jaw on its hinge.
@@ -351,8 +442,9 @@ void fragment() {
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
 
-		if ( IsDead || Frozen ) return;
+		if ( IsDead || Frozen ) { PoseHook(); return; }
 		Think( dt );
+		PoseHook();
 	}
 
 	void Think( float dt )
@@ -376,8 +468,12 @@ void fragment() {
 				wish = distance > holdAt ? dir * Speed : -dir * Speed * 0.3f;
 				// The two attacks take turns when both are ready, so it never just bites.
 				var canChomp = distance < ChompRange && sinceChomp > ChompCooldown;
+				// From further off it shoots its hook, if the way to the player is clear.
+				if ( distance > ChompRange + 0.8f && distance < HookRange - 0.3f && sinceHook > HookCooldown && prey.Controller is { Scripted: false }
+					&& !Trace.Ray( this, MouthAt, chest, Layers.World ).Hit ) { Begin( Act.Hook ); canChomp = false; }
 				var canSwing = distance < SwingRange && sinceSwing > SwingCooldown;
-				if ( canSwing && (!canChomp || lastChomped) ) Begin( Act.Swing );
+				if ( act != Act.Swim ) { }
+				else if ( canSwing && (!canChomp || lastChomped) ) Begin( Act.Swing );
 				else if ( canChomp ) Begin( Act.Chomp );
 			}
 			else if ( act == Act.Chomp )
@@ -392,6 +488,11 @@ void fragment() {
 					if ( MouthAt.DistanceTo( chest ) < 1.6f ) Hurt( prey, ChompDamage, dir, 2.5f, ref ChompHits );
 				}
 				if ( a > 0.95f ) End();
+			}
+			else if ( act == Act.Hook )
+			{
+				wish = HookThink( prey, chest, dt );
+				if ( struck && line == Line.Stowed && sinceAct > 0.5f ) End();
 			}
 			else if ( act == Act.Swing )
 			{
@@ -410,7 +511,7 @@ void fragment() {
 				if ( a > 1.15f ) End();
 			}
 		}
-		else if ( act != Act.Swim ) End();
+		else if ( act != Act.Swim ) { ReleaseHook(); line = Line.Stowed; End(); }
 
 		velocity = velocity.Lerp( wish, 1f - MathF.Exp( -(act == Act.Chomp ? 6f : 2.2f) * dt ) );
 		var next = GlobalPosition + velocity * dt;
@@ -431,6 +532,100 @@ void fragment() {
 		}
 	}
 
+	/// <summary>
+	/// The hook attack: the jaw gapes for a moment, the hook shoots out at the player along a line up to
+	/// <see cref="HookRange"/>; if it pierces them it reels them in slowly to the mouth and bites. A miss comes back.
+	/// Shooting it hard enough while it reels (<see cref="HookBreak"/> of its health) snaps the line.
+	/// </summary>
+	Vector3 HookThink( PlayerSurvivor prey, Vector3 chest, float dt )
+	{
+		var a = (float)sinceAct;
+		var mouth = MouthAt;
+		switch ( line )
+		{
+			case Line.Stowed:
+				if ( struck || a < 0.6f ) return Vector3.Zero;   // the jaw opening, or done
+				line = Line.Out;
+				hookAt = mouth;
+				hookDir = (chest - mouth).SafeNormal();
+				hookOut = 0f;
+				Sfx.Play( "trident_charge", mouth, 0.7f, 1.4f );
+				return Vector3.Zero;
+			case Line.Out:
+			{
+				var step = HookSpeed * dt;
+				var next = hookAt + hookDir * step;
+				var wall = Trace.Ray( this, hookAt, next, Layers.World );
+				hookAt = wall.Hit ? wall.HitPosition : next;
+				hookOut += step;
+				// It pierces whoever it passes close to.
+				foreach ( var p in PlayerSurvivor.All )
+				{
+					if ( !p.IsAlive || p.Controller is not { } c || c.Scripted ) continue;
+					var body = c.GlobalPosition + Vector3.Up * 1.1f;
+					if ( hookAt.DistanceTo( body ) > 0.75f ) continue;
+					hooked = p;
+					c.Scripted = true;
+					c.Velocity = Vector3.Zero;
+					line = Line.Reel;
+					reelStartHealth = health.Current;
+					HookCatches++;
+					p.Health?.OnDamage( new DamageInfo { Damage = HookDamage, Attacker = this, Position = body, Origin = mouth } );
+					Sfx.Play( "trident_flesh", body, 1f, 0.8f );
+					c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.6f );
+					break;
+				}
+				if ( line == Line.Out && (wall.Hit || hookOut >= HookRange) ) line = Line.Back;
+				return Vector3.Zero;
+			}
+			case Line.Reel:
+			{
+				var c = hooked?.Controller;
+				if ( c is null || !IsInstanceValid( c ) || !hooked.IsAlive || reelStartHealth - health.Current > health.MaxHealth * HookBreak || a > 9f )
+				{
+					if ( c is not null && IsInstanceValid( c ) ) Sfx.Play( "bubble_pop", hookAt, 0.9f, 0.6f );
+					ReleaseHook();
+					return Vector3.Zero;
+				}
+				// Reeled in slowly toward the gaping mouth, the hook in their chest.
+				var body = c.GlobalPosition + Vector3.Up * 1.1f;
+				var to = mouth + (body - mouth).SafeNormal() * 0.9f;
+				var next = body.MoveToward( to, ReelSpeed * dt );
+				var feet = next - Vector3.Up * 1.1f;
+				feet.Y = MathF.Max( feet.Y, Sculpt.FloorBelow( this, feet + Vector3.Up * 1f, 6f ) );
+				c.GlobalPosition = feet;
+				c.Velocity = Vector3.Zero;
+				c.ResetPhysicsInterpolation();
+				hookDir = (mouth - body).SafeNormal() * -1f;
+				hookAt = feet + Vector3.Up * 1.1f - hookDir * 0.1f;
+				Face( (body - GlobalPosition).SafeNormal(), 4f, dt );
+				if ( !struck && next.DistanceTo( to ) < 0.05f )
+				{
+					// The bite.
+					struck = true;
+					HookBites++;
+					hooked.Health?.OnDamage( new DamageInfo { Damage = HookBiteDamage, Attacker = this, Position = body, Origin = mouth } );
+					Sfx.Play( "crab_snap", mouth, 1f, 0.5f );
+					c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 1f );
+					var victim = hooked;
+					ReleaseHook();
+					line = Line.Stowed;
+					if ( victim.Controller is { } vc ) vc.Velocity += (body - GlobalPosition).Flat().SafeNormal() * 3f + Vector3.Up * 1.5f;
+					sinceAct = 0f;   // a beat to close the jaw before it swims on
+				}
+				return Vector3.Zero;
+			}
+			case Line.Back:
+			{
+				hookAt = hookAt.MoveToward( mouth, HookSpeed * 0.8f * dt );
+				hookDir = (hookAt - mouth).SafeNormal();
+				if ( hookAt.DistanceTo( mouth ) < 0.15f ) { line = Line.Stowed; struck = true; sinceAct = 0f; }
+				return Vector3.Zero;
+			}
+		}
+		return Vector3.Zero;
+	}
+
 	void Begin( Act next )
 	{
 		act = next;
@@ -439,6 +634,7 @@ void fragment() {
 		if ( next == Act.Swing || next == Act.Chomp ) lastChomped = next == Act.Chomp;
 		if ( next == Act.Swing ) { sinceSwing = 0f; LastSwingMiss = 99f; Sfx.Play( "creature_attack", GlobalPosition, 0.5f, 0.55f ); }
 		if ( next == Act.Chomp ) sinceChomp = 0f;
+		if ( next == Act.Hook ) { sinceHook = 0f; line = Line.Stowed; Sfx.Play( "creature_attack", GlobalPosition, 0.6f, 0.45f ); }
 	}
 
 	void End() { act = Act.Swim; sinceAct = 0f; }
@@ -454,6 +650,10 @@ void fragment() {
 	/// <summary> Tests: start an attack now. </summary>
 	public void ForceSwing() { sinceSwing = 99f; Begin( Act.Swing ); }
 	public void ForceChomp() { sinceChomp = 99f; Begin( Act.Chomp ); }
+	public void ForceHook() { Begin( Act.Hook ); }
+	/// <summary> Tests: the hook is in a player and reeling. </summary>
+	public bool Reeling => line == Line.Reel && hooked is not null;
+	public Vector3 HookAt => hook?.GlobalPosition ?? GlobalPosition;
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
@@ -473,6 +673,7 @@ void fragment() {
 	{
 		RaiseKilled();
 		if ( lanternLight is not null ) lanternLight.Visible = false;
+		ReleaseHook();
 		gore?.GooBurst( GlobalPosition, lastShotDirection, GooColor, 26, 320f, 1.2f );
 		GibKit.Burst( Gibs, GlobalPosition, lastShotDirection, 0.26f, 12 );
 		QueueFree();

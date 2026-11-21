@@ -57,6 +57,9 @@ public partial class AutoTest
 			fish.ForceSwing();
 			await Wait( 0.4f );
 			await From( "angler_swing", new Vector3( 4.5f, 0.6f, -1.5f ) );
+			fish.ForceHook();
+			await Wait( 0.5f );
+			await From( "angler_gape", new Vector3( 1.2f, 0.2f, -3.2f ) );
 			player.CameraOverride = null;
 			player.ThirdPerson = false;
 		}
@@ -76,6 +79,7 @@ public partial class AutoTest
 		fish.GlobalPosition = open + ahead * 8f + Vector3.Up * 1.7f;
 		DevFlags.FreezeEnemies = false;
 		Angler.SwingHits = Angler.ChompHits = 0;
+		fish.HookCooldown = 999f;   // the hook has its own check below
 		for ( var waited = 0f; waited < 20f && (Angler.SwingHits == 0 || Angler.ChompHits == 0); waited += 0.25f )
 		{
 			player.GlobalPosition = open + Vector3.Up * 0.1f;
@@ -85,6 +89,39 @@ public partial class AutoTest
 		GD.Print( $"[autotest] angler: {Angler.SwingHits} lantern hits (closest {Angler.LastSwingMiss:0.00} m), {Angler.ChompHits} chomps, {fish.GlobalPosition.DistanceTo( player.GlobalPosition ):0.0} m from the player" );
 		Check( Angler.SwingHits > 0, "the angler never hit the player with its lantern" );
 		Check( Angler.ChompHits > 0, "the angler never chomped the player" );
+
+		// The hook: from 5 m off it gapes, shoots the claw into the player and slowly reels them in for a bite.
+		await Wait( 1.5f );
+		var mouthAhead = (fish.MouthAt - fish.GlobalPosition).Flat().SafeNormal();
+		player.GlobalPosition = (fish.MouthAt + mouthAhead * 5f) with { Y = open.Y + 0.1f };
+		player.Velocity = Vector3.Zero;
+		Angler.HookCatches = Angler.HookBites = 0;
+		fish.HookCooldown = 8f;
+		fish.ForceHook();
+		var hookedFrom = 0f;
+		var pictured = false;
+		for ( var waited = 0f; waited < 9f && Angler.HookBites == 0; waited += 0.1f )
+		{
+			if ( !fish.Reeling && Angler.HookCatches == 0 ) { player.Velocity = Vector3.Zero; }
+			if ( fish.Reeling && hookedFrom == 0f ) hookedFrom = player.GlobalPosition.DistanceTo( fish.GlobalPosition );
+			if ( fish.Reeling && shots is not null && !pictured && waited > 1.2f )
+			{
+				pictured = true;
+				var side = fish.GlobalBasis.X * 4.5f + Vector3.Up * 0.8f;
+				var middle = (fish.MouthAt + player.GlobalPosition + Vector3.Up * 1.1f) * 0.5f;
+				player.ThirdPerson = true;
+				player.CameraOverride = _ => new Transform3D( Shapes.LookAt( -side ), middle + side );
+				await Wait( 0.1f );
+				await Shot( "angler_hook" );
+				player.CameraOverride = null;
+				player.ThirdPerson = false;
+			}
+			await Wait( 0.1f );
+		}
+		GD.Print( $"[autotest] angler: hook caught {Angler.HookCatches}, bit {Angler.HookBites}, reeled from {hookedFrom:0.0} m to {player.GlobalPosition.DistanceTo( fish.GlobalPosition ):0.0} m" );
+		Check( Angler.HookCatches > 0, "the angler's hook never caught the player" );
+		Check( Angler.HookBites > 0, "the angler never reeled the player in and bit them" );
+		Check( !player.Scripted, "the player was left stuck on the angler's hook" );
 
 		// The eyes are weak spots.
 		var parts = CreaturePart.All.Where( p => p.Creature == fish ).ToList();

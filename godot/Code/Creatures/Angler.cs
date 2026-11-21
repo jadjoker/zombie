@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// The deep sea angler (user's request; the wreck site and Atlantis, from the second stage): a tall, round, blue and
-/// green scaled fish with purple spots, a jutting underbite full of huge needle teeth, two bulging compound eyes made
+/// green scaled fish (about 30% of the scales yellow) with purple spots, a jutting underbite full of huge needle teeth, two bulging compound eyes made
 /// of hex facets like a fly's, and on a long stalk off its brow a whole lantern glowing green. It swims slowly, the
 /// lantern bobbing ahead of it. Attacks: it swings the lantern at you on its stalk (a wind-up, then a whip), and up
 /// close it opens its jaw wide and lunges in to chomp; from further off its jaw gapes and it shoots a barbed claw on a line
@@ -108,6 +108,7 @@ uniform vec3 c0 : source_color = vec3(0.06, 0.16, 0.42);
 uniform vec3 c1 : source_color = vec3(0.12, 0.36, 0.78);
 uniform vec3 c2 : source_color = vec3(0.08, 0.55, 0.6);
 uniform vec3 c3 : source_color = vec3(0.2, 0.7, 0.38);
+uniform vec3 c4 : source_color = vec3(0.95, 0.8, 0.12);   // yellow: about 30% of the scales
 uniform vec3 spot : source_color = vec3(0.62, 0.2, 0.95);
 uniform float rows = 44.0;
 uniform float around = 34.0;
@@ -121,7 +122,7 @@ void fragment() {
 	vec2 f = vec2(fract(g.x) - 0.5, fract(g.y));
 	float d = length(f * vec2(1.0, 0.85));
 	float h = hash(vec2(mod(cell.x, around), cell.y));
-	vec3 c = h < 0.35 ? c1 : h < 0.6 ? c2 : h < 0.82 ? c3 : c0;
+	vec3 c = h < 0.3 ? c4 : h < 0.545 ? c1 : h < 0.72 ? c2 : h < 0.874 ? c3 : c0;
 	float edge = smoothstep(0.36, 0.5, d);
 	float inset = 1.0 - smoothstep(0.0, 0.03, abs(d - 0.24));
 	c = c * (1.0 - edge * 0.45 - inset * 0.25) + vec3((1.0 - smoothstep(0.0, 0.3, d)) * 0.12);

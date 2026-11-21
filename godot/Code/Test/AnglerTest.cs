@@ -36,6 +36,7 @@ public partial class AutoTest
 				else if ( n is ViewModel or ViewModelAxe && n is Node3D vm ) vm.Visible = false;
 			Transform3D? view = null;
 			player.CameraOverride = _ => view;
+			player.ThirdPerson = true;   // no first person gun in the frames
 			async Task From( string name, Vector3 offset, Vector3? lookAt = null )
 			{
 				var centre = lookAt ?? fish.GlobalPosition + Vector3.Up * 0.3f;
@@ -57,6 +58,7 @@ public partial class AutoTest
 			await Wait( 0.4f );
 			await From( "angler_swing", new Vector3( 4.5f, 0.6f, -1.5f ) );
 			player.CameraOverride = null;
+			player.ThirdPerson = false;
 		}
 		else
 		{

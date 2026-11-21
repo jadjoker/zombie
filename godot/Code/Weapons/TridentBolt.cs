@@ -299,8 +299,9 @@ public partial class TridentBolt : Node3D
 	}
 
 	/// <summary>
-	/// Trident Swarm: one roll of `SplinterChance` per pickup (up to `PlayerPerks.MaxSwarm`); each that comes up lets a
-	/// small trident out of the enemy at half damage. They fan out sideways from the big one, then each goes for a random
+	/// Trident Swarm (user's choice): with N pickups (up to `PlayerPerks.MaxSwarm`) the k-th small trident comes out with a
+	/// chance of `SplinterChance` x (N - k + 1), all from one roll: 1 stack 20% of one; 2 stacks 40% of one, 20% of two;
+	/// 3 stacks 60% of one, 40% of two, 20% of three. Each does half damage. They fan out sideways from the big one, then each goes for a random
 	/// enemy in range that nothing else is after (not the big trident's next, not each other's), at the same seeking
 	/// speed as the big one. Only when there are too few enemies do they double up.
 	/// </summary>
@@ -312,9 +313,9 @@ public partial class TridentBolt : Node3D
 		var side = forward.Cross( Vector3.Up ).SafeNormal();
 		if ( side == Vector3.Zero ) side = Vector3.Right;
 		var spin = Rng.Float( 0f, MathF.Tau );
-		for ( var i = 0; i < count; i++ )
+		var release = SplinterCount( count, Rng.Float(), ForceSplinterChance ?? SplinterChance );
+		for ( var i = 0; i < release; i++ )
 		{
-			if ( Rng.Float() >= (ForceSplinterChance ?? SplinterChance) ) continue;
 			var bolt = new TridentBolt
 			{
 				Name = "Small Trident", small = true, damage = damage * SplinterDamage, shooter = shooter, weapon = weapon,
@@ -326,7 +327,7 @@ public partial class TridentBolt : Node3D
 			bolt.seeking = target;
 			SplinterAims.Add( target );
 			// Out to the side, each its own way round the big trident's line, then onto its enemy.
-			var a = spin + i * MathF.Tau / count;
+			var a = spin + i * MathF.Tau / release;
 			var outward = (side * MathF.Cos( a ) + forward.Cross( side ).SafeNormal() * MathF.Sin( a ) * 0.6f).SafeNormal();
 			bolt.velocity = ((AimAt( target, at ) - at).SafeNormal() * 0.5f + outward).SafeNormal() * Speed * SeekSpeed;
 			ExcludeParts( first, bolt.exclude );
@@ -337,6 +338,14 @@ public partial class TridentBolt : Node3D
 			bolt.age = 0f;
 			Splinters++;
 		}
+	}
+
+	/// <summary> How many small tridents come out for `stacks` pickups on a roll in [0, 1): the k-th when roll &lt; chance x (stacks - k + 1). </summary>
+	public static int SplinterCount( int stacks, float roll, float chance = SplinterChance )
+	{
+		var n = 0;
+		for ( var k = 1; k <= stacks; k++ ) if ( roll < chance * (stacks - k + 1) ) n++;
+		return n;
 	}
 
 	/// <summary>

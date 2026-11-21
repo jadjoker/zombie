@@ -3172,6 +3172,10 @@ public partial class AutoTest : Node
 		for ( var i = 0; i < 5; i++ ) PlayerPerks.Of( player ).Give( PerkKind.Swarm );
 		Check( PlayerPerks.Of( player ).Count( PerkKind.Swarm ) == PlayerPerks.MaxSwarm, $"Trident Swarm stacked to {PlayerPerks.Of( player ).Count( PerkKind.Swarm )}, not {PlayerPerks.MaxSwarm}" );
 		Check( !PlayerPerks.Drops( PerkKind.Swarm ), "Trident Swarm still drops with all three taken" );
+		// The odds (user's choice): 1 stack 20% of one; 2 stacks 40% of one, 20% of two; 3 stacks 60%, 40%, 20%.
+		float Share( int stacks, int atLeast ) { var n = 0; for ( var i = 0; i < 1000; i++ ) if ( TridentBolt.SplinterCount( stacks, (i + 0.5f) / 1000f ) >= atLeast ) n++; return n / 1000f; }
+		foreach ( var (stacks, atLeast, want) in new[] { (1, 1, 0.2f), (1, 2, 0f), (2, 1, 0.4f), (2, 2, 0.2f), (3, 1, 0.6f), (3, 2, 0.4f), (3, 3, 0.2f) } )
+			Check( MathF.Abs( Share( stacks, atLeast ) - want ) < 0.002f, $"with {stacks} Trident Swarm the chance of {atLeast}+ small tridents is {Share( stacks, atLeast ):P0}, not {want:P0}" );
 		TridentBolt.ForceSplinterChance = 1f;
 		TridentBolt.Splinters = TridentBolt.SplinterHits = 0;
 		line.Clear();

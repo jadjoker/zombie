@@ -286,6 +286,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Draw signal) for panels and `UiStyle.Menu` as a menu's theme; colours are `UiStyle.Teal`, `Gold`, `Ink` and
   friends (theme properties), not inline hex. Test: `--hudshots` (firing, a boss bar, the pause menu; needs a
   window); add `--allthemes` for one shot per theme, switched live.
+- The deep sea angler (`Creatures/Angler.cs`, `EnemyKind.Angler`): from the second stage on (`WaveDirector.AnglerChance` of
+  each wave on the wreck site and in Atlantis, health a little over a Rocky Shark's). Tall round body (a `SmoothKit` loft) in
+  blue and green scales with purple spots (its own `SkinShader`, after Poseidon's tail), a jutting underbite of huge needle
+  teeth on a hinged `Jaw`, two compound fly eyes of hex facets (`EyeShader`; the weak spots), and a whole lantern glowing
+  green on a jointed stalk off its brow. Attacks: a lantern swing (wind-up, whip; `SwingRange`) and a chomp (jaw wide,
+  lunge, snap; `ChompRange`). Dev menu: Enemies, Spawn an enemy, Angler. Test: `--angler` (shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

@@ -210,13 +210,19 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
 	public float MermaidChance = 0.5f;
 	public float MermaidBaseHealth = 208f;
 	public float MermaidHealthPerWave = 32.5f;
+
+	/// <summary> Deep sea anglers: from the second stage on (the wreck site and Atlantis), a share of each wave. Health a little over a Rocky Shark's. </summary>
+	public bool SpawnAnglers = true;
+	public float AnglerChance = 0.14f;
+	public float AnglerBaseHealth = 280f;
+	public float AnglerHealthPerWave = 38f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
 	public int DaveyWave = 20;
@@ -276,6 +282,14 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) k.GlobalBasis = Shapes.LookAt( toPlayer );
 			k.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return k;
+		},
+		[EnemyKind.Angler] = ( d, at, health ) =>
+		{
+			var a = Angler.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.6f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) a.GlobalBasis = Shapes.LookAt( toPlayer );
+			a.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return a;
 		},
 		[EnemyKind.Seahorse] = ( d, at, health ) =>
 		{
@@ -575,6 +589,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
 			EnemyKind.Seahorse => SeahorseBaseHealth + SeahorseHealthPerWave * Wave,
 			EnemyKind.Mermaid => MermaidBaseHealth + MermaidHealthPerWave * (Wave - 1),
+			EnemyKind.Angler => AnglerBaseHealth + AnglerHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
@@ -677,6 +692,12 @@ public partial class WaveDirector : Node3D
 		{
 			if ( roll < MermaidChance ) return Spawn( EnemyKind.Mermaid );
 			roll = (roll - MermaidChance) / (1f - MermaidChance);
+		}
+		// The wreck site and Atlantis: a share are deep sea anglers.
+		if ( SpawnAnglers && SeaTerrain.Area >= 2 && has( EnemyKind.Angler ) )
+		{
+			if ( roll < AnglerChance ) return Spawn( EnemyKind.Angler );
+			roll = (roll - AnglerChance) / (1f - AnglerChance);
 		}
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;

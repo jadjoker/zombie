@@ -307,6 +307,44 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> The deep sea angler: blue and green scaled hide, long needle teeth, torn fins, bits of its compound eyes. </summary>
+	public static GibRecipe Angler( Color goo, Color blue, Color green, Color tooth ) => Get( "angler", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.45f,
+			Outer = GibKit.Paint( blue, 0.35f, wet: true ),
+			Inner = GibKit.Paint( Meat( goo ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( green, 0.4f, wet: true ),
+			Bone = GibKit.Paint( Bone, 0.45f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.35f ), 0.3f, wet: true ),
+		};
+		var fang = GibKit.Paint( tooth, 0.25f );
+		var fin = GibKit.JellyPaint( new Color( 0.3f, 0.75f, 0.8f ), 0.65f );
+		var eye = GibKit.Paint( new Color( 0.55f, 0.06f, 0.08f ), 0.1f );
+		// A patch of scales, blue and green plates on a scrap of hide.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			GibKit.Instance( p, GibKit.Shard( random, s, s * 0.8f, s * 0.15f, s * 0.05f ), r.Outer, r.Inner, "Hide" );
+			for ( var i = 0; i < 6; i++ )
+				Sculpt.Blob( p, new Vector3( R( random, -0.3f, 0.3f ) * s, s * 0.1f, R( random, -0.3f, 0.3f ) * s ), new Vector3( s * 0.18f, s * 0.03f, s * 0.14f ), i % 2 == 0 ? r.Layer : r.Outer, new Basis( Vector3.Right, 0.3f ), "Scale" );
+		} );
+		// A long needle tooth with a scrap of gum.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Cone( p, Vector3.Zero, new Vector3( R( random, -0.1f, 0.1f ) * s, s * 1.6f, 0f ), s * 0.14f, fang, 6, "Fang" );
+			Sculpt.Blob( p, Vector3.Zero, new Vector3( s * 0.4f, s * 0.2f, s * 0.35f ), r.Inner, null, "Gum" );
+		} );
+		// A torn fin.
+		r.Specials.Add( ( random, p, s ) => GibKit.Instance( p, GibKit.Shard( random, s * 1.4f, s, s * 0.1f, s * 0.02f ), fin, fin, "Fin" ) );
+		// A piece of a compound eye.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			GibKit.Instance( p, GibKit.Shard( random, s * 0.8f, s * 0.8f, s * 0.35f, s * 0.05f ), eye, r.Inner, "Eye" );
+		} );
+		return r;
+	} );
+
 	public static GibRecipe Poseidon( Color goo, Color skin, Color scales, Color armour ) => Get( "poseidon", () =>
 	{
 		var r = new GibRecipe

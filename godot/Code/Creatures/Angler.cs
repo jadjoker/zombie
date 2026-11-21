@@ -25,6 +25,8 @@ public partial class Angler : Creature
 
 	/// <summary> Tests: swings and chomps that landed on a player. </summary>
 	public static int SwingHits, ChompHits;
+	public static float LastSwingMiss;   // how far the lantern was from the chest on the last swing (tests)
+	bool lastChomped;
 
 	static readonly Color DeepBlue = new( 0.06f, 0.16f, 0.42f );
 	static readonly Color Blue = new( 0.12f, 0.36f, 0.78f );
@@ -369,10 +371,14 @@ void fragment() {
 			if ( act == Act.Swim )
 			{
 				// In to just past the lantern's reach, holding there while it swings; closer still when it can bite.
-				var holdAt = sinceChomp > ChompCooldown ? ChompRange * 0.6f : SwingRange * 0.75f;
+				var swingNext = sinceSwing > SwingCooldown && (lastChomped || sinceChomp <= ChompCooldown);
+				var holdAt = !swingNext && sinceChomp > ChompCooldown ? ChompRange * 0.6f : SwingRange * 0.6f;
 				wish = distance > holdAt ? dir * Speed : -dir * Speed * 0.3f;
-				if ( distance < ChompRange && sinceChomp > ChompCooldown ) Begin( Act.Chomp );
-				else if ( distance < SwingRange && sinceSwing > SwingCooldown ) Begin( Act.Swing );
+				// The two attacks take turns when both are ready, so it never just bites.
+				var canChomp = distance < ChompRange && sinceChomp > ChompCooldown;
+				var canSwing = distance < SwingRange && sinceSwing > SwingCooldown;
+				if ( canSwing && (!canChomp || lastChomped) ) Begin( Act.Swing );
+				else if ( canChomp ) Begin( Act.Chomp );
 			}
 			else if ( act == Act.Chomp )
 			{
@@ -391,16 +397,16 @@ void fragment() {
 			{
 				var a = (float)sinceAct;
 				wish = a < 0.5f ? -dir * 0.4f : dir * 1.2f;
-				if ( !struck && a >= 0.62f )
+				// The whip lands anywhere along its arc, not on one frame.
+				if ( a >= 0.5f && a < 0.9f ) LastSwingMiss = MathF.Min( LastSwingMiss, LanternAt.DistanceTo( chest ) );
+				if ( a >= 0.62f && a - dt < 0.62f ) Sfx.Play( "creature_attack", LanternAt, 0.8f, 0.7f );
+				if ( !struck && a >= 0.5f && a < 0.9f && LanternAt.DistanceTo( chest ) < 1.7f )
 				{
 					struck = true;
-					Sfx.Play( "creature_attack", LanternAt, 0.8f, 0.7f );
-					if ( LanternAt.DistanceTo( chest ) < 1.7f )
-					{
-						Hurt( prey, SwingDamage, (chest - LanternAt).SafeNormal(), 4.5f, ref SwingHits );
-						AlienBlast.Spawn( GetTree().CurrentScene, LanternAt, 0.35f );
-					}
+					Hurt( prey, SwingDamage, (chest - LanternAt).SafeNormal(), 4.5f, ref SwingHits );
+					AlienBlast.Spawn( GetTree().CurrentScene, LanternAt, 0.35f );
 				}
+				if ( a >= 0.9f ) struck = true;
 				if ( a > 1.15f ) End();
 			}
 		}
@@ -430,7 +436,8 @@ void fragment() {
 		act = next;
 		sinceAct = 0f;
 		struck = false;
-		if ( next == Act.Swing ) { sinceSwing = 0f; Sfx.Play( "creature_attack", GlobalPosition, 0.5f, 0.55f ); }
+		if ( next == Act.Swing || next == Act.Chomp ) lastChomped = next == Act.Chomp;
+		if ( next == Act.Swing ) { sinceSwing = 0f; LastSwingMiss = 99f; Sfx.Play( "creature_attack", GlobalPosition, 0.5f, 0.55f ); }
 		if ( next == Act.Chomp ) sinceChomp = 0f;
 	}
 

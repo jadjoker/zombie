@@ -78,7 +78,7 @@ public partial class AutoTest
 			player.Velocity = Vector3.Zero;
 			await Wait( 0.25f );
 		}
-		GD.Print( $"[autotest] angler: {Angler.SwingHits} lantern hits, {Angler.ChompHits} chomps, {fish.GlobalPosition.DistanceTo( player.GlobalPosition ):0.0} m from the player" );
+		GD.Print( $"[autotest] angler: {Angler.SwingHits} lantern hits (closest {Angler.LastSwingMiss:0.00} m), {Angler.ChompHits} chomps, {fish.GlobalPosition.DistanceTo( player.GlobalPosition ):0.0} m from the player" );
 		Check( Angler.SwingHits > 0, "the angler never hit the player with its lantern" );
 		Check( Angler.ChompHits > 0, "the angler never chomped the player" );
 

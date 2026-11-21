@@ -22,7 +22,7 @@ public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Mov
 /// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
 /// - Trident Reach (Trident-Bot only, 1%): each one lets a trident look 1 m further for the next enemy to seek.
 /// - Trident Swarm (Trident-Bot only, 1%, at most 3): when a trident first hits an enemy, small half-damage tridents may come
-///   out and seek other enemies: 1 stack 20% of one; 2 stacks 40% of one, 20% of two; 3 stacks 60%, 40%, 20% (`TridentBolt.Splinter`).
+///   out and seek other enemies: 1 stack 30% of one; 2 stacks 50% of one, 30% of two; 3 stacks 70%, 50%, 30% (`TridentBolt.Splinter`).
 /// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node

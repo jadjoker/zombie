@@ -46,7 +46,7 @@ public partial class TridentBolt : Node3D
 	public static int LastHits;
 	/// <summary> A small trident from Trident Swarm: half damage, seeks one enemy, never splits again. </summary>
 	bool small;
-	public const float SplinterChance = 0.2f, SplinterDamage = 0.5f, SplinterScale = 0.55f;
+	public const float SplinterChance = 0.2f, SplinterBase = 0.1f, SplinterDamage = 0.5f, SplinterScale = 0.55f;
 	/// <summary> Tests: forces the Trident Swarm roll (null in play). </summary>
 	public static float? ForceSplinterChance;
 	/// <summary> Tests: small tridents let out, and enemies they hit. </summary>
@@ -300,8 +300,8 @@ public partial class TridentBolt : Node3D
 
 	/// <summary>
 	/// Trident Swarm (user's choice): with N pickups (up to `PlayerPerks.MaxSwarm`) the k-th small trident comes out with a
-	/// chance of `SplinterChance` x (N - k + 1), all from one roll: 1 stack 20% of one; 2 stacks 40% of one, 20% of two;
-	/// 3 stacks 60% of one, 40% of two, 20% of three. Each does half damage. They fan out sideways from the big one, then each goes for a random
+	/// chance of `SplinterChance` x (N - k + 1) + `SplinterBase`, all from one roll: 1 stack 30% of one; 2 stacks 50% of one,
+	/// 30% of two; 3 stacks 70% of one, 50% of two, 30% of three. Each does half damage. They fan out sideways from the big one, then each goes for a random
 	/// enemy in range that nothing else is after (not the big trident's next, not each other's), at the same seeking
 	/// speed as the big one. Only when there are too few enemies do they double up.
 	/// </summary>
@@ -340,11 +340,11 @@ public partial class TridentBolt : Node3D
 		}
 	}
 
-	/// <summary> How many small tridents come out for `stacks` pickups on a roll in [0, 1): the k-th when roll &lt; chance x (stacks - k + 1). </summary>
+	/// <summary> How many small tridents come out for `stacks` pickups on a roll in [0, 1): the k-th when roll &lt; chance x (stacks - k + 1) + SplinterBase. </summary>
 	public static int SplinterCount( int stacks, float roll, float chance = SplinterChance )
 	{
 		var n = 0;
-		for ( var k = 1; k <= stacks; k++ ) if ( roll < chance * (stacks - k + 1) ) n++;
+		for ( var k = 1; k <= stacks; k++ ) if ( roll < chance * (stacks - k + 1) + SplinterBase ) n++;
 		return n;
 	}
 

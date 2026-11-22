@@ -13,7 +13,7 @@ public partial class Angler : Creature
 {
 	public static readonly List<Angler> All = new();
 
-	public float Speed = 2.91f;            // m/s: slow and steady
+	public float Speed = 3.14f;            // m/s: slow and steady (8% up from 2.91)
 	public float HoverHeight = 1.5f;       // body centre over the floor: the mouth at the player's chest
 	public float SwingRange = 4.4f;        // from the mouth: the lantern reaches this far
 	public float SwingDamage = 16f;

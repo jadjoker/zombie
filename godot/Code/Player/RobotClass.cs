@@ -3,7 +3,8 @@ using Godot;
 /// <summary>
 /// The playable robots. Each has its own weapons and its own mouse 4 move; both swing the axe. Ram-Bot is the
 /// original kit (rifle, shotgun, the charged surge that rams through enemies). Vac-Bot carries the Gore Vac and the
-/// Bubble Cannon and blinks with a reverse-thrust burst instead. Picked at the dock before the dive (ClassPicker),
+/// Bubble Cannon and blinks with a reverse-thrust burst instead. Hook-Bot reels enemies in on a harpoon line, lures them to a lantern and grapples about; Coral-Bot
+/// encrusts them in coral, plants turrets and walls, and burrows. Picked at the dock before the dive (ClassPicker),
 /// or any time in the dev menu; saved with the settings (`game/robot_class`); `--class <name>` forces one.
 /// Buy stations only sell what fits the robot (`Sells`): the trident and Gore Vac stations are for nobody now.
 /// </summary>
@@ -17,6 +18,10 @@ public sealed class RobotClass
 	public Color Tint;
 	/// <summary> Mouse 4 is the quick reverse-thrust blink (Jetpack) instead of the charged surge. </summary>
 	public bool Blink;
+	/// <summary> Mouse 4 casts a grapple line and zips you along it (Hook-Bot, `JetpackMoves.cs`). </summary>
+	public bool Grapple;
+	/// <summary> Mouse 4 digs you into the sand and erupts (Coral-Bot, `JetpackMoves.cs`). </summary>
+	public bool Burrow;
 	public Func<PlayerWeapon[]> Kit;
 
 	public static readonly RobotClass RamBot = new()
@@ -44,7 +49,23 @@ public sealed class RobotClass
 		Kit = () => new[] { PlayerWeapon.Trident( 1 ), PlayerWeapon.TridentSpear( 2 ) },
 	};
 
-	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot };
+	public static readonly RobotClass HookBot = new()
+	{
+		Id = "hookbot", Name = "Hook-Bot", Tagline = "Reel 'em in.",
+		Weapons = "Harpoon Reel, Lantern Lure", Movement = "Grapple zip: tap mouse 4 to cast a line and zip to where it bites (an enemy gets a boot)",
+		Tint = new Color( 1f, 0.58f, 0.2f ), BaseHealth = 150f, Paint = "Hook", Grapple = true,
+		Kit = () => new[] { PlayerWeapon.HarpoonReel( 1 ), PlayerWeapon.LanternLure( 2 ) },
+	};
+
+	public static readonly RobotClass CoralBot = new()
+	{
+		Id = "coralbot", Name = "Coral-Bot", Tagline = "Grow the reef. Hold the reef.",
+		Weapons = "Spine Gun, Reef Seeds", Movement = "Burrow: tap mouse 4 on the ground to dig in (untouchable, fast), tap again or wait to erupt",
+		Tint = new Color( 1f, 0.45f, 0.52f ), BaseHealth = 200f, Paint = "Coral", Burrow = true,
+		Kit = () => new[] { PlayerWeapon.SpineGun( 1 ), PlayerWeapon.ReefSeeds( 2 ) },
+	};
+
+	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot, HookBot, CoralBot };
 
 	public static RobotClass Find( string id ) => All.FirstOrDefault( c => string.Equals( c.Id, id, StringComparison.OrdinalIgnoreCase ) || string.Equals( c.Name, id, StringComparison.OrdinalIgnoreCase ) ) ?? RamBot;
 

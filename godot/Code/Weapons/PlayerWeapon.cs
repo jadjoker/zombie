@@ -112,7 +112,7 @@ public partial class PlayerWeapon : Node
 	PlayerPerks Perks => PlayerPerks.Of( controller );
 	/// <summary> Reload time and rate of fire with the player's pickups counted in. </summary>
 	/// <summary> The rifle's tree (Fire Rate, Faster Reload, Overclock) is the only one that speeds these up. </summary>
-	public float CurrentReloadTime => ReloadTime * (ModelName == "rifle" ? Perks?.ReloadScale ?? 1f : 1f);
+	public float CurrentReloadTime => ReloadTime * (ModelName == "rifle" ? Perks?.ReloadScale ?? 1f : 1f) * (Seeds ? CoralFx.SeedReloadScale( Skill( SkillId.QuickSeed ) ) : 1f);
 	public float CurrentFireRate => FireRate * (ModelName == "rifle" ? (Perks?.FireRateScale ?? 1f) * (overclockLeft > 0 ? 1f + SkillFx.OverclockRate : 1f) : 1f);
 	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, CurrentReloadTime ), 0f, 1f );
 
@@ -297,7 +297,7 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		if ( !Bubbles ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles instead
+		if ( !Bubbles && !Lure && !Seeds ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
 
 		if ( Input.IsActionJustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
@@ -305,6 +305,12 @@ public partial class PlayerWeapon : Node
 		if ( DockHouse.WeaponsHeld || DevMenu.IsOpen ) return;   // not during the dive, nor while clicking the dev menu
 		if ( MouseFree ) return;   // Esc released the mouse: the click that takes it back doesn't fire
 		if ( Bubbles && Input.IsActionJustPressed( "attack2" ) ) BubbleTrap.PopAll( controller, true );
+		if ( Lure && Input.IsActionJustPressed( "attack2" ) ) ActiveLure?.Burst();
+		if ( Seeds && Input.IsActionJustPressed( "attack2" ) && !IsReloading && TimeSinceShot >= 0.3f )
+		{
+			if ( Ammo > 0 ) { TimeSinceShot = 0f; Ammo--; PlantSeed( controller.Camera.GlobalPosition, -controller.Camera.GlobalBasis.Z, true ); }
+			else if ( Reserve > 0 ) StartReload();
+		}
 
 
 
@@ -370,7 +376,7 @@ public partial class PlayerWeapon : Node
 		}
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
-		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate && !(Harpoon && LineOut) )
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
@@ -422,9 +428,9 @@ public partial class PlayerWeapon : Node
 	void ShowLoaded()
 	{
 		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
-		if ( !Projectile || ViewModel is null ) return;
+		if ( !(Projectile || Harpoon || Lure) || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
-		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f;
+		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f && !LineOut;
 	}
 
 	void UpdateAiming( float dt )
@@ -494,6 +500,9 @@ public partial class PlayerWeapon : Node
 		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
 		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
+		else if ( Harpoon ) FireHarpoon( start, forward, spread, trailStart );
+		else if ( Lure ) ThrowLure( start, forward );
+		else if ( Seeds ) PlantSeed( start, forward, false );
 		else if ( Projectile )
 		{
 			// The trident flies from the muzzle to whatever is under the crosshair (or as far as it reaches).
@@ -518,7 +527,7 @@ public partial class PlayerWeapon : Node
 			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
-		if ( !Bubbles && !Projectile ) EndShotSkills( start, forward, trailStart );
+		if ( !Bubbles && !Projectile && !Harpoon && !Lure && !Seeds ) EndShotSkills( start, forward, trailStart );
 		juice?.Shake( ShakePerShot );
 		juice?.KickFov( FovKickPerShot );
 
@@ -542,9 +551,10 @@ public partial class PlayerWeapon : Node
 			if ( wasAlive ) TimeSinceHit = 0f;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
 			if ( firstPellet ) Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
-			shootable.ReceiveShot( CurrentDamage * HitScale( tr, start ), tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
+			shootable.ReceiveShot( CurrentDamage * HitScale( tr, start ) * (Spines ? 1f + CoralFx.SharpPer * Skill( SkillId.SharpSpines ) : 1f), tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
 			if ( ModelName == "rifle" ) Perks?.RifleHit( tr.Node, tr.HitPosition, overclockShot );   // Electric Bullets (always, overclocked)
 			if ( firstPellet ) PelletSkills( tr, direction );
+			if ( Spines && wasAlive ) SpineHit( tr, direction );
 			if ( wasAlive && shootable.IsDead ) TimeSinceKill = 0f;
 			return;
 		}

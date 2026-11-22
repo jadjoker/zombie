@@ -509,6 +509,249 @@ def phase():
     return img
 
 
+# ---- Hook-Bot ----
+ROPE = (230, 200, 140, 255)
+NAVY = (20, 32, 60, 255)
+
+
+def hook_shape(d, x, y, s=1.0, fill=W, w=7):
+    # A fish hook: shank down, curl round, barbed point.
+    line(d, [(x, y - 34 * s), (x, y + 14 * s)], w, fill)
+    pts = []
+    for i in range(30):
+        a = math.pi * i / 29
+        pts.append((x - 14 * s + math.cos(a) * 14 * s, y + 14 * s + math.sin(a) * 14 * s))
+    line(d, pts, w, fill)
+    poly(d, [(x - 28 * s, y + 14 * s), (x - 34 * s, y - 2 * s), (x - 20 * s, y + 6 * s)], fill)
+    circle(d, x, y - 36 * s, 6 * s, fill=None, outline=fill, width=4)
+
+
+def reel():
+    img, d = badge((60, 170, 255))
+    circle(d, 64, 64, 32, fill=ROPE)
+    circle(d, 64, 64, 24, fill=(190, 150, 90, 255))
+    for r in (18, 12):
+        circle(d, 64, 64, r, fill=None, outline=ROPE, width=3)
+    circle(d, 64, 64, 6, fill=NAVY)
+    line(d, [(64, 64), (100, 40)], 6, NAVY)
+    circle(d, 102, 38, 7, fill=W)
+    return img
+
+
+def towline():
+    img, d = badge((255, 140, 40))
+    line(d, [(18, 64), (86, 64)], 5, ROPE)
+    circle(d, 96, 64, 16)
+    for cx, cy in ((50, 40), (54, 90)):
+        circle(d, cx, cy, 11, fill=(255, 220, 160, 255))
+    arrow(d, 72, 40, 50, 22, 5, 10)
+    arrow(d, 72, 88, 54, 108, 5, 10)
+    return img
+
+
+def gutting():
+    img, d = badge((220, 60, 50))
+    hook_shape(d, 70, 56, 1.0)
+    for x, y in ((40, 100), (56, 108), (88, 104)):
+        poly(d, [(x, y - 10), (x - 6, y + 2), (x + 6, y + 2)], (140, 10, 20, 255))
+        circle(d, x, y + 3, 6, fill=(140, 10, 20, 255))
+    return img
+
+
+def trawler():
+    img, d = badge((255, 200, 60))
+    for i in range(6):
+        x = 26 + i * 15
+        line(d, [(x, 26), (x - 10 + i * 4, 104)], 3, NAVY)
+    for j in range(5):
+        y = 30 + j * 18
+        line(d, [(22, y), (106, y + (4 if j % 2 else -4))], 3, NAVY)
+    for cx, cy in ((50, 70), (80, 82), (66, 50)):
+        circle(d, cx, cy, 9, fill=(255, 120, 60, 255))
+    return img
+
+
+def bulb():
+    img, d = badge((255, 205, 60))
+    line(d, [(40, 110), (40, 60), (60, 34), (80, 42)], 7, NAVY)
+    circle(d, 84, 54, 22, fill=(160, 255, 120, 255))
+    circle(d, 84, 54, 12, fill=W)
+    for a in range(8):
+        r = math.radians(a * 45)
+        line(d, [(84 + math.cos(r) * 28, 54 + math.sin(r) * 28), (84 + math.cos(r) * 36, 54 + math.sin(r) * 36)], 4)
+    return img
+
+
+def pockets():
+    img, d = badge((150, 170, 200))
+    d.rounded_rectangle((p(28, 44), p(100, 108)), radius=12 * 4, fill=NAVY)
+    d.rectangle((p(28, 44), p(100, 60)), fill=(60, 80, 120, 255))
+    for x in (46, 64, 82):
+        circle(d, x, 36, 9, fill=(160, 255, 120, 255))
+    plus(d, 64, 84, 14, 7)
+    return img
+
+
+def bloom():
+    img, d = badge((140, 255, 70))
+    # An angler's jaw gaping up out of the sand, its lantern above.
+    d.rectangle((p(14, 92), p(114, 112)), fill=(210, 180, 120, 255))
+    poly(d, [(18, 96), (36, 46), (60, 92)], (20, 70, 95, 255))
+    poly(d, [(110, 96), (92, 46), (68, 92)], (20, 70, 95, 255))
+    for x in (30, 40, 50):
+        poly(d, [(x - 4, 88), (x + 6, 60 + (x - 30)), (x + 4, 90)], W)
+    for x in (98, 88, 78):
+        poly(d, [(x + 4, 88), (x - 6, 60 + (98 - x)), (x - 4, 90)], W)
+    line(d, [(64, 92), (64, 40), (74, 26)], 4, (20, 70, 95, 255))
+    circle(d, 78, 22, 9, fill=(200, 255, 160, 255))
+    return img
+
+
+def seadog():
+    img, d = badge((255, 200, 60))
+    # A pirate hat with a heart on it.
+    poly(d, [(16, 76), (34, 40), (64, 32), (94, 40), (112, 76), (64, 66)], NAVY)
+    heart = [(64, 68), (46, 52), (46, 42), (55, 36), (64, 44), (73, 36), (82, 42), (82, 52)]
+    poly(d, heart, (230, 60, 70, 255))
+    d.rectangle((p(26, 80), p(102, 90)), fill=NAVY)
+    return img
+
+
+def leviathan():
+    img, d = badge((90, 50, 160))
+    hook_shape(d, 64, 54, 0.9, (220, 190, 255, 255), 8)
+    for r in (40, 50):
+        d.arc((p(64 - r, 92 - r * 0.4), p(64 + r, 92 + r * 0.4)), 0, 180, fill=W, width=4 * 4)
+    return img
+
+
+# ---- Coral-Bot ----
+CORAL = (255, 115, 135, 255)
+BONE = (245, 235, 215, 255)
+
+
+def coral_branch(d, x, y, s=1.0, fill=CORAL, w=8):
+    line(d, [(x, y), (x, y - 40 * s)], w, fill)
+    line(d, [(x, y - 18 * s), (x - 20 * s, y - 38 * s)], w - 2, fill)
+    line(d, [(x, y - 26 * s), (x + 18 * s, y - 48 * s)], w - 2, fill)
+    for cx, cy in ((x, y - 42 * s), (x - 21 * s, y - 40 * s), (x + 19 * s, y - 50 * s)):
+        circle(d, cx, cy, 5 * s + 2, fill=fill)
+
+
+def spines():
+    img, d = badge((230, 60, 50))
+    for i, (x, y) in enumerate(((30, 90), (52, 70), (74, 50), (96, 30))):
+        poly(d, [(x - 14, y + 14), (x + 10, y - 10), (x - 4, y + 18)], BONE if i % 2 else W)
+    return img
+
+
+def growth():
+    img, d = badge((60, 200, 110))
+    coral_branch(d, 64, 106, 1.3)
+    arrow(d, 100, 100, 100, 40, 6, 12)
+    return img
+
+
+def clusters():
+    img, d = badge((150, 170, 200))
+    circle(d, 64, 70, 28, fill=(70, 80, 110, 255))
+    for a in range(7):
+        r = math.radians(a * 51)
+        circle(d, 64 + math.cos(r) * 26, 70 + math.sin(r) * 26, 10, fill=CORAL)
+    poly(d, [(40, 30), (88, 30), (80, 40), (48, 40)], W)
+    return img
+
+
+def ricochet():
+    img, d = badge((40, 190, 255))
+    line(d, [(18, 96), (62, 40), (110, 92)], 6)
+    poly(d, [(110, 92), (94, 86), (104, 76)])
+    circle(d, 62, 40, 9, fill=CORAL)
+    return img
+
+
+def bleach():
+    img, d = badge((235, 230, 215))
+    coral_branch(d, 64, 108, 1.4, (150, 145, 135, 255), 10)
+    for x, y in ((30, 40), (100, 36), (94, 92)):
+        poly(d, [(x, y - 8), (x + 8, y), (x, y + 8), (x - 8, y)], (120, 115, 108, 255))
+    return img
+
+
+def heal():
+    img, d = badge((60, 200, 110))
+    plus(d, 64, 64, 26, 14)
+    return img
+
+
+def spikedwall():
+    img, d = badge((230, 60, 50))
+    d.rounded_rectangle((p(18, 60), p(110, 104)), radius=10 * 4, fill=CORAL)
+    for x in range(26, 108, 16):
+        poly(d, [(x - 7, 62), (x, 30), (x + 7, 62)], BONE)
+    return img
+
+
+def anemone():
+    img, d = badge((255, 105, 140))
+    for i in range(9):
+        a = math.radians(200 + i * 17.5)
+        line(d, [(64, 92), (64 + math.cos(a) * 44, 92 + math.sin(a) * 44)], 6, (255, 200, 230, 255))
+        circle(d, 64 + math.cos(a) * 46, 92 + math.sin(a) * 46, 5, fill=W)
+    circle(d, 64, 96, 16, fill=(200, 50, 120, 255))
+    return img
+
+
+def livingreef():
+    img, d = badge((150, 80, 255))
+    pts = ((30, 96), (64, 40), (98, 92))
+    for a, b in ((0, 1), (1, 2), (0, 2)):
+        line(d, [pts[a], pts[b]], 5, (255, 140, 230, 255))
+    for x, y in pts:
+        circle(d, x, y, 13, fill=CORAL)
+        circle(d, x, y, 6, fill=W)
+    return img
+
+
+def dig():
+    img, d = badge((215, 175, 110))
+    d.rectangle((p(14, 70), p(114, 114)), fill=(160, 120, 70, 255))
+    for x, y in ((30, 82), (70, 96), (96, 80)):
+        circle(d, x, y, 5, fill=(230, 200, 150, 255))
+    arrow(d, 64, 22, 64, 92, 8, 16)
+    return img
+
+
+def upheaval():
+    img, d = badge((255, 140, 40))
+    d.rectangle((p(14, 92), p(114, 114)), fill=(160, 120, 70, 255))
+    for x, y in ((40, 70), (64, 50), (88, 70)):
+        poly(d, [(x - 12, y + 12), (x, y - 10), (x + 12, y + 12)], (230, 200, 150, 255))
+    arrow(d, 64, 92, 64, 22, 7, 14)
+    arrow(d, 50, 92, 22, 44, 6, 12)
+    arrow(d, 78, 92, 106, 44, 6, 12)
+    return img
+
+
+def calcify():
+    img, d = badge((235, 230, 215))
+    poly(d, [(64, 18), (104, 34), (98, 80), (64, 110), (30, 80), (24, 34)], (150, 145, 135, 255))
+    poly(d, [(64, 30), (92, 42), (88, 76), (64, 98), (40, 76), (36, 42)], BONE)
+    line(d, [(50, 52), (64, 66), (58, 80)], 4, (150, 145, 135, 255))
+    return img
+
+
+def barrier():
+    img, d = badge((255, 105, 140))
+    for i in range(8):
+        a = math.radians(i * 45)
+        x, y = 64 + math.cos(a) * 36, 64 + math.sin(a) * 36
+        circle(d, x, y, 12, fill=CORAL)
+        poly(d, [(x - 5, y - 6), (x, y - 20), (x + 5, y - 6)], BONE)
+    circle(d, 64, 64, 10)
+    return img
+
+
 ICONS = {
     "deepmag": deepmag, "headhunter": headhunter, "overclock": overclock, "wideload": wideload, "pointblank": pointblank,
     "shellshuffle": shellshuffle, "kickback": kickback, "dragon": dragon, "limbripper": limbripper, "fullchoke": fullchoke,
@@ -520,6 +763,10 @@ ICONS = {
     "cluster": cluster, "blackhole": blackhole, "lasting": lasting, "bouncy": bouncy, "biggulp": biggulp,
     "highlift": highlift, "chain": chain, "prison": prison, "jets": jets, "afterburner": afterburner,
     "toxic": toxic, "slipstream": slipstream, "phase": phase,
+    "reel": reel, "towline": towline, "gutting": gutting, "trawler": trawler, "bulb": bulb, "pockets": pockets,
+    "bloom": bloom, "seadog": seadog, "leviathan": leviathan, "spines": spines, "growth": growth, "clusters": clusters,
+    "ricochet": ricochet, "bleach": bleach, "heal": heal, "spikedwall": spikedwall, "anemone": anemone,
+    "livingreef": livingreef, "dig": dig, "upheaval": upheaval, "calcify": calcify, "barrier": barrier,
 }
 
 if __name__ == "__main__":

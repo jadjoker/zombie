@@ -294,6 +294,10 @@ public partial class PlayerRig : Node
 			 new Color( 0.13f, 0.62f, 0.62f ), new Color( 0.796f, 0.255f, 0.329f ), new Color( 0.035f, 0.035f, 0.045f ) },   // metal: black, so the frame reads yellow and black
 		// The Vac-Bot: the white suit green camo with purple (Camo), the shoulders yellow.
 		["Vac"] = new[] { new Color( 0.10f, 0.16f, 0.09f ), new Color( 0.24f, 0.70f, 0.20f ), new Color( 1f, 0.84f, 0.10f ), new Color( 0.55f, 0.80f, 0.45f ) },
+		// The Hook-Bot: a fisherman's orange suit, navy frame, rope tan shoulders, brass fittings.
+		["Hook"] = new[] { new Color( 0.08f, 0.12f, 0.22f ), new Color( 0.95f, 0.50f, 0.16f ), new Color( 0.86f, 0.73f, 0.46f ), new Color( 0.80f, 0.64f, 0.30f ) },
+		// The Coral-Bot: coral pink suit, bleached sand frame, orange shoulders, teal metal.
+		["Coral"] = new[] { new Color( 0.92f, 0.86f, 0.74f ), new Color( 1f, 0.45f, 0.50f ), new Color( 1f, 0.68f, 0.20f ), new Color( 0.18f, 0.58f, 0.58f ) },
 		["Hazard"] = new[] { new Color( 0.14f, 0.14f, 0.16f ), new Color( 0.96f, 0.80f, 0.14f ), new Color( 0.12f, 0.12f, 0.14f ), new Color( 0.80f, 0.80f, 0.84f ) },
 		["Frost"] = new[] { new Color( 0.30f, 0.38f, 0.50f ), new Color( 0.90f, 0.94f, 0.98f ), new Color( 0.30f, 0.58f, 0.90f ), new Color( 0.80f, 0.88f, 0.96f ) },
 		["Gold"] = new[] { new Color( 0.20f, 0.17f, 0.14f ), new Color( 0.92f, 0.70f, 0.22f ), new Color( 0.70f, 0.12f, 0.14f ), new Color( 0.98f, 0.86f, 0.50f ) },

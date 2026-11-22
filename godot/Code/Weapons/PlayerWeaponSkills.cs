@@ -31,7 +31,9 @@ public partial class PlayerWeapon
 		skillVersion = PlayerSkills.Version;
 		if ( baseMagazine < 0 ) { baseMagazine = MagazineSize; basePellets = Pellets; baseSpearReach = SpearReach; baseChargeTime = ChargeTime; }
 		MagazineSize = ModelName == "rifle" ? (int)MathF.Round( baseMagazine * (1f + SkillFx.DeepMagPer * Skill( SkillId.DeepMag )) )
-			: Vacuum ? baseMagazine + SkillFx.BellyPer * Skill( SkillId.BigBelly ) : baseMagazine;
+			: Vacuum ? baseMagazine + SkillFx.BellyPer * Skill( SkillId.BigBelly )
+			: Harpoon ? baseMagazine + Skill( SkillId.DeepQuiver )
+			: Lure ? baseMagazine + Skill( SkillId.DeepPockets ) : baseMagazine;
 		if ( Ammo > MagazineSize ) Ammo = MagazineSize;
 		Pellets = ModelName == "shotgun" ? basePellets + Skill( SkillId.WideLoad ) : basePellets;
 		SpearReach = Spear ? baseSpearReach * (1f + SkillFx.LongSpearPer * Skill( SkillId.LongSpear )) : baseSpearReach;

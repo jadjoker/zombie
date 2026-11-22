@@ -53,6 +53,9 @@ public partial class PlayerPerks : Node
 	public const float MoveSpeedPerStack = 0.3f, StaminaPerStack = 0.1f, SlipSpeedPer = 0.5f;
 	/// <summary> Slipstream runs until this game time. </summary>
 	public double SlipUntil;
+	/// <summary> A short burst of speed (m/s) until then: Hook-Bot's Momentum after a zip, Coral-Bot's burrow. </summary>
+	public double BoostUntil;
+	public float Boost;
 	public const float BlastDamage = 500f, BlastRadius = 8f;
 
 	readonly int[] counts = new int[Enum.GetValues<PerkKind>().Length];
@@ -119,7 +122,8 @@ public partial class PlayerPerks : Node
 	public float FireRateScale => 1f + FireRatePerStack * Count( PerkKind.FireRate );
 	public float ClipBlastDamage => Count( PerkKind.Explosive ) == 0 ? 0f : ClipDamage + ClipDamagePerStack * (Count( PerkKind.Explosive ) - 1);
 	public float SpeedBonus => MoveSpeedPerStack * Count( PerkKind.Move ) + SkillFx.SeaLegsPer * Skills.Rank( controller, SkillId.SeaLegs )
-		+ (Clock.Now < SlipUntil ? SlipSpeedPer * Skills.Rank( controller, SkillId.Slipstream ) : 0f);
+		+ (Clock.Now < SlipUntil ? SlipSpeedPer * Skills.Rank( controller, SkillId.Slipstream ) : 0f)
+		+ (Clock.Now < BoostUntil ? Boost : 0f);
 	public float StaminaBonus => StaminaPerStack * Count( PerkKind.Move );
 
 	public static PlayerPerks Of( Node controller ) => controller?.GetNodeOrNull<PlayerPerks>( "PlayerPerks" );
@@ -192,6 +196,10 @@ public partial class PlayerPerks : Node
 			if ( survivor.Decoy is { Gone: false } decoy && IsInstanceValid( decoy ) && damage.Position != Vector3.Zero
 				&& damage.Position.DistanceTo( decoy.GlobalPosition + Vector3.Up * 1f ) < damage.Position.DistanceTo( controller.GlobalPosition + Vector3.Up * 1f ) ) { decoy.Struck(); return 0f; }
 		}
+		// Calcify (Coral-Bot): standing still hardens the shell.
+		if ( damage.Attacker is not PlayerAfflictions && Skills.Rank( controller, SkillId.Calcify ) is var calcify && calcify > 0
+			&& controller.GetNodeOrNull<Jetpack>( "Jetpack" ) is { StillFor: >= CoralFx.CalcifyAfter } )
+			damage.Damage *= 1f - CoralFx.CalcifyPer * calcify;
 		// The Trident-Bot's energy shield, raised: it takes 65% of the hit (more with Shield Bulwark) before anything else.
 		if ( damage.Attacker is not PlayerAfflictions && controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { Spear: true, Blocking: true } spear )
 		{

@@ -247,6 +247,19 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts; the gore it swallows goes into the Gore Vac's tank, 5 a piece, `PlayerWeapon.HoleGunkPer`; recycled lumps stay at 0.1).
   Weak spots for Headhunter are `Creature.WeakSpot`. Icons: `python Tools/godot/make_skill_icons.py`. Dev menu: Player,
   Skill trees. Test: `--skills` (with `--shots` in a window: the tree page and the black hole).
+- Hook-Bot and Coral-Bot (robots 4 and 5, each with three skill trees like the others). Hook-Bot (150 health, `Paint`
+  "Hook"; `Weapons/HookBot.cs`, numbers in `HookFx`): the Harpoon Reel fires a `HarpoonLine` (one out at a time) that
+  reels a `Pullable` enemy in and yanks it (a hit and a short `Creature.Stun`; heavy ones only take the hit); the
+  Lantern Lure lobs a `LanternLure` that is the player's decoy while it glows (`PlayerSurvivor.Decoy` is a `DecoyBase`,
+  shared with Phase Shift), zaps what is near and bursts (Abyssal Bloom: `AbyssJaw`); mouse 4 is the grapple zip
+  (`RobotClass.Grapple`, `Player/JetpackMoves.cs`, the blink's surge along a cast line). Coral-Bot (200 health, `Paint`
+  "Coral"; `Weapons/CoralBot.cs`, `CoralFx`): the Spine Gun grows `CoralGrowth` on enemies (slows them, shatters at
+  `ShatterAt`), Reef Seeds plant a `PolypTurret` (left) or a `CoralWall` (right), `ReefLinks` runs Healing Reef and
+  Living Reef's veins; mouse 4 burrows (`RobotClass.Burrow`: untouchable, `PlayerController.EyeDrop`, then an eruption;
+  `BurrowCooldown` so it can't be chained). Their guns are built in code on the Blaster's rig with `GunKit`
+  (`HookModels`, `CoralModels`). Balance (user's ask: nothing one-shot all game): skill blows go to health through
+  `SkillFx.HitPart`, and skill effects scale with half the damage upgrades (`PlayerWeapon.UpgradeScale`). Tests:
+  `--hookbot`, `--coralbot` (both print hits-to-kill for crabs by wave; shots need a window).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

@@ -32,7 +32,11 @@ public abstract partial class Creature : Node3D, ICreature
 	/// <summary> Caught in a Bubble Cannon bubble (BubbleTrap): it stops thinking while the bubble carries it. </summary>
 	public bool Bubbled;
 	/// <summary> Its brain is off: the dev menu froze enemies, or it is in a bubble. </summary>
-	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled || (DaveyJones.InLocker && this is not DaveyJones);
+	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled || Clock.Now < StunnedUntil || (DaveyJones.InLocker && this is not DaveyJones);
+	/// <summary> Stunned until then (a harpoon yank, a burrow eruption, a lure's jaw): its brain is off for a moment. Bosses ignore it. </summary>
+	public double StunnedUntil;
+	/// <summary> Stuns it for a while (never shortens one; bosses, too heavy to pull, shrug it off). </summary>
+	public void Stun( float seconds ) { if ( Pullable ) StunnedUntil = Math.Max( StunnedUntil, Clock.Now + seconds ); }
 	public event Action<Creature> Killed;
 
 	protected Health health;

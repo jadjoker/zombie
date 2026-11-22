@@ -21,6 +21,18 @@ public enum SkillId
 	LongLasting, Bouncy, BigGulp, HighLift, ChainReaction, Fizz, BubblePrison,
 	// Vac-Bot: core
 	VacShield, LightFrame, EfficientJets, Afterburner, ToxicTrail, Slipstream, PhaseShift,
+	// Hook-Bot: Harpoon Reel
+	BarbedHooks, QuickReel, DeepQuiver, Snag, TowLine, GuttingHook, Trawler,
+	// Hook-Bot: Lantern Lure
+	BrighterBulb, LongGlow, ShockLantern, DeepPockets, ChumBucket, BaitAndSwitch, AbyssalBloom,
+	// Hook-Bot: core
+	ThickLine, LongCast, Momentum, BootStomp, ReelRecharge, SeaDog, LeviathanPull,
+	// Coral-Bot: Spine Gun
+	SharpSpines, FastGrowth, BrittleBurst, HeavyClusters, ToxicPolyps, Ricochet, Bleach,
+	// Coral-Bot: Reef Seeds
+	ToughPolyps, QuickSeed, Barrage, HealingReef, SpikedWalls, Anemone, LivingReef,
+	// Coral-Bot: core
+	ShellPlating, DeepDig, Upheaval, Sandstorm, Calcify, Regrowth, GreatBarrier,
 }
 
 /// <summary> One skill: where it sits, how far it goes, and what each point does. </summary>
@@ -59,15 +71,23 @@ public static class Skills
 		new[] { "Trigger Happy", "Buckshot Brawler", "Battering Ram" },
 		new[] { "Wrath of the Deep", "Phalanx", "Tidal Surge" },
 		new[] { "Gross Domestic Product", "Bath Time", "Reverse Thrust" },
+		new[] { "Catch of the Day", "Bright Ideas", "Old Salt" },
+		new[] { "Prickly", "Gardener", "Bedrock" },
 	};
 	public static readonly string[][] TreeKit =
 	{
 		new[] { "Rifle", "Shotgun", "Surge, axe, survival" },
 		new[] { "Trident Shooter", "Spear and Shield", "Surge, survival" },
 		new[] { "Gore Vac", "Bubble Cannon", "Blink, survival" },
+		new[] { "Harpoon Reel", "Lantern Lure", "Grapple, survival" },
+		new[] { "Spine Gun", "Reef Seeds", "Burrow, survival" },
 	};
 
-	static int RobotIndex( string robot ) => robot == RobotClass.TridentBot.Id ? 1 : robot == RobotClass.VacBot.Id ? 2 : 0;
+	static int RobotIndex( string robot ) => robot == RobotClass.TridentBot.Id ? 1 : robot == RobotClass.VacBot.Id ? 2
+		: robot == RobotClass.HookBot.Id ? 3 : robot == RobotClass.CoralBot.Id ? 4 : 0;
+
+	/// <summary> The skills that add max health (bought: more health at once). </summary>
+	public static bool AddsHealth( SkillId id ) => id is SkillId.ThickPlating or SkillId.ThickLine or SkillId.ShellPlating;
 	public static string TreeName( string robot, int tree ) => TreeNames[RobotIndex( robot )][tree];
 	public static string TreeKitName( string robot, int tree ) => TreeKit[RobotIndex( robot )][tree];
 
@@ -87,6 +107,8 @@ public static class Skills
 		var ram = RobotClass.RamBot.Id;
 		var tri = RobotClass.TridentBot.Id;
 		var vac = RobotClass.VacBot.Id;
+		var hook = RobotClass.HookBot.Id;
+		var coral = RobotClass.CoralBot.Id;
 		return new[]
 		{
 			// ---- Ram-Bot: rifle ----
@@ -160,6 +182,54 @@ public static class Skills
 			S( SkillId.Afterburner, vac, 2, 1, "Afterburner", "afterburner", Orange, n => $"Burning gunk carries a blink {Pct( SkillFx.AfterburnerPer * n )} farther" ),
 			S( SkillId.ToxicTrail, vac, 2, 2, "Toxic Trail", "toxic", Lime, n => $"A blink leaves goo that hurts enemies {SkillFx.ToxicDps( n ):0} a second (double with gunk)" ),
 			S( SkillId.Slipstream, vac, 2, 2, "Slipstream", "slipstream", Teal, n => $"+{Pct( SkillFx.SlipPer * n )} speed for {SkillFx.SlipTime:0} s after a blink" ),
+			// ---- Hook-Bot: Harpoon Reel ----
+			S( SkillId.BarbedHooks, hook, 0, 0, "Barbed Hooks", "barbed", Red, n => $"+{Pct( HookFx.BarbedPer * n )} harpoon damage" ),
+			S( SkillId.QuickReel, hook, 0, 0, "Quick Reel", "reel", Sky, n => $"+{Pct( HookFx.QuickReelPer * n )} reel speed" ),
+			S( SkillId.DeepQuiver, hook, 0, 1, "Deep Quiver", "deepmag", Steel, n => $"+{n} harpoon{(n == 1 ? "" : "s")} a load" ),
+			S( SkillId.Snag, hook, 0, 1, "Snag", "limbripper", Pink, n => $"Reeling tears off a limb at or under {Pct( HookFx.SnagBelow( n ) )} health" ),
+			S( SkillId.TowLine, hook, 0, 2, "Tow Line", "towline", Orange, n => $"A reeled enemy bowls through others on its way in: {HookFx.TowPer * n:0} damage and a shove" ),
+			S( SkillId.GuttingHook, hook, 0, 2, "Gutting Hook", "gutting", Red, n => $"Hooked enemies bleed {HookFx.GutPer * n:0} a second for {HookFx.GutTime:0} s" ),
+			S( SkillId.Trawler, hook, 0, 3, "Trawler", "trawler", Gold, n => $"The harpoon bursts into a net: up to {HookFx.TrawlerCatches( n )} more enemies within {HookFx.NetRadius:0.0} m are reeled in with it", max: 3 ),
+			// ---- Hook-Bot: Lantern Lure ----
+			S( SkillId.BrighterBulb, hook, 1, 0, "Brighter Bulb", "bulb", Gold, n => $"+{Pct( HookFx.BrighterPer * n )} lure zap and burst radius" ),
+			S( SkillId.LongGlow, hook, 1, 0, "Long Glow", "lasting", Sky, n => $"The lure glows {HookFx.LongGlowPer * n:0.0} s longer" ),
+			S( SkillId.ShockLantern, hook, 1, 1, "Shock Lantern", "electric", Violet, n => $"+{HookFx.ShockPer * n:0} lure zap damage" ),
+			S( SkillId.DeepPockets, hook, 1, 1, "Deep Pockets", "pockets", Steel, n => $"Carry {n} more lure{(n == 1 ? "" : "s")}" ),
+			S( SkillId.ChumBucket, hook, 1, 2, "Chum Bucket", "gourmet", Pink, n => $"+{Pct( HookFx.ChumPer * n )} lure burst damage, and it sprays chum" ),
+			S( SkillId.BaitAndSwitch, hook, 1, 2, "Bait and Switch", "plecos", Green, n => $"Heal {HookFx.BaitHealPer * n:0} for each enemy a lure burst hits" ),
+			S( SkillId.AbyssalBloom, hook, 1, 3, "Abyssal Bloom", "bloom", Lime, n => $"The lure's burst is a giant angler jaw from the sand: {HookFx.BloomDamage( n ):0} to everything within {HookFx.BloomRadius:0.0} m, dragged in first", max: 3 ),
+			// ---- Hook-Bot: core ----
+			S( SkillId.ThickLine, hook, 2, 0, "Thick Line", "plating", Steel, n => $"+{SkillFx.PlatingPer * n:0} max health" ),
+			S( SkillId.LongCast, hook, 2, 0, "Long Cast", "reach", Teal, n => $"+{HookFx.LongCastPer * n:0} m grapple range" ),
+			S( SkillId.Momentum, hook, 2, 1, "Momentum", "slipstream", Green, n => $"+{HookFx.MomentumPer * n:0.0} m/s for {HookFx.MomentumTime:0} s after a zip" ),
+			S( SkillId.BootStomp, hook, 2, 1, "Boot Stomp", "kickback", Orange, n => $"+{HookFx.StompPer * n:0} damage when a zip ends in an enemy" ),
+			S( SkillId.ReelRecharge, hook, 2, 2, "Reel Recharge", "quickcharge", Sky, n => $"-{Pct( HookFx.RechargePer * n )} grapple cost" ),
+			S( SkillId.SeaDog, hook, 2, 2, "Sea Dog", "seadog", Gold, n => $"A kill within {HookFx.SeaDogTime:0} s of a zip heals {HookFx.SeaDogPer * n:0}" ),
+			S( SkillId.LeviathanPull, hook, 2, 3, "Leviathan Pull", "leviathan", Ink, n => $"A zip into an enemy ends in a slam: {HookFx.LeviathanDamage( n ):0} to it, and enemies within {HookFx.LeviathanRadius:0} m are dragged in for half", max: 3 ),
+			// ---- Coral-Bot: Spine Gun ----
+			S( SkillId.SharpSpines, coral, 0, 0, "Sharp Spines", "spines", Red, n => $"+{Pct( CoralFx.SharpPer * n )} spine damage" ),
+			S( SkillId.FastGrowth, coral, 0, 0, "Fast Growth", "growth", Green, n => $"Coral shatters at {CoralFx.ShatterAt( n )} spines (from {CoralFx.ShatterAt( 0 )})" ),
+			S( SkillId.BrittleBurst, coral, 0, 1, "Brittle Burst", "explosive", Orange, n => $"+{Pct( CoralFx.BrittlePer * n )} shatter damage and reach" ),
+			S( SkillId.HeavyClusters, coral, 0, 1, "Heavy Clusters", "clusters", Steel, n => $"Coral slows enemies up to {Pct( CoralFx.MaxSlow( n ) )}" ),
+			S( SkillId.ToxicPolyps, coral, 0, 2, "Toxic Polyps", "toxic", Lime, n => $"A shatter poisons: {CoralFx.ToxicPer * n:0} a second for {CoralFx.ToxicTime:0} s" ),
+			S( SkillId.Ricochet, coral, 0, 2, "Ricochet", "ricochet", Sky, n => $"{Pct( CoralFx.RicochetPer * n )} chance a spine bounces on to another enemy" ),
+			S( SkillId.Bleach, coral, 0, 3, "Bleach", "bleach", new Color( 0.92f, 0.9f, 0.84f ), n => $"A shatter turns an enemy at or under {Pct( CoralFx.BleachBelow( n ) )} health to stone and breaks it", max: 3 ),
+			// ---- Coral-Bot: Reef Seeds ----
+			S( SkillId.ToughPolyps, coral, 1, 0, "Tough Polyps", "lasting", Sky, n => $"Turrets last {CoralFx.ToughPer * n:0} s longer" ),
+			S( SkillId.QuickSeed, coral, 1, 0, "Quick Seed", "reload", Blue, n => $"-{Pct( CoralFx.QuickSeedPer * n )} seed reload time" ),
+			S( SkillId.Barrage, coral, 1, 1, "Barrage", "firerate", Orange, n => $"+{Pct( CoralFx.BarragePer * n )} turret fire rate" ),
+			S( SkillId.HealingReef, coral, 1, 1, "Healing Reef", "heal", Green, n => $"Heal {CoralFx.HealingPer * n:0.0} a second within {CoralFx.HealingReach:0} m of your coral" ),
+			S( SkillId.SpikedWalls, coral, 1, 2, "Spiked Walls", "spikedwall", Red, n => $"Walls hurt enemies touching them {CoralFx.SpikedPer * n:0} a second and grow coral on them" ),
+			S( SkillId.Anemone, coral, 1, 2, "Anemone", "anemone", Pink, n => $"+{Pct( CoralFx.AnemonePer * n )} turret damage" ),
+			S( SkillId.LivingReef, coral, 1, 3, "Living Reef", "livingreef", Violet, n => $"Coral within {CoralFx.LinkReach:0} m links up: glowing veins hurt enemies crossing them {CoralFx.VeinDps( n ):0} a second, linked turrets fire {Pct( CoralFx.LinkRate( n ) - 1f )} faster", max: 3 ),
+			// ---- Coral-Bot: core ----
+			S( SkillId.ShellPlating, coral, 2, 0, "Shell Plating", "plating", Steel, n => $"+{SkillFx.PlatingPer * n:0} max health" ),
+			S( SkillId.DeepDig, coral, 2, 0, "Deep Dig", "dig", new Color( 0.85f, 0.7f, 0.45f ), n => $"Burrow {CoralFx.DeepDigPer * n:0.00} s longer" ),
+			S( SkillId.Upheaval, coral, 2, 1, "Upheaval", "upheaval", Orange, n => $"+{Pct( CoralFx.UpheavalPer * n )} eruption damage and reach" ),
+			S( SkillId.Sandstorm, coral, 2, 1, "Sandstorm", "jets", Gold, n => $"-{Pct( CoralFx.SandstormPer * n )} burrow cost" ),
+			S( SkillId.Calcify, coral, 2, 2, "Calcify", "calcify", new Color( 0.92f, 0.9f, 0.84f ), n => $"Standing still for {CoralFx.CalcifyAfter:0} s: take {Pct( CoralFx.CalcifyPer * n )} less damage" ),
+			S( SkillId.Regrowth, coral, 2, 2, "Regrowth", "heal", Green, n => $"Erupting heals {CoralFx.RegrowthPer * n:0}" ),
+			S( SkillId.GreatBarrier, coral, 2, 3, "Great Barrier", "barrier", Pink, n => $"An eruption throws up a ring of coral walls for {CoralFx.BarrierTime( n ):0} s and spears enemies inside it for {CoralFx.BarrierDamage( n ):0}", max: 3 ),
 			S( SkillId.PhaseShift, vac, 2, 3, "Phase Shift", "phase", Violet, n => $"A blink makes you untouchable for {SkillFx.PhaseTime( n ):0.0} s and leaves a decoy enemies chase for {SkillFx.DecoyTime( n ):0.0} s", max: 3 ),
 		};
 	}
@@ -253,7 +323,7 @@ public partial class PlayerSkills : Node
 		rank = Math.Clamp( rank, 0, d.Max );
 		var was = ranks[(int)id];
 		ranks[(int)id] = rank;
-		if ( id == SkillId.ThickPlating && Survivor?.Health is { } h ) { h.MaxHealth += (rank - was) * SkillFx.PlatingPer; h.Current = MathF.Min( h.MaxHealth, h.Current + MathF.Max( 0f, rank - was ) * SkillFx.PlatingPer ); }
+		if ( Skills.AddsHealth( id ) && Survivor?.Health is { } h ) { h.MaxHealth += (rank - was) * SkillFx.PlatingPer; h.Current = MathF.Min( h.MaxHealth, h.Current + MathF.Max( 0f, rank - was ) * SkillFx.PlatingPer ); }
 		if ( d.Perk == PerkKind.Shield ) PlayerPerks.Of( controller )?.RefillShield();
 		Version++;
 		Changed?.Invoke();
@@ -264,7 +334,7 @@ public partial class PlayerSkills : Node
 	/// <summary> What a point does the moment it is bought (more health, a full shield). </summary>
 	void Bought( SkillDef d )
 	{
-		if ( d.Id == SkillId.ThickPlating && Survivor?.Health is { } h ) { h.MaxHealth += SkillFx.PlatingPer; h.Heal( SkillFx.PlatingPer ); }
+		if ( Skills.AddsHealth( d.Id ) && Survivor?.Health is { } h ) { h.MaxHealth += SkillFx.PlatingPer; h.Heal( SkillFx.PlatingPer ); }
 		if ( d.Perk == PerkKind.Shield ) PlayerPerks.Of( controller )?.RefillShield();
 	}
 

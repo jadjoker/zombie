@@ -59,6 +59,17 @@ public static class SkillFx
 		return best;
 	}
 
+	/// <summary> A blow from a skill or a move (a yank, a jaw, a slam, an eruption, a shatter) on a creature. </summary>
+	public static void HitPart( Creature c, float damage, Vector3 from, PlayerController shooter )
+	{
+		if ( c is null || !GodotObject.IsInstanceValid( c ) || c.IsDead || damage <= 0f ) return;
+		// Straight to health like a blast (armour plates don't soak it; armoured creatures take their AreaDamageScale),
+		// with a splash of flesh where it lands.
+		var at = NearestPart( c, from );
+		Fx.ImpactFlesh( at, (from - at).SafeNormal(), new Color( 0.9f, 0.3f, 0.2f ) );
+		PlayerPerks.Hurt( c, damage, at, from, shooter );
+	}
+
 	/// <summary> Shoves an enemy (lighter ones further). Bosses don't move. </summary>
 	public static void Shove( Creature c, Vector3 delta )
 	{
@@ -198,7 +209,7 @@ void fragment() {
 /// </summary>
 public partial class Affliction : Node
 {
-	public enum Kind { Burn, Bleed }
+	public enum Kind { Burn, Bleed, Poison }
 	Kind kind;
 	float dps, left, tick;
 	Creature victim;
@@ -208,7 +219,7 @@ public partial class Affliction : Node
 	public static void Apply( Creature victim, Kind kind, float dps, float seconds, PlayerController shooter )
 	{
 		if ( victim is null || victim.IsDead || dps <= 0f ) return;
-		var name = kind == Kind.Burn ? "Burning" : "Bleeding";
+		var name = kind switch { Kind.Burn => "Burning", Kind.Bleed => "Bleeding", _ => "Poisoned" };
 		if ( victim.GetNodeOrNull<Affliction>( name ) is { } on )
 		{
 			on.left = MathF.Max( on.left, seconds );
@@ -237,7 +248,7 @@ public partial class Affliction : Node
 			if ( kind == Kind.Burn )
 				GpuFx.SandPuff( at + Rng.InSphere( 0.25f ), Vector3.Up * Rng.Float( 1f, 2f ) + Rng.InSphere( 0.3f ), Rng.Float() < 0.5f ? new Color( 1f, 0.55f, 0.1f ) : new Color( 1f, 0.85f, 0.3f ), Rng.Float( 5f, 10f ), 0.45f );
 			else
-				GooDroplet.Spawn( at + Rng.InSphere( 0.15f ), Vector3.Down * 0.5f + Rng.InSphere( 0.6f ), new Color( 0.75f, 0.06f, 0.08f ), Rng.Float( 0.8f, 1.5f ) );
+				GooDroplet.Spawn( at + Rng.InSphere( 0.15f ), Vector3.Down * 0.5f + Rng.InSphere( 0.6f ), kind == Kind.Poison ? new Color( 0.5f, 1f, 0.2f ) : new Color( 0.75f, 0.06f, 0.08f ), Rng.Float( 0.8f, 1.5f ) );
 		}
 		if ( left <= 0f ) QueueFree();
 	}
@@ -283,10 +294,20 @@ public partial class ToxicTrail : Node
 }
 
 /// <summary>
+/// Something enemies go for instead of the player while it stands (`PlayerSurvivor.Decoy`): the Phase Shift hologram,
+/// Hook-Bot's Lantern Lure. Hits aimed at it don't reach the player (`PlayerPerks.Absorb`).
+/// </summary>
+public abstract partial class DecoyBase : Node3D
+{
+	public abstract bool Gone { get; }
+	public abstract void Struck();
+}
+
+/// <summary>
 /// Phase Shift's decoy: a flickering violet hologram of the robot left where the blink started. While it stands,
 /// enemies go for it (`PlayerSurvivor.WorldPosition` is here), and their hits on it don't reach the player.
 /// </summary>
-public partial class Decoy : Node3D
+public partial class Decoy : DecoyBase
 {
 	float life, age;
 	readonly List<ShaderMaterial> materials = new();
@@ -316,10 +337,10 @@ public partial class Decoy : Node3D
 		AddChild( new OmniLight3D { LightColor = colour, LightEnergy = 1.2f, OmniRange = 3f, ShadowEnabled = false, Position = Vector3.Up * 1f } );
 	}
 
-	public bool Gone => age >= life;
+	public override bool Gone => age >= life;
 
 	/// <summary> An enemy struck it: a flicker and a spark. </summary>
-	public void Struck()
+	public override void Struck()
 	{
 		age = MathF.Min( life, age + 0.1f );
 		LightningArc.Spark( GetTree().CurrentScene, GlobalPosition + Vector3.Up * Rng.Float( 0.5f, 1.5f ) );

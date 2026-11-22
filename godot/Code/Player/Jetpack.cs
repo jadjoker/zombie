@@ -137,7 +137,7 @@ public partial class Jetpack : Node
 			Power = MathF.Max( 0f, Power - ThrustDrain * dt );
 			if ( Power <= 0f ) { Stalled = true; TimeSinceRefused = 0f; }
 		}
-		else if ( timeSinceThrust > (DockedTo is not null ? 0.1f : RechargeDelay) && !Surging && !Charging )
+		else if ( timeSinceThrust > (DockedTo is not null ? 0.1f : RechargeDelay) && !Surging && !Charging && !Burrowed )
 		{
 			var rate = Recharge * (controller.IsOnGround ? GroundRechargeBoost : 1f) * (DockedTo is not null ? DockRechargeBoost : 1f) * (1f + SkillFx.RechargePer * Skill( SkillId.QuickCharge ));
 			Power = MathF.Min( MaxPower, Power + rate * dt );
@@ -147,6 +147,7 @@ public partial class Jetpack : Node
 		UpdateDock();
 		SurgeEffects();
 		SurgeSkills( dt );
+		MoveSkills( dt );
 
 		var stalling = wantThrust && Stalled;
 		if ( (stalling || Thrusting || Surging) && timeSinceBubble > (Surging ? 0.02f : 0.045f) )
@@ -200,11 +201,13 @@ public partial class Jetpack : Node
 		var pressed = Input.IsActionJustPressed( "surge" ) || testSurge;
 		var released = Input.IsActionJustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
 		testSurge = false;
-		if ( RobotClass.Current.Blink )
+		if ( RobotClass.Current.Blink || RobotClass.Current.Grapple || RobotClass.Current.Burrow )
 		{
 			Charging = false;
 			testHold = 0f;
-			if ( pressed ) TryBlink();
+			if ( pressed && RobotClass.Current.Blink ) TryBlink();
+			else if ( pressed && RobotClass.Current.Grapple ) TryGrapple();
+			else if ( pressed && RobotClass.Current.Burrow ) ToggleBurrow();
 			return;
 		}
 		if ( !Charging && pressed && !Surging )
@@ -499,6 +502,7 @@ public partial class Jetpack : Node
 					blink = false;
 					TimeSinceSurgeEnded = 0f;
 					controller.Velocity = -surgeDirection * 120f * U.In + Vector3.Up * 60f * U.In;
+					if ( zip ) ZipArrived( enemy );
 					return;
 				}
 				if ( speed >= SlamMinSpeed ) { Slam( hitAt, enemy, speed ); if ( enemy is null || !Surging ) return; }
@@ -513,10 +517,11 @@ public partial class Jetpack : Node
 				TimeSinceSurgeEnded = 0f;
 				controller.Velocity = surgeDirection * MathF.Min( surgeSpeed * (blink ? 0.3f : 0.6f), 850f ) * U.In;
 				blink = false;
+				if ( zip ) ZipArrived( null );
 			}
 			return;
 		}
-		if ( TimeSinceSurgeEnded < 0.4f && !RobotClass.Current.Blink && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
+		if ( TimeSinceSurgeEnded < 0.4f && !RobotClass.Current.Blink && !RobotClass.Current.Grapple && !RobotClass.Current.Burrow && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
 		{
 			var v = controller.Velocity;
 			if ( FindImpactBody( Feet, v * dt + v.Normalized() * RamRadius * U.In, out var hitAt, out var enemy ) && enemy is not null )

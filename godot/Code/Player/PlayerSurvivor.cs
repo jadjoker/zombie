@@ -31,7 +31,7 @@ public partial class PlayerSurvivor : Node
 	public Vector3 RealPosition => Controller.GlobalPosition;
 	/// <summary> Phase Shift: no hit lands until this game time; and the decoy enemies chase. </summary>
 	public double UntouchableUntil;
-	public Decoy Decoy;
+	public DecoyBase Decoy;
 
 	public int Points { get; private set; }
 	public int LastGain { get; private set; }
@@ -89,10 +89,14 @@ public partial class PlayerSurvivor : Node
 		return true;
 	}
 
+	/// <summary> Kills this life (Hook-Bot's Sea Dog watches it). </summary>
+	public int Kills;
+
 	public void RewardHit( bool killed, bool headshot, bool scoreHit )
 	{
 		if ( killed )
 		{
+			Kills++;
 			Weapon?.MarkKill();
 			AddPoints( headshot ? PointsPerKill * 3 / 2 : PointsPerKill );
 		}

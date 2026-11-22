@@ -8,6 +8,8 @@ using Godot;
 public partial class ClassPicker : CanvasLayer
 {
 	public static bool IsOpen { get; private set; }
+	/// <summary> Cards narrow down to fit the row on screen. </summary>
+	static int CardWidth => RobotClass.All.Length > 3 ? 286 : 380;
 
 	Control window;
 	readonly List<Button> buttons = new();
@@ -37,11 +39,11 @@ public partial class ClassPicker : CanvasLayer
 		title.HorizontalAlignment = HorizontalAlignment.Center;
 
 		var row = new HBoxContainer();
-		row.AddThemeConstantOverride( "separation", 28 );
+		row.AddThemeConstantOverride( "separation", RobotClass.All.Length > 3 ? 14 : 28 );
 		column.AddChild( row );
 		for ( var i = 0; i < RobotClass.All.Length; i++ ) row.AddChild( Card( RobotClass.All[i], i + 1 ) );
 
-		var hint = new Label { Text = RobotClass.All.Length == 3 ? "Press 1, 2 or 3, or click a robot" : "Press 1 or 2, or click a robot", HorizontalAlignment = HorizontalAlignment.Center };
+		var hint = new Label { Text = $"Press 1 to {RobotClass.All.Length}, or click a robot", HorizontalAlignment = HorizontalAlignment.Center };
 		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
 		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
@@ -57,7 +59,7 @@ public partial class ClassPicker : CanvasLayer
 
 	Control Card( RobotClass robot, int number )
 	{
-		var panel = new PanelContainer { CustomMinimumSize = new Vector2( 380, 0 ), Name = robot.Name };
+		var panel = new PanelContainer { CustomMinimumSize = new Vector2( CardWidth, 0 ), Name = robot.Name };
 		var frame = UiStyle.Frame( 1.4f, UiStyle.PanelDeep, 20 );
 		frame.BorderColor = robot.Tint;
 		frame.SetBorderWidthAll( 3 );
@@ -66,7 +68,7 @@ public partial class ClassPicker : CanvasLayer
 		column.AddThemeConstantOverride( "separation", 10 );
 		panel.AddChild( column );
 
-		var name = UiStyle.Big( column, 44, robot.Tint );
+		var name = UiStyle.Big( column, RobotClass.All.Length > 3 ? 32 : 44, robot.Tint );
 		name.Text = $"{number}  {robot.Name.ToUpperInvariant()}";
 		Line( column, robot.Tagline, 20, UiStyle.Readout );
 		column.AddChild( new HSeparator() );
@@ -89,8 +91,8 @@ public partial class ClassPicker : CanvasLayer
 
 	static void Line( Control parent, string text, int size, Color colour )
 	{
-		var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2( 360, 0 ) };
-		label.AddThemeFontSizeOverride( "font_size", size );
+		var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2( CardWidth - 20, 0 ) };
+		label.AddThemeFontSizeOverride( "font_size", RobotClass.All.Length > 3 ? (int)(size * 0.82f) : size );
 		label.AddThemeColorOverride( "font_color", colour );
 		parent.AddChild( label );
 	}

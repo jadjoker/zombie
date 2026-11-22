@@ -62,6 +62,8 @@ public partial class PlayerController : CharacterBody3D
 	public Vector3 GroundNormal { get; private set; } = Vector3.Up;
 	public bool IsDucking { get; private set; }
 	public float CurrentHeight => IsDucking ? DuckedHeight : BodyHeight;
+	/// <summary> How far (m) the view sits below the usual eye height (Coral-Bot's burrow). </summary>
+	public float EyeDrop;
 	/// <summary> Seconds since last standing on the ground (counts up while airborne). </summary>
 	public TimeSince TimeSinceGrounded { get; private set; }
 	/// <summary> Seconds since last airborne (counts up while grounded). </summary>
@@ -434,7 +436,7 @@ public partial class PlayerController : CharacterBody3D
 		var origin = DrawnPosition;
 		var height = CurrentHeight;
 		if ( IsDuckTransition && IsOnGround ) height = BodyHeight - (BodyHeight - DuckedHeight) * DuckInputFraction;
-		var eye = origin + Vector3.Up * (height - EyeDistanceFromTop);
+		var eye = origin + Vector3.Up * (height - EyeDistanceFromTop - EyeDrop);
 		if ( IsOnGround && eyeY != 0f ) eye.Y = MathX.Lerp( eyeY, eye.Y, dt * 50f );
 		eyeY = eye.Y;
 

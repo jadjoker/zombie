@@ -80,6 +80,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
 		if ( args.Contains( "--classes" ) ) { await ClassTest(); return; }
 		if ( args.Contains( "--skills" ) ) { await SkillTest(); return; }
+		if ( args.Contains( "--hookbot" ) ) { await HookBotTest(); return; }
+		if ( args.Contains( "--coralbot" ) ) { await CoralBotTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--poseidongallery" ) ) { await PoseidonGalleryTest(); return; }

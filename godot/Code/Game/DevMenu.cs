@@ -926,6 +926,8 @@ public static class CharacterSkins
 		"Hazard" => new Color( 1f, 0.45f, 0.1f ),
 		"Frost" => new Color( 0.4f, 0.7f, 1f ),
 		"Gold" => new Color( 1f, 0.9f, 0.4f ),
+		"Hook" => new Color( 0.55f, 1f, 0.45f ),   // the lantern's green
+		"Coral" => new Color( 1f, 0.35f, 0.75f ),  // the polyps' pink
 		_ => new Color( 0.3f, 1f, 0.9f ),
 	};
 }

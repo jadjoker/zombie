@@ -333,6 +333,64 @@ public partial class PlayerRig : Node
 		return ImageTexture.CreateFromImage( image );
 	}
 
+	/// <summary>
+	/// The Hook-Bot's suit: a life buoy's bands, wide orange and white stripes on the slant, each white band edged with
+	/// a thin navy line like the rope on a buoy.
+	/// </summary>
+	public static ImageTexture BuoyTexture( Color orange, Color white, Color navy )
+	{
+		const int size = 256;
+		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
+		for ( var y = 0; y < size; y++ )
+			for ( var x = 0; x < size; x++ )
+			{
+				// Two stripe pairs a tile, slanted so they wrap.
+				var t = ((x + y) / (float)size * 2f) % 1f;
+				var c = t < 0.5f ? orange : white;
+				var edge = MathF.Min( MathF.Abs( t - 0.5f ), MathF.Min( t, 1f - t ) );
+				if ( edge < 0.025f ) c = navy;
+				image.SetPixel( x, y, c );
+			}
+		image.GenerateMipmaps();
+		return ImageTexture.CreateFromImage( image );
+	}
+
+	/// <summary>
+	/// The Coral-Bot's suit: coral pink scattered with polyps, round orange cups with a pale ring and a dark mouth, the
+	/// way a living coral head looks up close (a jittered grid, so it wraps).
+	/// </summary>
+	public static ImageTexture PolypTexture( Color pink, Color orange, Color pale )
+	{
+		const int size = 256, cells = 8;
+		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
+		var mouth = new Color( 0.55f, 0.12f, 0.25f );
+		for ( var y = 0; y < size; y++ )
+			for ( var x = 0; x < size; x++ )
+			{
+				var u = (x + 0.5f) / size * cells;
+				var v = (y + 0.5f) / size * cells;
+				var best = 9f;
+				var size2 = 0.3f;
+				for ( var dy = -1; dy <= 1; dy++ )
+					for ( var dx = -1; dx <= 1; dx++ )
+					{
+						int cx = (int)MathF.Floor( u ) + dx, cy = (int)MathF.Floor( v ) + dy;
+						int wx = ((cx % cells) + cells) % cells, wy = ((cy % cells) + cells) % cells;
+						var px = cx + 0.25f + 0.5f * Hash( wx, wy, 5 );
+						var py = cy + 0.25f + 0.5f * Hash( wx, wy, 9 );
+						var d = MathF.Sqrt( (u - px) * (u - px) + (v - py) * (v - py) );
+						if ( d < best ) { best = d; size2 = 0.22f + 0.14f * Hash( wx, wy, 13 ); }
+					}
+				var c = pink;
+				if ( best < size2 ) c = pale;
+				if ( best < size2 * 0.75f ) c = orange;
+				if ( best < size2 * 0.28f ) c = mouth;
+				image.SetPixel( x, y, c );
+			}
+		image.GenerateMipmaps();
+		return ImageTexture.CreateFromImage( image );
+	}
+
 	/// <summary> Smooth value noise that wraps at the tile's edges, two octaves, 0 to 1. </summary>
 	static float TileNoise( float u, float v, int seed )
 	{
@@ -368,7 +426,9 @@ public partial class PlayerRig : Node
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
 		var frameCamo = FrameCamo.Contains( appliedSkin );
-		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] ) : null;
+		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] )
+			: appliedSkin == "Hook" ? BuoyTexture( paint[1], new Color( 0.96f, 0.94f, 0.88f ), paint[0] )
+			: appliedSkin == "Coral" ? PolypTexture( paint[1], new Color( 1f, 0.62f, 0.25f ), new Color( 0.98f, 0.9f, 0.82f ) ) : null;
 		// About three tiles of camo from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
 		foreach ( var mesh in meshes )
@@ -395,7 +455,7 @@ public partial class PlayerRig : Node
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
 					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
-					m.Metallic = 0.25f;
+					m.Metallic = appliedSkin is "Hook" or "Coral" ? 0.05f : 0.25f;   // the stripes and polyps read brighter less metallic
 				}
 				if ( slot == "frame" && frameCamo )
 				{

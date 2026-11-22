@@ -259,7 +259,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `BurrowCooldown` so it can't be chained). Their guns are built in code on the Blaster's rig with `GunKit`
   (`HookModels`, `CoralModels`). Balance (user's ask: nothing one-shot all game): skill blows go to health through
   `SkillFx.HitPart`, and skill effects scale with half the damage upgrades (`PlayerWeapon.UpgradeScale`). Tests:
-  `--hookbot`, `--coralbot` (both print hits-to-kill for crabs by wave; shots need a window).
+  `--hookbot`, `--coralbot` (both print hits-to-kill for crabs by wave; shots need a window, with a third person portrait
+  of each). Their suits have their own patterns (`PlayerRig.BuoyTexture`: Hook-Bot's slanted orange and white life
+  buoy bands with navy rope lines; `PolypTexture`: Coral-Bot's pink with orange polyp cups) and eye glow (lantern green,
+  polyp pink; `CharacterSkins.GlowOf`).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

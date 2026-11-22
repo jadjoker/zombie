@@ -120,6 +120,9 @@ public partial class AutoTest
 		Stand();
 		await Wait( 0.1f );
 		AimAt( heavy.GlobalPosition + Vector3.Up * 0.35f );
+		await Wait( 0.2f );
+		AimAt( heavy.GlobalPosition + Vector3.Up * 0.35f );
+		await Wait( 0.1f );
 		var heavyAt = heavy.GlobalPosition;
 		harpoon.TestFire();
 		await Wait( 0.2f );

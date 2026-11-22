@@ -93,6 +93,17 @@ public partial class PlayerWeapon : Node
 	public int DamageLevel;
 	public float DamagePerLevel = 0.25f;
 	public float CurrentDamage => Damage * (1f + DamagePerLevel * DamageLevel);
+	/// <summary>
+	/// A charge weapon's damage with no charge (0: the charge doesn't change damage). The shot does this let go at once,
+	/// rising evenly to <see cref="Damage"/> at a full charge; damage upgrades scale both.
+	/// </summary>
+	public float ChargeMinDamage;
+	/// <summary> How charged the shot going out is, 0 to 1. </summary>
+	float shotCharge = 1f;
+	/// <summary> This shot's damage, after the charge and the upgrades. </summary>
+	public float ShotDamage => ChargeMinDamage > 0f
+		? MathX.Lerp( ChargeMinDamage, Damage, MathX.Clamp( shotCharge, 0f, 1f ) ) * (1f + DamagePerLevel * DamageLevel)
+		: CurrentDamage;
 
 	public int Ammo { get; private set; }
 	public int Reserve { get; private set; }
@@ -157,7 +168,7 @@ public partial class PlayerWeapon : Node
 	public static PlayerWeapon Trident( int slot = 3 ) => new()
 	{
 		Name = "Trident", DisplayName = "Trident Shooter", Slot = slot, ModelName = "trident",
-		Damage = 380f /* 140 at first (playtest) */, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
+		Damage = 250f /* a full charge; 380 flat before, 140 at first (playtest) */, ChargeMinDamage = 75f, FireRate = 1.4f, Range = 6000f * U.In, SpreadDegrees = 0.25f, Recoil = 2.4f,
 		MagazineSize = 5, StartingReserve = 30, ReloadTime = 2.1f, BulletImpulse = 200f * U.In, Automatic = false,
 		MuzzleFlashScale = 0.25f, ShakePerShot = 0.35f, FovKickPerShot = 2.5f,
 		AimFovScale = 0.72f, AimSpreadScale = 0.3f, AimRecoilScale = 0.6f,
@@ -168,7 +179,7 @@ public partial class PlayerWeapon : Node
 	public static PlayerWeapon TridentSpear( int slot = 2 ) => new()
 	{
 		Name = "Trident Spear", DisplayName = "Trident & Shield", Slot = slot, ModelName = "spear",
-		Damage = 95f, FireRate = 1.6f, Range = 220f * U.In, MagazineSize = 1, StartingReserve = 0, Automatic = false,
+		Damage = 90f, FireRate = 1.6f, Range = 220f * U.In, MagazineSize = 1, StartingReserve = 0, Automatic = false,
 		MuzzleFlashScale = 0f, Spear = true,
 	};
 
@@ -320,10 +331,12 @@ public partial class PlayerWeapon : Node
 				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
 				if ( !held )
 				{
+					shotCharge = chargeFull ? 1f : ChargeAmount;
 					charging = false;
 					chargedShot = chargeFull;
 					Shoot();
 					chargedShot = false;
+					shotCharge = 1f;
 				}
 			}
 			else if ( !charging )
@@ -487,7 +500,7 @@ public partial class PlayerWeapon : Node
 			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
 			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
 			var from = controller.ThirdPerson && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
-			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, CurrentDamage, controller, this, chargedShot );
+			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, ShotDamage, controller, this, chargedShot );
 			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }
 		}
 		else for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )

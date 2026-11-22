@@ -287,7 +287,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   friends (theme properties), not inline hex. Test: `--hudshots` (firing, a boss bar, the pause menu; needs a
   window); add `--allthemes` for one shot per theme, switched live.
 - The deep sea angler (`Creatures/Angler.cs`, `EnemyKind.Angler`): from the second stage on (`WaveDirector.AnglerChance` of
-  each wave on the wreck site and in Atlantis, health a little over a Rocky Shark's). Tall round body (a `SmoothKit` loft) in
+  each wave on the wreck site and in Atlantis, at most `MaxAnglers` (3) alive at once, base health 370). Tall round body (a `SmoothKit` loft) in
   blue and green scales, about 30% yellow, with purple spots (its own `SkinShader`, after Poseidon's tail), a jutting underbite of huge needle
   teeth on a hinged `Jaw`, two compound fly eyes of hex facets (`EyeShader`; the weak spots), and a whole lantern glowing
   green on a jointed stalk off its brow. Attacks: a lantern swing (wind-up, whip; `SwingRange`), a chomp (jaw wide,

@@ -221,7 +221,8 @@ public partial class WaveDirector : Node3D
 	/// <summary> Deep sea anglers: from the second stage on (the wreck site and Atlantis), a share of each wave. Health a little over a Rocky Shark's. </summary>
 	public bool SpawnAnglers = true;
 	public float AnglerChance = 0.14f;
-	public float AnglerBaseHealth = 360f;
+	public int MaxAnglers = 3;             // never more than this many anglers alive at once
+	public float AnglerBaseHealth = 370f;
 	public float AnglerHealthPerWave = 38f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
@@ -683,6 +684,14 @@ public partial class WaveDirector : Node3D
 		return DockHouse.Current?.BoardTip is { } tip ? tip with { Y = SeaTerrain.HeightAt( tip ) } : Vector3.Zero;
 	}
 
+	int AnglersAlive()
+	{
+		var n = 0;
+		foreach ( var e in alive )
+			if ( e is Angler a && IsInstanceValid( a ) && !a.IsDead ) n++;
+		return n;
+	}
+
 	bool TrySpawnEnemy()
 	{
 		var roll = Rng.Float();
@@ -694,7 +703,8 @@ public partial class WaveDirector : Node3D
 			roll = (roll - MermaidChance) / (1f - MermaidChance);
 		}
 		// The wreck site and Atlantis: a share are deep sea anglers.
-		if ( SpawnAnglers && SeaTerrain.Area >= 2 && has( EnemyKind.Angler ) )
+		// At most MaxAnglers alive at once: past that, the roll goes to the usual mix.
+		if ( SpawnAnglers && SeaTerrain.Area >= 2 && has( EnemyKind.Angler ) && AnglersAlive() < MaxAnglers )
 		{
 			if ( roll < AnglerChance ) return Spawn( EnemyKind.Angler );
 			roll = (roll - AnglerChance) / (1f - AnglerChance);

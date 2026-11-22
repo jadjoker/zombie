@@ -139,13 +139,14 @@ public partial class Jetpack : Node
 		}
 		else if ( timeSinceThrust > (DockedTo is not null ? 0.1f : RechargeDelay) && !Surging && !Charging )
 		{
-			var rate = Recharge * (controller.IsOnGround ? GroundRechargeBoost : 1f) * (DockedTo is not null ? DockRechargeBoost : 1f);
+			var rate = Recharge * (controller.IsOnGround ? GroundRechargeBoost : 1f) * (DockedTo is not null ? DockRechargeBoost : 1f) * (1f + SkillFx.RechargePer * Skill( SkillId.QuickCharge ));
 			Power = MathF.Min( MaxPower, Power + rate * dt );
 			if ( Stalled && Power >= MaxPower * RestartAt ) Stalled = false;
 		}
 
 		UpdateDock();
 		SurgeEffects();
+		SurgeSkills( dt );
 
 		var stalling = wantThrust && Stalled;
 		if ( (stalling || Thrusting || Surging) && timeSinceBubble > (Surging ? 0.02f : 0.045f) )
@@ -246,7 +247,8 @@ public partial class Jetpack : Node
 		surgeDirection = direction;
 		Sfx.Play( "surge", controller.GlobalPosition, 0.6f + 0.4f * strength );
 		surgeSpeed = MathX.Lerp( SurgeSpeedMin, SurgeSpeedMax, strength );
-		surgeTotal = surgeLeft = MathX.Lerp( SurgeTimeMin, SurgeTimeMax, strength );
+		surgeTotal = surgeLeft = MathX.Lerp( SurgeTimeMin, SurgeTimeMax, strength ) * (1f + SkillFx.LungePer * Skill( SkillId.LongLunge ));
+		surgeWasBlink = false;
 		Power = 0f;
 		Stalled = true;
 		timeSinceThrust = 0f;
@@ -266,7 +268,8 @@ public partial class Jetpack : Node
 	void TryBlink()
 	{
 		if ( Surging ) return;
-		if ( Power < BlinkCost ) { TimeSinceRefused = 0f; return; }
+		var cost = BlinkCost * (1f - SkillFx.JetsPer * Skill( SkillId.EfficientJets ));
+		if ( Power < cost ) { TimeSinceRefused = 0f; return; }
 		var eyes = controller.EyeAngles;
 		var input = Input.GetVector( "left", "right", "backward", "forward" );
 		var direction = input.LengthSquared() > 0.04f ? (eyes.Forward * input.Y + eyes.Right.Flat().SafeNormal() * input.X).SafeNormal() : eyes.Forward;
@@ -284,8 +287,10 @@ public partial class Jetpack : Node
 		SurgeStrength = blinkGunk ? 1f : 0.7f;
 		surgeDirection = direction;
 		surgeSpeed = BlinkSpeed;
-		surgeTotal = surgeLeft = BlinkTime * (blinkGunk ? BlinkGunkBoost : 1f);
-		Power -= BlinkCost;
+		surgeTotal = surgeLeft = BlinkTime * (blinkGunk ? BlinkGunkBoost * (1f + SkillFx.AfterburnerPer * Skill( SkillId.Afterburner )) : 1f);
+		Power -= cost;
+		surgeWasBlink = true;
+		BlinkSkills();
 		timeSinceThrust = 0f;
 		controller.PreventGrounding( 0.1f );
 		Sfx.Play( "surge", controller.GlobalPosition, 0.7f, 1.35f );
@@ -394,9 +399,10 @@ public partial class Jetpack : Node
 		TimeSinceSlam = 0f;
 		var origin = at - surgeDirection * 20f * U.In;
 
+		var hitter = 1f + SkillFx.RamDamagePer * (Skill( SkillId.HeavyHitter ) + Skill( SkillId.VioletEdge ));
 		if ( direct is not null )
 		{
-			var full = RamDamage * (0.8f + 0.8f * strength);
+			var full = RamDamage * (0.8f + 0.8f * strength) * hitter;
 			var parts = CreaturePart.All.Where( p => IsInstanceValid( p ) && p.Creature == direct ).ToList();
 			if ( direct is MC61Marker && parts.Count > 0 ) parts = new() { parts.OrderBy( p => p.GlobalPosition.DistanceTo( at ) ).First() };
 			var first = true;
@@ -416,17 +422,27 @@ public partial class Jetpack : Node
 			var falloff = 1f - d / SlamRadius;
 			var outward = (creature.GlobalPosition - at).SafeNormal();
 			var part = CreaturePart.All.Where( p => IsInstanceValid( p ) && p.Creature == creature ).OrderBy( p => p.GlobalPosition.DistanceTo( at ) ).FirstOrDefault();
-			part?.ReceiveShot( SlamDamage * strength * falloff, part, outward, part.GlobalPosition, at, controller, false );
+			part?.ReceiveShot( SlamDamage * strength * falloff * hitter, part, outward, part.GlobalPosition, at, controller, false );
 		}
 
 		SlamBubbles( at, surgeDirection, strength );
 
 		if ( direct is not null )
 		{
-			// Bust straight through it, a little slower.
+			// Bust straight through it, a little slower (Unstoppable: no slower, and a kill gives power back).
 			rammed.Add( direct );
-			surgeSpeed *= 0.88f;
-			if ( !Surging ) controller.Velocity *= 0.88f;
+			var unstoppable = Skill( SkillId.Unstoppable );
+			if ( unstoppable <= 0 )
+			{
+				surgeSpeed *= 0.88f;
+				if ( !Surging ) controller.Velocity *= 0.88f;
+			}
+			else if ( direct is Creature { IsDead: true } )
+			{
+				Refunds++;
+				Power = MathF.Min( MaxPower, Power + SkillFx.UnstoppableRefund( unstoppable ) );
+				if ( Power >= MaxPower * RestartAt ) Stalled = false;
+			}
 			Juice?.Shake( 0.3f + 0.3f * strength );
 			Juice?.KickFov( 6f + 6f * strength );
 			Engine.TimeScale = 0.12f;

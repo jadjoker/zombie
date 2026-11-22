@@ -126,7 +126,7 @@ public partial class WaveDirector : Node3D
 	/// </summary>
 	Vector3 KrakenSpot()
 	{
-		var players = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.WorldPosition ).ToList();
+		var players = PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => p.RealPosition ).ToList();
 		var height = players.Count > 0 ? players[0].Y : GlobalPosition.Y;
 		var avoid = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().Select( s => s.GetParent() ).OfType<Node3D>().Select( n => n.GlobalPosition ).ToList();
 		// Atlantis (area 3) keeps an open plaza for it on the west avenue; elsewhere it is the map's middle.
@@ -456,6 +456,12 @@ public partial class WaveDirector : Node3D
 			{
 				if ( survivor.IsAlive ) survivor.RewardPoints( WaveClearBonus * Wave );
 				else survivor.Respawn( RespawnPosition( index ), fullReset: false );
+				// A skill tree token for every wave cleared (up to 50 a run), spent from the pause menu.
+				if ( PlayerSkills.Of( survivor.Controller ) is { } skills && skills.Earned < Skills.MaxTokens )
+				{
+					skills.Award();
+					GameHud.Announce( $"+1 skill token  ({Controls.Label( "pause" )})", UiStyle.Gold );
+				}
 				index++;
 			}
 		}
@@ -474,7 +480,7 @@ public partial class WaveDirector : Node3D
 		if ( !originSet && players.Count > 0 )
 		{
 			originSet = true;
-			origin = players[0].WorldPosition;
+			origin = players[0].RealPosition;
 			visitedCells.Clear();
 			visitedCells.Add( CellOf( origin ) );
 			lastDanger = 0;
@@ -486,8 +492,8 @@ public partial class WaveDirector : Node3D
 		var ambush = 0;
 		foreach ( var p in players )
 		{
-			if ( visitedCells.Add( CellOf( p.WorldPosition ) ) && Rng.Float() < AmbushChance ) ambush += Rng.Int( 1, 2 );
-			FarthestDistance = MathF.Max( FarthestDistance, (p.WorldPosition - origin).Flat().Length() / U.In );
+			if ( visitedCells.Add( CellOf( p.RealPosition ) ) && Rng.Float() < AmbushChance ) ambush += Rng.Int( 1, 2 );
+			FarthestDistance = MathF.Max( FarthestDistance, (p.RealPosition - origin).Flat().Length() / U.In );
 		}
 		CellsExplored = visitedCells.Count;
 		SurvivalSeconds += dt;
@@ -505,7 +511,7 @@ public partial class WaveDirector : Node3D
 			foreach ( var node in alive.ToList() )
 			{
 				if ( !IsInstanceValid( node ) ) continue;
-				var nearest = players.Min( p => p.WorldPosition.DistanceTo( node.GlobalPosition ) ) / U.In;
+				var nearest = players.Min( p => p.RealPosition.DistanceTo( node.GlobalPosition ) ) / U.In;
 				if ( nearest > DespawnDistance ) { alive.Remove( node ); node.QueueFree(); }
 			}
 		}
@@ -527,7 +533,7 @@ public partial class WaveDirector : Node3D
 		{
 			var index = 0;
 			foreach ( var p in allPlayers.Where( q => !q.IsAlive ) )
-				p.Respawn( players[0].WorldPosition + Vector3.Right * (60f + 40f * index++) * U.In, fullReset: false );
+				p.Respawn( players[0].RealPosition + Vector3.Right * (60f + 40f * index++) * U.In, fullReset: false );
 			deadTimer = 0f;
 		}
 	}
@@ -748,7 +754,7 @@ public partial class WaveDirector : Node3D
 	{
 		if ( forcedSpawn is { } forced ) { position = forced; return true; }
 		var player = PlayerSurvivor.FindNearestAlive( GlobalPosition );
-		var center = player?.WorldPosition ?? GlobalPosition;
+		var center = player?.RealPosition ?? GlobalPosition;
 
 		// Hand-placed spawn points first (nodes in the "spawn_point" group), away from the player.
 		var points = GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>()

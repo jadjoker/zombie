@@ -94,7 +94,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and
   the three level stations stand by the arrival pad in area 2 (`AreaTwo.PlaceStations`). A pull starts the charge and letting go fires; damage rises with the hold from `ChargeMinDamage` (75) to
-  `Damage` (250) at a full 1 s charge (`PlayerWeapon.ChargeTime`, `ShotDamage`), which is also faster and magical. Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce pickup) within `SeekRange` (20 m, +1 m per Trident Reach pickup) at `SeekSpeed` (0.45 of Speed; only enemies stop it while seeking) and goes through them. Its sounds (`trident_pierce`,
+  `Damage` (250) at a full 1 s charge (`PlayerWeapon.ChargeTime`, `ShotDamage`), which is also faster and magical. Every trident goes through the first enemy it hits, then heat seeks the next closest `TridentBolt.SeekNext` (2, plus one per Trident Pierce point) within `SeekRange` (20 m, +2 m per Trident Reach point) at `SeekSpeed` (0.45 of Speed; only enemies stop it while seeking) and goes through them. Its sounds (`trident_pierce`,
   `trident_flesh`, `trident_charge`, `bubble_pop`) come from `Tools/godot/make_sounds.py`; trail bubbles pop (`TridentBolt.Pop`). `ShipWreck.Kudzu` grows alien
   vines over the hull, deck and deckhouse.
 - Robot classes (`Player/RobotClass.cs`): each robot has its own weapons and mouse 4 move; both swing the axe.
@@ -233,11 +233,29 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   travel and bank him into turns, his body rocks in a slow S against his head, the fins flutter, the tail uncurls with
   speed and winds tighter to fire, the beam kicks him back as it fires, each missile snaps his snout up, a hit makes him
   flinch (at most once a second), and the hat rides on its own spring. `--mc51 --motion` adds frames of each move.
-- Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then `PlayerPerks.Table`'s
-  chances). Ammo, the shield and the pirate chest drop for every robot; Trident Pierce, Reach and Swarm and Shield Bulwark for Trident-Bot only; every other pickup for Ram-Bot only (`PlayerPerks.Drops`, user's choice). `Code/Player/PlayerPerks.cs` holds what the player has and what each does (faster reload, fire rate,
-  explosive round `ThrownClip` (heat seeking, `SeekSpeed`), electric bullets `LightningArc` (25% chance, +5% per extra pickup), pirate chest, shield through `Health.Absorb`,
-  movement buff, Trident Pierce (4%, Trident-Bot only: `PlayerPerks.Drops`; a trident seeks one more enemy each), Trident Reach (1%, Trident-Bot only: 1 m more seeking range each), Trident Swarm (1%, Trident-Bot only, at most `MaxSwarm` 3: on a trident's first hit, not the sought ones: 1 stack 30% of one small half-damage trident; 2 stacks 50% of one, 30% of two; 3 stacks 70% of one, 50% of two, 30% of three; they fan out and each seek a different random enemy at the same `SeekSpeed`, `TridentBolt.Splinter`), Shield Bulwark (1%, Trident-Bot only, at most `MaxBulwark` 15: the raised energy shield takes 1% more of each hit, 65% up to 80%, `PlayerPerks.BlockShare`), the Biden Blast on the `blast` action (one a wave per pickup, up to `MaxBlastsPerWave` 3): G (RB on a pad, which fires it instead of the axe only while it is
-  ready). Icons: `python Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
+- Skill trees (user's design, replacing the pickup drops): `Player/Skills.cs` (`SkillId`, `SkillDef`, `Skills.All`, the
+  per-player `PlayerSkills` node: ranks, `Tokens`, `Earned`). Each robot has three trees (primary, secondary, core), each
+  three rows of two skills and a capstone; a skill takes 5 points (3 for the capstones, Biden Blast, Trident Swarm,
+  Clusterfunk), and `Skills.UnlockPoints` (3) in a row open the next. Clearing a wave gives a token
+  (`WaveDirector`, up to `Skills.MaxTokens` 50 a run); a new run clears them; no refunds (user's choice). Pausing opens
+  the trees (`Game/SkillTreePage.cs`; click or A buys a point); the arrow on the right (or a bumper) goes to the menu
+  page. Skills that were pickups (`SkillDef.Perk`) feed `PlayerPerks.Count`, so their code stays in PlayerPerks; the
+  rest hook in where the weapon works (`Weapons/PlayerWeaponSkills.cs`, `Player/JetpackSkills.cs`, GoreVac, BubbleCannon,
+  PlayerMelee, Health for Bubble Prison) with their numbers in `Weapons/SkillFx.cs` (also burn/bleed `Affliction`, the
+  Full Choke slug, `ToxicTrail`, the Phase Shift `Decoy` (enemies go for `PlayerSurvivor.WorldPosition`; player-body
+  checks use `RealPosition`), `SurgeWhirlpool`, and the `BlackHole`: the huge Gore Vac shot opens it, it drags enemies
+  in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts).
+  Weak spots for Headhunter are `Creature.WeakSpot`. Icons: `python Tools/godot/make_skill_icons.py`. Dev menu: Player,
+  Skill trees. Test: `--skills` (with `--shots` in a window: the tree page and the black hole).
+- Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
+  points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
+  rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets
+  `LightningArc` (25%, +5% a point), the shield through `Health.Absorb` (25, +10), movement +0.3 m/s and +10% stamina,
+  Trident Pierce (+1 seek), Reach (+2 m), Swarm (at most 3: 1 point 30% of one small half-damage trident; 2 points 50%
+  of one, 30% of two; 3 points 70%, 50%, 30%; `TridentBolt.Splinter`), Shield Bulwark (+3% blocked, 65% up to 80%),
+  the Biden Blast on the `blast` action (one a wave per point, up to 3): G (RB on a pad, which fires it instead of the
+  axe only while it is ready). `PlayerPerks.Give` still works (dev menu, tests). Icons: `python
+  Tools/godot/make_pickup_icons.py`. Dev menu: Player, Pickups. Test: `--pickups`.
 - Quality of life batch: `Creatures/Blinker.cs` blinks eyes on creatures with no lids of their own (Bloober, Rocky Shark,
   Kraken, Poseidon, mermaids, seahorses, missiles: it squashes each eye's meshes shut). The Junk Crab's eyes are on ant
   antennas (`BuildAntenna`, `WaveAntennas`: a waving shaft and a springy whip) with the Kraken's eye on the tip (teal bulb, glossy black almond slanted 38 degrees, glowing green rim).

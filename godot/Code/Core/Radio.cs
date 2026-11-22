@@ -109,7 +109,7 @@ public partial class Radio : Node
 		// Up on the dock it fades with distance from the radio; after the dive it is steady.
 		var target = 1f;
 		if ( DockHouse.WeaponsHeld && Spot is { } spot && PlayerSurvivor.All.FirstOrDefault() is { } p )
-			target = MathX.Lerp( 0.3f, 1f, 1f - MathX.Clamp( p.WorldPosition.DistanceTo( spot ) / 16f, 0f, 1f ) );
+			target = MathX.Lerp( 0.3f, 1f, 1f - MathX.Clamp( p.RealPosition.DistanceTo( spot ) / 16f, 0f, 1f ) );
 		gain = MathX.Approach( gain, target, (float)delta * 1.5f );
 		player.VolumeDb = Mathf.LinearToDb( MathF.Max( gain, 0.0001f ) );
 	}

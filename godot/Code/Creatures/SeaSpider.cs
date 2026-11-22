@@ -42,6 +42,7 @@ public partial class SeaSpider : PartCreature
 	public Vector3 LureTip => lureBulb is not null && IsInstanceValid( lureBulb ) ? lureBulb.GlobalPosition : GlobalPosition + Vector3.Up * 60f * Size * U.In;
 
 	const int Body = 0, EyePart = 1, FirstThigh = 2, LegCount = 6, FirstShin = FirstThigh + LegCount;
+	public override bool WeakSpot( int index ) => index == EyePart;
 	const float BodyHeight = 43f;
 	const float ThighLength = 22f, ShinLength = 58f;
 	static readonly float[] LegYaws = { 48f, 92f, 132f, -48f, -92f, -132f };

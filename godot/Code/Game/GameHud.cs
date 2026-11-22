@@ -337,6 +337,14 @@ public partial class GameHud : Control
 			}
 		}
 
+		// Unspent skill tree tokens: a reminder where the pickups sit, with the key that opens the trees.
+		if ( PlayerSkills.Of( player?.Controller ) is { Tokens: > 0 } skillTokens )
+		{
+			var y = Size.Y + PointsBottom - S( 44 ) - 30f * Sc - 12f - 40f * Sc - 26f;
+			var pulse = 0.75f + 0.25f * MathF.Sin( (float)Clock.Real * 4f );
+			UiStyle.DrawTag( this, new Vector2( Edge + 4f, y ), $"{skillTokens.Tokens} skill token{(skillTokens.Tokens == 1 ? "" : "s")}  ·  {Controls.Label( "pause" )}", 14, UiStyle.Gold with { A = pulse } );
+		}
+
 		// A pickup just taken: its name over the middle of the screen for a moment.
 		if ( announceAge < 2.2f )
 		{

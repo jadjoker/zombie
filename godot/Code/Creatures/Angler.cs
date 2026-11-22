@@ -672,6 +672,9 @@ void fragment() {
 	public bool Reeling => line == Line.Reel && hooked is not null;
 	public Vector3 HookAt => hook?.GlobalPosition ?? GlobalPosition;
 
+	/// <summary> The compound eyes are the weak spots. </summary>
+	public override bool WeakSpot( int index ) => index is 2 or 3;
+
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
 		if ( IsDead ) return;

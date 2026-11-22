@@ -23,7 +23,15 @@ public partial class PlayerSurvivor : Node
 	public bool IsAlive => Health is not null && !Health.IsDead;
 	/// <summary> Is the player at this screen dead (the HUD, the gun and the camera all change when they are). </summary>
 	public static bool LocalDead => All.FirstOrDefault() is { Health: not null, IsAlive: false };
-	public Vector3 WorldPosition => Controller.GlobalPosition;
+	/// <summary>
+	/// Where enemies go for: the player, or Phase Shift's decoy while it stands. Code about the player's own body
+	/// (touching mines, the radio, the spawn spots) uses <see cref="RealPosition"/>.
+	/// </summary>
+	public Vector3 WorldPosition => Decoy is { } d && IsInstanceValid( d ) && !d.Gone ? d.GlobalPosition : Controller.GlobalPosition;
+	public Vector3 RealPosition => Controller.GlobalPosition;
+	/// <summary> Phase Shift: no hit lands until this game time; and the decoy enemies chase. </summary>
+	public double UntouchableUntil;
+	public Decoy Decoy;
 
 	public int Points { get; private set; }
 	public int LastGain { get; private set; }
@@ -95,7 +103,7 @@ public partial class PlayerSurvivor : Node
 
 	public void Respawn( Vector3 position, bool fullReset )
 	{
-		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); }
+		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); PlayerSkills.Of( Controller )?.Clear(); }
 		else Health.ResetTo( Health.MaxHealth );
 		Afflictions?.Clear();
 		Controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" )?.ResetStamina();
@@ -124,7 +132,7 @@ public partial class PlayerSurvivor : Node
 	public override void _Process( double delta )
 	{
 		if ( !IsAlive ) return;
-		if ( Health.TimeSinceDamaged > RegenDelay ) Health.Heal( RegenPerSecond * (float)delta );
+		if ( Health.TimeSinceDamaged > RegenDelay ) Health.Heal( RegenPerSecond * (1f + SkillFx.PlecoPer * Skills.Rank( Controller, SkillId.PlecoPals )) * (float)delta );
 		// A heartbeat when nearly dead.
 		if ( Health.Fraction < 0.25f && timeSinceHeartbeat > 1.1f )
 		{

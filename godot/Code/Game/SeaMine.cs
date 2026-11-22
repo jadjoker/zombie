@@ -63,7 +63,7 @@ public partial class SeaMine : Node3D
 	{
 		var keepOff = level.GetTree().GetNodesInGroup( "spawn_point" ).OfType<Node3D>().Select( n => (n.GlobalPosition, KeepSpawn) ).ToList();
 		keepOff.AddRange( level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Select( n => (n.GlobalPosition, KeepStation) ) );
-		keepOff.AddRange( PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => (p.WorldPosition, KeepPlayer) ) );
+		keepOff.AddRange( PlayerSurvivor.All.Where( p => p.IsAlive ).Select( p => (p.RealPosition, KeepPlayer) ) );
 		keepOff.AddRange( All.Where( m => !m.gone ).Select( m => (m.GlobalPosition, KeepApart) ) );
 		if ( SeaTerrain.Area == 2 ) keepOff.Add( (AreaTwo.ArrivalFlat, 18f) );
 		for ( var tries = 0; tries < 80; tries++ )
@@ -201,7 +201,7 @@ public partial class SeaMine : Node3D
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			if ( !player.IsAlive ) continue;
-			var feet = player.WorldPosition;
+			var feet = player.RealPosition;
 			if ( Geometry3D.GetClosestPointToSegment( centre, feet + Vector3.Up * 0.2f, feet + Vector3.Up * 1.7f ).DistanceTo( centre ) > Trigger ) continue;
 			gone = true;
 			Exploded++;
@@ -209,7 +209,7 @@ public partial class SeaMine : Node3D
 			AlienBlast.Spawn( GetTree().CurrentScene, centre, 1.8f );
 			foreach ( var near in PlayerSurvivor.All )
 			{
-				if ( !near.IsAlive || (near.WorldPosition + Vector3.Up * 1f).DistanceTo( centre ) > 3.2f ) continue;
+				if ( !near.IsAlive || (near.RealPosition + Vector3.Up * 1f).DistanceTo( centre ) > 3.2f ) continue;
 				near.Health?.OnDamage( new DamageInfo { Damage = Damage, Attacker = this, Position = centre, Origin = centre } );
 				if ( near.Controller is { } c ) c.Velocity += ((c.GlobalPosition - centre).Flat().SafeNormal() + Vector3.Up * 0.5f) * 7f;
 			}

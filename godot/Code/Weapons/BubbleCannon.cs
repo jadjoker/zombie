@@ -151,11 +151,11 @@ public partial class BubbleShot : Node3D
 				// A Mega Bubble rolls on through, until it has wrapped up all it can hold.
 				Pass( creature );
 				velocity *= 0.85f;
-				if ( ++catches >= MegaCatches ) { Burst( tr.HitPosition, null ); return true; }
+				if ( ++catches >= MegaCatches + Skills.Rank( owner, SkillId.BigGulp ) ) { Burst( tr.HitPosition, null ); return true; }
 				return false;
 			}
 		}
-		else if ( shootable is null && tr.Node is not null && bounces < Bounces && sinceBounce > 0.1f )
+		else if ( shootable is null && tr.Node is not null && bounces < Bounces + Skills.Rank( owner, SkillId.Bouncy ) && sinceBounce > 0.1f )
 		{
 			// The world: bounce off it once, rubbery.
 			bounces++;
@@ -238,8 +238,8 @@ public partial class BubbleTrap : Node3D
 		var centre = parts.Count > 0 ? parts.Aggregate( Vector3.Zero, ( a, p ) => a + p ) / parts.Count : victim.GlobalPosition + Vector3.Up * 0.5f;
 		var reach = parts.Count > 0 ? parts.Max( p => p.DistanceTo( centre ) ) : 0.6f;
 		var trap = new BubbleTrap { Name = "Bubble Trap", Victim = victim, owner = owner, damage = damage, size = MathX.Clamp( reach + 0.55f, 0.8f, 2.4f ) };
-		trap.rise = mega ? MegaRise : RiseHeight;
-		trap.hold = HoldTime;
+		trap.rise = (mega ? MegaRise : RiseHeight) * (1f + SkillFx.LiftPer * Skills.Rank( owner, SkillId.HighLift ));
+		trap.hold = HoldTime + SkillFx.LastingPer * Skills.Rank( owner, SkillId.LongLasting );
 		trap.centreOffset = centre - victim.GlobalPosition;
 		trap.restBasis = victim.GlobalBasis;
 		victim.GetTree().CurrentScene.AddChild( trap );
@@ -363,8 +363,9 @@ public partial class BubbleTrap : Node3D
 		BubbleFilm.Shards( at, size );
 		Jetpack.SlamBubbles( at, Vector3.Up, 0.6f );
 		Sfx.Play( "bubble_burst", at, 1f, Rng.Float( 0.9f, 1.1f ) * (1f + 0.08f * chain) );
-		var hurt = damage * PopScale * (1f + ChainBonus * chain);
+		var hurt = damage * PopScale * (1f + (ChainBonus + SkillFx.ChainPer * Skills.Rank( owner, SkillId.ChainReaction )) * chain);
 		Splash( at, PopRadius, hurt, owner, null );
+		Fizz( at );
 		// Bubbles near it go off a moment later, one link further down the chain.
 		foreach ( var other in live )
 		{
@@ -377,6 +378,23 @@ public partial class BubbleTrap : Node3D
 		Victim.Bubbled = false;
 		Victim.GlobalBasis = restBasis;
 		if ( risen <= 0.01f ) QueueFree();
+	}
+
+	/// <summary> Fizz: a pop shocks the enemies nearest it (one per point). </summary>
+	void Fizz( Vector3 at )
+	{
+		var n = owner is not null && IsInstanceValid( owner ) ? Skills.Rank( owner, SkillId.Fizz ) : 0;
+		if ( n <= 0 ) return;
+		var near = Creature.Everyone.Where( c => IsInstanceValid( c ) && c.IsEnemy && !c.IsDead && c != Victim && c.GlobalPosition.DistanceTo( at ) < PopRadius * 1.6f )
+			.OrderBy( c => c.GlobalPosition.DistanceSquaredTo( at ) ).Take( n ).ToList();
+		foreach ( var c in near )
+		{
+			SkillFx.Fizzes++;
+			var to = SkillFx.NearestPart( c, at );
+			SkillFx.Zap( at, to );
+			PlayerPerks.Hurt( c, SkillFx.FizzDamage( n ), to, at, owner );
+		}
+		if ( near.Count > 0 ) Sfx.Play( "beam_fire", at, 0.3f, 2.4f );
 	}
 
 	void Land()

@@ -1,7 +1,8 @@
 using Godot;
 
 /// <summary>
-/// The pause menu (Esc): stops the game and shows Resume, the settings (mouse sensitivity, volume, field of view,
+/// The pause menu (Esc): stops the game and opens on the skill trees (SkillTreePage); the arrow on the right (or a
+/// bumper on a pad) goes to the menu page with Resume, the settings (mouse sensitivity, volume, field of view,
 /// fullscreen), Restart, the dev menu (where builds allow it) and Quit. Settings take effect as they are changed and are saved when the menu closes.
 /// </summary>
 public partial class PauseMenu : CanvasLayer
@@ -14,7 +15,12 @@ public partial class PauseMenu : CanvasLayer
 	PanelContainer panel;
 	Label title;
 	Button changeRobot;
+	SkillTreePage skillPage;
+	CenterContainer menuPage;
+	Button backArrow;
 	static readonly Color Accent = new( "5fffe0" );
+	/// <summary> The skill trees are showing (false: the menu page). </summary>
+	public bool OnSkills => skillPage?.Visible ?? false;
 
 	public override void _Ready()
 	{
@@ -31,9 +37,20 @@ public partial class PauseMenu : CanvasLayer
 		backdrop.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		window.AddChild( backdrop );
 
+		// The skill trees come first; the menu is a page to the right of them.
+		skillPage = new SkillTreePage { Resume = () => SetOpen( false ), ShowMenu = () => ShowPage( false ) };
+		window.AddChild( skillPage );
+
 		var center = new CenterContainer();
 		center.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		window.AddChild( center );
+		menuPage = center;
+		backArrow = new Button { Name = "Skills", Text = "‹\nSKILLS", CustomMinimumSize = new Vector2( 112, 160 ) };
+		backArrow.AddThemeFontSizeOverride( "font_size", 30 );
+		backArrow.SetAnchorsPreset( Control.LayoutPreset.CenterLeft );
+		backArrow.OffsetLeft = 16; backArrow.OffsetRight = 128; backArrow.OffsetTop = -80; backArrow.OffsetBottom = 80;
+		backArrow.Pressed += () => ShowPage( true );
+		window.AddChild( backArrow );
 		panel = new PanelContainer { CustomMinimumSize = new Vector2( 560, 0 ) };
 		center.AddChild( panel );
 		var column = new VBoxContainer();
@@ -141,8 +158,33 @@ public partial class PauseMenu : CanvasLayer
 		return row;
 	}
 
+	/// <summary> The HUD hides behind the full-screen skill trees (it shows behind the menu page as before). </summary>
+	void ShowHud( bool show )
+	{
+		if ( GetTree().Root.FindChild( "Hud", true, false ) is CanvasLayer hud ) hud.Visible = show;
+	}
+
+	/// <summary> Shows the skill trees (true) or the menu page (false). </summary>
+	public void ShowPage( bool skills )
+	{
+		skillPage.Visible = skills;
+		menuPage.Visible = !skills;
+		backArrow.Visible = !skills;
+		ShowHud( !skills );
+		if ( skills ) { skillPage.Open(); skillPage.ResumeButton.GrabFocus(); }
+		else resume.GrabFocus();
+		Sfx.Play2D( "ui_click", 0.5f );
+	}
+
 	public override void _Input( InputEvent e )
 	{
+		// A bumper flips between the skill trees and the menu.
+		if ( IsOpen && e is InputEventJoypadButton { Pressed: true } pad && pad.ButtonIndex is JoyButton.LeftShoulder or JoyButton.RightShoulder )
+		{
+			GetViewport().SetInputAsHandled();
+			ShowPage( pad.ButtonIndex == JoyButton.LeftShoulder );
+			return;
+		}
 		// Esc or the pad's Start pauses and resumes; the pad's B (cancel) also closes it.
 		if ( !(e.IsActionPressed( "pause" ) || ((IsOpen || DevMenu.IsOpen) && e.IsActionPressed( "ui_cancel" ))) ) return;
 		GetViewport().SetInputAsHandled();
@@ -160,8 +202,9 @@ public partial class PauseMenu : CanvasLayer
 		Input.MouseMode = open ? MenuMouse() : Input.MouseModeEnum.Captured;
 		UpdateHint();
 		changeRobot.Visible = DockHouse.Current is not null && DockHouse.WeaponsHeld;
-		if ( open ) resume.GrabFocus();
+		if ( open ) { skillPage.Visible = true; menuPage.Visible = false; backArrow.Visible = false; skillPage.Open(); skillPage.ResumeButton.GrabFocus(); }
 		else GameSettings.Save();
+		ShowHud( !open );
 	}
 
 	/// <summary> Hands over to the dev menu: the game stays paused behind it, and Esc closes it back to the game. </summary>

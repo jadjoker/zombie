@@ -37,6 +37,8 @@ public partial class Health : Node
 		if ( DockHouse.Diving && GetParent() is PlayerController or PlayerSurvivor ) return;   // can't be hurt on the way down
 		if ( DevFlags.OneShot && GetParent() is not PlayerController ) damage.Damage = MathF.Max( damage.Damage, Current );
 		if ( Absorb is not null ) { damage.Damage = Absorb( damage ); if ( damage.Damage <= 0f ) return; }
+		// Bubble Prison (Vac-Bot's skill): an enemy in a bubble takes more from everything.
+		if ( GetParent() is Creature { Bubbled: true } ) damage.Damage *= SkillFx.PrisonScale( Skills.Rank( SkillId.BubblePrison ) );
 		Current = MathF.Max( 0f, Current - damage.Damage );
 		TimeSinceDamaged = 0f;
 		Damaged?.Invoke( damage );

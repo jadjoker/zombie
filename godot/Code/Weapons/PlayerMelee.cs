@@ -107,7 +107,15 @@ public partial class PlayerMelee : Node
 			var wasAlive = !shootable.IsDead;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
 			Sfx.Play( "axe_hit", tr.HitPosition, 0.9f, Rng.Float( 0.9f, 1.1f ) );
-			shootable.ReceiveShot( Damage, tr.Node, direction, tr.HitPosition, start, controller, hitThisSwing.Add( shootable.ShotOwner ) );
+			// The axe's own tree (Lumberjack) and the spear's (Barbed Tip).
+			var axe = strikeWeapon is null;
+			var victim = SkillFx.EnemyOf( tr.Node );
+			var firstOnIt = hitThisSwing.Add( shootable.ShotOwner );
+			shootable.ReceiveShot( Damage * (axe ? 1f + SkillFx.AxePer * Skills.Rank( controller, SkillId.Lumberjack ) : 1f), tr.Node, direction, tr.HitPosition, start, controller, firstOnIt );
+			if ( firstOnIt && axe && Skills.Rank( controller, SkillId.Lumberjack ) is var lumber && lumber > 0 )
+				controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.Health?.Heal( SkillFx.AxeHealPer * lumber );
+			if ( firstOnIt && strikeWeapon is { Spear: true } && victim is not null && Skills.Rank( controller, SkillId.BarbedTip ) is var barbs && barbs > 0 )
+				Affliction.Apply( victim, Affliction.Kind.Bleed, SkillFx.BleedPer * barbs, SkillFx.BleedTime, controller );
 			if ( wasAlive && shootable.IsDead ) Weapon?.MarkKill();
 			return true;
 		}

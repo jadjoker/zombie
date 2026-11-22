@@ -79,6 +79,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
 		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
 		if ( args.Contains( "--classes" ) ) { await ClassTest(); return; }
+		if ( args.Contains( "--skills" ) ) { await SkillTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--poseidongallery" ) ) { await PoseidonGalleryTest(); return; }
@@ -2518,6 +2519,9 @@ public partial class AutoTest : Node
 		await Wait( 0.3f );
 		Pad( JoyButton.Start, true ); await Wait( 0.1f ); Pad( JoyButton.Start, false ); await Wait( 0.4f );
 		Check( PauseMenu.IsOpen, "Start did not pause" );
+		// It opens on the skill trees: the right bumper goes to the menu page.
+		await Tap( JoyButton.RightShoulder );
+		Check( GetTree().Root.FindChild( "PauseMenu", true, false ) is PauseMenu { OnSkills: false }, "the right bumper did not go to the menu page" );
 		for ( var i = 0; i < 16 && GetViewport().GuiGetFocusOwner()?.Name != "Dev menu"; i++ ) await Tap( JoyButton.DpadDown );
 		Check( GetViewport().GuiGetFocusOwner()?.Name == "Dev menu", "the D-pad could not reach the Dev menu button" );
 		await Tap( JoyButton.A );
@@ -2788,12 +2792,11 @@ public partial class AutoTest : Node
 		var perks = PlayerPerks.Of( player );
 		Check( perks is not null, "the player has no PlayerPerks" );
 		if ( perks is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => e.Kind is not (PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark) ).Sum( e => e.Chance );
-		Check( !PlayerPerks.Drops( PerkKind.Pierce ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Pierce ).Chance == 0.04f, "Trident Pierce is not a 4% drop for Trident-Bot only" );
-		Check( !PlayerPerks.Drops( PerkKind.Reach ) && PlayerPerks.Table.First( e => e.Kind == PerkKind.Reach ).Chance == 0.01f, "Trident Reach is not a 1% drop for Trident-Bot only" );
-		Check( PlayerPerks.Table.All( e => e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark || PlayerPerks.Drops( e.Kind ) ), "Ram-Bot does not get its pickups" );
+		// The skill trees took over from the drops (user's choice): only ammo and the rare pirate chest drop now.
+		var total = AmmoPickup.DropChance + PlayerPerks.Table.Where( e => PlayerPerks.Drops( e.Kind ) ).Sum( e => e.Chance );
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == (e.Kind == PerkKind.Chest) ), "something besides the pirate chest still drops" );
 		GD.Print( $"[autotest] pickups: chances add to {total * 100f:0.00}% (ammo {AmmoPickup.DropChance * 100f:0}%)" );
-		Check( MathF.Abs( total - 0.345f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus 4.5% of pickups" );
+		Check( MathF.Abs( total - 0.305f ) < 0.0005f && AmmoPickup.DropChance == 0.3f, "the drop chances are not ammo 30% plus the 0.5% chest" );
 
 		// One of each on the floor in front of the player, for a picture, then walked over.
 		DevFlags.FreezeEnemies = true;
@@ -2828,15 +2831,15 @@ public partial class AutoTest : Node
 		// Stacks: reload and fire rate.
 		var rifle = player.GetChildren().OfType<PlayerWeapon>().First( w => w.ModelName == "rifle" );
 		GD.Print( $"[autotest] pickups: rifle reload {rifle.ReloadTime:0.00} to {rifle.CurrentReloadTime:0.00} s, fire rate {rifle.FireRate:0.00} to {rifle.CurrentFireRate:0.00}" );
-		Check( rifle.CurrentReloadTime < rifle.ReloadTime && MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.02f ) < 0.001f, "the reload or fire rate pickup did nothing" );
+		Check( MathF.Abs( rifle.CurrentReloadTime - rifle.ReloadTime * 0.9f ) < 0.001f && MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.08f ) < 0.001f, "a point of reload or fire rate is not 10% and 8%" );
 		perks.Give( PerkKind.FireRate );
-		Check( MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.04f ) < 0.001f, "a second fire rate pickup did not stack" );
+		Check( MathF.Abs( rifle.CurrentFireRate - rifle.FireRate * 1.16f ) < 0.001f, "a second fire rate point did not stack" );
 
 		// The movement buff: more stamina (10%, then 5% more) and 0.5 m/s.
 		var movement = player.GetNode<PlayerMovement>( "PlayerMovement" );
-		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.1f ) < 0.001f && perks.SpeedBonus == 0.5f, "the movement buff did not add 10% stamina and 0.5 m/s" );
+		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.1f ) < 0.001f && MathF.Abs( perks.SpeedBonus - 0.3f ) < 0.001f, "a movement point did not add 10% stamina and 0.3 m/s" );
 		perks.Give( PerkKind.Move );
-		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.15f ) < 0.001f && perks.SpeedBonus == 0.5f, "a second movement buff did not add just 5% stamina" );
+		Check( MathF.Abs( movement.StaminaCap - movement.MaxStamina * 1.2f ) < 0.001f && MathF.Abs( perks.SpeedBonus - 0.6f ) < 0.001f, "a second movement point did not stack" );
 
 		// The shield: 25, soaks a hit before health, comes back; +10 for the next.
 		survivor.Health.Heal( 999f );
@@ -3125,8 +3128,8 @@ public partial class AutoTest : Node
 		foreach ( var c in line ) if ( IsInstanceValid( c ) ) c.QueueFree();
 
 		// A Trident Pierce pickup: it drops for Trident-Bot, and the trident seeks one more.
-		Check( PlayerPerks.Drops( PerkKind.Pierce ), "Trident Pierce does not drop for Trident-Bot" );
-		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == e.Kind is PerkKind.Pierce or PerkKind.Reach or PerkKind.Swarm or PerkKind.Bulwark or PerkKind.Shield or PerkKind.Chest ), "Trident-Bot does not get just its trident pickups, the shield and the chest" );
+		// The trident pickups are skill tree points now: only the pirate chest drops.
+		Check( PlayerPerks.Table.All( e => PlayerPerks.Drops( e.Kind ) == (e.Kind == PerkKind.Chest) ), "something besides the pirate chest still drops" );
 		PlayerPerks.Of( player ).Give( PerkKind.Pierce );
 		await Wait( 0.3f );
 		line.Clear();
@@ -3159,7 +3162,6 @@ public partial class AutoTest : Node
 		PlayerPerks.Of( player ).Clear();
 
 		// Trident Reach: a crab past SeekRange is left alone, and enough pickups (1 m each) bring it in reach.
-		Check( PlayerPerks.Drops( PerkKind.Reach ), "Trident Reach does not drop for Trident-Bot" );
 		for ( var pass = 0; pass < 2; pass++ )
 		{
 			line.Clear();
@@ -4222,6 +4224,14 @@ public partial class AutoTest : Node
 		GD.Print( $"[autotest] pause: open {PauseMenu.IsOpen}, tree paused {GetTree().Paused}, mouse {Input.MouseMode}, game clock moved {Clock.Now - stopped:0.000} s in 1 s (expect 0)" );
 		Check( PauseMenu.IsOpen && GetTree().Paused, "Esc did not pause the game" );
 		Check( Clock.Now - stopped < 0.01, "game time kept running while paused" );
+		// It opens on the skill trees; the arrow on the right goes to the menu.
+		Check( menu.OnSkills, "the pause menu did not open on the skill trees" );
+		await Shot( "pause_skills" );
+		var arrow = menu.FindChild( "Menu", true, false ) as Button;
+		Check( arrow is not null && arrow.IsVisibleInTree(), "the skill trees have no arrow to the menu" );
+		if ( arrow is not null ) Click( arrow.GetGlobalRect().GetCenter() );
+		await Wait( 0.3f );
+		Check( !menu.OnSkills, "the arrow did not go to the menu page" );
 		await Shot( "pause_menu" );
 
 		// Drag-free check of a setting: click near the right end of the field of view slider.
@@ -4250,6 +4260,7 @@ public partial class AutoTest : Node
 
 		// The dev menu is reached from here now (no key of its own): its button opens it with the game still paused.
 		menu.SetOpen( true );
+		menu.ShowPage( false );
 		await Wait( 0.3f );
 		var devButton = menu.FindChild( "Dev menu", true, false ) as Button;
 		Check( devButton is not null, "the pause menu has no Dev menu button" );

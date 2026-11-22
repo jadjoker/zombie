@@ -63,6 +63,7 @@ public partial class MC61 : PartCreature, MC61Marker
 	public TimeSince TimeSinceLine { get; private set; } = 999f;
 
 	const int Torso = 0, Head = 1, Eye = 2, Hat = 3, HandL = 4, HandR = 5, Tail0 = 6, TailCount = 4;
+	public override bool WeakSpot( int index ) => index is Head or Eye;
 	const int PartCount = 10;
 
 	static readonly Color Tux = new( 0.06f, 0.06f, 0.09f );

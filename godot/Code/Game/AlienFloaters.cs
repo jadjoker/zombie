@@ -224,7 +224,7 @@ public partial class AlienFloaters : Node3D
 		Sfx.Play( "missile_boom", at, 0.45f, Rng.Float( 1.5f, 1.8f ) );
 		foreach ( var p in PlayerSurvivor.All )
 		{
-			if ( !p.IsAlive || (p.WorldPosition + Vector3.Up * 1f).DistanceTo( at ) > BlastRadius ) continue;
+			if ( !p.IsAlive || (p.RealPosition + Vector3.Up * 1f).DistanceTo( at ) > BlastRadius ) continue;
 			// A school going off together hurts once, not once per bulb.
 			if ( lastBlastHit.TryGetValue( p, out var when ) && Clock.Now - when < BlastGrace ) continue;
 			lastBlastHit[p] = Clock.Now;
@@ -386,10 +386,10 @@ public partial class AlienFloaters : Node3D
 					f.Struck = true;
 					foreach ( var p in PlayerSurvivor.All )
 					{
-						if ( !p.IsAlive || (p.WorldPosition + Vector3.Up * 0.4f).DistanceTo( centre ) > FernReach * 1.3f ) continue;
+						if ( !p.IsAlive || (p.RealPosition + Vector3.Up * 0.4f).DistanceTo( centre ) > FernReach * 1.3f ) continue;
 						p.Health?.OnDamage( new DamageInfo { Damage = FernDamage, Attacker = this, Position = centre, Origin = centre } );
 						Stabs++;
-						Sfx.Play( "hit_flesh", p.WorldPosition + Vector3.Up, 0.7f );
+						Sfx.Play( "hit_flesh", p.RealPosition + Vector3.Up, 0.7f );
 					}
 				}
 				if ( s > 0.9f ) { f.State = FernState.Rest; f.SinceState = 0f; SetTips( f, f.BulbLook ); foreach ( var blade in f.Blades ) blade.Scale = Vector3.One; }

@@ -270,7 +270,7 @@ public partial class TridentBolt : Node3D
 				seeking = next;
 				age = 0f;
 				// It comes out of the enemy already turned onto the next one, at the plain speed so it can follow it.
-				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed * SeekSpeed;
+				velocity = (AimAt( next, tr.HitPosition ) - tr.HitPosition).SafeNormal() * Speed * SeekSpeed * (1f + SkillFx.RiptidePer * Skills.Rank( shooter, SkillId.Riptide ));
 				ExcludeParts( owner, exclude );
 				if ( tr.Node is CollisionObject3D body ) exclude.Add( body.GetRid() );
 				GlobalPosition = tr.HitPosition + direction * 0.05f;
@@ -289,7 +289,19 @@ public partial class TridentBolt : Node3D
 			Fx.ImpactWorld( tr.HitPosition, tr.Normal );
 			Sfx.Play( "hit_world", tr.HitPosition, 0.8f, 0.8f );
 		}
+		TidalBurst( tr.HitPosition );
 		StickAt( tr, direction );
+	}
+
+	/// <summary> Tidal Burst: a full charge bursts with a splash where it comes to rest. </summary>
+	void TidalBurst( Vector3 at )
+	{
+		var n = charged && !small && IsInstanceValid( shooter ) ? Skills.Rank( shooter, SkillId.TidalBurst ) : 0;
+		if ( n <= 0 ) return;
+		SkillFx.TidalBursts++;
+		PlayerPerks.HurtCreatures( at, SkillFx.TidalRadius, SkillFx.TidalPer * n, shooter );
+		BlueBlast.Spawn( GetTree().CurrentScene, at, SkillFx.TidalRadius );
+		Jetpack.SlamBubbles( at, Vector3.Up, 0.8f );
 	}
 
 	static void ExcludeParts( Node owner, Godot.Collections.Array<Rid> list )
@@ -329,7 +341,7 @@ public partial class TridentBolt : Node3D
 			// Out to the side, each its own way round the big trident's line, then onto its enemy.
 			var a = spin + i * MathF.Tau / release;
 			var outward = (side * MathF.Cos( a ) + forward.Cross( side ).SafeNormal() * MathF.Sin( a ) * 0.6f).SafeNormal();
-			bolt.velocity = ((AimAt( target, at ) - at).SafeNormal() * 0.5f + outward).SafeNormal() * Speed * SeekSpeed;
+			bolt.velocity = ((AimAt( target, at ) - at).SafeNormal() * 0.5f + outward).SafeNormal() * Speed * SeekSpeed * (1f + SkillFx.RiptidePer * Skills.Rank( shooter, SkillId.Riptide ));
 			ExcludeParts( first, bolt.exclude );
 			GetTree().CurrentScene.AddChild( bolt );
 			bolt.GlobalPosition = at;

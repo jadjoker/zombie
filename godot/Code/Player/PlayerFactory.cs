@@ -18,6 +18,7 @@ public static class PlayerFactory
 		foreach ( var weapon in RobotClass.Current.Kit() ) player.AddChild( weapon );   // the picked robot's weapons
 		player.AddChild( new PlayerMelee() );
 		player.AddChild( new PlayerPerks() );
+		player.AddChild( new PlayerSkills() );
 		player.AddChild( new WaterFeel() );
 		player.AddChild( new Jetpack() );
 		player.AddChild( new TridentSurge() );   // Trident-Bot: the magic trident that leads its surge

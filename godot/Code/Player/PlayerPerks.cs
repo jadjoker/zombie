@@ -1,30 +1,23 @@
 using Godot;
 
-/// <summary> The pickups creatures can drop besides ammo. </summary>
+/// <summary> What were the pickups creatures dropped; all but the pirate chest are skill tree points now (Skills.cs). </summary>
 public enum PerkKind { Reload, FireRate, Explosive, Electric, Chest, Shield, Move, Blast, Pierce, Reach, Swarm, Bulwark }
 
 /// <summary>
-/// The player's pickups (dropped by creatures, see <see cref="PerkPickup"/>): how many of each they hold, and what
-/// each does.
-/// - Faster Reload: each one makes reloading 6% quicker.
-/// - Fire Rate: each one adds 2% to every gun's rate of fire.
-/// - Explosive Round: an emptied magazine is thrown and explodes on what it hits (100 damage to creatures round it,
-///   none to players, +50 for each more).
-/// - Electric Bullets: a rifle hit has a 25% chance (5% more for each pickup after the first) to shock for 20 more; the shock has a 70% chance to jump to the
-///   next creature near by, up to 8 jumps (+10 damage for each more).
-/// - Pirate Chest: 4000 points, there and then (does not stack).
-/// - Shield: 25 shield (a blue bar over the health bar), +10 for each more. It takes hits before health does, comes
-///   back in half the time health does, but after being emptied it waits twice as long as health.
-/// - Movement Buff: the first adds 0.5 m/s and 10% more stamina; each more adds 5% stamina.
-/// - Biden Blast: once a wave per pickup (up to three a wave), G (RB on a pad) lets off a blue blast: 500 damage to every creature within 8 m.
-///   (RB is also the axe on a pad: while the blast is ready it fires the blast instead.)
-/// Every pickup above drops for Ram-Bot only, except the shield and the pirate chest, which (like ammo) drop for every robot.
-/// - Trident Pierce (Trident-Bot only, 4%): each one lets a trident seek and go through one more enemy.
-/// - Trident Reach (Trident-Bot only, 1%): each one lets a trident look 1 m further for the next enemy to seek.
-/// - Trident Swarm (Trident-Bot only, 1%, at most 3): when a trident first hits an enemy, small half-damage tridents may come
-///   out and seek other enemies: 1 stack 30% of one; 2 stacks 50% of one, 30% of two; 3 stacks 70%, 50%, 30% (`TridentBolt.Splinter`).
-/// - Shield Bulwark (Trident-Bot only, 1%, at most 15): the raised energy shield takes 1% more of each hit (65% up to 80%).
-/// A new game clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
+/// What were the pickups creatures dropped, now mostly skill tree points (Skills.cs, user's choice): how many of each
+/// the player has (`Count`: points in the skills that give it, plus any given outright) and what each does, per point:
+/// - Faster Reload: the rifle reloads 10% quicker. Fire Rate: the rifle fires 8% faster.
+/// - Explosive Round: an emptied rifle magazine is thrown, seeks an enemy and explodes (100, +50 a point; none to players).
+/// - Electric Bullets: a rifle hit has a 25% chance (+5% a point after the first) to shock for 20 (+10), jumping on to
+///   the next creature near by (70% a jump, up to 8).
+/// - Pirate Chest: 4000 points, there and then. The one that still drops (0.5%), with ammo.
+/// - Shield: 25 shield (+10 a point), taking hits before health; back in half health's wait (twice it once emptied).
+/// - Movement Buff / Light Frame: +0.3 m/s and +10% stamina. (Sea Legs and Slipstream add speed of their own.)
+/// - Biden Blast: one a wave a point (up to three), G (RB on a pad): 500 to every creature within 8 m.
+/// - Trident Pierce: a trident seeks one more enemy. Trident Reach: it looks 2 m further for the next one.
+/// - Trident Swarm (at most 3): small half-damage tridents off the first hit (TridentBolt.Splinter).
+/// - Shield Bulwark (at most 5): the raised energy shield takes 3% more of each hit (65% up to 80%).
+/// A new run clears them. Lives on the player (a child of the PlayerController named PlayerPerks).
 /// </summary>
 public partial class PlayerPerks : Node
 {
@@ -44,8 +37,8 @@ public partial class PlayerPerks : Node
 		(PerkKind.Bulwark, "Shield Bulwark", "bulwark", 0.01f, new Color( 0.35f, 0.85f, 1f )),
 	};
 
-	public const float ReloadPerStack = 0.06f;
-	public const float FireRatePerStack = 0.02f;
+	public const float ReloadPerStack = 0.10f;
+	public const float FireRatePerStack = 0.08f;
 	public const float ClipDamage = 100f, ClipDamagePerStack = 50f, ClipRadius = 4.5f;
 	public const float ShockChance = 0.25f, ShockDamage = 20f, ShockDamagePerStack = 10f, ShockJumpChance = 0.7f, ShockJumpRange = 7f;
 	public const int ShockMaxJumps = 8;
@@ -56,7 +49,10 @@ public partial class PlayerPerks : Node
 	public const int MaxBlastsPerWave = 3;
 	public const int ChestPoints = 4000;
 	public const float ShieldFirst = 25f, ShieldPerStack = 10f;
-	public const float MoveSpeedBonus = 0.5f;   // metres per second
+	/// <summary> Movement Buff and Light Frame, per point: metres per second and stamina. Sea Legs adds speed only; Slipstream for a moment after a blink. </summary>
+	public const float MoveSpeedPerStack = 0.3f, StaminaPerStack = 0.1f, SlipSpeedPer = 0.5f;
+	/// <summary> Slipstream runs until this game time. </summary>
+	public double SlipUntil;
 	public const float BlastDamage = 500f, BlastRadius = 8f;
 
 	readonly int[] counts = new int[Enum.GetValues<PerkKind>().Length];
@@ -65,35 +61,38 @@ public partial class PlayerPerks : Node
 	/// Whether creatures drop this one for the robot being played (user's choice): the shield and the pirate chest drop for
 	/// every robot (like ammo), Trident Pierce and Trident Reach for Trident-Bot only, every other pickup for Ram-Bot (the rifle and shotgun kit) only.
 	/// </summary>
-	public static bool Drops( PerkKind kind ) => kind switch
-	{
-		PerkKind.Shield or PerkKind.Chest => true,
-		PerkKind.Pierce or PerkKind.Reach => RobotClass.Current == RobotClass.TridentBot,
-		PerkKind.Swarm or PerkKind.Bulwark => RobotClass.Current == RobotClass.TridentBot && Room( kind ),
-		_ => RobotClass.Current == RobotClass.RamBot,
-	};
+	public static bool Drops( PerkKind kind ) => kind == PerkKind.Chest;
 	/// <summary> More enemies a trident seeks after its first, one per Trident Pierce. </summary>
 	public int ExtraPierce => Count( PerkKind.Pierce );
 	/// <summary> Trident Swarm stacks this many times at most; it stops dropping once every player has them all. </summary>
 	public const int MaxSwarm = 3;
 	/// <summary> Shield Bulwark stacks this many times at most (1% more blocked each). </summary>
-	public const int MaxBulwark = 15;
-	public const float BulwarkPerStack = 0.01f;
+	public const int MaxBulwark = 5;
+	public const float BulwarkPerStack = 0.03f;
 	/// <summary> The most of a kind one player can hold (most have no limit). </summary>
-	public static int Cap( PerkKind kind ) => kind switch { PerkKind.Swarm => MaxSwarm, PerkKind.Bulwark => MaxBulwark, _ => int.MaxValue };
-	/// <summary> Some player can still take one more of this kind (a capped kind stops dropping once everyone is full). </summary>
-	static bool Room( PerkKind kind )
-	{
-		foreach ( var survivor in PlayerSurvivor.All )
-			if ( (Of( survivor.Controller )?.Count( kind ) ?? 0) < Cap( kind ) ) return true;
-		return false;
-	}
+	public static int Cap( PerkKind kind ) => kind switch { PerkKind.Swarm => MaxSwarm, PerkKind.Bulwark => MaxBulwark, PerkKind.Blast => MaxBlastsPerWave, _ => int.MaxValue };
 	/// <summary> The share of a hit the raised energy shield takes: `PlayerWeapon.BlockShare` plus 1% per Shield Bulwark. </summary>
 	public float BlockShare => PlayerWeapon.BlockShare + BulwarkPerStack * Math.Min( Count( PerkKind.Bulwark ), MaxBulwark );
 	/// <summary> Metres more a trident looks for the next enemy to seek, per Trident Reach. </summary>
-	public const float ReachPerStack = 1f;
+	public const float ReachPerStack = 2f;
 	public float ExtraSeekRange => ReachPerStack * Count( PerkKind.Reach );
-	public int Count( PerkKind kind ) => counts[(int)kind];
+	/// <summary> Pickups held plus points in the skills that give this kind (the robot being played's only). </summary>
+	public int Count( PerkKind kind )
+	{
+		if ( skillsVersion != PlayerSkills.Version ) CountSkills();
+		var n = counts[(int)kind] + fromSkills[(int)kind];
+		return n > Cap( kind ) ? Cap( kind ) : n;
+	}
+	readonly int[] fromSkills = new int[Enum.GetValues<PerkKind>().Length];
+	int skillsVersion = -1;
+	void CountSkills()
+	{
+		skillsVersion = PlayerSkills.Version;
+		Array.Clear( fromSkills );
+		if ( PlayerSkills.Of( controller ) is not { } skills ) return;
+		foreach ( var d in Skills.All ) if ( d.Perk is PerkKind k ) fromSkills[(int)k] += skills.Rank( d.Id );
+		Apply();
+	}
 
 	PlayerController controller;
 	PlayerSurvivor survivor;
@@ -116,11 +115,12 @@ public partial class PlayerPerks : Node
 	public bool BlastReady => BlastsLeft > 0;
 
 	// ---- What the stacks come to ----
-	public float ReloadScale => MathF.Pow( 1f - ReloadPerStack, Count( PerkKind.Reload ) );
+	public float ReloadScale => MathF.Max( 0.4f, 1f - ReloadPerStack * Count( PerkKind.Reload ) );
 	public float FireRateScale => 1f + FireRatePerStack * Count( PerkKind.FireRate );
 	public float ClipBlastDamage => Count( PerkKind.Explosive ) == 0 ? 0f : ClipDamage + ClipDamagePerStack * (Count( PerkKind.Explosive ) - 1);
-	public float SpeedBonus => Count( PerkKind.Move ) > 0 ? MoveSpeedBonus : 0f;
-	public float StaminaBonus => Count( PerkKind.Move ) == 0 ? 0f : 0.1f + 0.05f * (Count( PerkKind.Move ) - 1);
+	public float SpeedBonus => MoveSpeedPerStack * Count( PerkKind.Move ) + SkillFx.SeaLegsPer * Skills.Rank( controller, SkillId.SeaLegs )
+		+ (Clock.Now < SlipUntil ? SlipSpeedPer * Skills.Rank( controller, SkillId.Slipstream ) : 0f);
+	public float StaminaBonus => StaminaPerStack * Count( PerkKind.Move );
 
 	public static PlayerPerks Of( Node controller ) => controller?.GetNodeOrNull<PlayerPerks>( "PlayerPerks" );
 	/// <summary> Tests: pickups taken, shocks dealt and jumps made, clips thrown, blasts let off. </summary>
@@ -156,6 +156,13 @@ public partial class PlayerPerks : Node
 		Apply();
 	}
 
+	/// <summary> A shield point was bought: the shield is full at its new size. </summary>
+	public void RefillShield()
+	{
+		Shield = ShieldMax;
+		shieldBroken = false;
+	}
+
 	/// <summary> Takes a pickup. </summary>
 	public void Give( PerkKind kind )
 	{
@@ -177,9 +184,18 @@ public partial class PlayerPerks : Node
 	/// <summary> The shield takes a hit first: what is left over goes on to health. Poison and the like go straight through. </summary>
 	float Absorb( DamageInfo damage )
 	{
-		// The Trident-Bot's energy shield, raised: it takes 65% of the hit (more with Shield Bulwark) before anything else.
-		if ( damage.Attacker is not PlayerAfflictions && controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { Spear: true, Blocking: true } )
+		// Phase Shift: untouchable for a moment after a blink; and while the decoy stands, a hit aimed at it (an enemy
+		// striking at where it thinks the player is) never reaches the player.
+		if ( damage.Attacker is not PlayerAfflictions && survivor is not null )
 		{
+			if ( Clock.Now < survivor.UntouchableUntil ) return 0f;
+			if ( survivor.Decoy is { Gone: false } decoy && IsInstanceValid( decoy ) && damage.Position != Vector3.Zero
+				&& damage.Position.DistanceTo( decoy.GlobalPosition + Vector3.Up * 1f ) < damage.Position.DistanceTo( controller.GlobalPosition + Vector3.Up * 1f ) ) { decoy.Struck(); return 0f; }
+		}
+		// The Trident-Bot's energy shield, raised: it takes 65% of the hit (more with Shield Bulwark) before anything else.
+		if ( damage.Attacker is not PlayerAfflictions && controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { Spear: true, Blocking: true } spear )
+		{
+			spear.NoteBlocked( damage );
 			damage.Damage *= 1f - BlockShare;
 			Blocked++;
 			Sfx.Play2D( "glass_hit", 0.45f, 1.4f );
@@ -200,6 +216,7 @@ public partial class PlayerPerks : Node
 	public override void _Process( double delta )
 	{
 		if ( survivor is null ) { Hook(); if ( survivor is null ) return; }
+		if ( skillsVersion != PlayerSkills.Version ) CountSkills();
 		var dt = (float)delta;
 		// The shield comes back after half health's wait (twice health's if it was emptied), twice as fast.
 		if ( ShieldMax > 0f && Shield < ShieldMax && survivor.IsAlive )
@@ -269,12 +286,12 @@ public partial class PlayerPerks : Node
 	/// <summary>
 	/// Electric Bullets: a rifle hit on a creature may shock it, and the shock may jump on to the next one near by.
 	/// </summary>
-	public void RifleHit( Node3D hitPart, Vector3 at )
+	public void RifleHit( Node3D hitPart, Vector3 at, bool always = false )
 	{
-		if ( Count( PerkKind.Electric ) == 0 || Rng.Float() > CurrentShockChance ) return;
+		if ( !always && (Count( PerkKind.Electric ) == 0 || Rng.Float() > CurrentShockChance) ) return;
 		var first = (Shootables.Find( hitPart ) as CreaturePart)?.Creature as Creature;
 		if ( first is null ) return;
-		var damage = ShockDamage + ShockDamagePerStack * (Count( PerkKind.Electric ) - 1);
+		var damage = ShockDamage + ShockDamagePerStack * Math.Max( 0, Count( PerkKind.Electric ) - 1 );
 		var shocked = new HashSet<Creature>();
 		var from = at;
 		var target = first;

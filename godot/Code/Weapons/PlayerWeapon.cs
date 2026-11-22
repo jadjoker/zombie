@@ -111,8 +111,9 @@ public partial class PlayerWeapon : Node
 	public bool IsReloading { get; private set; }
 	PlayerPerks Perks => PlayerPerks.Of( controller );
 	/// <summary> Reload time and rate of fire with the player's pickups counted in. </summary>
-	public float CurrentReloadTime => ReloadTime * (Perks?.ReloadScale ?? 1f);
-	public float CurrentFireRate => FireRate * (Perks?.FireRateScale ?? 1f);
+	/// <summary> The rifle's tree (Fire Rate, Faster Reload, Overclock) is the only one that speeds these up. </summary>
+	public float CurrentReloadTime => ReloadTime * (ModelName == "rifle" ? Perks?.ReloadScale ?? 1f : 1f);
+	public float CurrentFireRate => FireRate * (ModelName == "rifle" ? (Perks?.FireRateScale ?? 1f) * (overclockLeft > 0 ? 1f + SkillFx.OverclockRate : 1f) : 1f);
 	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, CurrentReloadTime ), 0f, 1f );
 
 	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.ThirdPerson ?? false);
@@ -259,6 +260,7 @@ public partial class PlayerWeapon : Node
 		// Game time since the last frame, measured on the same clock as TimeSinceShot (for Shoot's carry-over).
 		frameStep = (float)(Clock.Now - lastFrameAt);
 		lastFrameAt = Clock.Now;
+		SyncSkills();
 		if ( !Active ) return;
 		// Dead (issue #34): no gun on screen, no aiming, no firing or reloading.
 		if ( controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) is { Health: not null, IsAlive: false } )
@@ -386,13 +388,15 @@ public partial class PlayerWeapon : Node
 	void UpdateSpear( float dt, bool free )
 	{
 		Ammo = MagazineSize;
+		var wasBlocking = Blocking;
 		Blocking = free && (Input.IsActionPressed( "attack2" ) || forceBlock);
 		shieldUp = MathX.Lerp( shieldUp, Blocking ? 1f : 0f, 1f - MathF.Exp( -14f * dt ) );
-		if ( free && !Blocking && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
+		ShieldSkills( wasBlocking, dt );
+		if ( free && (!Blocking || Skill( SkillId.Spartan ) > 0) && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
 		if ( !spearStruck && spearSwing >= SpearWindUp && spearSwing < SpearCooldown )
 		{
 			spearStruck = true;
-			controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" )?.StrikeWith( SpearReach, SpearRadius, CurrentDamage, this );
+			controller.GetNodeOrNull<PlayerMelee>( "PlayerMelee" )?.StrikeWith( SpearReach, SpearRadius, CurrentDamage * TakeRiposte(), this );
 			// The lunge lands: a jolt through the camera and the pad.
 			juice?.Shake( 0.45f );
 			juice?.KickFov( 5f );
@@ -501,10 +505,12 @@ public partial class PlayerWeapon : Node
 			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
 			var from = controller.ThirdPerson && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
 			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, ShotDamage, controller, this, chargedShot );
+			if ( chargedShot ) Fork( from, aimDirection, eyes, basis );
 			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }
 		}
 		else for ( var i = 0; i < Math.Max( 1, Pellets ); i++ )
 		{
+			if ( i == 0 ) BeginShotSkills();
 			var direction = (forward + Rng.InSphere( 1f ) * spread).Normalized();
 			// World and creatures in one ray: creature parts are areas/bodies on their own layer.
 			var tr = Trace.Ray( controller, start, start + direction * Range, Layers.World | Layers.Creature | Layers.Gib, exclude );
@@ -512,6 +518,7 @@ public partial class PlayerWeapon : Node
 			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
+		if ( !Bubbles && !Projectile ) EndShotSkills( start, forward, trailStart );
 		juice?.Shake( ShakePerShot );
 		juice?.KickFov( FovKickPerShot );
 
@@ -535,8 +542,9 @@ public partial class PlayerWeapon : Node
 			if ( wasAlive ) TimeSinceHit = 0f;
 			Fx.ImpactFlesh( tr.HitPosition, -direction, new Color( 0.9f, 0.3f, 0.2f ) );
 			if ( firstPellet ) Sfx.Play( "hit_flesh", tr.HitPosition, 0.8f );
-			shootable.ReceiveShot( CurrentDamage, tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
-			if ( ModelName == "rifle" ) Perks?.RifleHit( tr.Node, tr.HitPosition );   // Electric Bullets
+			shootable.ReceiveShot( CurrentDamage * HitScale( tr, start ), tr.Node, direction, tr.HitPosition, start, controller, firstPellet );
+			if ( ModelName == "rifle" ) Perks?.RifleHit( tr.Node, tr.HitPosition, overclockShot );   // Electric Bullets (always, overclocked)
+			if ( firstPellet ) PelletSkills( tr, direction );
 			if ( wasAlive && shootable.IsDead ) TimeSinceKill = 0f;
 			return;
 		}
@@ -573,7 +581,7 @@ public partial class PlayerWeapon : Node
 		if ( ShellReload )
 		{
 			firstShell = Ammo == 0;
-			nextShell = ShellTime * 1.2f * (Perks?.ReloadScale ?? 1f);
+			nextShell = ShellTime * 1.2f * ShellScale;
 			ViewModel?.ShellReloadBegin();
 			return;
 		}
@@ -591,7 +599,7 @@ public partial class PlayerWeapon : Node
 		Reserve--;
 		ViewModel?.InsertShell();
 		firstShell = false;
-		nextShell = ShellTime * (Perks?.ReloadScale ?? 1f);
+		nextShell = ShellTime * ShellScale;
 		if ( Ammo >= MagazineSize || Reserve <= 0 ) EndShellReload();
 	}
 
@@ -615,5 +623,6 @@ public partial class PlayerWeapon : Node
 		var taken = Math.Min( MagazineSize - Ammo, Reserve );
 		Ammo += taken;
 		Reserve -= taken;
+		StartOverclock();
 	}
 }

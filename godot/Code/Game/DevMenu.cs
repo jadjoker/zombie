@@ -503,6 +503,15 @@ public partial class DevMenu : CanvasLayer
 			if ( Show( "Pickups", "drop chance x20" ) ) Chip( "Drop chances x20", PerkPickup.ChanceScale > 1f, () => PerkPickup.ChanceScale = PerkPickup.ChanceScale > 1f ? 1f : 20f );
 		}
 
+		if ( Sec( "Player", "Skill trees", "skill tree tokens points upgrades" ) )
+		{
+			Section( "Skill trees" );
+			var skills = PlayerSkills.Of( Controller );
+			if ( Show( "Skill trees", "give 5 tokens" ) ) Action( $"Give 5 tokens ({skills?.Tokens ?? 0} now)", () => skills?.Grant( 5 ) );
+			if ( Show( "Skill trees", "max all skills" ) ) Action( "Max this robot's skills", () => { foreach ( var d in Skills.Of( RobotClass.Current.Id ) ) skills?.Set( d.Id, d.Max ); } );
+			if ( Show( "Skill trees", "clear reset" ) ) Action( "Clear skills and tokens", () => skills?.Clear() );
+		}
+
 		if ( Sec( "Player", "Robot class", "class robot character ram-bot vac-bot rambot vacbot loadout kit" ) )
 		{
 			Section( "Robot class" );

@@ -227,7 +227,7 @@ public partial class PlayerWeapon
 			if ( creature is PartCreature body && d < 12f )
 				foreach ( var limb in body.Limbs() )
 				{
-					if ( limb.Health > limb.MaxHealth * RipBelow ) continue;
+					if ( limb.Health > limb.MaxHealth * (RipBelow + SkillFx.ShredderPer * Skills.Rank( controller, SkillId.Shredder )) ) continue;
 					touched.Add( limb.Go );
 					tugs[limb.Go] = tugs.GetValueOrDefault( limb.Go ) + dt;
 					if ( tugs[limb.Go] < RipTug ) continue;
@@ -239,7 +239,7 @@ public partial class PlayerWeapon
 					Sfx.Play( "gib", at, 1f, 0.75f );
 				}
 			if ( d < HoldOff ) continue;   // close enough: held in front of the nozzle (limbs above still tear)
-			var strength = PullStrength / MathF.Max( 30f, creature.Weight ) * MathX.Lerp( 1f, 0.5f, MathX.Clamp( distance / FalloffReach, 0f, 1f ) );
+			var strength = PullStrength * (1f + SkillFx.SuctionPer * Skills.Rank( controller, SkillId.IndustrialSuction )) / MathF.Max( 30f, creature.Weight ) * MathX.Lerp( 1f, 0.5f, MathX.Clamp( distance / FalloffReach, 0f, 1f ) );
 			creature.Pull( toNozzle / d * MathF.Min( strength * dt, d - HoldOff ) );
 		}
 
@@ -489,7 +489,7 @@ public partial class PlayerWeapon
 	/// <summary> Adds gunk to the tank (fractions carry over), mixing in its colour (null: a dry piece, no colour). </summary>
 	void AddGunk( float amount, Color? colour )
 	{
-		gunkCarry += amount;
+		gunkCarry += amount * (1f + SkillFx.GourmetPer * Skills.Rank( controller, SkillId.Gourmet ));
 		var whole = (int)MathF.Floor( gunkCarry );
 		gunkCarry -= whole;
 		Ammo = Math.Min( MagazineSize, Ammo + whole );
@@ -515,7 +515,7 @@ public partial class PlayerWeapon
 		// A big ball: damage and size grow with the gunk in it (the whole tank is about six small balls' worth).
 		var scale = big ? cost / (float)BallCost : 1f;
 		var damage = mine ? GoreBall.MineDamage : CurrentDamage * (big ? 0.6f * scale : 1f);
-		var radius = mine ? GoreBall.MineRadius : big ? BallRadius * MathF.Min( 2.2f, 0.75f + scale * 0.15f ) : BallRadius;
+		var radius = (mine ? GoreBall.MineRadius : big ? BallRadius * MathF.Min( 2.2f, 0.75f + scale * 0.15f ) : BallRadius) * (1f + SkillFx.BoomsPer * Skills.Rank( controller, SkillId.BiggerBooms ));
 		var size = big ? MathF.Min( 0.55f, 0.16f + scale * 0.04f ) : 0.14f;
 		// Aim at what is under the crosshair: the ball flies from the nozzle toward it. With no enemy right under it,
 		// an enemy close beside the crosshair line is aimed at instead (aim assist: easy to land).
@@ -629,6 +629,16 @@ public partial class GoreBall : Node3D
 	TimeSince age, sinceDrip, sinceLook = 9f;
 	MeshInstance3D blob;
 	Creature homing;
+	/// <summary> The burst at the end of a black hole: it doesn't open another one. </summary>
+	bool fromHole;
+
+	/// <summary> Goes off at once at a point, as if a ball had got there (the black hole's last act). </summary>
+	public static void BurstAt( Node parent, Vector3 at, Vector3 normal, float damage, float radius, float size, Color colour, PlayerController shooter, PlayerWeapon weapon, Kind kind )
+	{
+		var ball = Launch( parent, at, Vector3.Zero, damage, radius, size, colour, shooter, weapon, kind );
+		ball.fromHole = true;
+		ball.Burst( at, normal );
+	}
 	public static int Bursts, Hits, Splits, MineBlasts, ProximityBursts;
 	/// <summary> For tests: where the last one burst, and on what. </summary>
 	public static Vector3 LastBurst;
@@ -766,6 +776,14 @@ public partial class GoreBall : Node3D
 
 	void Burst( Vector3 at, Vector3 normal )
 	{
+		// Black Hole (Vac-Bot's capstone): the huge shot tears a hole open here instead, and bursts when it collapses.
+		var holeRank = kind == Kind.Big && !fromHole && shooter is not null && IsInstanceValid( shooter ) ? Skills.Rank( shooter, SkillId.BlackHole ) : 0;
+		if ( holeRank > 0 )
+		{
+			BlackHole.Open( GetParent(), at + normal * 0.2f, damage, radius, size, colour, shooter, weapon, holeRank );
+			QueueFree();
+			return;
+		}
 		Bursts++;
 		LastBurst = at;
 		var gore = GoreSystem.Get( this );
@@ -815,9 +833,10 @@ public partial class GoreBall : Node3D
 			var up = normal == Vector3.Zero ? Vector3.Up : normal;
 			var side = up.Cross( MathF.Abs( up.Y ) > 0.9f ? Vector3.Right : Vector3.Up ).Normalized();
 			var other = up.Cross( side );
-			for ( var i = 0; i < 4; i++ )
+			var bomblets = 4 + (shooter is not null && IsInstanceValid( shooter ) ? Skills.Rank( shooter, SkillId.Clusterfunk ) : 0);
+			for ( var i = 0; i < bomblets; i++ )
 			{
-				var a = i * MathF.PI * 0.5f + Rng.Float( -0.3f, 0.3f );
+				var a = i * MathF.Tau / bomblets + Rng.Float( -0.3f, 0.3f );
 				var dir = (side * MathF.Cos( a ) + other * MathF.Sin( a ) + up * 0.9f).Normalized();
 				Launch( GetParent(), at + up * 0.3f, dir * Rng.Float( 6f, 9f ), damage * 0.25f, PlayerWeapon.BallRadius * 0.8f, 0.1f, colour, shooter, weapon, Kind.Bomblet );
 			}

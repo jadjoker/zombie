@@ -21,6 +21,8 @@ public abstract partial class Creature : Node3D, ICreature
 	/// How much of a blast or shock (pickups, straight to health) gets through: 1 for most, less for armoured ones.
 	/// </summary>
 	public virtual float AreaDamageScale => 1f;
+	/// <summary> A weak spot (Headhunter's bonus; every other part counts as a limb for Limb Ripper). Most creatures' first part is the head. </summary>
+	public virtual bool WeakSpot( int index ) => index == 0;
 	/// <summary> How hard it is to drag (the Gore Vac's pull): its full health stands in for its weight. </summary>
 	public virtual float Weight => health?.MaxHealth ?? 100f;
 	/// <summary> Can the Gore Vac drag it at all (bosses are far too heavy). </summary>

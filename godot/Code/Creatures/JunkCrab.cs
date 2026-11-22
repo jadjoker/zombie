@@ -32,6 +32,7 @@ public partial class JunkCrab : PartCreature
 	/// <summary> The third eye: on its own stalk between the two, set back, so the three make a triangle. </summary>
 	const int EyeM = FirstLeg + LegCount;
 	static bool IsEye( int index ) => index is EyeL or EyeR or EyeM;
+	public override bool WeakSpot( int index ) => IsEye( index );
 
 	public JunkCrab() => parts = new Part[EyeM + 1];
 	Node3D jawL, jawR;

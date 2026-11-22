@@ -437,18 +437,20 @@ public partial class PlayerWeapon
 	/// <summary> What a piece is worth in the tank: dry bits a little, goo by its size, recycled lumps hardly anything. </summary>
 	static float GunkOf( Gib gib ) => gib.Goo is null ? DryGunk : gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax );
 
+	/// <summary> Gunk per piece the Black Hole swallows (gore, goo, limbs; a recycled lump from a burst stays cheap, so no free loop). </summary>
+	public const float HoleGunkPer = 5f;
 	/// <summary> For tests: gunk the Black Hole has sent back to the tank. </summary>
 	public static float HoleGunk;
 	TimeSince sinceHoleGulp = 9f;
 
 	/// <summary>
-	/// The Black Hole swallowed a piece: it goes into the tank as if the vac had sucked it up (the HUD counter pops and a
+	/// The Black Hole swallowed a piece: it goes into the tank as if the vac had sucked it up at `HoleGunkPer` a piece (the HUD counter pops and a
 	/// soft gulp plays, but nothing spurts at the nozzle, since the piece went down far away).
 	/// </summary>
 	public void FeedFromHole( Gib gib )
 	{
 		if ( !Vacuum || controller is null ) return;
-		var gunk = GunkOf( gib );
+		var gunk = gib.Recycled ? RecycledGunk : HoleGunkPer;
 		HoleGunk += gunk;
 		AddGunk( gunk, gib.Goo );
 		SinceGulp = 0f;

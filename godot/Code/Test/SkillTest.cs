@@ -234,6 +234,9 @@ public partial class AutoTest
 		await Wait( 0.1f );
 		var opened = BlackHole.Opened;
 		vac.TestSpit( true );
+		var emptied = vac.Ammo;
+		PlayerWeapon.HoleGunk = 0f;
+		var swallowedBefore = BlackHole.Swallowed;
 		for ( var i = 0; i < 40 && BlackHole.Opened == opened; i++ ) await Wait( 0.05f );
 		Check( BlackHole.Opened == opened + 1, "the huge shot did not open a black hole" );
 		var spread = crabs.Where( c => IsInstanceValid( c ) && !c.IsDead ).Average( c => (c.GlobalPosition + Vector3.Up * 0.4f).DistanceTo( BlackHole.LastAt ) );
@@ -263,7 +266,9 @@ public partial class AutoTest
 		for ( var i = 0; i < 100 && BlackHole.Detonated == 0; i++ ) await Wait( 0.05f );
 		GD.Print( $"[autotest] skills: crabs at the end {string.Join( ", ", crabs.Where( c => IsInstanceValid( c ) ).Select( c => (c.GlobalPosition + Vector3.Up * 0.4f).DistanceTo( BlackHole.LastAt ).ToString( "0.0" ) ) )}" );
 		GD.Print( $"[autotest] skills: black hole opened {BlackHole.Opened}, went off {BlackHole.Detonated}; crabs {spread:0.0} m from it on average when it opened, {BlackHole.LastPulledIn:0.0} m when it blew; gibs swallowed {BlackHole.Swallowed}" );
+		GD.Print( $"[autotest] skills: the tank went from {emptied} after the huge shot to {vac.Ammo}; the hole sent back {PlayerWeapon.HoleGunk:0.0} gunk" );
 		Check( BlackHole.Detonated == 1, "the black hole never went off" );
+		Check( BlackHole.Swallowed == swallowedBefore || (PlayerWeapon.HoleGunk > 0f && vac.Ammo > emptied), "gore the black hole swallowed did not go into the Gore Vac's tank" );
 		Check( BlackHole.LastPulledIn >= 0f && BlackHole.LastPulledIn < spread * 0.5f, $"the black hole did not drag the crabs together ({spread:0.0} m to {BlackHole.LastPulledIn:0.0} m)" );
 		ClearCrabs();
 

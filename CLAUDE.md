@@ -244,7 +244,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   PlayerMelee, Health for Bubble Prison) with their numbers in `Weapons/SkillFx.cs` (also burn/bleed `Affliction`, the
   Full Choke slug, `ToxicTrail`, the Phase Shift `Decoy` (enemies go for `PlayerSurvivor.WorldPosition`; player-body
   checks use `RealPosition`), `SurgeWhirlpool`, and the `BlackHole`: the huge Gore Vac shot opens it, it drags enemies
-  in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts).
+  in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts; the gore it swallows goes into the Gore Vac's tank at the vac's own rates, `PlayerWeapon.FeedFromHole`).
   Weak spots for Headhunter are `Creature.WeakSpot`. Icons: `python Tools/godot/make_skill_icons.py`. Dev menu: Player,
   Skill trees. Test: `--skills` (with `--shots` in a window: the tree page and the black hole).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000

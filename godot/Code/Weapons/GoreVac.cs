@@ -428,11 +428,35 @@ public partial class PlayerWeapon
 		caught.Remove( gib );
 		var colour = gib.Goo ?? new Color( 0.6f, 0.6f, 0.62f );
 		if ( Ammo >= MagazineSize ) { Vented++; Vent( colour, gib.Goo is null ); }
-		if ( gib.Goo is null ) AddGunk( DryGunk, null );
-		else AddGunk( gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax ), colour );
+		AddGunk( GunkOf( gib ), gib.Goo is null ? null : colour );
 		Swallowed++;
 		gib.QueueFree();
 		Gulp( colour, gib.Goo is null );
+	}
+
+	/// <summary> What a piece is worth in the tank: dry bits a little, goo by its size, recycled lumps hardly anything. </summary>
+	static float GunkOf( Gib gib ) => gib.Goo is null ? DryGunk : gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax );
+
+	/// <summary> For tests: gunk the Black Hole has sent back to the tank. </summary>
+	public static float HoleGunk;
+	TimeSince sinceHoleGulp = 9f;
+
+	/// <summary>
+	/// The Black Hole swallowed a piece: it goes into the tank as if the vac had sucked it up (the HUD counter pops and a
+	/// soft gulp plays, but nothing spurts at the nozzle, since the piece went down far away).
+	/// </summary>
+	public void FeedFromHole( Gib gib )
+	{
+		if ( !Vacuum || controller is null ) return;
+		var gunk = GunkOf( gib );
+		HoleGunk += gunk;
+		AddGunk( gunk, gib.Goo );
+		SinceGulp = 0f;
+		if ( sinceHoleGulp > 0.08f )
+		{
+			sinceHoleGulp = 0f;
+			Sfx.Play2D( "bubble_pop", 0.3f, Rng.Float( 0.8f, 1f ), Sfx.GunBus );
+		}
 	}
 
 	/// <summary>

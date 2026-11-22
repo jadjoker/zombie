@@ -574,7 +574,14 @@ public partial class BlackHole : Node3D
 				var to = centre - gib.GlobalPosition;
 				var d = to.Length();
 				if ( d > reach * 1.2f ) continue;
-				if ( d < CoreSize * 1.3f ) { Swallowed++; gib.QueueFree(); continue; }
+				if ( d < CoreSize * 1.3f )
+				{
+					// Swallowed gore goes into the Gore Vac's tank, as if the vac had sucked it up itself.
+					Swallowed++;
+					if ( weapon is not null && IsInstanceValid( weapon ) ) weapon.FeedFromHole( gib );
+					gib.QueueFree();
+					continue;
+				}
 				gib.LinearVelocity = gib.LinearVelocity.Lerp( to / d * MathX.Lerp( 3f, 14f, 1f - d / (reach * 1.2f) ) + to.Cross( Vector3.Up ).SafeNormal() * 2f, MathF.Min( 1f, 6f * dt ) );
 			}
 

@@ -44,7 +44,7 @@ public sealed class RobotClass
 	{
 		Id = "tridentbot", Name = "Trident-Bot", Tagline = "Hold the line. Skewer what crosses it.",
 		Weapons = "Trident Shooter, Trident & Shield", Movement = "Charged surge: hold mouse 4, let go to ram through enemies",
-		Melee = "One-handed trident thrust (twice the axe's reach); the shield in the other hand blocks 65% on right click; axe on mouse 5",
+		Melee = "Trident thrust (2x axe reach), shield blocks 65% (right click)",
 		Tint = new Color( 0.12f, 0.75f, 0.72f ), BaseHealth = 250f, Paint = "Trident",
 		Kit = () => new[] { PlayerWeapon.Trident( 1 ), PlayerWeapon.TridentSpear( 2 ) },
 	};

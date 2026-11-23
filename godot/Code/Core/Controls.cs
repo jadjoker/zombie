@@ -92,6 +92,8 @@ public partial class Controls : Node
 		// Co-op: hold Tab for the scoreboard, middle mouse to ping (the pad's are in Buttons).
 		Action( "scoreboard", 0.5f );
 		InputMap.ActionAddEvent( "scoreboard", new InputEventKey { PhysicalKeycode = Key.Tab } );
+		Action( "emote", 0.5f );
+		InputMap.ActionAddEvent( "emote", new InputEventKey { PhysicalKeycode = Key.T } );
 		Action( "ping", 0.5f );
 		InputMap.ActionAddEvent( "ping", new InputEventMouseButton { ButtonIndex = MouseButton.Middle } );
 

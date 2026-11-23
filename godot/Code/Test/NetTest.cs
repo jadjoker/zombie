@@ -239,6 +239,8 @@ public partial class AutoTest
 			var points = other.GetNode<NetPlayer>( "NetPlayer" ).Points;
 			GD.Print( $"[autotest] net: the joiner ({Net.PlayerName( other.PeerId )}) shows {points} points here" );
 			Check( points > 0, "the scoreboard never got the joiner's points" );
+			for ( var t = 0f; t < 6f && PlayerController.RemoteEmotes == 0; t += 0.1f ) await Wait( 0.1f );
+			Check( PlayerController.RemoteEmotes > 0, "the joiner's wave never showed here" );
 			// Davey's locker: everyone down, then everyone up.
 			Net.Instance.SendLocker( true );
 			DaveyLocker.Enter( player, NetWorld.Ground( player ), 0 );
@@ -253,6 +255,8 @@ public partial class AutoTest
 		{
 			Pings.Place( player );
 			await Wait( 1f );
+			player.PlayEmote( Emote.Wave );
+			await Wait( 1.5f );
 			var top = player.GlobalPosition;
 			for ( var t = 0f; t < 30f && !DaveyLocker.Active; t += 0.25f ) await Wait( 0.25f );
 			await Wait( 1f );

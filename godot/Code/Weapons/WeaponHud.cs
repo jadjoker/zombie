@@ -145,7 +145,7 @@ public partial class WeaponHud : Control
 
 		// The crosshair in the theme's style, ink-edged so it reads on anything. It stays while you aim down the sights
 		// (issue #37) and only gives way to the scope's own reticle.
-		var dotAlpha = PlayerSurvivor.LocalDead ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
+		var dotAlpha = PlayerSurvivor.LocalDead || PlayerSurvivor.Local?.Controller is { Emote: not Emote.None } ? 0f : MathF.Max( 0f, 1f - (weapon?.ScopeAmount ?? 0f) * 3f );
 		DotAlpha = dotAlpha;
 		if ( dotAlpha > 0f ) DrawCrosshair( c, dotAlpha, weapon );
 

@@ -513,4 +513,11 @@ public partial class Net : Node
 		var vac = owner?.GetChildren().OfType<PlayerWeapon>().FirstOrDefault( w => w.Vacuum );
 		if ( GetTree().CurrentScene is Node3D scene ) BlackHole.Open( scene, at, damage, radius, size, colour, owner, vac, rank );
 	}
+
+	// ---- Emotes ----
+
+	public void SendEmote( int emote ) { if ( Connected ) Rpc( MethodName.EmoteNow, emote ); }
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 2 )]
+	void EmoteNow( int emote ) => RemoteOf( Multiplayer.GetRemoteSenderId() )?.PlayEmote( (Emote)emote );
 }

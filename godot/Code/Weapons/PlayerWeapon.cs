@@ -493,7 +493,7 @@ public partial class PlayerWeapon : Node
 	/// <summary> The mouse is out of the game (Esc). Scripted tests run with it free, so they don't count. </summary>
 	public static bool MouseFree => Input.MouseMode != Input.MouseModeEnum.Captured && !AutoTest.Requested;
 	/// <summary> This machine's menus or the dive hold the local player's gun (a remote player's owner already held its presses back). </summary>
-	bool LocalBlocked => !controller.IsRemote && (DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree);
+	bool LocalBlocked => !controller.IsRemote && (DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree || controller.Emote != Emote.None || EmoteWheel.IsOpen);
 
 	/// <summary> Testing aid: fires one shot as if the trigger was pulled. </summary>
 	public void TestFire() => Shoot();

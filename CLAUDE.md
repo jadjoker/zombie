@@ -304,7 +304,16 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   inside `Sfx.Remote` scopes don't count). Remote robots' "own" sounds play at the robot (`Sfx.Remote`). Waves, game
   over, restarts, teleporters and areas follow the host (`NetWorld`, `WaveDirector.ApplyNet`); wave bonuses, tokens and
   respawns for a remote robot are sent to its owner. Bubbles on puppets come from the host (`Net.Bubble`). Online the
-  menus don't pause the game. Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
+  menus don't pause the game. A joiner's own hits on puppets are sent to the host as requests (`ShotRequest`,
+  `HealthRequest`), so they land where the shooter saw them; the host's copies of remote robots never deal damage themselves.
+  Black holes open where their owner's shot burst (`Net.BlackHoleAt`). Davey's locker takes everyone (`Net.LockerGo`).
+  The co-op HUD is `Net/TeamHud.cs`: names and health over teammates, `Pings` (middle mouse, pad left stick click),
+  the Tab (pad View) scoreboard, `Spectate` (dead online: watch a teammate, click to switch). Names come from the
+  picker's Name box (`GameSettings.PlayerName`). Emotes (`Player/PlayerRigEmotes.cs`, `EmoteWheel`; T or hold the pad's
+  D-pad down): the Griddy, Wave hi, Wanker, rig poses in the move-pose style with a camera in front; moving or firing
+  ends one; online the others see it (`Net.EmoteNow`). Test: `--emotes` (shots need a window).
+  Coral walls hold enemies back by pushing them out of their footprint (`CoralWall.HoldBack`; enemies don't move by physics).
+  Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

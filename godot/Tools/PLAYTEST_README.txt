@@ -52,6 +52,8 @@ Play online (co-op, up to 4)
   Scoreboard  Hold Tab (pad: View): everyone's robot, health, points, kills and ping.
   Ping        Middle mouse (pad: click the left stick) marks what you aim at for everyone; on an enemy it follows it.
   Down        Dead, you watch a teammate after a moment; click to switch who.
+  Emotes      T (pad: hold D-pad down), then 1 to 3 (pad: D-pad left, up, right): the Griddy, Wave hi, Wanker.
+              Moving or shooting stops one.
 
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

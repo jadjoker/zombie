@@ -97,7 +97,35 @@ public partial class PlayerController : CharacterBody3D
 	RobotClass remoteRobot;
 	public void SetRemoteRobot( RobotClass robot ) => remoteRobot = robot;
 	/// <summary> The body, gun and effects are seen from outside: third person, or someone else's robot. </summary>
-	public bool SeenFromOutside => ThirdPerson || IsRemote;
+	public bool SeenFromOutside => ThirdPerson || IsRemote || (Emote != global::Emote.None && !IsRemote);
+
+	// ---- Emotes (PlayerRigEmotes) ----
+	/// <summary> The emote playing (the view goes to third person for the local player while it does). </summary>
+	public Emote Emote { get; private set; }
+	public double EmoteAt { get; private set; }
+	/// <summary> Tests: emotes other players played that showed here. </summary>
+	public static int RemoteEmotes;
+	Vector3 emoteFrom, emoteCam;
+	bool emoteCamSet;
+
+	/// <summary> Plays an emote (online the others see it too). Moving or shooting ends it. </summary>
+	public void PlayEmote( Emote emote )
+	{
+		Emote = emote;
+		EmoteAt = Clock.Now;
+		if ( IsRemote && emote != global::Emote.None ) RemoteEmotes++;
+		emoteFrom = GlobalPosition;
+		if ( !IsRemote && emote != global::Emote.None ) Net.Instance?.SendEmote( (int)emote );
+	}
+
+	void UpdateEmote()
+	{
+		if ( Emote == global::Emote.None ) return;
+		var over = Clock.Now - EmoteAt > Emotes.Length( Emote );
+		var moved = !IsRemote && (In.GetVector( "left", "right", "backward", "forward" ) != Vector2.Zero || In.JustPressed( "jump" ) || In.JustPressed( "attack1" ) || In.JustPressed( "attack2" ) || GlobalPosition.DistanceTo( emoteFrom ) > 1.5f);
+		var dead = GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) is { IsAlive: false };
+		if ( over || moved || dead ) Emote = global::Emote.None;
+	}
 	/// <summary> A remote player's ground contact, as its owner sent it. </summary>
 	public void SetRemoteGround( bool grounded, bool ducking ) { IsOnGround = grounded; IsDucking = ducking; }
 
@@ -235,6 +263,7 @@ public partial class PlayerController : CharacterBody3D
 			cameraDistance = 20f * U.In;
 		}
 
+		UpdateEmote();
 		UpdateCamera( dt );
 	}
 
@@ -470,6 +499,21 @@ public partial class PlayerController : CharacterBody3D
 		var basis = EyeAngles.ToBasis();
 		EyeTransform = new Transform3D( basis, eye );
 
+		// Emoting: the camera swings round in front of the robot and looks back at it (its aim, and so its facing, stay put).
+		var emoting = Emote != global::Emote.None && !IsRemote;
+		if ( emoting && CameraOverride is null )
+		{
+			var face = new Angles( 0f, EyeAngles.Yaw, 0f ).ToBasis();
+			var front = eye + (-face.Z * 2.9f + face.X * 0.5f) + Vector3.Up * 0.15f;
+			var hit = Trace.Sphere( this, 8f * U.In, eye, front, Layers.World, new Godot.Collections.Array<Rid> { GetRid() } );
+			if ( hit.Hit && !hit.StartedSolid ) front = eye + (front - eye).SafeNormal() * MathF.Max( 0.6f, hit.Distance - 0.1f );
+			emoteCam = emoteCamSet ? emoteCam.Lerp( front, 1f - MathF.Exp( -8f * dt ) ) : front;
+			emoteCamSet = true;
+			Camera.GlobalTransform = new Transform3D( Shapes.LookAt( (eye + Vector3.Down * 0.45f - emoteCam).SafeNormal() ), emoteCam );
+			Camera.Fov = FieldOfView;
+			return;
+		}
+		emoteCamSet = false;
 		if ( ThirdPerson )
 		{
 			var forward = -basis.Z;

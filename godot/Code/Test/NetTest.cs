@@ -302,8 +302,12 @@ public partial class AutoTest
 			if ( IsInstanceValid( boss ) ) boss.QueueFree();
 			// The bosses: the Kraken's slam, Poseidon's trident, Davey's cannons.
 			var kraken = Kraken.Spawn( scene, at + new Vector3( -14f, 0f, 0f ), 20000f );
-			for ( var t = 0f; t < 12f && kraken.State != Kraken.Mode.Idle; t += 0.25f ) await Wait( 0.25f );
-			kraken.ForceSlam();
+			// It may pick an attack of its own first (the ink): keep asking until the slam has really begun.
+			for ( var t = 0f; t < 20f && kraken.Attacking is not (Kraken.Attack.Suck or Kraken.Attack.Raise or Kraken.Attack.Slam); t += 0.25f )
+			{
+				kraken.ForceSlam();
+				await Wait( 0.25f );
+			}
 			GD.Print( $"[autotest] net: host Kraken {kraken.State}, attacking {kraken.Attacking}" );
 			await Wait( 4f );
 			if ( IsInstanceValid( kraken ) ) kraken.QueueFree();

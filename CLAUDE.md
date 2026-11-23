@@ -244,7 +244,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   PlayerMelee, Health for Bubble Prison) with their numbers in `Weapons/SkillFx.cs` (also burn/bleed `Affliction`, the
   Full Choke slug, `ToxicTrail`, the Phase Shift `Decoy` (enemies go for `PlayerSurvivor.WorldPosition`; player-body
   checks use `RealPosition`), `SurgeWhirlpool`, and the `BlackHole`: the huge Gore Vac shot opens it, it drags enemies
-  in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts; the gore it swallows goes into the Gore Vac's tank, 5 a piece, `PlayerWeapon.HoleGunkPer`; recycled lumps stay at 0.1).
+  in for `Life` s (bent light via a screen-texture lens, accretion disc, horizon rim, negative light), then bursts; the gore it swallows goes into the Gore Vac's tank, 2 a piece, `PlayerWeapon.HoleGunkPer`; recycled lumps stay at 0.1).
   Weak spots for Headhunter are `Creature.WeakSpot`. Icons: `python Tools/godot/make_skill_icons.py`. Dev menu: Player,
   Skill trees. Test: `--skills` (with `--shots` in a window: the tree page and the black hole).
 - Hook-Bot and Coral-Bot (robots 4 and 5, each with three skill trees like the others). Hook-Bot (150 health, `Paint`

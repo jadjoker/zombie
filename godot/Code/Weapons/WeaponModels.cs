@@ -31,7 +31,7 @@ public static class WeaponModels
 	public static (Node3D Root, AnimationPlayer Player, Skeleton3D Skeleton) Create( string name )
 	{
 		// The trident shooter has no file of its own: it is the Blaster's rig with its own gun (TridentModel).
-		var trident = name is "trident" or "gorevac" or "bubble" or "spear" or "harpoon" or "lure" or "spines" or "seeds"
+		var trident = name is "trident" or "gorevac" or "bubble" or "spear" or "grabber" or "lure" or "spines" or "seeds"
 			or "scrap" or "polarity" or "plunger" or "toilet" or "pinball" or "flippers";   // the spear too   // the Gore Vac and Bubble Cannon borrow the same rig
 		var file = trident ? TridentModel.Rig : name;
 		var scene = GD.Load<PackedScene>( $"res://assets/models/weapons/{file}/{file}.fbx" );
@@ -50,7 +50,7 @@ public static class WeaponModels
 			if ( skeleton is not null && name == "gorevac" ) GoreVacModel.Attach( skeleton );   // brings its own Muzzle node
 			else if ( skeleton is not null && name == "bubble" ) BubbleCannonModel.Attach( skeleton );
 			else if ( skeleton is not null && name == "spear" ) SpearModel.Attach( skeleton );
-			else if ( skeleton is not null && name == "harpoon" ) GunKit.Attach( skeleton, "Harpoon Reel", HookModels.HarpoonGun, HookModels.HarpoonMuzzle );
+			else if ( skeleton is not null && name == "grabber" ) GunKit.Attach( skeleton, "Grab Reel", HookModels.GrabGun, HookModels.GrabMuzzle );
 			else if ( skeleton is not null && name == "lure" ) GunKit.Attach( skeleton, "Lantern Lure", HookModels.LureLauncher, HookModels.LureMuzzle );
 			else if ( skeleton is not null && name == "spines" ) GunKit.Attach( skeleton, "Spine Gun", CoralModels.SpineGun, CoralModels.SpineMuzzle );
 			else if ( skeleton is not null && name == "seeds" ) GunKit.Attach( skeleton, "Reef Seeds", CoralModels.SeedPod, CoralModels.SeedMuzzle );

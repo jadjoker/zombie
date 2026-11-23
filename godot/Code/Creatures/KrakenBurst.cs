@@ -368,7 +368,7 @@ public partial class Kraken
 		SandBurst( GlobalPosition, 1.6f, 28, 3.5f );
 		foreach ( var player in PlayerSurvivor.All )
 		{
-			var distance = player.WorldPosition.DistanceTo( core );
+			var distance = player.RealPosition.DistanceTo( core );
 			if ( distance > 50f ) continue;
 			player.Juice?.Shake( 1f - distance / 70f );
 			if ( distance < 26f ) player.Afflictions?.Splattered( Goo, distance < 12f ? 10 : 5 );

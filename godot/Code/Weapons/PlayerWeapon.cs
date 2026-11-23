@@ -32,6 +32,9 @@ public partial class PlayerWeapon : Node
 	bool thirdPersonMuzzle;
 	/// <summary> The trigger has stayed down since the last shot (holding on charges the next trident). </summary>
 	bool heldSinceShot;
+	/// <summary> Vac-Bot's guns: a press shorter than this is a tap (a plain shot on release); longer starts the charge. </summary>
+	public const float TapWindow = 0.18f;
+	TimeSince sincePress;
 	TimeSince sinceChargeStart;
 	ulong chargeFrame;
 	public bool ShellReload;
@@ -222,6 +225,7 @@ public partial class PlayerWeapon : Node
 		ViewModel = null;
 		// (Its bubbles pop when the robot is swapped: WeaponInventory.Replace. Not here, where a level being torn down
 		// would be handed new pieces.)
+		if ( Grabber ) DropGrab();
 	}
 
 	void OnEnabled()
@@ -237,6 +241,7 @@ public partial class PlayerWeapon : Node
 		CancelReload();
 		Sucking = false;
 		ReleaseCaught();
+		DropGrab();
 		Blowing = false;
 		charging = false;
 		suckSound?.Stop();
@@ -302,6 +307,13 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
+		if ( Grabber )
+		{
+			// The Grab Reel: hold to carry, right click throws (HookBot.cs); no aiming, no reloading.
+			UpdateGrab( dt, !(DevFlags.Placing || melee || LocalBlocked) );
+			return;
+		}
+
 		if ( Scrap || Polarity || Pinball || Flippers )
 		{
 			// The Magnet-Bot's and Pinball-Bot's guns work their own triggers (MagnetBot.cs, PinballBot.cs).
@@ -313,7 +325,7 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		if ( !Bubbles && !Lure && !Seeds && !Plunger && !Toilet ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
+		if ( !Bubbles && !Lure && !Seeds && !Plunger && !Toilet && !Grabber ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
 
 		if ( controller.In.JustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && controller.In.JustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
@@ -333,10 +345,9 @@ public partial class PlayerWeapon : Node
 
 		if ( ChargeTime > 0f )
 		{
-			// A pull fires at once. Keep holding after the shot and the next trident charges; let go with it full to
-			// fire it charged (let go early and it stays loaded). A charge the gun was put away during is dropped.
+			// Charged guns (the trident shooter, the Bubble Cannon). A charge or press the gun was put away during is dropped.
 			var frame = Engine.GetProcessFrames();
-			if ( charging && frame - chargeFrame > 3 ) charging = false;
+			if ( frame - chargeFrame > 3 ) { charging = false; heldSinceShot = false; }
 			chargeFrame = frame;
 			if ( IsReloading ) charging = false;
 			var held = controller.In.Pressed( "attack1" );
@@ -366,34 +377,43 @@ public partial class PlayerWeapon : Node
 			}
 			else if ( !charging )
 			{
+				// The Bubble Cannon (user's ask: a hold must not blow a bubble first): a tap blows a bubble when it is let
+				// go; holding past `TapWindow` starts the Mega Bubble charging instead.
 				if ( controller.In.JustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
-					if ( Ammo > 0 ) { Shoot(); heldSinceShot = true; }
+					if ( Ammo > 0 ) { heldSinceShot = true; sincePress = 0f; }
 					else if ( Reserve > 0 ) StartReload();
 					else Sfx.Play2D( "dry_fire" );
 				}
-				else if ( held && heldSinceShot && Ammo > 0 && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				else if ( held && heldSinceShot && sincePress > TapWindow && Ammo > 0 && !IsReloading )
 				{
 					charging = true; chargeFull = false; sinceChargeStart = 0f;
 					Sfx.Play2D( Bubbles ? "bubble_charge" : "trident_charge", 0.5f, bus: Sfx.GunBus );
 				}
-				if ( !held ) heldSinceShot = false;
+				if ( !held )
+				{
+					if ( heldSinceShot && Ammo > 0 && !IsReloading ) Shoot();
+					heldSinceShot = false;
+				}
 			}
 			else
 			{
 				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
 				if ( !held )
 				{
+					// Let go full: the Mega Bubble; early: a plain bubble, so a hold is never wasted.
 					charging = false;
 					heldSinceShot = false;
-					if ( chargeFull ) { chargedShot = true; Shoot(); chargedShot = false; }
+					chargedShot = chargeFull;
+					Shoot();
+					chargedShot = false;
 				}
 			}
 			return;
 		}
 
 		var wantsFire = Automatic ? controller.In.Pressed( "attack1" ) : controller.In.JustPressed( "attack1" );
-		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate && !(Harpoon && LineOut) )
+		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate  )
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
@@ -445,9 +465,9 @@ public partial class PlayerWeapon : Node
 	void ShowLoaded()
 	{
 		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
-		if ( !(Projectile || Harpoon || Lure || Plunger || Toilet || Scrap || Pinball) || ViewModel is null ) return;
+		if ( !(Projectile || Grabber || Lure || Plunger || Toilet || Scrap || Pinball) || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
-		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f && !LineOut;
+		if ( loaded is not null ) loaded.Visible = Grabber ? Held is null && BeamTarget is null : Ammo > 0 && TimeSinceShot > 0.35f;
 	}
 
 	void UpdateAiming( float dt )
@@ -519,7 +539,6 @@ public partial class PlayerWeapon : Node
 		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
 		if ( Bubbles ) BlowBubble( controller.SeenFromOutside ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
-		else if ( Harpoon ) FireHarpoon( start, forward, spread, trailStart );
 		else if ( Lure ) ThrowLure( start, forward );
 		else if ( Seeds ) PlantSeed( start, forward, false );
 		else if ( Plunger ) FirePlunger( start, forward, spread );
@@ -548,7 +567,7 @@ public partial class PlayerWeapon : Node
 			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
-		if ( !Bubbles && !Projectile && !Harpoon && !Lure && !Seeds && !Plunger && !Toilet ) EndShotSkills( start, forward, trailStart );
+		if ( !Bubbles && !Projectile && !Grabber && !Lure && !Seeds && !Plunger && !Toilet ) EndShotSkills( start, forward, trailStart );
 		juice?.Shake( ShakePerShot );
 		juice?.KickFov( FovKickPerShot );
 

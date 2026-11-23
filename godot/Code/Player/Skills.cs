@@ -22,7 +22,7 @@ public enum SkillId
 	// Vac-Bot: core
 	VacShield, LightFrame, EfficientJets, Afterburner, ToxicTrail, Slipstream, PhaseShift,
 	// Hook-Bot: Harpoon Reel
-	BarbedHooks, QuickReel, DeepQuiver, Snag, TowLine, GuttingHook, Trawler,
+	HeavyHands, LongArm, StrongArm, Crusher, Bowling, DeepQuiver, DepthCharge,
 	// Hook-Bot: Lantern Lure
 	BrighterBulb, LongGlow, ShockLantern, DeepPockets, ChumBucket, BaitAndSwitch, AbyssalBloom,
 	// Hook-Bot: core
@@ -100,7 +100,7 @@ public static class Skills
 		new[] { "Rifle", "Shotgun", "Surge, axe, survival" },
 		new[] { "Trident Shooter", "Spear and Shield", "Surge, survival" },
 		new[] { "Gore Vac", "Bubble Cannon", "Blink, survival" },
-		new[] { "Harpoon Reel", "Lantern Lure", "Grapple, survival" },
+		new[] { "Grab Reel", "Lantern Lure", "Grapple, survival" },
 		new[] { "Spine Gun", "Reef Seeds", "Burrow, survival" },
 		new[] { "Scrap Cannon", "Polarity Gun", "Pulse, survival" },
 		new[] { "Plunger Launcher", "Flush Bomb", "Slingshot, survival" },
@@ -212,14 +212,14 @@ public static class Skills
 			S( SkillId.Afterburner, vac, 2, 1, "Afterburner", "afterburner", Orange, n => $"Burning gunk carries a blink {Pct( SkillFx.AfterburnerPer * n )} farther" ),
 			S( SkillId.ToxicTrail, vac, 2, 2, "Toxic Trail", "toxic", Lime, n => $"A blink leaves goo that hurts enemies {SkillFx.ToxicDps( n ):0} a second (double with gunk)" ),
 			S( SkillId.Slipstream, vac, 2, 2, "Slipstream", "slipstream", Teal, n => $"+{Pct( SkillFx.SlipPer * n )} speed for {SkillFx.SlipTime:0} s after a blink" ),
-			// ---- Hook-Bot: Harpoon Reel ----
-			S( SkillId.BarbedHooks, hook, 0, 0, "Barbed Hooks", "barbed", Red, n => $"+{Pct( HookFx.BarbedPer * n )} harpoon damage" ),
-			S( SkillId.QuickReel, hook, 0, 0, "Quick Reel", "reel", Sky, n => $"+{Pct( HookFx.QuickReelPer * n )} reel speed" ),
-			S( SkillId.DeepQuiver, hook, 0, 1, "Deep Quiver", "deepmag", Steel, n => $"+{n} harpoon{(n == 1 ? "" : "s")} a load" ),
-			S( SkillId.Snag, hook, 0, 1, "Snag", "limbripper", Pink, n => $"Reeling tears off a limb at or under {Pct( HookFx.SnagBelow( n ) )} health" ),
-			S( SkillId.TowLine, hook, 0, 2, "Tow Line", "towline", Orange, n => $"A reeled enemy bowls through others on its way in: {HookFx.TowPer * n:0} damage and a shove" ),
-			S( SkillId.GuttingHook, hook, 0, 2, "Gutting Hook", "gutting", Red, n => $"Hooked enemies bleed {HookFx.GutPer * n:0} a second for {HookFx.GutTime:0} s" ),
-			S( SkillId.Trawler, hook, 0, 3, "Trawler", "trawler", Gold, n => $"The harpoon bursts into a net: up to {HookFx.TrawlerCatches( n )} more enemies within {HookFx.NetRadius:0.0} m are reeled in with it", max: 3 ),
+			// ---- Hook-Bot: Grab Reel ----
+			S( SkillId.HeavyHands, hook, 0, 0, "Heavy Hands", "heavyhitter", Red, n => $"+{Pct( HookFx.HeavyHandsPer * n )} slam, throw and beam damage" ),
+			S( SkillId.LongArm, hook, 0, 0, "Long Arm", "reel", Sky, n => $"+{HookFx.LongArmPer * n:0} m grab range" ),
+			S( SkillId.StrongArm, hook, 0, 1, "Strong Arm", "trawler", Orange, n => $"+{Pct( HookFx.StrongArmPer * n )} throw speed (harder hits)" ),
+			S( SkillId.Crusher, hook, 0, 1, "Crusher", "gutting", Pink, n => $"A held enemy takes {HookFx.CrusherPer * n:0} a second" ),
+			S( SkillId.Bowling, hook, 0, 2, "Bowling", "towline", Gold, n => $"+{Pct( HookFx.BowlingPer * n )} damage to enemies a carried or flung one hits" ),
+			S( SkillId.DeepQuiver, hook, 0, 2, "Deep Quiver", "deepmag", Steel, n => $"+{n} throw charge{(n == 1 ? "" : "s")}" ),
+			S( SkillId.DepthCharge, hook, 0, 3, "Depth Charge", "cluster", Lime, n => $"A thrown enemy bursts where it first hits: {HookFx.DepthDamage( n ):0} to everything within {HookFx.DepthRadius:0.0} m", max: 3 ),
 			// ---- Hook-Bot: Lantern Lure ----
 			S( SkillId.BrighterBulb, hook, 1, 0, "Brighter Bulb", "bulb", Gold, n => $"+{Pct( HookFx.BrighterPer * n )} lure zap and burst radius" ),
 			S( SkillId.LongGlow, hook, 1, 0, "Long Glow", "lasting", Sky, n => $"The lure glows {HookFx.LongGlowPer * n:0.0} s longer" ),

@@ -387,7 +387,7 @@ public partial class Kraken : PartCreature
 	{
 		foreach ( var player in PlayerSurvivor.All )
 		{
-			var distance = player.WorldPosition.DistanceTo( GlobalPosition );
+			var distance = player.RealPosition.DistanceTo( GlobalPosition );
 			if ( distance > 40f ) continue;
 			player.Controller?.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( amount * (1f - distance / 40f) );
 		}

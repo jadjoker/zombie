@@ -1022,7 +1022,7 @@ public partial class SeaSpider : PartCreature
 	public override void Pull( Vector3 delta )
 	{
 		if ( Puppet ) return;   // online: the host's copy is the one dragged
-		if ( Bubbled ) GlobalPosition += delta;
+		if ( Carried ) GlobalPosition += delta;
 		else agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
 	}
 

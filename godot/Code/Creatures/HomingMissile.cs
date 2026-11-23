@@ -199,7 +199,7 @@ public partial class HomingMissile : Creature
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			if ( !player.IsAlive ) continue;
-			var middle = player.WorldPosition + Vector3.Up * 1f;
+			var middle = player.RealPosition + Vector3.Up * 1f;
 			if ( Geometry3D.GetClosestPointToSegment( middle, from, to + heading * 0.4f ).DistanceTo( middle ) > HitRadius ) continue;
 			GlobalPosition = to;
 			Explode( false, player );
@@ -244,7 +244,7 @@ public partial class HomingMissile : Creature
 			foreach ( var player in PlayerSurvivor.All )
 			{
 				if ( !player.IsAlive ) continue;
-				var hit = player == direct || (player.WorldPosition + Vector3.Up * 1f).DistanceTo( at ) < 1.8f;
+				var hit = player == direct || (player.RealPosition + Vector3.Up * 1f).DistanceTo( at ) < 1.8f;
 				if ( !hit ) continue;
 				PlayerHits++;
 				player.Health?.OnDamage( new DamageInfo { Damage = Damage, Attacker = owner is not null && IsInstanceValid( owner ) ? owner : this, Position = at, Origin = at } );

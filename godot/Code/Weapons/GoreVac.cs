@@ -149,21 +149,27 @@ public partial class PlayerWeapon
 		UpdateLoopSounds();
 		UpdateWeight( dt );
 
-		// The shot: a pull of the trigger fires a ball at once. Keep holding and (with enough in the tank) the ring fills;
-		// let go with it full for the huge one. Let go early and nothing more happens.
+		// The shot (user's ask: a hold must not fire a ball first): a tap fires a ball when it is let go; holding past
+		// `TapWindow` starts the ring filling instead, and letting go with it full throws the huge one (early: a ball).
+		// Without enough in the tank for the huge one, a hold just fires the ball at `TapWindow`.
 		if ( allowed )
 		{
 			var down = controller.In.Pressed( "attack1" );
 			if ( controller.In.JustPressed( "attack1" ) )
 			{
-				if ( (Ammo >= BallCost || HasMine) && TimeSinceShot >= 1f / CurrentFireRate ) { Spit( false ); triggerHeld = true; sinceTrigger = 0f; }
+				if ( (Ammo >= BallCost || HasMine) && TimeSinceShot >= 1f / CurrentFireRate ) { triggerHeld = true; sinceTrigger = 0f; }
 				else if ( Ammo < BallCost && !HasMine ) Sfx.Play2D( "dry_fire" );
 			}
-			if ( triggerHeld && down && !charging && sinceTrigger > 0.25f && Ammo >= BigBallMin && !HasMine ) { charging = true; sinceChargeStart = 0f; }
-			if ( charging && Ammo < BigBallMin ) charging = false;
+			if ( triggerHeld && down && !charging && sinceTrigger > PlayerWeapon.TapWindow )
+			{
+				if ( Ammo >= BigBallMin && !HasMine ) { charging = true; sinceChargeStart = 0f; Sfx.Play2D( "bubble_charge", 0.4f, 0.7f, bus: Sfx.GunBus ); }
+				else { Spit( false ); triggerHeld = false; }
+			}
+			if ( charging && Ammo < BigBallMin ) { charging = false; triggerHeld = false; Spit( false ); }
 			if ( !down )
 			{
-				if ( charging && ChargeAmount >= 1f ) Spit( true );
+				if ( charging ) Spit( ChargeAmount >= 1f );
+				else if ( triggerHeld ) Spit( false );
 				charging = false;
 				triggerHeld = false;
 			}

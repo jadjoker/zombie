@@ -1,8 +1,8 @@
 using Godot;
 
 /// <summary>
-/// --hookbot and --coralbot: the two newer robots. Hook-Bot: the harpoon reels a light crab in and yanks it (a heavy
-/// one only takes the hit), Deep Quiver, Trawler's net, the lure as the decoy (zaps, bursts, Abyssal Bloom's jaw), the
+/// --hookbot and --coralbot: the two newer robots. Hook-Bot: the grab reel lifts, slams and throws a light crab (a heavy
+/// one only takes the beam), Deep Quiver, Depth Charge, the lure as the decoy (zaps, bursts, Abyssal Bloom's jaw), the
 /// grapple zip and its boot, Leviathan Pull. Coral-Bot: spines grow coral that shatters, Bleach, Fast Growth, a turret
 /// that shoots, a wall that blocks shots, Living Reef's veins, Healing Reef, the burrow (untouchable, eye at the sand,
 /// the eruption) and Great Barrier. Both print what single hits do to early and late crabs, to keep an eye on balance.
@@ -63,9 +63,9 @@ public partial class AutoTest
 		var skills = PlayerSkills.Of( player );
 		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
 		var jet = player.GetNode<Jetpack>( "Jetpack" );
-		var harpoon = inventory.Weapons.FirstOrDefault( w => w.Harpoon );
+		var harpoon = inventory.Weapons.FirstOrDefault( w => w.Grabber );
 		var lure = inventory.Weapons.FirstOrDefault( w => w.Lure );
-		Check( harpoon is not null && lure is not null, "Hook-Bot has no harpoon reel or lantern lure" );
+		Check( harpoon is not null && lure is not null, "Hook-Bot has no grab reel or lantern lure" );
 		Check( RobotClass.All.Length == 8 && me.Health.MaxHealth == RobotClass.HookBot.BaseHealth, $"Hook-Bot's health is {me.Health.MaxHealth}, not {RobotClass.HookBot.BaseHealth}" );
 		if ( harpoon is null || lure is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
 		// The picker fits every robot on screen.
@@ -84,37 +84,73 @@ public partial class AutoTest
 		var crabs = new List<JunkCrab>();
 		JunkCrab Crab( Vector3 at, float hp ) { var c = JunkCrab.Spawn( GetTree().CurrentScene, Nav.Closest( player, at ), hp ); crabs.Add( c ); return c; }
 		void ClearCrabs() { foreach ( var c in crabs ) if ( IsInstanceValid( c ) ) c.QueueFree(); crabs.Clear(); }
-		async Task UntilHome( PlayerWeapon w ) { for ( var i = 0; i < 120 && w.LineOut; i++ ) await Wait( 0.05f ); }
 
-		// ---- The harpoon: a light crab is reeled in and yanked ----
-		inventory.Select( harpoon, force: true );
+		// ---- The Grab Reel: lift a light crab, slam it into the floor, throw it into another, let go of one ----
+		var grab = harpoon;
+		inventory.Select( grab, force: true );
 		await Wait( 0.5f );
 		player.GlobalPosition = spot + Vector3.Up * 0.1f;
 		await BotPortrait( "hookbot_portrait" );
 		Stand();
-		var crab = Crab( spot + ahead * 10f, 400f );
+		var crab = Crab( spot + ahead * 7f, 400f );
 		await Wait( 0.8f );
 		Stand();
 		await Wait( 0.1f );
 		AimAt( crab.GlobalPosition + Vector3.Up * 0.35f );
-		await Wait( 0.3f );
-		AimAt( crab.GlobalPosition + Vector3.Up * 0.35f );   // again: the view can be reset in the first moments after the landing
+		await Wait( 0.2f );
+		AimAt( crab.GlobalPosition + Vector3.Up * 0.35f );
 		await Wait( 0.1f );
+		var floorY = crab.GlobalPosition.Y;
 		var before = crab.Health.Current;
-		harpoon.TestFire();
-		await Wait( 0.25f );
-		if ( shots is not null && harpoon.Line is { Reeling: true } ) await Shot( "hook_reeling" );
-		await UntilHome( harpoon );
-		var lost = before - (IsInstanceValid( crab ) ? crab.Health.Current : 0f);
-		var near = IsInstanceValid( crab ) ? (crab.GlobalPosition - player.GlobalPosition).Flat().Length() : -1f;
-		GD.Print( $"[autotest] hookbot: harpoons {HookFx.Harpoons}, hooked {HookFx.Hooked}, yanks {HookFx.Yanks}; reel from {HookFx.LastReelStart:0.0} m to {HookFx.LastReelEnd:0.0} m; the crab lost {lost:0} of {before:0} and stands {near:0.0} m off" );
-		Check( HookFx.Hooked == 1 && HookFx.Yanks == 1, "the harpoon did not hook and yank the crab" );
-		Check( HookFx.LastReelStart > 7f && HookFx.LastReelEnd < HookFx.HoldDistance + 1f, "the crab was not reeled in" );
-		Check( lost > 80f && lost < 220f, $"a harpoon and yank did {lost:0}, outside the 80 to 220 it should" );
-		Check( IsInstanceValid( crab ) && !crab.IsDead, "a 400 health crab died to one harpoon" );
+		grab.ForceGrab = true;
+		await Wait( 0.15f );
+		AimAt( player.Camera.GlobalPosition + ahead * 6f + Vector3.Up * 1.5f );   // lift it up in front
+		await Wait( 0.6f );
+		var lifted = crab.GlobalPosition.Y - floorY;
+		GD.Print( $"[autotest] hookbot: grabs {HookFx.Grabs}, held {grab.Held is not null}, lifted {lifted:0.0} m, {(crab.GlobalPosition - player.GlobalPosition).Length():0.0} m from the player" );
+		Check( HookFx.Grabs == 1 && grab.Held?.Victim == crab && crab.Grabbed, "the grab reel did not take hold of a light crab" );
+		Check( lifted > 0.8f, $"the held crab only rose {lifted:0.00} m" );
+		if ( shots is not null ) await Shot( "grab_held" );
+		// Swing it down into the sand.
+		AimAt( player.Camera.GlobalPosition + ahead * 3f - Vector3.Up * 3f );
+		await Wait( 0.5f );
+		var slamLoss = before - crab.Health.Current;
+		GD.Print( $"[autotest] hookbot: slams {HookFx.GrabSlams}, the crab lost {slamLoss:0} of {before:0}" );
+		Check( HookFx.GrabSlams >= 1 && slamLoss > 20f, "swinging the held crab into the floor did not slam it" );
+		Check( !crab.IsDead, "a 400 health crab died to one slam" );
+		// Throw it at another crab.
+		var pin = Crab( spot + ahead * 11f, 400f );
+		await Wait( 0.8f );
+		Stand();
+		AimAt( pin.GlobalPosition + Vector3.Up * 0.4f );
+		await Wait( 0.35f );
+		var pinBefore = pin.Health.Current;
+		var charges = grab.Ammo;
+		grab.TestThrow();
+		await Wait( 0.1f );
+		grab.ForceGrab = false;
+		for ( var i = 0; i < 60 && HookFx.Landings == 0; i++ ) await Wait( 0.05f );
+		await Wait( 0.2f );
+		GD.Print( $"[autotest] hookbot: throws {HookFx.Throws}, bowled {HookFx.Bowled}, landings {HookFx.Landings}; charges {charges} -> {grab.Ammo}; the crab hit lost {pinBefore - pin.Health.Current:0}; the thrown one {(IsInstanceValid( crab ) && !crab.IsDead ? $"{crab.Health.Current:0} hp, {crab.GlobalPosition.Y - floorY:0.00} m off the floor" : "dead")}" );
+		Check( HookFx.Throws == 1 && grab.Ammo == charges - 1, "right click did not throw the held crab for a charge" );
+		Check( HookFx.Bowled >= 1 && pin.Health.Current < pinBefore, "the thrown crab did not bowl into the other" );
+		Check( HookFx.Landings >= 1 && (!IsInstanceValid( crab ) || crab.IsDead || (!crab.Grabbed && MathF.Abs( crab.GlobalPosition.Y - floorY ) < 1f)), "the thrown crab did not land back on the floor" );
+		ClearCrabs();
+		// Let go of one: it is flung, not thrown.
+		var loose = Crab( spot + ahead * 6f, 400f );
+		await Wait( 0.8f );
+		Stand();
+		AimAt( loose.GlobalPosition + Vector3.Up * 0.35f );
+		await Wait( 0.1f );
+		grab.ForceGrab = true;
+		await Wait( 0.4f );
+		grab.ForceGrab = false;
+		await Wait( 0.1f );
+		for ( var i = 0; i < 60 && loose.Grabbed; i++ ) await Wait( 0.05f );
+		Check( HookFx.Flings == 1 && !loose.Grabbed, "letting go did not fling the crab and set it down" );
 		ClearCrabs();
 
-		// A heavy one is hit but not dragged.
+		// A heavy one can't be lifted: the beam locks on and hurts it.
 		var heavy = Crab( spot + ahead * 8f, 3000f );
 		await Wait( 0.8f );
 		Stand();
@@ -124,33 +160,40 @@ public partial class AutoTest
 		AimAt( heavy.GlobalPosition + Vector3.Up * 0.35f );
 		await Wait( 0.1f );
 		var heavyAt = heavy.GlobalPosition;
-		harpoon.TestFire();
-		await Wait( 0.2f );
-		await UntilHome( harpoon );
-		GD.Print( $"[autotest] hookbot: the heavy crab moved {(heavy.GlobalPosition - heavyAt).Flat().Length():0.00} m, health {heavy.Health.Current:0}" );
-		Check( (heavy.GlobalPosition - heavyAt).Flat().Length() < 0.5f && heavy.Health.Current < 3000f, "a heavy crab was dragged, or not hit" );
+		grab.ForceGrab = true;
+		await Wait( 1.5f );
+		grab.ForceGrab = false;
+		GD.Print( $"[autotest] hookbot: beams {HookFx.Beams}, beam damage {HookFx.BeamDamage:0}; the heavy crab moved {(heavy.GlobalPosition - heavyAt).Flat().Length():0.00} m, health {heavy.Health.Current:0}" );
+		Check( HookFx.Beams == 1 && !heavy.Grabbed && (heavy.GlobalPosition - heavyAt).Flat().Length() < 0.5f, "a heavy crab was lifted" );
+		Check( heavy.Health.Current < 3000f - 40f, "the beam did not hurt the heavy crab" );
 		ClearCrabs();
 
-		// ---- Skills: Deep Quiver, Trawler, Snag ----
+		// ---- Skills: Deep Quiver, Depth Charge ----
 		skills.Set( SkillId.DeepQuiver, 3 );
-		skills.Set( SkillId.Trawler, 3 );
+		skills.Set( SkillId.DepthCharge, 3 );
 		await Wait( 0.3f );
-		Check( harpoon.MagazineSize == 7, $"Deep Quiver 3 gave {harpoon.MagazineSize} harpoons, not 7" );
-		var first = Crab( spot + ahead * 9f, 400f );
-		Crab( spot + ahead * 9f + side * 1.8f, 400f );
-		Crab( spot + ahead * 9f - side * 1.8f, 400f );
+		Check( grab.MagazineSize == 6, $"Deep Quiver 3 gave {grab.MagazineSize} throw charges, not 6" );
+		var bomb = Crab( spot + ahead * 6f, 400f );
+		var target = Crab( spot + ahead * 12f, 2000f );
+		var nextTo = Crab( spot + ahead * 12f + side * 1.6f, 2000f );
 		await Wait( 0.8f );
-		var starts = crabs.Select( c => c.GlobalPosition ).ToList();
 		Stand();
+		AimAt( bomb.GlobalPosition + Vector3.Up * 0.35f );
 		await Wait( 0.1f );
-		AimAt( first.GlobalPosition + Vector3.Up * 0.35f );
-		harpoon.InfiniteAmmo = true;
-		harpoon.TestFire();
+		grab.InfiniteAmmo = true;
+		grab.ForceGrab = true;
+		await Wait( 0.5f );
+		AimAt( target.GlobalPosition + Vector3.Up * 0.4f );
+		await Wait( 0.3f );
+		var nextBefore = nextTo.Health.Current;
+		grab.TestThrow();
+		await Wait( 0.1f );
+		grab.ForceGrab = false;
+		for ( var i = 0; i < 60 && HookFx.DepthCharges == 0; i++ ) await Wait( 0.05f );
 		await Wait( 0.2f );
-		await UntilHome( harpoon );
-		var pulled = crabs.Select( ( c, i ) => IsInstanceValid( c ) ? (c.GlobalPosition - starts[i]).Flat().Length() : 0f ).Count( m => m > 3f );
-		GD.Print( $"[autotest] hookbot: Trawler netted {HookFx.Netted}, {pulled} of 3 crabs reeled in more than 3 m ({string.Join( ", ", crabs.Select( c => (c.GlobalPosition - player.GlobalPosition).Flat().Length().ToString( "0.0" ) ) )} m off)" );
-		Check( HookFx.Netted >= 2 && pulled >= 3, "Trawler did not net and reel in the crabs near the first" );
+		GD.Print( $"[autotest] hookbot: depth charges {HookFx.DepthCharges}; the crab beside the target lost {nextBefore - nextTo.Health.Current:0}" );
+		Check( HookFx.DepthCharges == 1 && nextTo.Health.Current < nextBefore, "Depth Charge did not burst where the thrown crab hit" );
+		grab.InfiniteAmmo = false;
 		ClearCrabs();
 
 		// ---- The lure: the decoy, its zaps, the burst, Abyssal Bloom ----

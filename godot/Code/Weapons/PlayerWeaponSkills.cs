@@ -32,7 +32,7 @@ public partial class PlayerWeapon
 		if ( baseMagazine < 0 ) { baseMagazine = MagazineSize; basePellets = Pellets; baseSpearReach = SpearReach; baseChargeTime = ChargeTime; }
 		MagazineSize = ModelName == "rifle" ? (int)MathF.Round( baseMagazine * (1f + SkillFx.DeepMagPer * Skill( SkillId.DeepMag )) )
 			: Vacuum ? baseMagazine + SkillFx.BellyPer * Skill( SkillId.BigBelly )
-			: Harpoon ? baseMagazine + Skill( SkillId.DeepQuiver )
+			: Grabber ? baseMagazine + Skill( SkillId.DeepQuiver )
 			: Lure ? baseMagazine + Skill( SkillId.DeepPockets )
 			: Plunger ? baseMagazine + 2 * Skill( SkillId.PlungerPouch )
 			: Toilet ? baseMagazine + Skill( SkillId.DoubleFlush )

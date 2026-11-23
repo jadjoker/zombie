@@ -31,8 +31,12 @@ public abstract partial class Creature : Node3D, ICreature
 	public virtual void Pull( Vector3 delta ) { if ( !Puppet ) GlobalPosition += delta; }   // a puppet goes where the host's copy goes
 	/// <summary> Caught in a Bubble Cannon bubble (BubbleTrap): it stops thinking while the bubble carries it. </summary>
 	public bool Bubbled;
-	/// <summary> Its brain is off: the dev menu froze enemies, it is in a bubble, or it is an online copy of the host's (Puppet). </summary>
-	protected bool Frozen => Puppet || DevFlags.FreezeEnemies || Bubbled || Clock.Now < StunnedUntil || (DaveyJones.InLocker && this is not DaveyJones);
+	/// <summary> On Hook-Bot's Grab Reel (held or flung): its brain is off and it is moved freely, like a bubbled one. </summary>
+	public bool Grabbed;
+	/// <summary> Carried by something (a bubble or the Grab Reel): moved directly, not snapped back to the navmesh. </summary>
+	public bool Carried => Bubbled || Grabbed;
+	/// <summary> Its brain is off: the dev menu froze enemies, it is in a bubble or grabbed, or it is an online copy of the host's (Puppet). </summary>
+	protected bool Frozen => Puppet || DevFlags.FreezeEnemies || Bubbled || Grabbed || Clock.Now < StunnedUntil || (DaveyJones.InLocker && this is not DaveyJones);
 	/// <summary> Stunned until then (a harpoon yank, a burrow eruption, a lure's jaw): its brain is off for a moment. Bosses ignore it. </summary>
 	public double StunnedUntil;
 	/// <summary> Stuns it for a while (never shortens one; bosses, too heavy to pull, shrug it off). </summary>

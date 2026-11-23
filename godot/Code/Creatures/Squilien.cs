@@ -472,6 +472,35 @@ public partial class Squilien : Creature
 		PulseCount++;
 		InkBall.Spawn( origin, launch, InkGravity, InkColor, InkDamage, this );
 		gore.GooBurst( origin, launch.SafeNormal(), InkColor, 4, 120f, 0.8f );
+		throws++; lastThrowFrom = origin; lastThrow = launch;
+	}
+
+	// ---- Online: a joiner's copy throws the host's ink (only for show: the host's ball does the hurting) ----
+
+	int throws, seenThrows = -1;
+	Vector3 lastThrowFrom, lastThrow;
+
+	public override void NetWrite( List<float> s )
+	{
+		s.Add( throws );
+		s.Add( lastThrowFrom.X ); s.Add( lastThrowFrom.Y ); s.Add( lastThrowFrom.Z );
+		s.Add( lastThrow.X ); s.Add( lastThrow.Y ); s.Add( lastThrow.Z );
+	}
+
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 7 ) return;
+		var count = (int)s[0];
+		if ( seenThrows >= 0 && count > seenThrows )
+		{
+			var from = new Vector3( s[1], s[2], s[3] );
+			var launch = new Vector3( s[4], s[5], s[6] );
+			stroke = Vector3.Zero;
+			PulseCount++;
+			InkBall.Spawn( from, launch, InkGravity, InkColor, 0f, this );
+			gore?.GooBurst( from, launch.SafeNormal(), InkColor, 4, 120f, 0.8f );
+		}
+		seenThrows = count;
 	}
 
 	// ---- Getting shot ----
@@ -653,7 +682,7 @@ public partial class InkBall : MeshInstance3D
 			var survivor = player.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
 			if ( survivor is { IsAlive: true } )
 			{
-				survivor.Health.OnDamage( new DamageInfo { Damage = damage, Attacker = attacker, Position = tr.HitPosition, Origin = tr.HitPosition - velocity.SafeNormal() * 50f * U.In } );
+				if ( damage > 0f ) survivor.Health.OnDamage( new DamageInfo { Damage = damage, Attacker = attacker, Position = tr.HitPosition, Origin = tr.HitPosition - velocity.SafeNormal() * 50f * U.In } );
 				survivor.Afflictions?.Inked();
 			}
 		}

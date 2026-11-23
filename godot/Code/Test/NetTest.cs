@@ -61,6 +61,7 @@ public partial class AutoTest
 		await NetEnemies( host, other );
 		await NetStage3( host, other );
 		await NetPlaytest1( host, other );
+		await NetAttacks( host, other );
 		Finish();
 	}
 
@@ -275,6 +276,46 @@ public partial class AutoTest
 			Check( Spectate.Watching == other, "a dead joiner never watched the host" );
 			me.Respawn( player.GlobalPosition, fullReset: false );
 			await Wait( 1f );
+		}
+	}
+
+	/// <summary>
+	/// The host's enemies' attacks show on the joiner: the angler's hook flies out on its line, MC-51's beam fires.
+	/// </summary>
+	async Task NetAttacks( bool host, PlayerController other )
+	{
+		if ( host )
+		{
+			DevFlags.FreezeEnemies = false;
+			var scene = GetTree().CurrentScene;
+			var at = other.GlobalPosition;
+			player.GlobalPosition = at + new Vector3( 30f, 0f, 30f );
+			var angler = Angler.Spawn( scene, at + new Vector3( 5f, 1.5f, 0f ), 370f );
+			await Wait( 1f );
+			angler.ForceHook();
+			await Wait( 5f );
+			if ( IsInstanceValid( angler ) ) angler.QueueFree();
+			var boss = MC61.Spawn( scene, player.GlobalPosition + new Vector3( 0f, 3f, -12f ), 20000f );
+			await Wait( 2f );
+			boss.ForceState( MC61.Mode.Charge );
+			await Wait( 6f );
+			if ( IsInstanceValid( boss ) ) boss.QueueFree();
+			DevFlags.FreezeEnemies = true;
+			await Wait( 1f );
+		}
+		else
+		{
+			player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
+			bool hook = false, beam = false;
+			for ( var t = 0f; t < 30f && !(hook && beam); t += 0.05f )
+			{
+				await Wait( 0.05f );
+				hook |= Angler.All.Any( a => a.Puppet && a.HookShown );
+				beam |= MC61.All.Any( m => m.Puppet && m.BeamShown );
+			}
+			GD.Print( $"[autotest] net: the host's angler hook showed here {hook}; MC-51's beam showed here {beam}" );
+			Check( hook, "the host's angler hook never showed on the joiner" );
+			Check( beam, "the host's MC-51 beam never showed on the joiner" );
 		}
 	}
 

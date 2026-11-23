@@ -313,6 +313,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   D-pad down): the Griddy, Wave hi, Wanker, rig poses in the move-pose style with a camera in front; moving or firing
   ends one; online the others see it (`Net.EmoteNow`). Test: `--emotes` (shots need a window).
   Coral walls hold enemies back by pushing them out of their footprint (`CoralWall.HoldBack`; enemies don't move by physics).
+  Enemy attacks online: a creature's `NetWrite`/`NetRead` add its attack state (move, timer, aim, a shot counter) to each
+  snapshot so a joiner's puppet draws it; puppet projectiles (mermaid arrows, Squilien ink) are harmless copies. Done for
+  the angler, MC-51, crab, spider, Bloober, Rocky Shark, Squilien and mermaid.
   Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:

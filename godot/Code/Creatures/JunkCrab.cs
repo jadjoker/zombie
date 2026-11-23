@@ -506,6 +506,15 @@ public partial class JunkCrab : PartCreature
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
 	protected override void PuppetMoved( Vector3 velocity ) => agent?.SetPuppetVelocity( velocity );
 
+	// Online: a joiner's copy snaps its claws when the host's does.
+	public override void NetWrite( List<float> s ) { s.Add( Snapping ? 1f : 0f ); s.Add( (float)timeSinceSnap ); }
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 2 ) return;
+		Snapping = s[0] > 0.5f;
+		NetTimer( ref timeSinceSnap, s[1], s[1] < (float)timeSinceSnap - 0.05f );
+	}
+
 	public override void Pull( Vector3 delta )
 	{
 		if ( Puppet ) return;   // online: the host's copy is the one dragged

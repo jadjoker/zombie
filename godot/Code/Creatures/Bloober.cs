@@ -144,6 +144,18 @@ public partial class Bloober : Creature
 	readonly List<Segment> segments = new();
 	Mode mode;
 	TimeSince modeTime;
+
+	// Online: a joiner's copy lunges and bites when the host's does.
+	public override void NetWrite( List<float> s ) { s.Add( (int)mode ); s.Add( (float)modeTime ); s.Add( Biting ? 1f : 0f ); }
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 3 ) return;
+		var next = (Mode)(int)s[0];
+		var changed = next != mode;
+		mode = next;
+		NetTimer( ref modeTime, s[1], changed );
+		Biting = s[2] > 0.5f;
+	}
 	TimeSince timeSinceBite = 999f;
 	TimeSince timeSincePuff = 999f;
 	TimeUntil nextPuff;

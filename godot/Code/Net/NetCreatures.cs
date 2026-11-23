@@ -20,7 +20,8 @@ public static class NetCreatures
 	public const float SnapshotRate = 15f;
 	/// <summary> Tests: hits the host sent that another player's robot landed. </summary>
 	public static int RemoteShots;
-	const int SnapshotStride = 9;   // id, x, y, z, qx, qy, qz, qw, health
+	const int SnapshotHead = 10;   // id, x, y, z, qx, qy, qz, qw, health, then how many attack state floats follow
+	static readonly List<float> extra = new();
 
 	public static Creature Find( int id ) => byId.TryGetValue( id, out var c ) && GodotObject.IsInstanceValid( c ) ? c : null;
 
@@ -210,7 +211,7 @@ public static class NetCreatures
 	/// <summary> Host: where every numbered creature is, its facing and health. </summary>
 	public static float[] Snapshot()
 	{
-		var list = new List<float>( byId.Count * SnapshotStride );
+		var list = new List<float>( byId.Count * SnapshotHead );
 		foreach ( var (id, c) in byId )
 		{
 			if ( !GodotObject.IsInstanceValid( c ) || !c.IsInsideTree() ) continue;
@@ -219,6 +220,10 @@ public static class NetCreatures
 			list.Add( id ); list.Add( p.X ); list.Add( p.Y ); list.Add( p.Z );
 			list.Add( q.X ); list.Add( q.Y ); list.Add( q.Z ); list.Add( q.W );
 			list.Add( c.Health is { } h ? (h.IsDead ? 0f : MathF.Max( 0.01f, h.Current )) : -1f );
+			extra.Clear();
+			if ( !c.IsDead ) c.NetWrite( extra );
+			list.Add( extra.Count );
+			list.AddRange( extra );
 		}
 		return list.ToArray();
 	}
@@ -227,11 +232,18 @@ public static class NetCreatures
 	public static void ApplySnapshot( float[] data )
 	{
 		if ( data is null ) return;
-		for ( var i = 0; i + SnapshotStride <= data.Length; i += SnapshotStride )
+		for ( var i = 0; i + SnapshotHead <= data.Length; )
 		{
-			if ( Find( (int)data[i] ) is not { } c || !c.Puppet ) continue;
-			c.SetPuppetTarget( new Vector3( data[i + 1], data[i + 2], data[i + 3] ), new Quaternion( data[i + 4], data[i + 5], data[i + 6], data[i + 7] ).Normalized() );
-			c.SetNetHealth( data[i + 8] );
+			var count = (int)data[i + 9];
+			var next = i + SnapshotHead + count;
+			if ( next > data.Length ) return;
+			if ( Find( (int)data[i] ) is { } c && c.Puppet )
+			{
+				c.SetPuppetTarget( new Vector3( data[i + 1], data[i + 2], data[i + 3] ), new Quaternion( data[i + 4], data[i + 5], data[i + 6], data[i + 7] ).Normalized() );
+				c.SetNetHealth( data[i + 8] );
+				if ( count > 0 && !c.IsDead ) c.NetRead( new ReadOnlySpan<float>( data, i + SnapshotHead, count ) );
+			}
+			i = next;
 		}
 	}
 

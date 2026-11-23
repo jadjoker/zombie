@@ -18,6 +18,10 @@ public partial class Jetpack
 	Node3D slingPlunger;
 	MeshInstance3D slingCord;
 	public bool Slinging => slinging;
+	/// <summary> For the third person rig: when the last pulse went off and the last belly flop landed, and whether Pole Reversal is pulling. </summary>
+	public double PulsedAt { get; private set; } = -99;
+	public double FloppedAt { get; private set; } = -99;
+	public bool Reversing => reversalAt > 0;
 	// Roll
 	public bool Rolling { get; private set; }
 	float rollLeft;
@@ -58,6 +62,7 @@ public partial class Jetpack
 		var at = controller.GlobalPosition + Vector3.Up * 0.8f;
 		var over = 1f + MagnetFx.OverchargePer * Skill( SkillId.Overcharge );
 		var radius = PulseRadius;
+		PulsedAt = Clock.Now;
 		var rev = Skill( SkillId.PoleReversal );
 		var damage = MagnetFx.PulseDamage * over + (reversed ? MagnetFx.ReversalDamage( rev ) : 0f);
 		if ( reversed ) MagnetFx.Reversals++;
@@ -136,6 +141,7 @@ public partial class Jetpack
 	void SlingLanded()
 	{
 		slinging = false;
+		FloppedAt = Clock.Now;
 		if ( slingCord is not null ) slingCord.Visible = false;
 		if ( slingPlunger is not null && IsInstanceValid( slingPlunger ) ) Fx.Expire( slingPlunger, 0.5f );
 		slingPlunger = null;

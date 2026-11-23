@@ -666,6 +666,7 @@ public partial class PlayerRig : Node
 			var pelvis = pelvisRest.Lerp( pelvisDive, ease );
 			pos = pelvis - rot * (Vector3.Up * hips);
 		}
+		MoveFrame( dt, yawRot, feet, hips, ref rot, ref pos );
 		rigRoot.GlobalTransform = new Transform3D( rot, pos );
 	}
 
@@ -711,6 +712,7 @@ public partial class PlayerRig : Node
 		var swinging = melee is not null && melee.IsSwinging;
 		(Vector3 Grip, Basis Rot, float Twist, float Weight) axePose = swinging ? SwingPose() : default;
 		if ( swinging ) spineRot = SAxis( SUp, axePose.Twist * axePose.Weight ) * spineRot;
+		spineRot = MoveSpine( spineRot );
 		Put( "spine", spinePos, spineRot );
 
 		if ( swinging )
@@ -723,11 +725,11 @@ public partial class PlayerRig : Node
 		else if ( worldAxe is not null ) worldAxe.Visible = false;
 
 		var headPos = spinePos + spineRot * (restPos["head"] - restPos["spine"]);
-		Put( "head", headPos, SAng( aimPitch * 0.9f, aimYawChar * 0.5f, 0f ) );
+		Put( "head", headPos, MoveHead( SAng( aimPitch * 0.9f, aimYawChar * 0.5f, 0f ) ) );
 
 		// The gun in hand: held at the chest and pointing along the aim; the hands go where the gun's hands are.
 		var held = Held;
-		var gunShown = held is not null && !(worldAxe?.Visible ?? false);
+		var gunShown = held is not null && !(worldAxe?.Visible ?? false) && !MoveHidesGun;
 		Vector3? gripR = null, gripL = null;
 		foreach ( var weapon in controller.GetChildren().OfType<PlayerWeapon>() )
 		{
@@ -767,6 +769,7 @@ public partial class PlayerRig : Node
 				gripR = Char( BoneWorld( gun.Skeleton, "hand_R" ) );
 				gripL = Char( BoneWorld( gun.Skeleton, "hand_L" ) );
 			}
+			if ( weapon.Flippers || weapon.Pinball ) PinballParts( weapon, gun.Root );
 			var anim = weapon.IsReloading ? "reload" : "idle";
 			if ( gun.Player.HasAnimation( anim ) && gun.Player.CurrentAnimation != anim ) gun.Player.Play( anim );
 		}
@@ -791,6 +794,7 @@ public partial class PlayerRig : Node
 				wristTarget = wristTarget.Lerp( onAxe, w );
 				armPole = armPole.Normalized().Lerp( new Vector3( -0.2f, side, -0.9f ).Normalized(), w );
 			}
+			MoveArm( s, side, shoulder, upperLen + lowerLen, ref wristTarget, ref armPole );
 			var elbow = Bend( shoulder, wristTarget, upperLen, lowerLen, armPole, out var wrist );
 			var upperRot = FromTo( RestDir( $"upper_{s}", $"lower_{s}" ), elbow - shoulder );
 			var lowerRot = FromTo( RestDir( $"lower_{s}", $"hand_{s}" ), wrist - elbow );
@@ -847,6 +851,7 @@ public partial class PlayerRig : Node
 				ankleTarget = ankleTarget.Lerp( straight, jetBlend );
 				kneePole = kneePole.Lerp( new Vector3( 30f, 0f, 0f ), jetBlend );
 			}
+			MoveLeg( s, side, hip, thighLen + shinLen, ref ankleTarget, ref kneePole );
 			var knee = Bend( hip, ankleTarget, thighLen, shinLen, kneePole, out var ankle );
 			Put( $"thigh_{s}", hip, FromTo( RestDir( $"thigh_{s}", $"shin_{s}" ), knee - hip ) );
 			Put( $"shin_{s}", knee, FromTo( RestDir( $"shin_{s}", $"foot_{s}" ), ankle - knee ) );

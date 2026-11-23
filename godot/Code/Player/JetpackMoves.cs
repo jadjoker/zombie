@@ -24,6 +24,8 @@ public partial class Jetpack
 	/// <summary> How long the player has stood still (Calcify). </summary>
 	public float StillFor => stillFor;
 	public bool Zipping => zip && Surging;
+	/// <summary> For the third person rig: when the last eruption came. </summary>
+	public double EruptedAt => eruptedAt;
 
 	static StandardMaterial3D grappleRope;
 

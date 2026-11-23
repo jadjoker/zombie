@@ -112,11 +112,15 @@ public partial class PlayerWeapon
 		if ( free && Input.IsActionJustPressed( "attack1" ) && sinceLeftFlip >= cooldown ) Flip( true );
 		if ( free && Input.IsActionJustPressed( "attack2" ) && sinceRightFlip >= cooldown ) Flip( false );
 		if ( ViewModel is null ) return;
-		// The paddles snap up and fall back.
-		static float Swing( float t ) => t < 0.06f ? t / 0.06f : MathF.Max( 0f, 1f - (t - 0.06f) / 0.22f );
 		if ( Part( "Left Flipper" ) is { } l ) l.Rotation = new Vector3( 0f, 0f, MathX.Rad( 55f * Swing( sinceLeftFlip ) ) );
 		if ( Part( "Right Flipper" ) is { } r ) r.Rotation = new Vector3( 0f, 0f, -MathX.Rad( 55f * Swing( sinceRightFlip ) ) );
 	}
+
+	/// <summary> The paddles snap up and fall back. </summary>
+	static float Swing( float t ) => t < 0.06f ? t / 0.06f : MathF.Max( 0f, 1f - (t - 0.06f) / 0.22f );
+	/// <summary> For the third person gun: how far each flipper is up (0 to 1) and how far the spring is pulled. </summary>
+	public float FlipSwing( bool left ) => Swing( left ? sinceLeftFlip : sinceRightFlip );
+	public float SpringPull => spring;
 
 	/// <summary> Flips one flipper (left or right), as a click does; also the testing hook. </summary>
 	public void Flip( bool left )

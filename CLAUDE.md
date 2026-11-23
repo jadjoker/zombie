@@ -279,6 +279,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
   Sounds `magnet_hum`, `magnet_clang`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.
   Tests: `--magnetbot`, `--plungerbot`, `--pinballbot`.
+- Third person poses for the mouse 4 moves (`Player/PlayerRigMoves.cs`, hooked into `PlayerRig.PlaceFrame` and `Pose`):
+  the burrow lies face down in the sand digging, the eruption spins out with the arms up, the grapple reaches along
+  the line, the pulse flings the arms wide (Pole Reversal hauls in first), the sling flies superman and lands in a
+  starfish belly flop, the roll tucks into a ball that rolls along the ground. The Pinball-Bot's third person guns
+  flip and squash like the ones in view (`PinballParts`). Test: `--moveposes` (shots need a window; it slows time).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

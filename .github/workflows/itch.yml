@@ -72,7 +72,7 @@ jobs:
         run: |
           chmod +x build/linux/RiskOfCopyright.x86_64
           failed=0
-          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51" "--terrain" "--shark" "--stations" "--pad" "--padmenus" "--slam" "--bite" "--sea" "--bulbs" "--clarity" "--gibs" "--classes" "--tridentbot" "--davey" "--jelly" "--angler" "--skills" "--hookbot" "--coralbot" "--magnetbot" "--plungerbot" "--pinballbot"; do
+          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51" "--terrain" "--shark" "--stations" "--pad" "--padmenus" "--slam" "--bite" "--sea" "--bulbs" "--clarity" "--gibs" "--classes" "--tridentbot" "--davey" "--jelly" "--angler" "--skills" "--hookbot" "--coralbot" "--magnetbot" "--plungerbot" "--pinballbot" "--moveposes"; do
             name=$(echo "$flags" | tr -d '-' | tr ' ' '_')
             log="$PWD/build/test_$name.log"
             timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > "$log.out" 2>&1 || true

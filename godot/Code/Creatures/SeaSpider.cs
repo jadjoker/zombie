@@ -1017,7 +1017,7 @@ public partial class SeaSpider : PartCreature
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
 	public override void Pull( Vector3 delta )
 	{
-		if ( Bubbled ) GlobalPosition += delta;
+		if ( Carried ) GlobalPosition += delta;
 		else agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
 	}
 

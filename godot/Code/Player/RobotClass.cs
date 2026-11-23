@@ -52,9 +52,9 @@ public sealed class RobotClass
 	public static readonly RobotClass HookBot = new()
 	{
 		Id = "hookbot", Name = "Hook-Bot", Tagline = "Reel 'em in.",
-		Weapons = "Harpoon Reel, Lantern Lure", Movement = "Grapple zip: tap mouse 4 to cast a line and zip to where it bites (an enemy gets a boot)",
+		Weapons = "Grab Reel, Lantern Lure", Movement = "Grapple zip: tap mouse 4 to cast a line and zip to where it bites (an enemy gets a boot)",
 		Tint = new Color( 1f, 0.58f, 0.2f ), BaseHealth = 150f, Paint = "Hook", Grapple = true,
-		Kit = () => new[] { PlayerWeapon.HarpoonReel( 1 ), PlayerWeapon.LanternLure( 2 ) },
+		Kit = () => new[] { PlayerWeapon.GrabReel( 1 ), PlayerWeapon.LanternLure( 2 ) },
 	};
 
 	public static readonly RobotClass CoralBot = new()

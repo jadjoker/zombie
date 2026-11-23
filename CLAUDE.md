@@ -248,8 +248,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Weak spots for Headhunter are `Creature.WeakSpot`. Icons: `python Tools/godot/make_skill_icons.py`. Dev menu: Player,
   Skill trees. Test: `--skills` (with `--shots` in a window: the tree page and the black hole).
 - Hook-Bot and Coral-Bot (robots 4 and 5, each with three skill trees like the others). Hook-Bot (150 health, `Paint`
-  "Hook"; `Weapons/HookBot.cs`, numbers in `HookFx`): the Harpoon Reel fires a `HarpoonLine` (one out at a time) that
-  reels a `Pullable` enemy in and yanks it (a hit and a short `Creature.Stun`; heavy ones only take the hit); the
+  "Hook"; `Weapons/HookBot.cs`, numbers in `HookFx`): the Grab Reel (user's design after a physics gun; model
+  `HookModels.GrabGun`) holds left click to lift a `Pullable` enemy on a green beam (`GrabbedBody`, `Creature.Grabbed`:
+  brain off, moved freely like `Bubbled`, `Creature.Carried`); swinging the view slams it into the world and bowls
+  other enemies over, damage by how fast it really moved (`ImpactDamage`, `ImpactRef`, capped at `ImpactMax`, so
+  pressing it into the floor does nothing); letting go flings it, right click throws it (a throw charge from the
+  magazine, back every `ChargeRegen` s); it flies, tumbles, bounces off walls and lands stunned. Heavy enemies can't be
+  lifted: the beam locks on for `BeamDps`. Catch of the Day: Heavy Hands, Long Arm, Strong Arm, Crusher, Bowling, Deep
+  Quiver (throw charges), Depth Charge (a thrown enemy bursts where it hits); the
   Lantern Lure lobs a `LanternLure` that is the player's decoy while it glows (`PlayerSurvivor.Decoy` is a `DecoyBase`,
   shared with Phase Shift), zaps what is near and bursts (Abyssal Bloom: `AbyssJaw`); mouse 4 is the grapple zip
   (`RobotClass.Grapple`, `Player/JetpackMoves.cs`, the blink's surge along a cast line). Coral-Bot (200 health, `Paint`

@@ -221,6 +221,7 @@ public partial class PlayerWeapon : Node
 		if ( ViewModel is not null && IsInstanceValid( ViewModel ) ) ViewModel.QueueFree();
 		ViewModel = null;
 		if ( Bubbles ) BubbleTrap.PopAll( controller );
+		if ( Grabber ) DropGrab();
 	}
 
 	void OnEnabled()
@@ -236,6 +237,7 @@ public partial class PlayerWeapon : Node
 		CancelReload();
 		Sucking = false;
 		ReleaseCaught();
+		DropGrab();
 		Blowing = false;
 		charging = false;
 		suckSound?.Stop();
@@ -297,6 +299,13 @@ public partial class PlayerWeapon : Node
 			// The Gore Vac: no aiming or reloading; fire sucks and aim spits (GoreVac.cs).
 			var free = !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree);
 			UpdateVacuum( dt, free );
+			return;
+		}
+
+		if ( Grabber )
+		{
+			// The Grab Reel: hold to carry, right click throws (HookBot.cs); no aiming, no reloading.
+			UpdateGrab( dt, !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree) );
 			return;
 		}
 
@@ -387,7 +396,7 @@ public partial class PlayerWeapon : Node
 		}
 
 		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
-		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate && !(Harpoon && LineOut) )
+		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate  )
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
@@ -439,9 +448,9 @@ public partial class PlayerWeapon : Node
 	void ShowLoaded()
 	{
 		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
-		if ( !(Projectile || Harpoon || Lure) || ViewModel is null ) return;
+		if ( !(Projectile || Grabber || Lure) || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
-		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f && !LineOut;
+		if ( loaded is not null ) loaded.Visible = Grabber ? Held is null && BeamTarget is null : Ammo > 0 && TimeSinceShot > 0.35f;
 	}
 
 	void UpdateAiming( float dt )
@@ -511,7 +520,6 @@ public partial class PlayerWeapon : Node
 		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
 		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
-		else if ( Harpoon ) FireHarpoon( start, forward, spread, trailStart );
 		else if ( Lure ) ThrowLure( start, forward );
 		else if ( Seeds ) PlantSeed( start, forward, false );
 		else if ( Projectile )
@@ -538,7 +546,7 @@ public partial class PlayerWeapon : Node
 			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
-		if ( !Bubbles && !Projectile && !Harpoon && !Lure && !Seeds ) EndShotSkills( start, forward, trailStart );
+		if ( !Bubbles && !Projectile && !Grabber && !Lure && !Seeds ) EndShotSkills( start, forward, trailStart );
 		juice?.Shake( ShakePerShot );
 		juice?.KickFov( FovKickPerShot );
 

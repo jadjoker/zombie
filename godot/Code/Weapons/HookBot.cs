@@ -3,12 +3,19 @@ using Godot;
 /// <summary> The Hook-Bot's numbers (what one skill point does, and the base kit). </summary>
 public static class HookFx
 {
-	// The Harpoon Reel: one harpoon out at a time; a light enemy it bites is reeled in and yanked.
-	public const float HarpoonSpeed = 55f, HarpoonDrop = 4f, MaxRange = 26f, ReelSpeed = 13f, HoldDistance = 2.2f, ReelTimeout = 2.6f;
-	public const float YankDamage = 45f, YankStun = 0.5f;
-	public const float BarbedPer = 0.1f, QuickReelPer = 0.12f, TowPer = 15f, GutPer = 5f, GutTime = 4f, NetRadius = 3.5f;
-	public static float SnagBelow( int n ) => 0.3f + 0.1f * n;
-	public static int TrawlerCatches( int n ) => 1 + n;
+	// The Grab Reel: hold to grab and carry a light enemy, swing it into things, let go to fling it, right click to throw.
+	public const float GrabRange = 18f, AimWidth = 0.9f, HoldDistance = 4.2f, HoldMin = 2.6f, HoldMax = 6f;
+	public const float Follow = 16f, CarryCap = 28f;          // how hard the held enemy chases the hold point (1/s), its top speed (m/s)
+	public const float ImpactSpeed = 6f, ImpactRef = 14f;     // m/s it was really moving: below this nothing is hurt; at ImpactRef a blow does the gun's damage
+	public const float ImpactMax = 2f, ImpactEvery = 0.3f;    // the most a blow can be worth (x damage); a held enemy's slams this far apart
+	public const float ThrowSpeed = 24f, FlingCap = 22f, Gravity = 7f, Drag = 0.35f, FlightMax = 4f;
+	public const float BowlRadius = 1.1f, BowlShare = 0.6f, BowlSelf = 0.5f, LandStun = 0.6f;
+	public const float BeamDps = 0.9f, BeamTick = 0.25f;     // heavy enemies: x damage a second while the beam is on them
+	public const float ChargeRegen = 1.6f;                   // seconds per throw charge back
+	// Catch of the Day.
+	public const float HeavyHandsPer = 0.12f, LongArmPer = 2f, StrongArmPer = 0.12f, CrusherPer = 6f, BowlingPer = 0.2f;
+	public static float DepthDamage( int n ) => 80f + 50f * n;
+	public const float DepthRadius = 3.5f;
 	// The Lantern Lure: enemies go for it while it glows (it is the player's decoy), it zaps what is near, then bursts.
 	public const float LureLife = 4f, ZapRadius = 2.6f, ZapDamage = 10f, ZapEvery = 0.5f, BurstRadius = 4f;
 	public const float BrighterPer = 0.12f, LongGlowPer = 0.3f, ShockPer = 4f, ChumPer = 0.2f, BaitHealPer = 4f, BloomRadius = 4.5f;
@@ -20,26 +27,36 @@ public static class HookFx
 	public static float LeviathanDamage( int n ) => 100f + 60f * n;
 
 	/// <summary> Tests: how often each thing happened. </summary>
-	public static int Harpoons, Hooked, Yanks, Snags, Tows, Netted, Lures, Zaps, Bursts, Blooms, Zips, Kicks, Slams, SeaDogHeals;
-	public static float LastReelStart = -1f, LastReelEnd = -1f;
+	public static int Grabs, GrabSlams, Bowled, Flings, Throws, Landings, Beams, DepthCharges, Lures, Zaps, Bursts, Blooms, Zips, Kicks, Slams, SeaDogHeals;
+	public static float BeamDamage;
 }
 
 /// <summary>
-/// The Hook-Bot's guns. The Harpoon Reel (slot 1) fires a barbed harpoon on a line: a light enemy it bites is reeled
-/// in to `HoldDistance` and yanked (a hit and a short stun), ready for the axe; a heavy one just takes the hit. Only one
-/// harpoon is out at a time. The Lantern Lure (slot 2) lobs a glowing angler lantern: once it lands every enemy goes
-/// for it instead of the player (it is `PlayerSurvivor.Decoy`), it zaps what comes near, and it bursts when its glow
-/// runs out or on right click.
+/// The Hook-Bot's guns. The Grab Reel (slot 1, user's design after a physics gun): hold left click on a light enemy
+/// (`Creature.Pullable`) to lift and carry it on a beam; swing the view and it slams into the ground, walls and other
+/// enemies (damage by speed); let go and it flies on with the swing; right click while holding throws it hard (a
+/// throw charge each, they come back over time). A heavy enemy can't be lifted: the beam locks on and hurts it while
+/// held. The Lantern Lure (slot 2) lobs a glowing angler lantern: once it lands every enemy goes for it instead of the
+/// player (it is `PlayerSurvivor.Decoy`), it zaps what comes near, and it bursts when its glow runs out or on right click.
 /// </summary>
 public partial class PlayerWeapon
 {
-	public bool Harpoon, Lure;
-	HarpoonLine line;
+	public bool Grabber, Lure;
 	LanternLure lure;
-	/// <summary> A harpoon is out (flying, hooked or coming back): no next shot until it is home. </summary>
-	public bool LineOut => line is not null && IsInstanceValid( line );
-	public HarpoonLine Line => LineOut ? line : null;
+	GrabbedBody held;
+	Creature beamOn;
+	MeshInstance3D beam;
+	float beamTick, chargeBack;
+	bool grabbing;
+	/// <summary> The enemy on the Grab Reel's beam (lifted), or null. </summary>
+	public GrabbedBody Held => held is not null && IsInstanceValid( held ) && held.IsHeld ? held : null;
+	/// <summary> The heavy enemy the beam is locked on (not lifted), or null. </summary>
+	public Creature BeamTarget => beamOn is not null && IsInstanceValid( beamOn ) && !beamOn.IsDead ? beamOn : null;
 	public LanternLure ActiveLure => lure is not null && IsInstanceValid( lure ) ? lure : null;
+	/// <summary> Tests: hold the trigger down (as if left click were held) and press right click (a throw). </summary>
+	public bool ForceGrab;
+	bool forceThrow;
+	public void TestThrow() => forceThrow = true;
 	/// <summary>
 	/// What the damage upgrades multiply a skill effect by (zaps, jaws, shatters, turrets): half what they do for the
 	/// shot itself, so the big area effects don't wipe whole late waves once the gun is fully upgraded.
@@ -47,14 +64,16 @@ public partial class PlayerWeapon
 	public float UpgradeScale => 1f + 0.5f * DamagePerLevel * DamageLevel;
 	/// <summary> The shot's own upgrade multiplier. </summary>
 	public float ShotScale => 1f + DamagePerLevel * DamageLevel;
+	/// <summary> A blow from the Grab Reel (a slam, a bowl, a landing) at `speed` m/s: the gun's damage at ImpactRef, more with Heavy Hands. </summary>
+	public float ImpactDamage( float speed ) => CurrentDamage * MathX.Clamp( speed / HookFx.ImpactRef, 0f, HookFx.ImpactMax ) * (1f + HookFx.HeavyHandsPer * Skill( SkillId.HeavyHands ));
+	public float GrabReach => HookFx.GrabRange + HookFx.LongArmPer * Skill( SkillId.LongArm );
 
-	public static PlayerWeapon HarpoonReel( int slot = 1 ) => new()
+	public static PlayerWeapon GrabReel( int slot = 1 ) => new()
 	{
-		Name = "HarpoonReel", DisplayName = "Harpoon Reel", Slot = slot, ModelName = "harpoon", Harpoon = true,
-		Damage = 110f, FireRate = 1.5f, Range = HookFx.MaxRange, SpreadDegrees = 0.3f, Recoil = 2.2f,
-		MagazineSize = 4, StartingReserve = 40, ReloadTime = 2f, Automatic = false,
-		MuzzleFlashScale = 0f, ShakePerShot = 0.3f, FovKickPerShot = 2f, ShootSound = "harpoon",
-		AimFovScale = 0.75f, AimSpreadScale = 0.3f,
+		Name = "GrabReel", DisplayName = "Grab Reel", Slot = slot, ModelName = "grabber", Grabber = true,
+		Damage = 60f /* a blow at ImpactRef */, FireRate = 4f, Range = HookFx.GrabRange, SpreadDegrees = 0f, Recoil = 0f,
+		MagazineSize = 3 /* throw charges */, StartingReserve = 0, ReloadTime = 1f, Automatic = false,
+		MuzzleFlashScale = 0f, ShakePerShot = 0.3f, FovKickPerShot = 2f, ShootSound = "ink_throw",
 	};
 
 	public static PlayerWeapon LanternLure( int slot = 2 ) => new()
@@ -74,16 +93,133 @@ public partial class PlayerWeapon
 		return (controller.Camera?.GlobalPosition ?? controller.EyeTransform.Origin) - basis.Z * 0.5f - basis.Y * 0.2f + basis.X * 0.15f;
 	}
 
-	void FireHarpoon( Vector3 start, Vector3 forward, float spread, Vector3 trailStart )
+	static StandardMaterial3D beamMaterial;
+	static StandardMaterial3D BeamMaterial => beamMaterial ??= new StandardMaterial3D
 	{
-		var direction = (forward + Rng.InSphere( 1f ) * spread).Normalized();
+		AlbedoColor = new Color( 0.45f, 1f, 0.55f, 0.75f ), EmissionEnabled = true, Emission = new Color( 0.35f, 1f, 0.5f ), EmissionEnergyMultiplier = 2.5f,
+		ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
+	};
+
+	/// <summary> The Grab Reel each frame: grab on a press, carry while held, fling on letting go, throw on right click. </summary>
+	void UpdateGrab( float dt, bool free )
+	{
+		// Throw charges come back one at a time.
+		if ( Ammo < MagazineSize ) { chargeBack += dt; if ( chargeBack >= HookFx.ChargeRegen ) { chargeBack = 0f; Ammo++; } }
+		else chargeBack = 0f;
+
+		var down = free && (Input.IsActionPressed( "attack1" ) || ForceGrab);
+		var throwNow = free && (Input.IsActionJustPressed( "attack2" ) || forceThrow);
+		forceThrow = false;
+		var eye = controller.Camera?.GlobalPosition ?? controller.EyeTransform.Origin;
+		var forward = -(controller.Camera?.GlobalBasis ?? controller.EyeTransform.Basis).Z;
+
+		if ( down && !grabbing ) { grabbing = true; TryGrab( eye, forward ); }
+		if ( !down && grabbing ) { grabbing = false; LetGo( false, forward ); }
+
+		if ( Held is { } h )
+		{
+			if ( throwNow )
+			{
+				if ( Ammo > 0 ) { if ( !InfiniteAmmo ) Ammo--; LetGo( true, forward ); }   // still held down: no grab until it is let go
+				else Sfx.Play2D( "dry_fire", 0.6f );
+			}
+			else h.HoldAt( eye + forward * h.Distance, dt );
+		}
+		else if ( held is not null ) { held = null; }
+
+		if ( BeamTarget is { } heavy )
+		{
+			if ( !down || heavy.GlobalPosition.DistanceTo( eye ) > GrabReach * 1.25f ) beamOn = null;
+			else
+			{
+				beamTick -= dt;
+				if ( beamTick <= 0f )
+				{
+					beamTick = HookFx.BeamTick;
+					var hurt = CurrentDamage * HookFx.BeamDps * HookFx.BeamTick * (1f + HookFx.HeavyHandsPer * Skill( SkillId.HeavyHands ));
+					HookFx.BeamDamage += hurt;
+					SkillFx.HitPart( heavy, hurt, LinePoint(), controller );
+					MarkHit();
+				}
+			}
+		}
+		else beamOn = null;
+
+		// The beam: from the muzzle to whatever it holds.
+		var end = Held is { } carried ? carried.Centre : BeamTarget is { } locked ? SkillFx.NearestPart( locked, LinePoint() ) : (Vector3?)null;
+		if ( end is { } to )
+		{
+			if ( beam is null || !IsInstanceValid( beam ) ) beam = GunKit.Line( controller.GetTree().CurrentScene, BeamMaterial, 0.035f );
+			GunKit.Lay( beam, LinePoint(), to );
+		}
+		else if ( beam is not null && IsInstanceValid( beam ) ) beam.Visible = false;
+	}
+
+	void TryGrab( Vector3 eye, Vector3 forward )
+	{
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
-		var aim = Trace.Ray( controller, start, start + direction * HookFx.MaxRange, Layers.World | Layers.Creature, exclude );
-		var target = aim.Hit ? aim.HitPosition : start + direction * HookFx.MaxRange;
-		// It flies from just in front of the eyes (the gun's muzzle moves with its animations); the rope is drawn from the muzzle.
-		var from = controller.ThirdPerson ? controller.EyeTransform.Origin + direction * 0.6f : start + direction * 0.3f;
-		var damage = CurrentDamage * (1f + HookFx.BarbedPer * Skill( SkillId.BarbedHooks ));
-		line = HarpoonLine.Fire( this, controller, from, (target - from).SafeNormal(), damage );
+		var tr = Trace.Ray( controller, eye, eye + forward * GrabReach, Layers.World | Layers.Creature, exclude );
+		var c = tr.Hit ? (Shootables.Find( tr.Node ) as CreaturePart)?.Creature as Creature : null;
+		if ( c is null && GoreBall.NearestToLine( eye, forward, GrabReach, HookFx.AimWidth ) is { } near )
+			c = NearestCreature( near );
+		if ( c is null || !c.IsEnemy || c.IsDead || c.Grabbed ) { Sfx.Play2D( "dry_fire", 0.4f, 1.4f ); return; }
+		if ( c.Pullable )
+		{
+			HookFx.Grabs++;
+			held = GrabbedBody.Grab( this, controller, c, MathX.Clamp( c.GlobalPosition.DistanceTo( eye ), HookFx.HoldMin, HookFx.HoldMax ) );
+			Sfx.Play2D( "beam_fire", 0.45f, 1.6f, Sfx.GunBus );
+			Controls.Rumble( 0.2f );
+		}
+		else
+		{
+			HookFx.Beams++;
+			beamOn = c;
+			beamTick = 0f;
+			Sfx.Play2D( "beam_fire", 0.45f, 0.8f, Sfx.GunBus );
+		}
+	}
+
+	static Creature NearestCreature( Vector3 at )
+	{
+		Creature best = null;
+		var bestD = 2.5f;
+		foreach ( var c in Creature.Everyone )
+		{
+			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead ) continue;
+			var d = SkillFx.NearestPart( c, at ).DistanceTo( at );
+			if ( d < bestD ) { bestD = d; best = c; }
+		}
+		return best;
+	}
+
+	void LetGo( bool thrown, Vector3 forward )
+	{
+		beamOn = null;
+		if ( Held is not { } h ) return;
+		held = null;
+		if ( thrown )
+		{
+			HookFx.Throws++;
+			var speed = HookFx.ThrowSpeed * (1f + HookFx.StrongArmPer * Skill( SkillId.StrongArm ));
+			h.Release( forward * speed + h.Moved * 0.3f, true );
+			Sfx.Play2D( ShootSound, 0.7f, 0.8f, Sfx.GunBus );
+			juice?.Shake( ShakePerShot );
+			juice?.KickFov( FovKickPerShot );
+		}
+		else
+		{
+			HookFx.Flings++;
+			h.Release( h.Moved.LimitLength( HookFx.FlingCap ), false );
+		}
+	}
+
+	/// <summary> Put away or dropped: whatever is held falls. </summary>
+	void DropGrab()
+	{
+		grabbing = false;
+		beamOn = null;
+		if ( Held is { } h ) { held = null; h.Release( h.Moved.LimitLength( HookFx.FlingCap ), false ); }
+		if ( beam is not null && IsInstanceValid( beam ) ) beam.Visible = false;
 	}
 
 	void ThrowLure( Vector3 start, Vector3 forward )
@@ -98,225 +234,195 @@ public partial class PlayerWeapon
 }
 
 /// <summary>
-/// A harpoon on its line. It flies with a little drop; an enemy it bites takes the hit and, if light enough to drag
-/// (`Creature.Pullable`), is reeled in to the player and yanked; a heavy one just takes the hit. Then the harpoon
-/// comes home. Trawler nets enemies near the first and reels them in together; Tow Line bowls the reeled ones through
-/// whatever they pass; Snag tears off a weak limb as the reel starts; Gutting Hook makes them bleed.
+/// An enemy on the Grab Reel: while held it chases the point in front of the player (its brain off, `Creature.Grabbed`),
+/// slamming into the world and bowling other enemies over when it moves fast; let go, it flies on (gravity, drag,
+/// tumbling), bounces off walls, and lands, hurt by how hard it hit. Crusher hurts it while held; a thrown one with
+/// Depth Charge bursts where it first hits.
 /// </summary>
-public partial class HarpoonLine : Node3D
+public partial class GrabbedBody : Node3D
 {
-	enum State { Flying, Reeling, Stuck, Returning }
-	State state;
-	PlayerController owner;
+	public Creature Victim { get; private set; }
 	PlayerWeapon weapon;
-	Vector3 velocity, hookOffset;
-	float damage, travelled, stateAge;
-	Creature target;
-	readonly List<Creature> netted = new();
-	readonly HashSet<Creature> towed = new();
-	readonly List<MeshInstance3D> netLines = new();
-	MeshInstance3D rope;
-	Node3D head;
-	Godot.Collections.Array<Rid> exclude;
+	PlayerController owner;
+	Vector3 centreOffset, spin;
+	Basis restBasis;
+	public Vector3 Velocity { get; private set; }
+	/// <summary> How fast it really moved last frame (held): pressing it into the floor is not a slam, only arriving fast is. </summary>
+	Vector3 moved;
+	public Vector3 Moved => moved;
+	public float Distance;
+	public bool IsHeld { get; private set; } = true;
+	bool thrown, charged;
+	float flying, sinceSlam = 9f, crushTick;
+	readonly Dictionary<Creature, double> bowled = new();
 
-	public bool Reeling => state == State.Reeling;
-	public Creature Target => target;
-
+	public Vector3 Centre => Victim.GlobalPosition + centreOffset;
 	int Skill( SkillId id ) => Skills.Rank( owner, id );
 
-	static StandardMaterial3D ropeMaterial;
-	static StandardMaterial3D RopeMaterial => ropeMaterial ??= new StandardMaterial3D { AlbedoColor = new Color( 0.86f, 0.74f, 0.5f ), Roughness = 0.8f };
-
-	public static HarpoonLine Fire( PlayerWeapon weapon, PlayerController owner, Vector3 from, Vector3 direction, float damage )
+	public static GrabbedBody Grab( PlayerWeapon weapon, PlayerController owner, Creature victim, float distance )
 	{
-		HookFx.Harpoons++;
-		var h = new HarpoonLine { Name = "Harpoon", weapon = weapon, owner = owner, velocity = direction * HookFx.HarpoonSpeed, damage = damage };
-		owner.GetTree().CurrentScene.AddChild( h );
-		h.GlobalPosition = from;
-		h.exclude = new Godot.Collections.Array<Rid> { owner.GetRid() };
-		h.Build();
-		return h;
+		var g = new GrabbedBody { Name = "Grabbed", weapon = weapon, owner = owner, Victim = victim, Distance = distance };
+		victim.Grabbed = true;
+		g.restBasis = victim.GlobalBasis;
+		// The middle of its parts (where the beam takes it), as the bubble trap does.
+		var sum = Vector3.Zero;
+		var n = 0;
+		foreach ( var p in CreaturePart.All ) if ( IsInstanceValid( p ) && p.Creature == victim ) { sum += p.GlobalPosition; n++; }
+		g.centreOffset = n > 0 ? sum / n - victim.GlobalPosition : Vector3.Up * 0.4f;
+		owner.GetTree().CurrentScene.AddChild( g );
+		return g;
 	}
 
-	void Build()
+	public override void _ExitTree()
 	{
-		head = new Node3D { Name = "Head" };
-		AddChild( head );
-		// Built along -Z: a brass shaft, a steel point with two barbs, and a ring for the rope.
-		var steel = GunKit.Paint( new Color( 0.75f, 0.78f, 0.82f ), 0.25f, 0.8f );
-		var brass = GunKit.Paint( new Color( 0.8f, 0.62f, 0.28f ), 0.35f, 0.6f );
-		GunKit.Rod( head, new Vector3( 0f, 0f, 0.45f ), new Vector3( 0f, 0f, -0.15f ), 0.016f, brass );
-		GunKit.Spike( head, new Vector3( 0f, 0f, -0.15f ), new Vector3( 0f, 0f, -0.36f ), 0.035f, steel );
-		foreach ( var side in new[] { -1f, 1f } )
-			GunKit.Spike( head, new Vector3( 0f, 0f, -0.2f ), new Vector3( side * 0.07f, 0f, -0.08f ), 0.014f, steel, 6 );
-		rope = GunKit.Line( this, RopeMaterial, 0.008f );
+		if ( Victim is not null && IsInstanceValid( Victim ) && Victim.Grabbed ) { Victim.Grabbed = false; Victim.Pull( Vector3.Zero ); }
+	}
+
+	/// <summary> Held: chases `point` (eased, capped), slams into the world, bowls through other enemies. </summary>
+	public void HoldAt( Vector3 point, float dt )
+	{
+		if ( !Alive() ) return;
+		Distance = MathX.Approach( Distance, HookFx.HoldDistance, dt * 3f );
+		var from = Centre;
+		var want = (point - from) * HookFx.Follow;
+		Velocity = want.LimitLength( HookFx.CarryCap );
+		Move( from, Velocity * dt, true );
+		if ( !Alive() ) return;
+		moved = (Centre - from) / MathF.Max( dt, 1e-4f );
+		// Crusher: the beam squeezes it.
+		var crush = Skill( SkillId.Crusher );
+		if ( crush > 0 && (crushTick -= dt) <= 0f )
+		{
+			crushTick = 0.25f;
+			PlayerPerks.Hurt( Victim, HookFx.CrusherPer * crush * 0.25f * weapon.UpgradeScale, Centre, Centre, owner );
+		}
+		// A little wriggle so it reads as alive and caught.
+		Victim.GlobalBasis = new Basis( Vector3.Up, MathF.Sin( (float)Clock.Now * 9f ) * 0.15f ) * restBasis;
+	}
+
+	/// <summary> Let go: it flies on with `velocity` (a throw is faster, and is what Depth Charge goes off on). </summary>
+	public void Release( Vector3 velocity, bool isThrow )
+	{
+		IsHeld = false;
+		thrown = isThrow;
+		charged = isThrow && Skill( SkillId.DepthCharge ) > 0;
+		Velocity = velocity;
+		spin = Rng.OnSphere() * MathX.Clamp( velocity.Length() * 0.6f, 2f, 12f );
+		flying = 0f;
+		bowled.Clear();
+		if ( velocity.Length() < 1.5f ) Velocity = Vector3.Down;
+	}
+
+	bool Alive()
+	{
+		if ( Victim is not null && IsInstanceValid( Victim ) && !Victim.IsDead ) return true;
+		IsHeld = false;
+		QueueFree();
+		return false;
 	}
 
 	public override void _Process( double delta )
 	{
+		if ( !Alive() || IsHeld ) return;
 		var dt = (float)delta;
-		stateAge += dt;
-		if ( !IsInstanceValid( owner ) || !IsInstanceValid( weapon ) ) { QueueFree(); return; }
-		switch ( state )
-		{
-			case State.Flying: Fly( dt ); break;
-			case State.Reeling: Reel( dt ); break;
-			case State.Stuck: if ( stateAge > 0.3f ) Return(); break;
-			case State.Returning:
-				var home = weapon.LinePoint();
-				var to = home - GlobalPosition;
-				var step = 70f * dt;
-				if ( to.Length() <= step ) { QueueFree(); return; }
-				GlobalPosition += to.Normalized() * step;
-				break;
-		}
-		if ( !IsInstanceValid( this ) || IsQueuedForDeletion() ) return;
-		var muzzle = weapon.LinePoint();
-		GunKit.Lay( rope, muzzle, GlobalPosition );
-		var along = state == State.Returning ? muzzle - GlobalPosition : GlobalPosition - muzzle;
-		if ( state == State.Flying ) along = velocity;
-		if ( along.LengthSquared() > 1e-6f ) head.GlobalBasis = Shapes.LookAt( state == State.Returning ? -along : along );
-		for ( var i = 0; i < netLines.Count; i++ )
-			if ( i < netted.Count && IsInstanceValid( netted[i] ) && !netted[i].IsDead ) GunKit.Lay( netLines[i], GlobalPosition, SkillFx.NearestPart( netted[i], GlobalPosition ) );
-			else netLines[i].Visible = false;
+		flying += dt;
+		Velocity += Vector3.Down * HookFx.Gravity * dt;
+		Velocity *= MathF.Exp( -HookFx.Drag * dt );
+		Victim.GlobalBasis = (new Basis( spin.SafeNormal() == Vector3.Zero ? Vector3.Up : spin.SafeNormal(), spin.Length() * flying ) * restBasis).Orthonormalized();
+		Move( Centre, Velocity * dt, false );
+		if ( IsInstanceValid( this ) && !IsQueuedForDeletion() && flying > HookFx.FlightMax ) Land( 0f, null );
 	}
 
-	void Fly( float dt )
+	/// <summary> Moves the enemy along `step`, stopping at the world: a fast hit is a slam (held) or an impact (flying). </summary>
+	void Move( Vector3 from, Vector3 step, bool holding )
 	{
-		velocity += Vector3.Down * HookFx.HarpoonDrop * dt;
-		var at = GlobalPosition;
-		var step = velocity * dt;
-		var tr = Trace.Ray( owner, at, at + step, Layers.World | Layers.Creature, exclude );
-		if ( tr.Hit ) { Hit( tr ); return; }
-		GlobalPosition = at + step;
-		travelled += step.Length();
-		if ( travelled > HookFx.MaxRange ) Return();
-		if ( WaterFeel.IsOn() && Rng.Float() < 0.5f ) WaterBubble.Create( at, Rng.Float( 0.3f, 0.6f ), 0f, Rng.Float( 0.3f, 0.6f ) );
-	}
-
-	void Hit( TraceResult tr )
-	{
-		GlobalPosition = tr.HitPosition;
-		var shootable = Shootables.Find( tr.Node );
-		if ( shootable is GlowBulb bulb ) { bulb.ReceiveShot( damage, tr.Node, velocity.Normalized(), tr.HitPosition, owner.GlobalPosition, owner, true ); Return(); return; }
-		if ( shootable?.ShotOwner is Creature { IsEnemy: true } c && !shootable.IsDead && !c.IsDead )
+		// Held, a blow is only as hard as it was really moving (shoving it into the floor does nothing); flying, its speed.
+		var speed = holding ? MathF.Min( moved.Length(), Velocity.Length() ) : Velocity.Length();
+		Bowl( from, speed );
+		if ( !Alive() ) return;
+		var tr = Trace.Ray( Victim, from, from + step + step.SafeNormal() * 0.35f, Layers.World, new Godot.Collections.Array<Rid> { owner.GetRid() } );
+		if ( !tr.Hit ) { Victim.GlobalPosition += step; return; }
+		// Up against the world: rest just off it.
+		Victim.GlobalPosition = tr.HitPosition + tr.Normal * 0.35f - centreOffset;
+		if ( holding )
 		{
-			HookFx.Hooked++;
-			weapon.MarkHit();
-			Sfx.Play( "trident_flesh", tr.HitPosition, 0.8f, 0.9f );
-			Fx.ImpactFlesh( tr.HitPosition, -velocity.Normalized(), new Color( 0.9f, 0.3f, 0.2f ) );
-			shootable.ReceiveShot( damage, tr.Node, velocity.Normalized(), tr.HitPosition, owner.GlobalPosition, owner, true );
-			if ( c.IsDead ) { weapon.MarkKill(); Return(); return; }
-			var gut = Skill( SkillId.GuttingHook );
-			if ( gut > 0 ) Affliction.Apply( c, Affliction.Kind.Bleed, HookFx.GutPer * gut, HookFx.GutTime, owner );
-			if ( !c.Pullable ) { state = State.Stuck; stateAge = 0f; target = c; return; }
-			target = c;
-			hookOffset = tr.HitPosition - c.GlobalPosition;
-			state = State.Reeling;
-			stateAge = 0f;
-			HookFx.LastReelStart = (target.GlobalPosition - owner.GlobalPosition).Length();
-			Sfx.Play2D( "trident_charge", 0.4f, 0.7f, Sfx.GunBus );
-			Net();
-			Snag( c );
+			if ( speed >= HookFx.ImpactSpeed && sinceSlam >= HookFx.ImpactEvery ) Slam( tr.HitPosition, tr.Normal, speed );
+			Velocity = Vector3.Zero;
 			return;
 		}
-		if ( tr.Node is SeaMineShell ) SeaMine.Tink( tr.HitPosition, tr.Normal );
-		else Fx.ImpactWorld( tr.HitPosition, tr.Normal );
-		Sfx.Play( "hit_world", tr.HitPosition, 0.6f, 0.8f );
-		state = State.Stuck;
-		stateAge = 0f;
+		// Flying: the first hard hit hurts (and sets Depth Charge off); off a wall it bounces, on the floor it lands.
+		if ( speed >= HookFx.ImpactSpeed ) Slam( tr.HitPosition, tr.Normal, speed );
+		if ( !Alive() ) return;
+		if ( tr.Normal.Y > 0.55f || speed < 3f ) { Land( speed, tr.HitPosition ); return; }
+		Velocity = Velocity.Bounce( tr.Normal ) * 0.35f;
 	}
 
-	/// <summary> Trawler: the harpoon bursts into a net, and the enemies near the first one are reeled in with it. </summary>
-	void Net()
+	void Slam( Vector3 at, Vector3 normal, float speed )
 	{
-		var n = Skill( SkillId.Trawler );
-		if ( n <= 0 ) return;
-		var near = Creature.Everyone.Where( c => IsInstanceValid( c ) && c != target && c.IsEnemy && !c.IsDead && c.Pullable && c.GlobalPosition.DistanceTo( target.GlobalPosition ) < HookFx.NetRadius )
-			.OrderBy( c => c.GlobalPosition.DistanceTo( target.GlobalPosition ) ).Take( HookFx.TrawlerCatches( n ) );
-		foreach ( var c in near )
-		{
-			netted.Add( c );
-			netLines.Add( GunKit.Line( this, RopeMaterial, 0.006f ) );
-			HookFx.Netted++;
-		}
-		if ( netted.Count > 0 ) Sfx.Play( "bubble_trap", target.GlobalPosition, 0.6f, 0.8f );
-	}
-
-	/// <summary> Snag: a limb already shot down this far is torn off as the reel starts. </summary>
-	void Snag( Creature c )
-	{
-		var n = Skill( SkillId.Snag );
-		if ( n <= 0 || c is not PartCreature body ) return;
-		foreach ( var limb in body.Limbs() )
-		{
-			if ( limb.Health > limb.MaxHealth * HookFx.SnagBelow( n ) ) continue;
-			HookFx.Snags++;
-			var at = limb.Go.GlobalPosition;
-			c.ReceiveShot( limb.Index, limb.Health + 1f, (owner.GlobalPosition - at).SafeNormal(), at, owner.GlobalPosition, owner.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ), true );
-			Sfx.Play( "gib", at, 1f, 0.8f );
-			return;
-		}
-	}
-
-	void Reel( float dt )
-	{
-		if ( target is null || !IsInstanceValid( target ) || target.IsDead ) { Return(); return; }
-		var speed = HookFx.ReelSpeed * (1f + HookFx.QuickReelPer * Skill( SkillId.QuickReel ));
-		var me = owner.GlobalPosition;
-		var tow = Skill( SkillId.TowLine );
-		foreach ( var c in netted.Prepend( target ) )
-		{
-			if ( !IsInstanceValid( c ) || c.IsDead ) continue;
-			var to = me - c.GlobalPosition;
-			to.Y *= 0.5f;
-			var d = to.Length();
-			if ( d > HookFx.HoldDistance ) c.Pull( to / d * MathF.Min( speed * dt, d - HookFx.HoldDistance ) );
-			if ( tow <= 0 ) continue;
-			// Tow Line: whatever it is dragged through is bowled aside and hurt (once each a reel).
-			foreach ( var other in Creature.Everyone.ToList() )
-			{
-				if ( !IsInstanceValid( other ) || other == c || other.IsDead || !other.IsEnemy || towed.Contains( other ) || netted.Contains( other ) || other == target ) continue;
-				if ( other.GlobalPosition.DistanceTo( c.GlobalPosition ) > 1.3f ) continue;
-				towed.Add( other );
-				HookFx.Tows++;
-				SkillFx.HitPart( other, HookFx.TowPer * tow * weapon.UpgradeScale, c.GlobalPosition, owner );
-				SkillFx.Shove( other, (other.GlobalPosition - c.GlobalPosition).Flat().SafeNormal() * 1.4f );
-			}
-		}
-		GlobalPosition = target.GlobalPosition + hookOffset;
-		// The yank waits for everything on the line (the net's catch too) to come in.
-		var left = netted.Prepend( target ).Where( c => IsInstanceValid( c ) && !c.IsDead ).Max( c => (me - c.GlobalPosition).Flat().Length() );
-		if ( left <= HookFx.HoldDistance + 0.35f || stateAge > HookFx.ReelTimeout ) Yank();
-	}
-
-	/// <summary> The reel's end: a hard yank on everything on the line, which stuns it a moment. </summary>
-	void Yank()
-	{
-		HookFx.LastReelEnd = (target.GlobalPosition - owner.GlobalPosition).Flat().Length();
-		foreach ( var c in netted.Prepend( target ) )
-		{
-			if ( !IsInstanceValid( c ) || c.IsDead ) continue;
-			HookFx.Yanks++;
-			SkillFx.HitPart( c, HookFx.YankDamage * weapon.ShotScale, owner.GlobalPosition, owner );
-			if ( !c.IsDead ) c.Stun( HookFx.YankStun );
-			else weapon.MarkKill();
-		}
+		sinceSlam = 0f;
+		HookFx.GrabSlams++;
+		SkillFx.HitPart( Victim, weapon.ImpactDamage( speed ), at, owner );
+		Fx.ImpactWorld( at, normal );
+		Sfx.Play( "dive_impact", at, MathX.Clamp( speed / 20f, 0.3f, 1f ), Rng.Float( 0.9f, 1.15f ) );
+		Jetpack.SlamBubbles( at, normal, MathX.Clamp( speed / 25f, 0.2f, 0.8f ) );
+		owner.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( MathX.Clamp( speed / 40f, 0.1f, 0.45f ) );
+		Controls.Rumble( MathX.Clamp( speed / 40f, 0.15f, 0.5f ) );
 		weapon.MarkHit();
-		Sfx.Play( "stab_squish_1", GlobalPosition, 0.8f );
-		owner.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.25f );
-		Controls.Rumble( 0.35f );
-		Return();
+		if ( Victim.IsDead ) weapon.MarkKill();
+		if ( charged ) DepthCharge( at );
 	}
 
-	void Return()
+	/// <summary> Depth Charge: a thrown enemy bursts where it first hits. </summary>
+	void DepthCharge( Vector3 at )
 	{
-		state = State.Returning;
-		stateAge = 0f;
-		target = null;
-		netted.Clear();
-		foreach ( var l in netLines ) l.Visible = false;
+		charged = false;
+		HookFx.DepthCharges++;
+		PlayerPerks.HurtCreatures( at, HookFx.DepthRadius, HookFx.DepthDamage( Skill( SkillId.DepthCharge ) ) * weapon.UpgradeScale, owner );
+		BlueBlast.Spawn( GetTree().CurrentScene, at, HookFx.DepthRadius );
 	}
+
+	/// <summary> Other enemies in its way are bowled over (once each a flight; every half second while held). </summary>
+	void Bowl( Vector3 at, float speed )
+	{
+		if ( speed < HookFx.ImpactSpeed * 0.7f ) return;
+		var now = Clock.Now;
+		foreach ( var c in Creature.Everyone )
+		{
+			if ( c == Victim || !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || c.Grabbed ) continue;
+			if ( SkillFx.NearestPart( c, at ).DistanceTo( at ) > HookFx.BowlRadius ) continue;
+			if ( bowled.TryGetValue( c, out var last ) && (!IsHeld || now - last < 0.5) ) continue;
+			bowled[c] = now;
+			HookFx.Bowled++;
+			var hurt = weapon.ImpactDamage( speed ) * (HookFx.BowlShare + HookFx.BowlingPer * Skill( SkillId.Bowling ));
+			SkillFx.HitPart( c, hurt, at, owner );
+			SkillFx.Shove( c, Velocity.SafeNormal() * 1.6f + Vector3.Up * 0.3f );
+			if ( !c.IsDead ) c.Stun( HookFx.LandStun );
+			PlayerPerks.Hurt( Victim, weapon.ImpactDamage( speed ) * HookFx.BowlSelf, at, at, owner );
+			Sfx.Play( "stab_squish_1", at, 0.7f, Rng.Float( 0.8f, 1f ) );
+			if ( charged ) DepthCharge( at );
+			if ( !Alive() ) return;
+		}
+	}
+
+	void Land( float speed, Vector3? at )
+	{
+		HookFx.Landings++;
+		if ( Alive() )
+		{
+			// Set down on the floor below, upright again, a moment dazed.
+			var centre = Centre;
+			var floor = Trace.Ray( Victim, centre, centre + Vector3.Down * 30f, Layers.World, new Godot.Collections.Array<Rid> { owner.GetRid() } );
+			Victim.GlobalPosition = floor.Hit ? floor.HitPosition : Victim.GlobalPosition with { Y = SeaTerrain.HeightAt( Victim.GlobalPosition.X, Victim.GlobalPosition.Z ) };
+			var flat = (restBasis * Vector3.Forward).Flat().SafeNormal();
+			Victim.GlobalBasis = flat == Vector3.Zero ? restBasis : Shapes.LookAt( flat );
+			Victim.Grabbed = false;
+			Victim.Pull( Vector3.Zero );
+			Victim.Stun( HookFx.LandStun );
+		}
+		QueueFree();
+	}
+
+	public override void _PhysicsProcess( double delta ) => sinceSlam += (float)delta;
 }
 
 /// <summary>
@@ -605,34 +711,42 @@ public partial class AbyssJaw : Node3D
 /// <summary> The Hook-Bot's gun models, on the Blaster's rig like the trident shooter. </summary>
 public static class HookModels
 {
-	public static readonly Vector3 HarpoonMuzzle = new( 34f, 0f, 3.2f ), LureMuzzle = new( 22f, 0f, 5f );
+	public static readonly Vector3 LureMuzzle = new( 22f, 0f, 5f );
 	static readonly Color Navy = new( 0.08f, 0.12f, 0.22f ), Orange = new( 0.95f, 0.5f, 0.16f ), Rope = new( 0.86f, 0.74f, 0.5f ), Brass = new( 0.8f, 0.64f, 0.3f );
 
-	public static void HarpoonGun( Node3D gun )
+	public static readonly Vector3 GrabMuzzle = new( 31f, 0f, 3.2f );
+
+	/// <summary> The Grab Reel: the harpoon gun's stock and reel, a short navy barrel, three orange prongs and a green glow orb between them. </summary>
+	public static void GrabGun( Node3D gun )
 	{
 		var navy = GunKit.Paint( Navy, 0.5f );
 		var orange = GunKit.Paint( Orange, 0.45f );
 		var brass = GunKit.Paint( Brass, 0.3f, 0.7f );
 		var rope = GunKit.Paint( Rope, 0.85f );
-		var steel = GunKit.Paint( new Color( 0.75f, 0.78f, 0.82f ), 0.25f, 0.8f );
 		var wood = GunKit.Paint( new Color( 0.45f, 0.28f, 0.15f ), 0.7f );
+		var glow = GunKit.Paint( new Color( 0.45f, 1f, 0.55f ), 0.2f, 0f, 4f );
 		GunKit.Box( gun, new Vector3( -0.6f, 0f, -4.0f ), new Vector3( 3.0f, 2.7f, 7.8f ), wood, 18f );
 		GunKit.Box( gun, new Vector3( 2.4f, 0f, -2.1f ), new Vector3( 4.2f, 0.6f, 0.5f ), brass );
-		// A long navy tube with orange bands, a reel of rope on the side, and the harpoon itself sat in the mouth.
-		GunKit.AlongX( gun, new Vector3( 12f, 0f, 3.2f ), 1.7f, 26f, navy, 1.5f, 18 );
-		foreach ( var x in new[] { 2f, 14f, 24f } ) GunKit.AlongX( gun, new Vector3( x, 0f, 3.2f ), 1.85f, 1.2f, orange, -1f, 18 );
+		GunKit.AlongX( gun, new Vector3( 11f, 0f, 3.2f ), 2.1f, 18f, navy, 1.5f, 18 );
+		foreach ( var x in new[] { 4f, 12f, 19f } ) GunKit.AlongX( gun, new Vector3( x, 0f, 3.2f ), 2.25f, 1.2f, orange, -1f, 18 );
 		GunKit.Box( gun, new Vector3( 4f, 0f, 0.6f ), new Vector3( 9f, 2.2f, 2.2f ), navy );
-		var reel = GunKit.Part( gun, new CylinderMesh { TopRadius = 3f, BottomRadius = 3f, Height = 1.6f, RadialSegments = 20 }, brass, new Vector3( 6f, -3.2f, 2.2f ), null, "Reel" );
-		reel.Name = "Reel";
+		GunKit.Part( gun, new CylinderMesh { TopRadius = 3f, BottomRadius = 3f, Height = 1.6f, RadialSegments = 20 }, brass, new Vector3( 6f, -3.2f, 2.2f ), null, "Reel" );
 		GunKit.Part( gun, new CylinderMesh { TopRadius = 2.5f, BottomRadius = 2.5f, Height = 1.7f, RadialSegments = 20 }, rope, new Vector3( 6f, -3.2f, 2.2f ), null, "Rope Coil" );
-		GunKit.Rod( gun, new Vector3( 6f, -4.2f, 2.2f ), new Vector3( 6f, -4.2f, 5.2f ), 0.3f, brass );
+		// Three prongs round the mouth, bent in at the tips.
+		for ( var i = 0; i < 3; i++ )
+		{
+			var a = i * MathF.Tau / 3f + 0.5f;
+			var ring = new Vector3( 0f, MathF.Cos( a ), MathF.Sin( a ) );
+			var root = new Vector3( 20f, 0f, 3.2f ) + ring * 1.9f;
+			var bend = new Vector3( 27f, 0f, 3.2f ) + ring * 2.6f;
+			var tip = new Vector3( 31f, 0f, 3.2f ) + ring * 1.3f;
+			GunKit.Rod( gun, root, bend, 0.35f, orange );
+			GunKit.Spike( gun, bend, tip, 0.35f, orange, 6 );
+		}
 		var loaded = new Node3D { Name = "Loaded" };
 		gun.AddChild( loaded );
-		GunKit.Rod( loaded, new Vector3( 20f, 0f, 3.2f ), new Vector3( 33f, 0f, 3.2f ), 0.45f, brass );
-		GunKit.Spike( loaded, new Vector3( 33f, 0f, 3.2f ), new Vector3( 38f, 0f, 3.2f ), 0.9f, steel );
-		foreach ( var side in new[] { -1f, 1f } ) GunKit.Spike( loaded, new Vector3( 34f, 0f, 3.2f ), new Vector3( 32f, side * 1.6f, 3.2f ), 0.3f, steel, 6 );
+		GunKit.Part( loaded, new SphereMesh { Radius = 1.3f, Height = 2.6f, RadialSegments = 16, Rings = 8 }, glow, new Vector3( 27f, 0f, 3.2f ), null, "Orb" );
 		GunKit.AlongX( gun, new Vector3( -3.5f, 0f, 2.4f ), 1.1f, 4f, wood, 1.4f, 12 );
-		GunKit.Box( gun, new Vector3( 8f, 0f, 5.6f ), new Vector3( 1.2f, 0.6f, 1.6f ), brass );
 	}
 
 	public static void LureLauncher( Node3D gun )

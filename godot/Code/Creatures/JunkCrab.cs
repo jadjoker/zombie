@@ -506,7 +506,7 @@ public partial class JunkCrab : PartCreature
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
 	public override void Pull( Vector3 delta )
 	{
-		if ( Bubbled ) GlobalPosition += delta;   // a bubbled crab is carried freely (the Gore Vac can reel the bubble in)
+		if ( Carried ) GlobalPosition += delta;   // a bubbled (or grabbed) crab is carried freely (the Gore Vac can reel the bubble in)
 		else agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
 	}
 
@@ -548,7 +548,7 @@ public partial class JunkCrab : PartCreature
 		if ( !killed )
 		{
 			var push = direction.Flat().SafeNormal() * (Has( Barrel ) ? 3f : 7f) * U.In;
-			if ( Bubbled ) GlobalPosition += push;   // floating in a bubble: not back onto the navmesh
+			if ( Carried ) GlobalPosition += push;   // floating in a bubble: not back onto the navmesh
 			else agent.SetAgentPosition( GlobalPosition + push );
 		}
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, crit, scoreHit );

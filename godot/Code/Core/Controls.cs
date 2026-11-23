@@ -50,8 +50,13 @@ public partial class Controls : Node
 		["attack1"] = ("Click", "RT", "R2"),
 		["attack2"] = ("Right click", "LT", "L2"),
 		["run"] = ("Shift", "LB", "L1"),
-		["melee"] = ("Mouse 4", "RB", "R1"),
-		["surge"] = ("Mouse 5", "R3", "R3"),
+		["melee"] = ("V", "RB", "R1"),
+		["surge"] = ("Mouse 4", "R3", "R3"),   // each robot's move (bound to Q too)
+		["ping"] = ("Middle mouse", "L3", "L3"),
+		["scoreboard"] = ("Tab", "View", "Share"),
+		["emote"] = ("T", "Hold D-pad down", "Hold D-pad down"),
+		["blast"] = ("G", "RB", "R1"),
+		["move"] = ("WASD", "Left stick", "Left stick"),
 		["view"] = ("C", "D-pad up", "D-pad up"),
 		["command"] = ("Z", "D-pad down", "D-pad down"),
 		["weapon_prev"] = ("Wheel up", "D-pad left", "D-pad left"),
@@ -64,6 +69,18 @@ public partial class Controls : Node
 	{
 		if ( !Names.TryGetValue( action, out var n ) ) return action.ToUpperInvariant();
 		return !IsController ? n.Keys : IsPlayStation ? n.PlayStation : n.Xbox;
+	}
+
+	/// <summary>
+	/// Text written for the keyboard and mouse ("mouse 4", "right click", "left click", "middle mouse") with the pad's
+	/// buttons in their place when a pad is in use. Keep descriptions in keyboard words and pass them through this.
+	/// </summary>
+	public static string Prompts( string text )
+	{
+		if ( !IsController || string.IsNullOrEmpty( text ) ) return text;
+		foreach ( var (words, action) in new[] { ("mouse 4", "surge"), ("Mouse 4", "surge"), ("MOUSE 4", "surge"), ("right click", "attack2"), ("Right click", "attack2"), ("left click", "attack1"), ("Left click", "attack1"), ("middle mouse", "ping") } )
+			text = text.Replace( words, words == words.ToUpperInvariant() ? Label( action ).ToUpperInvariant() : Label( action ) );
+		return text;
 	}
 
 	public static bool IsPlayStation

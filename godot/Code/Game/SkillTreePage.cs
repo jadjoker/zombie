@@ -86,7 +86,7 @@ public partial class SkillTreePage : Control
 		hint.Name = "Hint";
 		hint.SizeFlagsHorizontal = SizeFlags.ExpandFill;
 		hint.SizeFlagsVertical = SizeFlags.ShrinkCenter;
-		hint.Text = $"Clear a wave: +1 token (up to {Skills.MaxTokens} a run)   ·   {Skills.UnlockPoints} points in a row open the next   ·   click a skill to buy a point";
+		footerHint = hint;
 
 		// The arrow to the rest of the pause menu, on the right edge.
 		MenuArrow = new Button { Name = "Menu", Text = "›\nMENU", CustomMinimumSize = new Vector2( 112, 160 ) };
@@ -105,12 +105,15 @@ public partial class SkillTreePage : Control
 		if ( builtFor != robot ) Build( robot );
 		if ( skills is not null ) { skills.Changed -= Refresh; skills.Changed += Refresh; }
 		Refresh();
+		Controls.Changed -= ButtonsChanged;
+		Controls.Changed += ButtonsChanged;
 		Show( nodes.FirstOrDefault( n => n.Def.Row == 0 ) );
 	}
 
 	public override void _ExitTree()
 	{
 		if ( skills is not null ) skills.Changed -= Refresh;
+		Controls.Changed -= ButtonsChanged;
 	}
 
 	void Build( string robot )
@@ -176,9 +179,13 @@ public partial class SkillTreePage : Control
 		Show( node );
 	}
 
+	Label footerHint;
+	void ButtonsChanged( Scheme scheme ) { Refresh(); if ( shown is not null ) Show( shown ); }
+
 	void Refresh()
 	{
 		if ( !IsInsideTree() ) return;
+		if ( footerHint is not null ) footerHint.Text = $"Clear a wave: +1 token (up to {Skills.MaxTokens} a run)   ·   {Skills.UnlockPoints} points in a row open the next   ·   {(Controls.IsController ? $"{(Controls.IsPlayStation ? "Cross" : "A")} on" : "click")} a skill to buy a point   ·   {(Controls.IsController ? "LB RB" : "the arrow")}: menu";
 		var robot = RobotClass.Current.Id;
 		if ( builtFor != robot ) Build( robot );
 		robotName.Text = $"{RobotClass.Current.Name}  ·  {RobotClass.Current.Weapons}";
@@ -207,13 +214,13 @@ public partial class SkillTreePage : Control
 		detailName.Text = d.Name.ToUpperInvariant();
 		UiStyle.StyleBig( detailName, 28, d.Colour.Lightened( 0.2f ) );
 		detailRank.Text = $"{rank} / {d.Max}   ·   {(d.Capstone ? "capstone" : $"row {d.Row + 1}")}   ·   {Skills.TreeName( d.Robot, d.Tree )}";
-		detailNow.Text = rank > 0 ? $"Now: {d.Says( rank )}" : $"First point: {d.Says( 1 )}";
-		detailNext.Text = rank > 0 && rank < d.Max ? $"Next point: {d.Says( rank + 1 )}" : rank >= d.Max ? "Full" : "";
+		detailNow.Text = Controls.Prompts( rank > 0 ? $"Now: {d.Says( rank )}" : $"First point: {d.Says( 1 )}" );
+		detailNext.Text = Controls.Prompts( rank > 0 && rank < d.Max ? $"Next point: {d.Says( rank + 1 )}" : rank >= d.Max ? "Full" : "" );
 		detailNeed.Text = skills is null ? ""
 			: !skills.Unlocked( d ) ? $"Locked: put {Skills.UnlockPoints} points in {(d.Row == Skills.Rows ? "the last row" : $"row {d.Row}")} of this tree"
 			: rank >= d.Max ? ""
 			: skills.Tokens <= 0 ? "No tokens: clear waves to earn them"
-			: "Click (or A) to put a token in it";
+			: Controls.IsController ? $"{(Controls.IsPlayStation ? "Cross" : "A")} to put a token in it" : "Click to put a token in it";
 	}
 
 	public override void _Process( double delta )

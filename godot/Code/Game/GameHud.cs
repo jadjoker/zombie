@@ -135,7 +135,7 @@ public partial class GameHud : Control
 		dive.AddChild( diveTop );
 		diveCount = Big( diveTop, S( 30 ), new Color( "d6fff7" ) );
 		diveHelp = UiStyle.Text( diveTop, 15, UiStyle.Readout, mono: true );
-		diveHelp.Show( "WASD tilt to glide   Ctrl tuck   Space spread out" );
+		diveHelp.Show( DiveHelp );
 		var depthBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		depthBox.SetAnchorsPreset( LayoutPreset.CenterRight );
 		depthBox.OffsetRight = -60; depthBox.OffsetTop = -170; depthBox.GrowHorizontal = GrowDirection.Begin;
@@ -154,8 +154,11 @@ public partial class GameHud : Control
 		gameOverDetail = UiStyle.Sub( goBox, S( 26 ), Colors.White );
 	}
 
+	static string DiveHelp => $"{Controls.Label( "move" )} tilt to glide   {Controls.Label( "duck" )} tuck   {Controls.Label( "jump" )} spread out";
+
 	public override void _Process( double delta )
 	{
+		if ( diveHelp is not null && DockHouse.Diving ) diveHelp.Show( DiveHelp );
 		var d = Director;
 		wave.Show( d is null ? "" : $"{(d.OpenWorld ? "DANGER" : "WAVE")} {d.Wave}" );
 		status.Show( StatusText );

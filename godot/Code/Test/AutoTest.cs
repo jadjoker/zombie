@@ -2520,6 +2520,30 @@ public partial class AutoTest : Node
 		var free = await SweepTurn( 0f );
 		GD.Print( $"[autotest] aim: a full sweep over the crab turned {slowed:0.0} deg with assist and {free:0.0} without" );
 		Check( slowed < free - 1f, "aim assist does not slow the stick across a target" );
+		// Tracking: strafing sideways past the crab, the crosshair stays on it with assist and drifts off without.
+		async Task<float> Strafe( float strength )
+		{
+			GameSettings.AimAssist = strength;
+			var start = player.GlobalPosition;
+			AimAtCrab( 0f );
+			await Wait( 0.15f );
+			var side = (-player.Camera.GlobalBasis.Z).Cross( Vector3.Up ).Flat().Normalized();
+			for ( var i = 0; i < 40; i++ )
+			{
+				player.Velocity = side * 4f;
+				player.GlobalPosition += side * 4f * 0.016f;
+				await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+			}
+			var off = AngleTo( mark );
+			player.Velocity = Vector3.Zero;
+			player.GlobalPosition = start;
+			await Wait( 0.2f );
+			return off;
+		}
+		var tracked = await Strafe( 0.7f );
+		var untracked = await Strafe( 0f );
+		GD.Print( $"[autotest] aim: strafing past the crab left the aim {tracked:0.0} deg off with assist and {untracked:0.0} without" );
+		Check( tracked < untracked * 0.6f, "aim assist does not follow a target while strafing" );
 		GameSettings.AimAssist = 0.7f;
 		crab.QueueFree();
 		await Wait( 0.3f );
@@ -3324,6 +3348,11 @@ public partial class AutoTest : Node
 			picker?.SetOpen( true );
 			await Wait( 0.3f );
 			await Shot( "class_picker" );
+			// With a pad in hand the cards and the hint name its buttons.
+			Controls.Force( Scheme.Controller );
+			await Wait( 0.3f );
+			await Shot( "class_picker_pad" );
+			Controls.Force( Scheme.KeyboardMouse );
 			ClassPicker.Find( GetTree() )?.SetOpen( false );
 		}
 		player.ThirdPerson = false;

@@ -224,6 +224,10 @@ public partial class PlayerController : CharacterBody3D
 		Jumped?.Invoke();
 	}
 
+	/// <summary> The right stick's round dead zone, and how much faster a held full tilt turns. </summary>
+	public const float StickDeadzone = 0.12f, StickBoost = 1.8f;
+	float fullTilt;
+
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
@@ -235,19 +239,22 @@ public partial class PlayerController : CharacterBody3D
 			var e = EyeAngles;
 			e.Yaw -= lookDelta.X * LookSensitivity;
 			e.Pitch += lookDelta.Y * LookSensitivity;
-			// The right stick: a curve so small tilts are fine and a full tilt turns fast, slowed along with the mouse when aiming.
-			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down" );
+			// The right stick: a round dead zone (rescaled, so just past it is the slowest turn), a curve so small tilts
+			// are fine, and a turn boost: held at full tilt a moment, it turns up to `StickBoost` faster (for turning round).
+			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down", StickDeadzone );
+			if ( stick.Length() > 0.95f ) fullTilt += dt; else fullTilt = 0f;
+			var boost = 1f + (StickBoost - 1f) * MathX.Clamp( (fullTilt - 0.18f) / 0.3f, 0f, 1f );
 			// Aim assist (controller only): the stick slows near an enemy and the aim is drawn toward it.
 			var assist = AimAssist.None;
 			if ( Controls.IsController && GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { } held )
 				assist = AimAssist.Evaluate( this, e, dt, stick != Vector2.Zero, Input.IsActionPressed( "attack1" ), held.AimAmount );
 			if ( stick != Vector2.Zero )
 			{
-				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.8f );
+				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.6f );
 				var zoomScale = GameSettings.LookSensitivity > 0f ? LookSensitivity / GameSettings.LookSensitivity : 1f;
-				var speed = 210f * GameSettings.StickSensitivity * zoomScale * assist.Slow;   // degrees a second at full tilt
-				e.Yaw -= shaped.X * speed * dt;
-				e.Pitch += shaped.Y * speed * dt;
+				var speed = 220f * GameSettings.StickSensitivity * zoomScale * assist.Slow;   // degrees a second at full tilt
+				e.Yaw -= shaped.X * speed * boost * dt;
+				e.Pitch += shaped.Y * speed * 0.8f * dt;   // up and down a little slower than across, as on consoles
 			}
 			e.Yaw += assist.Pull.X;
 			e.Pitch += assist.Pull.Y;

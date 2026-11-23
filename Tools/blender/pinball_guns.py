@@ -232,15 +232,15 @@ def launcher():
     side = 2.32
     star = prism("Side Star", "Neon", star_outline(0, 0, 1.6, 0.68), 0, 0.12, gun, bevel=0.03)
     star.rotation_euler = (math.radians(90), 0, 0)
-    star.location = (12.6, side, 2.75)
+    star.location = (15.0, side, 2.4)
     bolt = prism("Side Bolt", "Yellow", [(0, 0.9), (2.4, 0.9), (1.4, 0.1), (3.4, 0.1), (0.4, -1.3), (1.2, -0.3), (-0.6, -0.3)], 0, 0.12, gun, bevel=0.03)
     bolt.rotation_euler = (math.radians(90), 0, 0)
-    bolt.location = (8.0, side, 3.0)
-    box("Score Window", "Rubber", (2.5, side, 3.45), (4.6, 0.2, 1.25), gun, bevel=0.1)
-    box("Score", "Score", (2.5, side + 0.08, 3.45), (4.1, 0.12, 0.8), gun, bevel=0.0)
+    bolt.location = (10.0, side, 2.2)
+    box("Score Window", "Rubber", (12.0, side, 3.9), (4.6, 0.2, 1.25), gun, bevel=0.1)
+    box("Score", "Score", (12.0, side + 0.08, 3.9), (4.1, 0.12, 0.8), gun, bevel=0.0)
     for i in range(5):
-        x = 0.8 + i * 0.85
-        light = empty(f"Ball Light {i + 1}", (x, side + 0.05, 1.95), gun)
+        x = 1.5 + i * 0.85
+        light = empty(f"Ball Light {i + 1}", (x, side + 0.05, 1.7), gun)
         cyl_z(f"Ball Light {i + 1} Rim", "Chrome", (0, 0, 0), 0.36, 0.2, light).rotation_euler = (math.radians(90), 0, 0)
         ball(f"Ball Light {i + 1} Off", "LampOff", (0, 0.08, 0), 0.27, light, scale=(1, 0.6, 1))
         ball(f"Ball Light {i + 1} Lit", "LampYellow", (0, 0.1, 0), 0.29, light, scale=(1, 0.65, 1))
@@ -248,15 +248,18 @@ def launcher():
     star2 = prism("Side Star R", "Neon", star_outline(0, 0, 1.6, 0.68), 0, 0.12, gun, bevel=0.03)
     star2.rotation_euler = (math.radians(-90), 0, 0)
     star2.location = (12.6, -side, 2.75)
-    # The plunger at the back: a chrome housing, the rod through it with a red knob, the spring round the rod.
-    cyl_x("Plunger Housing", "Chrome", (-3.6, 0, 3.2), 1.05, 1.6, gun, bevel=0.1)
+    # The plunger on the left side (where you see it and the left hand pulls it back): a chrome housing on the
+    # cabinet's flank, the rod running back out of it to a red knob, the spring round the rod. A cap closes the back.
+    box("Back Cap", "Chrome", (-3.1, 0, 2.7), (0.6, 4.0, 3.4), gun, bevel=0.2)
+    cyl_x("Plunger Housing", "Chrome", (7.6, 2.75, 3.3), 0.75, 2.4, gun, bevel=0.1)
+    box("Housing Mount", "Purple", (7.6, 2.45, 3.3), (2.0, 0.5, 1.0), gun, bevel=0.15)
     plunger = empty("Plunger", (0, 0, 0), gun)
-    cyl_x("Plunger Rod", "Chrome", (-5.6, 0, 3.2), 0.32, 5.0, plunger)
-    ball("Plunger Knob", "Red", (-8.1, 0, 3.2), 1.05, plunger, scale=(0.85, 1, 1))
-    cyl_x("Plunger Collar", "Chrome", (-7.1, 0, 3.2), 0.55, 0.4, plunger)
-    spring = empty("Spring", (-4.4, 0, 3.2), gun)
-    for i in range(7):
-        t = torus_x(f"Spring Coil {i}", "Chrome", (-0.38 - i * 0.37, 0, 0), 0.58, 0.09, spring)
+    cyl_x("Plunger Rod", "Chrome", (4.4, 2.75, 3.3), 0.24, 5.0, plunger)
+    cyl_x("Plunger Collar", "Chrome", (2.3, 2.75, 3.3), 0.45, 0.35, plunger)
+    ball("Plunger Knob", "Red", (1.4, 2.95, 3.3), 0.95, plunger, scale=(0.8, 1, 1))
+    spring = empty("Spring", (6.4, 2.75, 3.3), gun)
+    for i in range(6):
+        t = torus_x(f"Spring Coil {i}", "Chrome", (-0.35 - i * 0.6, 0, 0), 0.45, 0.08, spring)
         t.rotation_euler = (0, math.radians(8), 0)
     return gun
 

@@ -189,6 +189,6 @@ public partial class PlayerRig
 	void PinballParts( PlayerWeapon weapon, Node3D root )
 	{
 		if ( weapon.Flippers ) PinballModels.PoseFlippers( root, weapon.FlipSwing( true ), weapon.FlipSwing( false ) );
-		if ( weapon.Pinball ) PinballModels.PoseLauncher( root, weapon.SpringPull, weapon.Ammo, weapon.MagazineSize, weapon.TimeSinceShot );
+		if ( weapon.Pinball ) PinballModels.PoseLauncher( root, weapon.PlungerPose, weapon.Ammo, weapon.MagazineSize, weapon.TimeSinceShot, weapon.PlungerGrab );
 	}
 }

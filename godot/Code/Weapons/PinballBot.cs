@@ -95,6 +95,11 @@ public partial class PlayerWeapon
 	int combo;
 	public float Spring => spring;
 	public int Combo => combo;
+	/// <summary> How far the left hand has gone back to the plunger (0 on the gun's front, 1 holding the knob). </summary>
+	float plungerGrab;
+	public float PlungerGrab => plungerGrab;
+	/// <summary> Testing: hold the launcher's trigger down (pull the plunger). </summary>
+	public bool TestHoldPull;
 
 	public static PlayerWeapon PinballLauncher( int slot = 1 ) => new()
 	{
@@ -117,7 +122,7 @@ public partial class PlayerWeapon
 	void UpdatePinball( float dt, bool free )
 	{
 		if ( controller.In.JustPressed( "reload" ) ) StartReload();
-		var held = free && controller.In.Pressed( "attack1" ) && !IsReloading && (Ammo > 0 || InfiniteAmmo);
+		var held = (TestHoldPull || free && controller.In.Pressed( "attack1" )) && !IsReloading && (Ammo > 0 || InfiniteAmmo);
 		if ( free && controller.In.JustPressed( "attack1" ) && Ammo <= 0 && !InfiniteAmmo ) { if ( Reserve > 0 ) StartReload(); else Sfx.Play2D( "dry_fire" ); }
 		if ( held && TimeSinceShot >= 1f / CurrentFireRate )
 		{
@@ -125,7 +130,9 @@ public partial class PlayerWeapon
 			spring = MathF.Min( 1f, spring + dt * PullSpeed );
 		}
 		else if ( pulling ) LaunchBall();
-		if ( ViewModel is not null ) PinballModels.PoseLauncher( ViewModel, spring, Ammo, MagazineSize, TimeSinceShot );
+		// The left hand: back to the knob while pulling, it lets go with the shot and returns to the front a beat later.
+		plungerGrab = pulling ? MathX.Approach( plungerGrab, 1f, dt * 9f ) : TimeSinceShot < 0.15f ? plungerGrab : MathX.Approach( plungerGrab, 0f, dt * 5f );
+		if ( ViewModel is not null ) PinballModels.PoseLauncher( ViewModel, PlungerPose, Ammo, MagazineSize, TimeSinceShot, plungerGrab );
 	}
 
 	/// <summary> Testing aid: launch a ball with the spring pulled this far (0 to 1). </summary>
@@ -194,6 +201,8 @@ public partial class PlayerWeapon
 		return MathF.Max( 0f, 1f - t / 0.11f );
 	}
 	public float SpringPull => spring;
+	/// <summary> How far the plunger shows pulled: only as far as the hand has got hold of it. </summary>
+	public float PlungerPose => spring * MathX.Clamp( (plungerGrab - 0.6f) / 0.4f, 0f, 1f );
 
 	Vector3 FlipperTip( bool left )
 	{
@@ -751,14 +760,18 @@ public static class PinballModels
 	public static readonly Vector3 LauncherMuzzle = new( 25.5f, 0f, 3f ), FlipperMuzzle = new( 20f, 0f, 9f );
 	/// <summary> How far a flipper turns from rest to up (degrees). </summary>
 	public const float FlipAngle = 60f;
-	const float PlungerTravel = 2.6f;
+	const float PlungerTravel = 4f;
 
 	static PackedScene launcher, flippers;
 
 	public static void Launcher( Node3D gun )
 	{
 		launcher ??= GD.Load<PackedScene>( "res://assets/models/weapons/pinball_launcher.glb" );
-		if ( launcher?.Instantiate() is Node3D model ) { gun.AddChild( model ); NoShadows( model ); }
+		if ( launcher?.Instantiate() is not Node3D model ) return;
+		gun.AddChild( model );
+		NoShadows( model );
+		// The left hand reaches back and pulls the plunger (in view and on the third person rig, which follows this hand).
+		if ( gun.GetParent()?.GetParent() is Skeleton3D skeleton ) skeleton.AddChild( new PlungerArm { Name = "Plunger Arm", Model = model } );
 	}
 
 	public static void Flippers( Node3D gun )
@@ -786,10 +799,11 @@ public static class PinballModels
 	}
 
 	/// <summary> The plunger pulled back (0 to 1) with the spring stretching, the ball count lit, the lane's ball shown. </summary>
-	public static void PoseLauncher( Node3D root, float pull, int ammo, int magazine, float sinceShot )
+	public static void PoseLauncher( Node3D root, float pull, int ammo, int magazine, float sinceShot, float grab = 0f )
 	{
+		if ( Find( root, "Plunger" ) is { } p ) p.SetMeta( "grab", grab );
 		if ( Find( root, "Plunger" ) is { } plunger ) plunger.Position = new Vector3( -PlungerTravel * pull + Wobble( pull, sinceShot ), 0f, 0f );
-		if ( Find( root, "Spring" ) is { } spring ) spring.Scale = new Vector3( 1f + 0.85f * pull, 1f, 1f );
+		if ( Find( root, "Spring" ) is { } spring ) spring.Scale = new Vector3( 1f + 1.1f * pull, 1f, 1f );
 		if ( Find( root, "Loaded" ) is { } loaded ) loaded.Visible = ammo > 0 && sinceShot > 0.25f;
 		for ( var i = 1; i <= 5; i++ )
 			if ( Find( root, $"Ball Light {i} Lit" ) is { } lit ) lit.Visible = i <= Math.Min( ammo, 5 ) && (magazine <= 5 || i <= (int)MathF.Ceiling( ammo * 5f / magazine ));
@@ -811,5 +825,68 @@ public static class PinballModels
 	{
 		if ( Find( root, "Left Flipper" ) is { } l ) l.Rotation = new Vector3( 0f, 0f, MathX.Rad( FlipAngle * left ) );
 		if ( Find( root, "Right Flipper" ) is { } r ) r.Rotation = new Vector3( 0f, 0f, -MathX.Rad( FlipAngle * right ) );
+	}
+}
+
+/// <summary>
+/// Bends the rig's left arm (upper_L, lower_L, hand_L) back to the launcher's plunger knob and with it as it is pulled,
+/// by the "grab" the launcher's pose sets on its Plunger node (0 leaves the hand on the gun's front). A two-bone reach
+/// like the Trident-Bot's `ShieldArm`, elbow down and out to the left. The third person rig's left hand follows this
+/// hand, so it shows there too.
+/// </summary>
+public partial class PlungerArm : SkeletonModifier3D
+{
+	public Node3D Model;
+	int upper = -1, lower = -1, hand = -1;
+	Node3D plunger, knob;
+	/// <summary> Tests: the last grab this arm applied. </summary>
+	public static float LastGrab { get; private set; }
+
+	public override void _ProcessModificationWithDelta( double delta )
+	{
+		var skeleton = GetSkeleton();
+		if ( skeleton is null || Model is null || !IsInstanceValid( Model ) ) return;
+		if ( upper < 0 ) { upper = skeleton.FindBone( "upper_L" ); lower = skeleton.FindBone( "lower_L" ); hand = skeleton.FindBone( "hand_L" ); }
+		if ( upper < 0 || lower < 0 || hand < 0 ) return;
+		plunger ??= Model.FindChild( "Plunger", true, false ) as Node3D;
+		knob ??= Model.FindChild( "Plunger Knob", true, false ) as Node3D;
+		if ( plunger is null || knob is null || !Model.IsVisibleInTree() ) return;
+		var grab = (float)plunger.GetMeta( "grab", 0f );
+		LastGrab = grab;
+		if ( grab < 0.001f ) return;
+		var w = grab * grab * (3f - 2f * grab);
+
+		var toSkeleton = skeleton.GlobalTransform.AffineInverse();
+		var gU = skeleton.GetBoneGlobalPose( upper );
+		var gL = skeleton.GetBoneGlobalPose( lower );
+		var gH = skeleton.GetBoneGlobalPose( hand );
+		// The wrist just ahead of the knob and out to its left, so the fist closes round it.
+		var gun = Model.GlobalBasis;
+		var knobAt = knob.GlobalPosition + gun * new Vector3( 0.8f, 1.1f, -0.3f );
+		var target = gH.Origin.Lerp( toSkeleton * knobAt, w );
+		var pole = (toSkeleton.Basis * (gun * new Vector3( 0f, 1f, -1.2f ))).Normalized();
+		var shoulder = gU.Origin;
+		var a = shoulder.DistanceTo( gL.Origin );
+		var b = gL.Origin.DistanceTo( gH.Origin );
+		if ( a < 1e-4f || b < 1e-4f ) return;
+		var reach = target - shoulder;
+		var d = Math.Clamp( reach.Length(), MathF.Abs( a - b ) + 1e-3f, (a + b) * 0.999f );
+		var dir = reach.Normalized();
+		var cos = Math.Clamp( (a * a + d * d - b * b) / (2f * a * d), -1f, 1f );
+		var side = (pole - dir * pole.Dot( dir )).Normalized();
+		if ( side == Vector3.Zero ) side = pole;
+		var elbow = shoulder + dir * a * cos + side * a * MathF.Sqrt( 1f - cos * cos );
+		var wrist = shoulder + dir * d;
+		var q1 = ShieldArm.Arc( gL.Origin - shoulder, elbow - shoulder );
+		var lowerBasis = new Basis( q1 ) * gL.Basis;
+		var q2 = ShieldArm.Arc( new Basis( q1 ) * (gH.Origin - gL.Origin), wrist - elbow );
+		var upperG = new Transform3D( new Basis( q1 ) * gU.Basis, shoulder );
+		var lowerG = new Transform3D( new Basis( q2 ) * lowerBasis, elbow );
+		var handG = new Transform3D( new Basis( q2 * q1 ) * gH.Basis, wrist );
+		var parent = skeleton.GetBoneParent( upper );
+		var parentG = parent >= 0 ? skeleton.GetBoneGlobalPose( parent ) : Transform3D.Identity;
+		skeleton.SetBonePoseRotation( upper, ShieldArm.Local( parentG, upperG ) );
+		skeleton.SetBonePoseRotation( lower, ShieldArm.Local( upperG, lowerG ) );
+		skeleton.SetBonePoseRotation( hand, ShieldArm.Local( lowerG, handG ) );
 	}
 }

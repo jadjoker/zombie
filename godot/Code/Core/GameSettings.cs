@@ -39,6 +39,8 @@ public static class GameSettings
 
 	/// <summary> The robot being played (RobotClass id), picked at the dock. `--class <name>` overrides it. </summary>
 	public static string RobotClass = Argument( "--class" ) ?? global::RobotClass.RamBot.Id;
+	/// <summary> The address last joined online (the picker's Join box remembers it). </summary>
+	public static string LastJoin = "";
 
 	static string RifleArgument() => Argument( "--rifle" );
 
@@ -73,6 +75,7 @@ public static class GameSettings
 		HudTheme = Argument( "--hudtheme" ) ?? (string)file.GetValue( "game", "hud_theme", HudTheme );
 		UiStyle.Theme = global::HudTheme.Find( HudTheme );
 		RobotClass = Argument( "--class" ) ?? (string)file.GetValue( "game", "robot_class", RobotClass );
+		LastJoin = (string)file.GetValue( "net", "last_join", LastJoin );
 	}
 
 	public static void Save()
@@ -92,6 +95,7 @@ public static class GameSettings
 		file.SetValue( "game", "rifle", Rifle );
 		file.SetValue( "game", "hud_theme", HudTheme );
 		file.SetValue( "game", "robot_class", RobotClass );
+		file.SetValue( "net", "last_join", LastJoin );
 		file.Save( Path );
 	}
 

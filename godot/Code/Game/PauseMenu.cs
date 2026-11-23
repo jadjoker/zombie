@@ -198,7 +198,7 @@ public partial class PauseMenu : CanvasLayer
 		if ( IsOpen == open ) return;
 		IsOpen = open;
 		window.Visible = open;
-		GetTree().Paused = open;
+		GetTree().Paused = open && !Net.Online;   // online the game runs on behind it
 		Input.MouseMode = open ? MenuMouse() : Input.MouseModeEnum.Captured;
 		UpdateHint();
 		changeRobot.Visible = DockHouse.Current is not null && DockHouse.WeaponsHeld;

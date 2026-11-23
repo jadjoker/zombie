@@ -267,7 +267,7 @@ public partial class PlayerSkills : Node
 	{
 		Name = "PlayerSkills";
 		controller = GetParent<PlayerController>();
-		Local ??= this;
+		if ( !controller.IsRemote ) Local ??= this;
 		RobotClass.Changed += OnRobotChanged;
 	}
 
@@ -278,12 +278,14 @@ public partial class PlayerSkills : Node
 	}
 
 	void OnRobotChanged() { Version++; Changed?.Invoke(); }
+	/// <summary> A remote player picked another robot (Net). </summary>
+	public void RobotChanged() => OnRobotChanged();
 
 	/// <summary> Points in a skill, counted only while playing the robot it belongs to. </summary>
 	public int Rank( SkillId id )
 	{
 		var r = ranks[(int)id];
-		return r == 0 || Skills.Def( id ).Robot != RobotClass.Current.Id ? 0 : r;
+		return r == 0 || Skills.Def( id ).Robot != (controller?.Robot ?? RobotClass.Current).Id ? 0 : r;
 	}
 	/// <summary> Points held, whichever robot is being played (the tree page shows them all). </summary>
 	public int Held( SkillId id ) => ranks[(int)id];
@@ -301,7 +303,7 @@ public partial class PlayerSkills : Node
 		return n;
 	}
 	public bool Unlocked( SkillDef d ) => d.Row == 0 || RowPoints( d.Robot, d.Tree, d.Row - 1 ) >= Skills.UnlockPoints;
-	public bool CanBuy( SkillDef d ) => Tokens > 0 && Unlocked( d ) && ranks[(int)d.Id] < d.Max && d.Robot == RobotClass.Current.Id;
+	public bool CanBuy( SkillDef d ) => Tokens > 0 && Unlocked( d ) && ranks[(int)d.Id] < d.Max && d.Robot == (controller?.Robot ?? RobotClass.Current).Id;
 
 	/// <summary> Spends a token on a point in this skill. </summary>
 	public bool Buy( SkillId id )

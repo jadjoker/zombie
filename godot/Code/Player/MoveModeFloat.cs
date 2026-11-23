@@ -34,11 +34,11 @@ public partial class MoveModeFloat : Node
 		if ( TestInput is { } test ) return test.Normalized() * SwimSpeed * U.In;
 		if ( !controller.UseInputControls ) return Vector3.Zero;
 		var eyes = controller.EyeAngles.ToBasis();
-		var move = Input.GetVector( "left", "right", "backward", "forward" );
+		var move = controller.In.GetVector( "left", "right", "backward", "forward" );
 		var wish = -eyes.Z * move.Y + eyes.X * move.X;
-		if ( Input.IsActionPressed( "jump" ) ) wish += Vector3.Up;
-		if ( Input.IsActionPressed( "duck" ) ) wish += Vector3.Down;
-		var speed = Input.IsActionPressed( "run" ) ? SwimSpeed * 1.45f : SwimSpeed;
+		if ( controller.In.Pressed( "jump" ) ) wish += Vector3.Up;
+		if ( controller.In.Pressed( "duck" ) ) wish += Vector3.Down;
+		var speed = controller.In.Pressed( "run" ) ? SwimSpeed * 1.45f : SwimSpeed;
 		return wish.IsNearlyZero() ? Vector3.Zero : wish.Normalized() * speed * U.In;
 	}
 

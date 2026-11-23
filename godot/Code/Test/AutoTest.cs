@@ -77,6 +77,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
 		if ( args.Contains( "--perfsplit" ) ) { await PerfSplitTest(); return; }
 		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
+		if ( args.Contains( "--nettest" ) ) { await NetTest(); return; }
 		if ( args.Contains( "--gorevac" ) ) { await GoreVacTest(); return; }
 		if ( args.Contains( "--classes" ) ) { await ClassTest(); return; }
 		if ( args.Contains( "--skills" ) ) { await SkillTest(); return; }

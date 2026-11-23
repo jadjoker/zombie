@@ -69,7 +69,7 @@ public partial class PlayerWeapon
 	public Vector3 LinePoint()
 	{
 		if ( Active && ViewModel is not null && ViewModel.Visible ) return ViewModel.Muzzle().Origin;
-		if ( controller.ThirdPerson && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held ) return held.Origin;
+		if ( controller.SeenFromOutside && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held ) return held.Origin;
 		var basis = controller.Camera?.GlobalBasis ?? controller.EyeTransform.Basis;
 		return (controller.Camera?.GlobalPosition ?? controller.EyeTransform.Origin) - basis.Z * 0.5f - basis.Y * 0.2f + basis.X * 0.15f;
 	}
@@ -81,7 +81,7 @@ public partial class PlayerWeapon
 		var aim = Trace.Ray( controller, start, start + direction * HookFx.MaxRange, Layers.World | Layers.Creature, exclude );
 		var target = aim.Hit ? aim.HitPosition : start + direction * HookFx.MaxRange;
 		// It flies from just in front of the eyes (the gun's muzzle moves with its animations); the rope is drawn from the muzzle.
-		var from = controller.ThirdPerson ? controller.EyeTransform.Origin + direction * 0.6f : start + direction * 0.3f;
+		var from = controller.SeenFromOutside ? controller.EyeTransform.Origin + direction * 0.6f : start + direction * 0.3f;
 		var damage = CurrentDamage * (1f + HookFx.BarbedPer * Skill( SkillId.BarbedHooks ));
 		line = HarpoonLine.Fire( this, controller, from, (target - from).SafeNormal(), damage );
 	}
@@ -89,7 +89,7 @@ public partial class PlayerWeapon
 	void ThrowLure( Vector3 start, Vector3 forward )
 	{
 		ActiveLure?.Burst();
-		var from = controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : start + forward * 0.5f - controller.Camera.GlobalBasis.Y * 0.15f;
+		var from = controller.SeenFromOutside ? controller.EyeTransform.Origin + forward * 0.6f : start + forward * 0.5f - controller.Camera.GlobalBasis.Y * 0.15f;
 		lure = global::LanternLure.Throw( this, controller, from, forward );
 	}
 

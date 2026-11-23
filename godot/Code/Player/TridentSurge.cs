@@ -52,10 +52,11 @@ public partial class TridentSurge : Node
 
 	public override void _Process( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
 		var dt = (float)delta;
 		jetpack ??= controller.GetNodeOrNull<Jetpack>( "Jetpack" );
 		var held = controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
-		var on = RobotClass.Current == RobotClass.TridentBot && jetpack is not null && !jetpack.Blinking && (jetpack.Charging || jetpack.Surging)
+		var on = controller.Robot == RobotClass.TridentBot && jetpack is not null && !jetpack.Blinking && (jetpack.Charging || jetpack.Surging)
 			&& !PlayerSurvivor.LocalDead && held is not null;
 		show = on ? MathX.Clamp( show + dt / 0.12f, 0f, 1f ) : MathX.Clamp( show - dt / FadeTime, 0f, 1f );
 
@@ -103,7 +104,7 @@ public partial class TridentSurge : Node
 	/// <summary> The weapon's head in the world: in first person on the view model, in third person on the gun in hand. </summary>
 	Vector3? Head( PlayerWeapon weapon )
 	{
-		Node3D root = !controller.ThirdPerson ? weapon.ViewModel : controller.FindChild( $"World {weapon.DisplayName}", true, false ) as Node3D;
+		Node3D root = !controller.SeenFromOutside ? weapon.ViewModel : controller.FindChild( $"World {weapon.DisplayName}", true, false ) as Node3D;
 		if ( root is null || !root.IsVisibleInTree() ) return null;
 		if ( weapon.Spear && root.FindChild( "Spear", true, false ) is Node3D spear ) return spear.GlobalTransform * SpearHead;
 		if ( root.FindChild( "Muzzle", true, false ) is Node3D muzzle ) return muzzle.GlobalPosition;

@@ -116,7 +116,7 @@ public partial class PlayerWeapon : Node
 	public float CurrentFireRate => FireRate * (ModelName == "rifle" ? (Perks?.FireRateScale ?? 1f) * (overclockLeft > 0 ? 1f + SkillFx.OverclockRate : 1f) : 1f);
 	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, CurrentReloadTime ), 0f, 1f );
 
-	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.ThirdPerson ?? false);
+	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.SeenFromOutside ?? false);
 
 	Color? FlashTint => ModelName switch { "rifle" => RifleModels.Get().Flash, "trident" => TridentModel.Green, _ => null };
 
@@ -251,12 +251,13 @@ public partial class PlayerWeapon : Node
 
 	void EnsureViewModel()
 	{
-		if ( ViewModel is not null || controller.Camera is null ) return;
+		if ( ViewModel is not null || controller.Camera is null || controller.IsRemote ) return;   // a remote robot's gun is the one in its hands
 		ViewModel = ViewModel.Create( controller.Camera, ViewModelName, controller, this );
 	}
 
 	public override void _Process( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
 		// Game time since the last frame, measured on the same clock as TimeSinceShot (for Shoot's carry-over).
 		frameStep = (float)(Clock.Now - lastFrameAt);
 		lastFrameAt = Clock.Now;
@@ -275,7 +276,7 @@ public partial class PlayerWeapon : Node
 		EnsureViewModel();
 
 		var melee = MeleeActive?.Invoke() ?? false;
-		if ( ViewModel is not null ) ViewModel.Visible = !controller.ThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && !melee;
+		if ( ViewModel is not null ) ViewModel.Visible = !controller.SeenFromOutside && !DevFlags.HideWeapon && !DevFlags.FreeCam && !melee;
 		ShowLoaded();
 
 		if ( InfiniteAmmo ) { Ammo = MagazineSize; Reserve = Math.Max( Reserve, StartingReserve ); }
@@ -285,28 +286,27 @@ public partial class PlayerWeapon : Node
 
 		if ( Spear )
 		{
-			UpdateSpear( dt, !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree) );
+			UpdateSpear( dt, !(DevFlags.Placing || melee || LocalBlocked) );
 			return;
 		}
 
 		if ( Vacuum )
 		{
 			// The Gore Vac: no aiming or reloading; fire sucks and aim spits (GoreVac.cs).
-			var free = !(DevFlags.Placing || melee || DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree);
+			var free = !(DevFlags.Placing || melee || LocalBlocked);
 			UpdateVacuum( dt, free );
 			return;
 		}
 
 		if ( !Bubbles && !Lure && !Seeds ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
 
-		if ( Input.IsActionJustPressed( "reload" ) ) StartReload();
-		if ( ShellReload && IsReloading && Input.IsActionJustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
+		if ( controller.In.JustPressed( "reload" ) ) StartReload();
+		if ( ShellReload && IsReloading && controller.In.JustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
 		if ( DevFlags.Placing || melee ) return;   // left click is placing an enemy; the axe is out
-		if ( DockHouse.WeaponsHeld || DevMenu.IsOpen ) return;   // not during the dive, nor while clicking the dev menu
-		if ( MouseFree ) return;   // Esc released the mouse: the click that takes it back doesn't fire
-		if ( Bubbles && Input.IsActionJustPressed( "attack2" ) ) BubbleTrap.PopAll( controller, true );
-		if ( Lure && Input.IsActionJustPressed( "attack2" ) ) ActiveLure?.Burst();
-		if ( Seeds && Input.IsActionJustPressed( "attack2" ) && !IsReloading && TimeSinceShot >= 0.3f )
+		if ( LocalBlocked ) return;   // not during the dive, nor while clicking the dev menu, nor while Esc has the mouse
+		if ( Bubbles && controller.In.JustPressed( "attack2" ) ) BubbleTrap.PopAll( controller, true );
+		if ( Lure && controller.In.JustPressed( "attack2" ) ) ActiveLure?.Burst();
+		if ( Seeds && controller.In.JustPressed( "attack2" ) && !IsReloading && TimeSinceShot >= 0.3f )
 		{
 			if ( Ammo > 0 ) { TimeSinceShot = 0f; Ammo--; PlantSeed( controller.Camera.GlobalPosition, -controller.Camera.GlobalBasis.Z, true ); }
 			else if ( Reserve > 0 ) StartReload();
@@ -322,12 +322,12 @@ public partial class PlayerWeapon : Node
 			if ( charging && frame - chargeFrame > 3 ) charging = false;
 			chargeFrame = frame;
 			if ( IsReloading ) charging = false;
-			var held = Input.IsActionPressed( "attack1" );
+			var held = controller.In.Pressed( "attack1" );
 			if ( !charging && !Bubbles )
 			{
 				// The trident: a pull only starts the charge, nothing leaves yet. Let go to fire: charged if it filled,
 				// a plain shot if it didn't. (One trident a pull, never a plain one and then a charged one.)
-				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				if ( controller.In.JustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
 					if ( Ammo > 0 ) { charging = true; chargeFull = false; sinceChargeStart = 0f; Sfx.Play2D( "trident_charge", 0.5f, bus: Sfx.GunBus ); }
 					else if ( Reserve > 0 ) StartReload();
@@ -349,7 +349,7 @@ public partial class PlayerWeapon : Node
 			}
 			else if ( !charging )
 			{
-				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				if ( controller.In.JustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
 					if ( Ammo > 0 ) { Shoot(); heldSinceShot = true; }
 					else if ( Reserve > 0 ) StartReload();
@@ -375,12 +375,12 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		var wantsFire = Automatic ? Input.IsActionPressed( "attack1" ) : Input.IsActionJustPressed( "attack1" );
+		var wantsFire = Automatic ? controller.In.Pressed( "attack1" ) : controller.In.JustPressed( "attack1" );
 		if ( wantsFire && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate && !(Harpoon && LineOut) )
 		{
 			if ( Ammo > 0 ) Shoot();
 			else if ( Reserve > 0 ) StartReload();
-			else if ( Input.IsActionJustPressed( "attack1" ) ) Sfx.Play2D( "dry_fire" );   // one click per pull, not every frame it is held
+			else if ( controller.In.JustPressed( "attack1" ) ) Sfx.Play2D( "dry_fire" );   // one click per pull, not every frame it is held
 		}
 	}
 
@@ -395,10 +395,10 @@ public partial class PlayerWeapon : Node
 	{
 		Ammo = MagazineSize;
 		var wasBlocking = Blocking;
-		Blocking = free && (Input.IsActionPressed( "attack2" ) || forceBlock);
+		Blocking = free && (controller.In.Pressed( "attack2" ) || forceBlock);
 		shieldUp = MathX.Lerp( shieldUp, Blocking ? 1f : 0f, 1f - MathF.Exp( -14f * dt ) );
 		ShieldSkills( wasBlocking, dt );
-		if ( free && (!Blocking || Skill( SkillId.Spartan ) > 0) && Input.IsActionJustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
+		if ( free && (!Blocking || Skill( SkillId.Spartan ) > 0) && controller.In.JustPressed( "attack1" ) && spearSwing >= SpearCooldown ) TestThrust();
 		if ( !spearStruck && spearSwing >= SpearWindUp && spearSwing < SpearCooldown )
 		{
 			spearStruck = true;
@@ -435,7 +435,7 @@ public partial class PlayerWeapon : Node
 
 	void UpdateAiming( float dt )
 	{
-		IsAiming = (Input.IsActionPressed( "attack2" ) || ForceAim) && !IsReloading;
+		IsAiming = (controller.In.Pressed( "attack2" ) || ForceAim) && !IsReloading;
 		aimLinear = MathX.Approach( aimLinear, IsAiming ? 1f : 0f, dt / MathF.Max( 0.05f, AimTime ) );
 		AimAmount = aimLinear * aimLinear * (3f - 2f * aimLinear);
 		var scope = HasScope ? MathX.Clamp( (AimAmount - 0.78f) / 0.22f, 0f, 1f ) : 0f;
@@ -455,6 +455,8 @@ public partial class PlayerWeapon : Node
 
 	/// <summary> The mouse is out of the game (Esc). Scripted tests run with it free, so they don't count. </summary>
 	public static bool MouseFree => Input.MouseMode != Input.MouseModeEnum.Captured && !AutoTest.Requested;
+	/// <summary> This machine's menus or the dive hold the local player's gun (a remote player's owner already held its presses back). </summary>
+	bool LocalBlocked => !controller.IsRemote && (DockHouse.WeaponsHeld || DevMenu.IsOpen || MouseFree);
 
 	/// <summary> Testing aid: fires one shot as if the trigger was pulled. </summary>
 	public void TestFire() => Shoot();
@@ -485,7 +487,7 @@ public partial class PlayerWeapon : Node
 			trailStart = barrel.Origin;
 			if ( MuzzleFlashScale > 0f ) Fx.MuzzleFlash( barrel.Origin, barrel.Basis.Y, MuzzleFlashScale, ViewModel, FlashTint );
 		}
-		else if ( controller.ThirdPerson && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held )
+		else if ( controller.SeenFromOutside && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held )
 		{
 			// Third person: the flash and the tracers come out of the gun in the robot's hands, not where the
 			// first person gun would be on screen.
@@ -499,7 +501,7 @@ public partial class PlayerWeapon : Node
 		var usedHeldMuzzle = thirdPersonMuzzle;
 		thirdPersonMuzzle = false;
 		var exclude = new Godot.Collections.Array<Rid> { controller.GetRid() };
-		if ( Bubbles ) BlowBubble( controller.ThirdPerson ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
+		if ( Bubbles ) BlowBubble( controller.SeenFromOutside ? controller.EyeTransform.Origin + forward * 0.6f : trailStart, start, forward, spread, chargedShot );
 		else if ( Harpoon ) FireHarpoon( start, forward, spread, trailStart );
 		else if ( Lure ) ThrowLure( start, forward );
 		else if ( Seeds ) PlantSeed( start, forward, false );
@@ -511,8 +513,8 @@ public partial class PlayerWeapon : Node
 			var target = aim.Hit ? aim.HitPosition : start + aimDirection * Range;
 			// In third person the camera hangs behind the robot: the trident leaves from in front of the robot's eyes.
 			// The check for something between the shooter and the muzzle starts at the robot's eyes then, not the camera.
-			var eyes = controller.ThirdPerson ? controller.EyeTransform.Origin : start;
-			var from = controller.ThirdPerson && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
+			var eyes = controller.SeenFromOutside ? controller.EyeTransform.Origin : start;
+			var from = controller.SeenFromOutside && !usedHeldMuzzle ? eyes + aimDirection * 0.6f : trailStart;
 			TridentBolt.Launch( GetTree().CurrentScene, from, target, aimDirection, eyes, ShotDamage, controller, this, chargedShot );
 			if ( chargedShot ) Fork( from, aimDirection, eyes, basis );
 			if ( chargedShot ) { Sfx.Play2D( "trident_pierce", 0.5f, 1.3f, bus: Sfx.GunBus ); juice?.Shake( ShakePerShot ); }

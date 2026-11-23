@@ -171,6 +171,7 @@ public partial class Controls : Node
 	/// <summary> Rumbles the pad in use: 0.1 a tap, 0.5 a thump, 1 everything. Does nothing on the keyboard, or with vibration off. </summary>
 	public static void Rumble( float amount, float? seconds = null )
 	{
+		if ( Sfx.RemoteSource is not null ) return;   // another player's robot did it
 		if ( !GameSettings.Vibration || amount < 0.03f ) return;
 		RumbleCount++;
 		if ( !IsController || Input.GetConnectedJoypads().Count == 0 ) return;

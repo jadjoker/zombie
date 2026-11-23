@@ -83,6 +83,22 @@ public partial class PlayerController : CharacterBody3D
 	/// <summary> When this gives a transform the camera goes there instead of to the eye (the death camera). </summary>
 	public Func<float, Transform3D?> CameraOverride;
 
+	// ---- Online (Net) ----
+	/// <summary> Another player's robot in an online game: moved by what its owner sends, not by this machine's keys. </summary>
+	public bool IsRemote;
+	/// <summary> The network peer that owns this player (1 is the host; 0 offline). </summary>
+	public long PeerId;
+	/// <summary> Where this player's buttons come from: the keyboard and pad, or the network. </summary>
+	public PlayerInput In = LocalInput.Instance;
+	/// <summary> The robot this player is (the local pick, or what a remote player picked). </summary>
+	public RobotClass Robot => IsRemote ? (remoteRobot ?? RobotClass.RamBot) : RobotClass.Current;
+	RobotClass remoteRobot;
+	public void SetRemoteRobot( RobotClass robot ) => remoteRobot = robot;
+	/// <summary> The body, gun and effects are seen from outside: third person, or someone else's robot. </summary>
+	public bool SeenFromOutside => ThirdPerson || IsRemote;
+	/// <summary> A remote player's ground contact, as its owner sent it. </summary>
+	public void SetRemoteGround( bool grounded, bool ducking ) { IsOnGround = grounded; IsDucking = ducking; }
+
 	CollisionShape3D shape;
 	CapsuleShape3D capsule;
 	TimeUntil preventGrounding;
@@ -131,17 +147,25 @@ public partial class PlayerController : CharacterBody3D
 		Camera.TopLevel = true;
 		Camera.PhysicsInterpolationMode = PhysicsInterpolationModeEnum.Off;   // placed every frame from DrawnPosition
 		AddChild( Camera );
-		Camera.MakeCurrent();
+		if ( !IsRemote ) Camera.MakeCurrent();
 
 		FieldOfView = GameSettings.Fov;
 		LookSensitivity = GameSettings.LookSensitivity;
 		EyeAngles = new Angles( 0f, MathX.Deg( GlobalRotation.Y ), 0f );
 		GlobalRotation = Vector3.Zero;
+		if ( IsRemote )
+		{
+			// Someone else's robot: no physics of its own here (its owner moves it). It keeps the player layer so
+			// enemy shots and checks still find it; the local player doesn't collide with that layer.
+			CollisionMask = 0;
+			return;
+		}
 		Input.MouseMode = Input.MouseModeEnum.Captured;
 	}
 
 	public override void _UnhandledInput( InputEvent e )
 	{
+		if ( IsRemote ) return;
 		if ( e is InputEventMouseMotion motion && Input.MouseMode == Input.MouseModeEnum.Captured )
 			lookDelta += motion.Relative;
 		// (Esc belongs to the pause menu.) A click takes the mouse back if something else let go of it (alt-tab).
@@ -176,7 +200,7 @@ public partial class PlayerController : CharacterBody3D
 		// Teleported (spawn, travel, dive): snap the drawn position instead of sliding there.
 		if ( GlobalPosition.DistanceTo( lastTickPosition ) > 3f ) ResetPhysicsInterpolation();
 		lastTickPosition = GlobalPosition;
-		if ( UseLookControls )
+		if ( UseLookControls && !IsRemote )
 		{
 			var e = EyeAngles;
 			e.Yaw -= lookDelta.X * LookSensitivity;
@@ -203,7 +227,7 @@ public partial class PlayerController : CharacterBody3D
 		}
 		lookDelta = Vector2.Zero;
 
-		if ( Input.IsActionJustPressed( "view" ) )
+		if ( !IsRemote && Input.IsActionJustPressed( "view" ) )
 		{
 			ThirdPerson = !ThirdPerson;
 			cameraDistance = 20f * U.In;
@@ -217,6 +241,7 @@ public partial class PlayerController : CharacterBody3D
 	public override void _PhysicsProcess( double delta )
 	{
 		var dt = (float)delta;
+		if ( IsRemote ) return;   // its owner simulates it (NetPlayer places it)
 		if ( Scripted ) { Velocity = Vector3.Zero; IsOnGround = false; return; }
 		// Anchor snapped: the float mode moves us (s&box MoveModeFloat outscores the walk mode).
 		if ( GetNodeOrNull<MoveModeFloat>( "MoveModeFloat" ) is { Active: true } floating )
@@ -229,18 +254,18 @@ public partial class PlayerController : CharacterBody3D
 		var wasGrounded = IsOnGround;
 
 		// Wish velocity from the movement keys (yaw only), or the active ground move's velocity.
-		var input = UseInputControls ? Input.GetVector( "left", "right", "backward", "forward" ) : Vector2.Zero;
+		var input = UseInputControls ? In.GetVector( "left", "right", "backward", "forward" ) : Vector2.Zero;
 		var yaw = new Angles( 0f, EyeAngles.Yaw, 0f );
 		var direction = (yaw.Forward * input.Y + yaw.Right * input.X).ClampLength( 1f );
-		var run = UseInputControls && Input.IsActionPressed( "run" );
+		var run = UseInputControls && In.Pressed( "run" );
 		var speed = run ? RunSpeed : WalkSpeed;
 		if ( IsDucking && IsOnGround ) speed = DuckedSpeed;
 		WishVelocity = direction.Length() < 0.1f ? Vector3.Zero : direction * speed;
 		var ground = GroundOverride?.Invoke();
 		if ( ground is { } g ) WishVelocity = g.Flat();
 
-		UpdateDuck( UseInputControls && Input.IsActionPressed( "duck" ), dt );
-		if ( UseInputControls && Input.IsActionJustPressed( "jump" ) ) jumpRequested = true;
+		UpdateDuck( UseInputControls && In.Pressed( "duck" ), dt );
+		if ( UseInputControls && In.JustPressed( "jump" ) ) jumpRequested = true;
 
 		var v = Velocity;
 		var wish = WishVelocity;
@@ -458,6 +483,7 @@ public partial class PlayerController : CharacterBody3D
 		Camera.GlobalTransform = CameraOverride?.Invoke( dt ) ?? new Transform3D( basis, eye );
 		Camera.Fov = FieldOfView;
 
+		if ( IsRemote ) return;   // a remote player's camera only carries its aim: no shake, sway or underwater wobble
 		foreach ( var child in GetChildren() )
 			if ( child is ICameraModifier modifier ) modifier.PostCameraSetup( Camera );
 	}

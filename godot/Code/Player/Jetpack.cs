@@ -116,19 +116,20 @@ public partial class Jetpack : Node
 
 	public override void _Process( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
 		var dt = (float)delta;
 		if ( hitStopUntil > 0 && Clock.Real >= hitStopUntil ) { Engine.TimeScale = 1f; hitStopUntil = 0; }
 		if ( !CanAct ) { Thrusting = false; Charging = false; Charge = 0f; return; }
 
 		var airborne = !controller.IsOnGround && controller.TimeSinceGrounded > ThrustDelay;
-		var wantThrust = (Input.IsActionPressed( "jump" ) || TestHold) && airborne && !(movement?.IsFloating ?? false) && !(movement?.IsMantling ?? false);
+		var wantThrust = (controller.In.Pressed( "jump" ) || TestHold) && airborne && !(movement?.IsFloating ?? false) && !(movement?.IsMantling ?? false);
 		Thrusting = wantThrust && !Stalled && Power > 0f && !Surging && !Charging;
 		if ( Thrusting && timeSinceThrustSound > 0.42f )
 		{
 			timeSinceThrustSound = 0f;
 			Sfx.Play( "jet_thrust", controller.GlobalPosition, 0.45f, Rng.Float( 0.95f, 1.05f ) );
 		}
-		if ( wantThrust && Stalled && Input.IsActionJustPressed( "jump" ) ) TimeSinceRefused = 0f;
+		if ( wantThrust && Stalled && controller.In.JustPressed( "jump" ) ) TimeSinceRefused = 0f;
 		UpdateSurgeInput( dt );
 
 		if ( Thrusting )
@@ -198,16 +199,16 @@ public partial class Jetpack : Node
 
 	void UpdateSurgeInput( float dt )
 	{
-		var pressed = Input.IsActionJustPressed( "surge" ) || testSurge;
-		var released = Input.IsActionJustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
+		var pressed = controller.In.JustPressed( "surge" ) || testSurge;
+		var released = controller.In.JustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
 		testSurge = false;
-		if ( RobotClass.Current.Blink || RobotClass.Current.Grapple || RobotClass.Current.Burrow )
+		if ( controller.Robot.Blink || controller.Robot.Grapple || controller.Robot.Burrow )
 		{
 			Charging = false;
 			testHold = 0f;
-			if ( pressed && RobotClass.Current.Blink ) TryBlink();
-			else if ( pressed && RobotClass.Current.Grapple ) TryGrapple();
-			else if ( pressed && RobotClass.Current.Burrow ) ToggleBurrow();
+			if ( pressed && controller.Robot.Blink ) TryBlink();
+			else if ( pressed && controller.Robot.Grapple ) TryGrapple();
+			else if ( pressed && controller.Robot.Burrow ) ToggleBurrow();
 			return;
 		}
 		if ( !Charging && pressed && !Surging )
@@ -240,9 +241,9 @@ public partial class Jetpack : Node
 		rammed.Clear();
 		var eyes = controller.EyeAngles;
 		var direction = eyes.Forward;
-		if ( Input.IsActionPressed( "jump" ) || TestHold )
+		if ( controller.In.Pressed( "jump" ) || TestHold )
 		{
-			var input = Input.GetVector( "left", "right", "backward", "forward" );
+			var input = controller.In.GetVector( "left", "right", "backward", "forward" );
 			var steer = (eyes.Forward.Flat().SafeNormal() * input.Y + eyes.Right.Flat().SafeNormal() * input.X) * 0.35f;
 			direction = (Vector3.Up + steer).SafeNormal();
 		}
@@ -274,9 +275,9 @@ public partial class Jetpack : Node
 		var cost = BlinkCost * (1f - SkillFx.JetsPer * Skill( SkillId.EfficientJets ));
 		if ( Power < cost ) { TimeSinceRefused = 0f; return; }
 		var eyes = controller.EyeAngles;
-		var input = Input.GetVector( "left", "right", "backward", "forward" );
+		var input = controller.In.GetVector( "left", "right", "backward", "forward" );
 		var direction = input.LengthSquared() > 0.04f ? (eyes.Forward * input.Y + eyes.Right.Flat().SafeNormal() * input.X).SafeNormal() : eyes.Forward;
-		if ( Input.IsActionPressed( "jump" ) ) direction = (direction + Vector3.Up * 0.8f).SafeNormal();
+		if ( controller.In.Pressed( "jump" ) ) direction = (direction + Vector3.Up * 0.8f).SafeNormal();
 		if ( controller.IsOnGround && direction.Y < 0.1f ) direction = (direction.Flat().SafeNormal() + Vector3.Up * 0.12f).SafeNormal();
 		if ( direction == Vector3.Zero ) direction = eyes.Forward;
 
@@ -481,6 +482,7 @@ public partial class Jetpack : Node
 
 	public override void _PhysicsProcess( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
 		if ( !CanAct ) return;
 		var dt = (float)delta;
 		if ( Charging && !controller.IsOnGround )
@@ -521,7 +523,7 @@ public partial class Jetpack : Node
 			}
 			return;
 		}
-		if ( TimeSinceSurgeEnded < 0.4f && !RobotClass.Current.Blink && !RobotClass.Current.Grapple && !RobotClass.Current.Burrow && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
+		if ( TimeSinceSurgeEnded < 0.4f && !controller.Robot.Blink && !controller.Robot.Grapple && !controller.Robot.Burrow && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
 		{
 			var v = controller.Velocity;
 			if ( FindImpactBody( Feet, v * dt + v.Normalized() * RamRadius * U.In, out var hitAt, out var enemy ) && enemy is not null )

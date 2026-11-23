@@ -22,7 +22,16 @@ public partial class PlayerSurvivor : Node
 	public PlayerWeapon Weapon => Controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
 	public bool IsAlive => Health is not null && !Health.IsDead;
 	/// <summary> Is the player at this screen dead (the HUD, the gun and the camera all change when they are). </summary>
-	public static bool LocalDead => All.FirstOrDefault() is { Health: not null, IsAlive: false };
+	public static bool LocalDead => Local is { Health: not null, IsAlive: false };
+	/// <summary> The player at this screen (online, the others' robots are in All too). </summary>
+	public static PlayerSurvivor Local
+	{
+		get
+		{
+			foreach ( var s in All ) if ( s.Controller is { IsRemote: false } ) return s;
+			return null;
+		}
+	}
 	/// <summary>
 	/// Where enemies go for: the player, or Phase Shift's decoy while it stands. Code about the player's own body
 	/// (touching mines, the radio, the spawn spots) uses <see cref="RealPosition"/>.
@@ -47,9 +56,9 @@ public partial class PlayerSurvivor : Node
 		Health = Controller.GetNodeOrNull<Health>( "Health" );
 		if ( Health is null ) { Health = new Health(); Controller.AddChild( Health ); }
 		// Each robot starts with its own health (the Trident-Bot is tougher), and a new pick resets to it.
-		startingMaxHealth = RobotClass.Current.BaseHealth;
+		startingMaxHealth = Controller.Robot.BaseHealth;
 		Health.ResetTo( startingMaxHealth );
-		RobotClass.Changed += OnRobotPicked;
+		if ( !Controller.IsRemote ) RobotClass.Changed += OnRobotPicked;   // a remote player's pick comes over the network (Net)
 		Health.Damaged += OnHurt;
 		Health.Died += OnDied;
 		if ( Afflictions is null ) Controller.AddChild( new PlayerAfflictions() );
@@ -63,11 +72,11 @@ public partial class PlayerSurvivor : Node
 	}
 
 	/// <summary> A robot was picked: its base health in place of the old one's (upgrades bought so far are kept), full. </summary>
-	void OnRobotPicked()
+	public void OnRobotPicked()
 	{
 		if ( Health is null || !IsInstanceValid( Health ) ) return;
 		var bought = Health.MaxHealth - startingMaxHealth;
-		startingMaxHealth = RobotClass.Current.BaseHealth;
+		startingMaxHealth = Controller.Robot.BaseHealth;
 		Health.ResetTo( startingMaxHealth + MathF.Max( 0f, bought ) );
 	}
 

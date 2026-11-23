@@ -44,7 +44,8 @@ public partial class PlayerMelee : Node
 
 	public override void _Process( double delta )
 	{
-		if ( Input.IsActionJustPressed( "melee" ) && !(PlayerPerks.Of( GetParent() )?.BlastPressed ?? false) && !PlayerSurvivor.LocalDead && Swing >= Cooldown && !DevFlags.Placing && !DevFlags.FreeCam && !DockHouse.WeaponsHeld && !DevMenu.IsOpen && !PlayerWeapon.MouseFree ) TestSwing();
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
+		if ( controller.In.JustPressed( "melee" ) && !(PlayerPerks.Of( GetParent() )?.BlastPressed ?? false) && Swing >= Cooldown && (controller.IsRemote || (!PlayerSurvivor.LocalDead && !DevFlags.Placing && !DevFlags.FreeCam && !DockHouse.WeaponsHeld && !DevMenu.IsOpen && !PlayerWeapon.MouseFree)) ) TestSwing();
 		if ( !struck && Swing >= WindUp && Swing < Cooldown )
 		{
 			struck = true;
@@ -133,7 +134,7 @@ public partial class PlayerMelee : Node
 
 	void UpdateView()
 	{
-		var show = !controller.ThirdPerson && !DevFlags.HideWeapon && !DevFlags.FreeCam && Swing < Cooldown;
+		var show = !controller.SeenFromOutside && !DevFlags.HideWeapon && !DevFlags.FreeCam && Swing < Cooldown;
 		if ( !show ) { if ( axe is not null ) axe.Visible = false; return; }
 		if ( axe is null )
 		{

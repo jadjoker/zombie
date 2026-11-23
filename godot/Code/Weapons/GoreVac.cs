@@ -123,8 +123,8 @@ public partial class PlayerWeapon
 		var nozzle = Nozzle();
 
 		// Right click (aim) sucks, reload blows, left click (fire) shoots.
-		var wantSuck = allowed && (Input.IsActionPressed( "attack2" ) || ForceSuck);
-		var wantBlow = allowed && !wantSuck && (Input.IsActionPressed( "reload" ) || ForceBlow);
+		var wantSuck = allowed && (controller.In.Pressed( "attack2" ) || ForceSuck);
+		var wantBlow = allowed && !wantSuck && (controller.In.Pressed( "reload" ) || ForceBlow);
 		Sucking = wantSuck;
 		Blowing = wantBlow;
 		if ( wantSuck && Ammo >= MagazineSize && sinceFullWarning > FullBeepEvery )
@@ -153,8 +153,8 @@ public partial class PlayerWeapon
 		// let go with it full for the huge one. Let go early and nothing more happens.
 		if ( allowed )
 		{
-			var down = Input.IsActionPressed( "attack1" );
-			if ( Input.IsActionJustPressed( "attack1" ) )
+			var down = controller.In.Pressed( "attack1" );
+			if ( controller.In.JustPressed( "attack1" ) )
 			{
 				if ( (Ammo >= BallCost || HasMine) && TimeSinceShot >= 1f / CurrentFireRate ) { Spit( false ); triggerHeld = true; sinceTrigger = 0f; }
 				else if ( Ammo < BallCost && !HasMine ) Sfx.Play2D( "dry_fire" );

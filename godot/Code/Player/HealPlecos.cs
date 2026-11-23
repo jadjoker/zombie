@@ -43,7 +43,7 @@ public partial class HealPlecos : Node3D
 	{
 		var dt = (float)delta;
 		survivor ??= controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
-		var show = controller.ThirdPerson && survivor is { Healing: true } && !DevFlags.FreeCam;
+		var show = controller.SeenFromOutside && survivor is { Healing: true } && !DevFlags.FreeCam;
 		GlobalPosition = controller.GlobalPosition;
 		GlobalBasis = new Angles( 0f, controller.EyeAngles.Yaw, 0f ).ToBasis();
 

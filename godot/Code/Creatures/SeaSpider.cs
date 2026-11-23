@@ -33,7 +33,9 @@ public partial class SeaSpider : PartCreature
 
 	public const int ModeFollow = 0, ModeHold = 1, ModeAttack = 2;
 	public bool IsAlly;
-	public PlayerController OwnerPlayer;
+	/// <summary> The player this ally follows (null once that player is gone, e.g. left an online game). </summary>
+	public PlayerController OwnerPlayer { get => ownerPlayer is not null && IsInstanceValid( ownerPlayer ) ? ownerPlayer : null; set => ownerPlayer = value; }
+	PlayerController ownerPlayer;
 	public int AllyMode;
 	public Vector3 HoldPoint;
 	public Node3D AttackTarget;
@@ -1212,13 +1214,14 @@ public partial class AllyCommander : Node
 	{
 		var survivor = controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
 		if ( survivor is null || !survivor.IsAlive ) return;
-		if ( nextCheck <= 0f && KeepAlly && Nav.Region is not null )
+		// Online the host keeps every player's ally (allies are creatures, and creatures are the host's).
+		if ( nextCheck <= 0f && KeepAlly && Nav.Region is not null && !Net.IsClient )
 		{
 			nextCheck = 2f;
 			ally = SeaSpider.All.FirstOrDefault( s => s.IsAlly && s.OwnerPlayer == controller && !s.IsDead );
 			if ( ally is null ) ally = SeaSpider.SpawnAlly( controller );
 		}
-		if ( ally is not null && IsInstanceValid( ally ) && Input.IsActionJustPressed( "command" ) ) Issue();
+		if ( ally is not null && IsInstanceValid( ally ) && controller.In.JustPressed( "command" ) ) Issue();
 	}
 
 	void Issue()

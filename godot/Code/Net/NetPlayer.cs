@@ -1,0 +1,134 @@
+using Godot;
+
+/// <summary>
+/// One player's link to the other machines (<see cref="Net"/>). On the local player it sends where the robot is, its
+/// speed, aim, ground contact, health and held weapon about 30 times a second, and every press and release of the
+/// buttons that drive weapons and moves as it happens. On a remote player it eases the robot to what came in and feeds
+/// the presses to its <see cref="RemoteInput"/>, so its own weapon code fires them.
+/// </summary>
+public partial class NetPlayer : Node
+{
+	PlayerController controller;
+	PlayerSurvivor survivor;
+	WeaponInventory inventory;
+	float sendTimer;
+	int lastSlot = -1;
+	readonly bool[] sentDown = new bool[RemoteInput.Actions.Length];
+
+	// Remote: the latest state.
+	Vector3 targetPosition, targetVelocity;
+	float targetPitch, targetYaw;
+	bool hasState;
+	double stateAt;
+
+	/// <summary> The fields of a state packet, in order. </summary>
+	enum F { X, Y, Z, VX, VY, VZ, Pitch, Yaw, Flags, MoveX, MoveY, Health, MaxHealth, Count }
+
+	public override void _Ready()
+	{
+		Name = "NetPlayer";
+		controller = GetParent<PlayerController>();
+		// Before the player's own code each frame, so a remote press is seen by its weapons the frame it lands.
+		ProcessPriority = -500;
+	}
+
+	public override void _Process( double delta )
+	{
+		survivor ??= controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
+		inventory ??= controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" );
+		if ( !Net.Online ) return;
+		if ( controller.IsRemote ) Follow( (float)delta );
+		else if ( !Net.Connected ) return;
+		else Send( (float)delta );
+	}
+
+	// ---- Local: sending ----
+
+	/// <summary> Can the local player's buttons act right now (no menu open, not standing on the dock with the weapons racked)? </summary>
+	static bool ButtonsLive => !PlayerWeapon.MouseFree && !DevMenu.IsOpen && !PauseMenu.IsOpen && !ClassPicker.IsOpen;
+
+	void Send( float dt )
+	{
+		var net = Net.Instance;
+		// Presses and releases, as they happen (reliable).
+		var live = ButtonsLive;
+		for ( var i = 0; i < RemoteInput.Actions.Length; i++ )
+		{
+			var action = RemoteInput.Actions[i];
+			var tapped = live && Input.IsActionJustPressed( action );
+			var down = live && Input.IsActionPressed( action );
+			if ( tapped && !down && !sentDown[i] ) { net.SendEdge( i, true ); net.SendEdge( i, false ); continue; }   // a tap inside one frame
+			if ( down == sentDown[i] ) continue;
+			sentDown[i] = down;
+			net.SendEdge( i, down );
+		}
+		// The weapon in hand.
+		var slot = inventory?.Current?.Slot ?? -1;
+		if ( slot != lastSlot && slot >= 0 ) { lastSlot = slot; net.SendWeapon( slot ); }
+
+		sendTimer -= dt;
+		if ( sendTimer > 0f ) return;
+		sendTimer = 1f / Net.SendRate;
+		var p = controller.GlobalPosition;
+		var v = controller.Velocity;
+		var move = live ? Input.GetVector( "left", "right", "backward", "forward" ) : Vector2.Zero;
+		var flags = (controller.IsOnGround ? 1 : 0) | (controller.IsDucking ? 2 : 0) | (survivor is { IsAlive: true } ? 4 : 0) | (controller.Scripted ? 8 : 0);
+		var state = new float[(int)F.Count];
+		state[(int)F.X] = p.X; state[(int)F.Y] = p.Y; state[(int)F.Z] = p.Z;
+		state[(int)F.VX] = v.X; state[(int)F.VY] = v.Y; state[(int)F.VZ] = v.Z;
+		state[(int)F.Pitch] = controller.EyeAngles.Pitch; state[(int)F.Yaw] = controller.EyeAngles.Yaw;
+		state[(int)F.Flags] = flags;
+		state[(int)F.MoveX] = move.X; state[(int)F.MoveY] = move.Y;
+		state[(int)F.Health] = survivor?.Health?.Current ?? 0f;
+		state[(int)F.MaxHealth] = survivor?.Health?.MaxHealth ?? 100f;
+		net.SendState( state );
+	}
+
+	// ---- Remote: applying ----
+
+	public void ApplyState( float[] s )
+	{
+		if ( s is null || s.Length < (int)F.Count || !controller.IsRemote ) return;
+		var position = new Vector3( s[(int)F.X], s[(int)F.Y], s[(int)F.Z] );
+		if ( !hasState || position.DistanceTo( controller.GlobalPosition ) > 8f ) { controller.GlobalPosition = position; controller.ResetPhysicsInterpolation(); }
+		hasState = true;
+		stateAt = Clock.Real;
+		targetPosition = position;
+		targetVelocity = new Vector3( s[(int)F.VX], s[(int)F.VY], s[(int)F.VZ] );
+		targetPitch = s[(int)F.Pitch];
+		targetYaw = s[(int)F.Yaw];
+		var flags = (int)s[(int)F.Flags];
+		controller.SetRemoteGround( (flags & 1) != 0, (flags & 2) != 0 );
+		controller.Scripted = (flags & 8) != 0;
+		if ( controller.In is RemoteInput input ) input.Move = new Vector2( s[(int)F.MoveX], s[(int)F.MoveY] );
+		if ( survivor?.Health is { } h )
+		{
+			h.MaxHealth = s[(int)F.MaxHealth];
+			var alive = (flags & 4) != 0;
+			if ( alive && h.IsDead ) survivor.Respawn( position, fullReset: false );
+			if ( !alive && !h.IsDead ) h.Kill();
+			else if ( alive ) h.Current = s[(int)F.Health];
+		}
+	}
+
+	void Follow( float dt )
+	{
+		if ( controller.In is RemoteInput input ) input.Apply();
+		if ( !hasState ) return;
+		// A little ahead along its speed (the packet is a few frames old), eased so it never jumps.
+		var age = (float)Math.Min( 0.15, Clock.Real - stateAt );
+		var want = targetPosition + targetVelocity * age;
+		controller.GlobalPosition = controller.GlobalPosition.Lerp( want, 1f - MathF.Exp( -18f * dt ) );
+		controller.Velocity = targetVelocity;
+		var e = controller.EyeAngles;
+		e.Pitch = MathX.Lerp( e.Pitch, targetPitch, 1f - MathF.Exp( -25f * dt ) );
+		e.Yaw = LerpAngle( e.Yaw, targetYaw, 1f - MathF.Exp( -25f * dt ) );
+		controller.EyeAngles = e;
+	}
+
+	static float LerpAngle( float from, float to, float t )
+	{
+		var d = ((to - from) % 360f + 540f) % 360f - 180f;
+		return from + d * t;
+	}
+}

@@ -143,9 +143,31 @@ public static class Sfx
 		AudioServer.SetBusEffectEnabled( bus, 2, amount > 0.05f );
 	}
 
+	/// <summary>
+	/// Online: while another player's robot runs its code (its gun, moves, axe), its "own" sounds play at the robot
+	/// instead of in this player's ears, and the pad doesn't rumble. Set for the length of a method by <see cref="Remote"/>.
+	/// </summary>
+	public static Node3D RemoteSource { get; private set; }
+
+	public readonly struct RemoteScope : IDisposable
+	{
+		readonly bool set;
+		public RemoteScope( bool set ) { this.set = set; }
+		public void Dispose() { if ( set ) RemoteSource = null; }
+	}
+
+	/// <summary> `using var _ = Sfx.Remote( controller );` at the top of a player method: see RemoteSource. </summary>
+	public static RemoteScope Remote( PlayerController controller )
+	{
+		if ( controller is not { IsRemote: true } ) return default;
+		RemoteSource = controller;
+		return new RemoteScope( true );
+	}
+
 	/// <summary> A sound for the local player only (UI, own gun, wave banners). </summary>
 	public static void Play2D( string name, float volume = 1f, float pitch = 1f, string bus = null )
 	{
+		if ( RemoteSource is { } source && GodotObject.IsInstanceValid( source ) ) { Play( name, source.GlobalPosition + Vector3.Up * 1.4f, volume, pitch, bus ); return; }
 		var stream = Track( name );
 		var root = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
 		if ( stream is null || root is null ) return;

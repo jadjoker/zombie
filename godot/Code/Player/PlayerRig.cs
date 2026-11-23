@@ -168,7 +168,7 @@ public partial class PlayerRig : Node
 
 	// ---- every frame ----
 
-	public bool ShowsBody => controller.ThirdPerson;
+	public bool ShowsBody => controller.SeenFromOutside;
 
 	/// <summary> For tests: how far into the slide's dive it is (0 upright, 1 flat on its belly). </summary>
 	public float DiveAmount => diveAmount;
@@ -274,7 +274,7 @@ public partial class PlayerRig : Node
 
 	void UpdateCamera( float dt )
 	{
-		if ( !controller.ThirdPerson ) return;
+		if ( !controller.SeenFromOutside ) return;
 		var aim = Held?.AimAmount ?? 0f;
 		var flying = (movement?.IsFloating ?? false) || (jet is not null && (jet.Thrusting || jet.Surging || jet.Charging)) || (!controller.IsOnGround && (water?.Swimming ?? 0f) > 0.5f);
 		flyingCam = MathX.Lerp( flyingCam, flying ? 1f : 0f, 1f - MathF.Exp( -2.5f * dt ) );
@@ -421,7 +421,7 @@ public partial class PlayerRig : Node
 	void ApplySkin()
 	{
 		// A robot with its own paint (the Trident-Bot's teal and red) wears it whatever skin is picked.
-		var wanted = RobotClass.Current.Paint ?? CharacterSkins.Current;
+		var wanted = controller.Robot.Paint ?? CharacterSkins.Current;
 		if ( appliedSkin == wanted ) return;
 		appliedSkin = wanted;
 		var paint = Paint.TryGetValue( appliedSkin, out var p ) ? p : Paint["Default"];
@@ -538,7 +538,7 @@ public partial class PlayerRig : Node
 			{
 				var dir = jet.SurgeDirection.IsNearlyZero() ? -yawRot.Z : jet.SurgeDirection.Normalized();
 				// Trident-Bot rides its thrust with its head and back up a little, looking ahead past the weapon.
-				if ( RobotClass.Current == RobotClass.TridentBot ) dir = (dir + Vector3.Up * TridentSurgeLift).Normalized();
+				if ( controller.Robot == RobotClass.TridentBot ) dir = (dir + Vector3.Up * TridentSurgeLift).Normalized();
 				// Head toward the burst, belly toward the ground (or forward when going straight up).
 				var belly = Vector3.Down - dir * Vector3.Down.Dot( dir );
 				if ( belly.Length() < 0.2f ) belly = -yawRot.Z;
@@ -584,7 +584,7 @@ public partial class PlayerRig : Node
 		// Diving, the body is on its belly: the gun still points where the player is aiming, measured from the body.
 		var aimYawChar = 0f;
 		// The surge tilts the body too: Trident-Bot's head looks and its weapon points the real way, measured from the body.
-		var diveBlend = MathX.Clamp( MathF.Max( diveAmount, RobotClass.Current == RobotClass.TridentBot ? surgeBlend : 0f ), 0f, 1f );
+		var diveBlend = MathX.Clamp( MathF.Max( diveAmount, controller.Robot == RobotClass.TridentBot ? surgeBlend : 0f ), 0f, 1f );
 		if ( diveBlend > 0.001f )
 		{
 			var aimChar = CharDir( -controller.EyeAngles.ToBasis().Z );

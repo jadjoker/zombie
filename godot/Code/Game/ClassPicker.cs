@@ -47,9 +47,46 @@ public partial class ClassPicker : CanvasLayer
 		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
 		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
+		column.AddChild( OnlineRow() );
 
 		// A fresh run on the dock asks first (tests pick with --class instead).
 		if ( !AutoTest.Requested ) CallDeferred( MethodName.OpenOnDock );
+	}
+
+	Label netStatus;
+
+	/// <summary> Play with friends: host a game, or join one by its address (Net). </summary>
+	Control OnlineRow()
+	{
+		var row = new HBoxContainer { Alignment = BoxContainer.AlignmentMode.Center };
+		row.AddThemeConstantOverride( "separation", 12 );
+		var title = new Label { Text = "PLAY ONLINE", VerticalAlignment = VerticalAlignment.Center };
+		title.AddThemeColorOverride( "font_color", UiStyle.Gold );
+		row.AddChild( title );
+		var host = new Button { Text = "Host", CustomMinimumSize = new Vector2( 110, 40 ), Name = "Host" };
+		host.Pressed += () => Net.Instance?.HostGame( Net.DefaultPort );
+		row.AddChild( host );
+		var address = new LineEdit { PlaceholderText = "Host's address", Text = GameSettings.LastJoin, CustomMinimumSize = new Vector2( 240, 40 ), Name = "Address" };
+		row.AddChild( address );
+		var join = new Button { Text = "Join", CustomMinimumSize = new Vector2( 110, 40 ), Name = "Join" };
+		join.Pressed += () =>
+		{
+			if ( string.IsNullOrWhiteSpace( address.Text ) ) return;
+			GameSettings.LastJoin = address.Text.Trim();
+			GameSettings.Save();
+			Net.Instance?.JoinGame( address.Text, Net.DefaultPort );
+		};
+		row.AddChild( join );
+		netStatus = new Label { Text = Net.Status, VerticalAlignment = VerticalAlignment.Center, CustomMinimumSize = new Vector2( 320, 0 ) };
+		netStatus.AddThemeColorOverride( "font_color", UiStyle.Readout );
+		row.AddChild( netStatus );
+		Net.StatusChanged += ShowNetStatus;
+		return row;
+	}
+
+	void ShowNetStatus()
+	{
+		if ( IsInstanceValid( netStatus ) ) netStatus.Text = Net.Status;
 	}
 
 	void OpenOnDock()
@@ -123,13 +160,14 @@ public partial class ClassPicker : CanvasLayer
 		if ( IsOpen == open ) return;
 		IsOpen = open;
 		window.Visible = open;
-		GetTree().Paused = open;
+		GetTree().Paused = open && !Net.Online;   // online the game runs on behind it
 		Input.MouseMode = open ? (Controls.IsController ? Input.MouseModeEnum.Hidden : Input.MouseModeEnum.Visible) : Input.MouseModeEnum.Captured;
 		if ( open ) buttons[Math.Max( 0, Array.IndexOf( RobotClass.All, RobotClass.Current ) )].GrabFocus();
 	}
 
 	public override void _ExitTree()
 	{
+		Net.StatusChanged -= ShowNetStatus;
 		if ( IsOpen ) { IsOpen = false; GetTree().Paused = false; }
 	}
 }

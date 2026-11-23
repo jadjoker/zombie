@@ -96,8 +96,8 @@ public partial class PlayerMovement : Node, ICameraModifier
 
 	/// <summary> Testing aid: holds crouch without the key. </summary>
 	public bool ForceCrouch;
-	bool CrouchHeld => Input.IsActionPressed( "duck" ) || ForceCrouch;
-	public bool IsSprinting => Input.IsActionPressed( "run" );
+	bool CrouchHeld => Controller.In.Pressed( "duck" ) || ForceCrouch;
+	public bool IsSprinting => Controller.In.Pressed( "run" );
 	float TopSpeed => IsSprinting ? SprintSpeed : MoveSpeed;
 
 	/// <summary> Set by the jetpack later: a surge lifts the speed cap. </summary>
@@ -172,6 +172,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 
 	public override void _Process( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( Controller );   // online: another player's robot is heard where it is
 		var controller = Controller;
 		// A suit malfunction round starts while sliding: the slide must end (it used to hold for the whole round).
 		if ( IsFloating && Ground != GroundMode.None ) EndGroundMode();
@@ -191,7 +192,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 			return;
 		}
 
-		var jumpPressed = Input.IsActionJustPressed( "jump" ) || testJump;
+		var jumpPressed = Controller.In.JustPressed( "jump" ) || testJump;
 		var dashPressed = testDash;
 		testJump = false;
 		testDash = false;
@@ -217,7 +218,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 			StartMantle( reach );
 
 		var justLanded = onGround && !wasOnGround;
-		if ( Ground != GroundMode.Slide && onGround && (Input.IsActionJustPressed( "duck" ) || ForceCrouchPressed() || (justLanded && CrouchHeld)) )
+		if ( Ground != GroundMode.Slide && onGround && (Controller.In.JustPressed( "duck" ) || ForceCrouchPressed() || (justLanded && CrouchHeld)) )
 			TryStartSlide();
 
 		// Over a crest on rolling ground the slide can leave the floor for a moment: only a real fall ends it.
@@ -245,6 +246,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 
 	public override void _PhysicsProcess( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( Controller );   // online: another player's robot is heard where it is
 		var dt = (float)delta;
 		var controller = Controller;
 		if ( mantle is not null ) { StepMantle(); return; }

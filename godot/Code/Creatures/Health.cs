@@ -34,6 +34,8 @@ public partial class Health : Node
 	public void OnDamage( DamageInfo damage )
 	{
 		if ( IsDead || damage.Damage <= 0f || Invulnerable ) return;
+		// Online: another player's robot is hurt on its owner's machine, not here (its health comes over the network).
+		if ( GetParent() is PlayerController { IsRemote: true } remote ) { NetHits.PlayerHurt( remote, damage ); return; }
 		if ( DockHouse.Diving && GetParent() is PlayerController or PlayerSurvivor ) return;   // can't be hurt on the way down
 		if ( DevFlags.OneShot && GetParent() is not PlayerController ) damage.Damage = MathF.Max( damage.Damage, Current );
 		if ( Absorb is not null ) { damage.Damage = Absorb( damage ); if ( damage.Damage <= 0f ) return; }
@@ -52,6 +54,15 @@ public partial class Health : Node
 				if ( !DockHouse.Diving ) PerkPickup.MaybeDrop( body );   // none mid-dive: they'd land far away
 			}
 		}
+	}
+
+	/// <summary> Dead now, without a hit (online: another player's robot died on its owner's machine). </summary>
+	public void Kill()
+	{
+		if ( IsDead ) return;
+		Current = 0f;
+		IsDead = true;
+		Died?.Invoke();
 	}
 
 	public void Heal( float amount )

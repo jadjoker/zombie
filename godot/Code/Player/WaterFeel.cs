@@ -53,6 +53,7 @@ public partial class WaterFeel : Node, ICameraModifier
 		controller = GetParent<PlayerController>();
 		movement = controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" );
 		controller.Landed += OnLanded;
+		if ( controller.IsRemote ) return;   // someone else's robot: only its swim state is kept (the rig reads it), no muffle here
 		var bus = AudioServer.GetBusIndex( "Master" );
 		muffle = new AudioEffectLowPassFilter { CutoffHz = MuffleFrequency };
 		AudioServer.AddBusEffect( bus, muffle );
@@ -62,7 +63,7 @@ public partial class WaterFeel : Node, ICameraModifier
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
-		if ( !captured ) ApplyTuning();
+		if ( !captured && !controller.IsRemote ) ApplyTuning();
 		var alive = controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.IsAlive ?? true;
 		var underwater = Sea.SurfaceY is not float surface || controller.GlobalPosition.Y < surface;
 		var floating = movement?.IsFloating ?? false;
@@ -75,6 +76,7 @@ public partial class WaterFeel : Node, ICameraModifier
 			timeSinceSwish = 0f;
 			Sfx.Play( "swim", controller.GlobalPosition, 0.35f, Rng.Float( 0.85f, 1.15f ) );
 		}
+		if ( controller.IsRemote ) return;
 		ApplyTuning();
 		UpdateSound();
 		if ( Blend > 0.3f ) SpawnBubbles();

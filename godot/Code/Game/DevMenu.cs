@@ -49,7 +49,7 @@ public partial class DevMenu : CanvasLayer
 	const float FreeCamSpeed = 350f;
 
 	static WaveDirector Director => WaveDirector.Current;
-	static PlayerSurvivor Player => PlayerSurvivor.All.FirstOrDefault();
+	static PlayerSurvivor Player => PlayerSurvivor.Local;
 	static PlayerController Controller => Player?.Controller;
 
 	public override void _Ready()
@@ -249,7 +249,7 @@ public partial class DevMenu : CanvasLayer
 		IsOpen = value;
 		window.Visible = open;
 		// The game stays stopped while the menu is up (it is reached from the pause menu) and runs again when it closes.
-		GetTree().Paused = open;
+		GetTree().Paused = open && !Net.Online;
 		Input.MouseMode = open ? Input.MouseModeEnum.Visible : Input.MouseModeEnum.Captured;
 		var controller = Controller;
 		if ( controller is not null )

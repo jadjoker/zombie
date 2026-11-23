@@ -21,6 +21,7 @@ public partial class Clock : Node
 		// The saved settings (volume, fullscreen, look speed, field of view).
 		AddChild( new Controls() );   // controller bindings and device switching (issue #33)
 		AddChild( new Radio() );      // the dock radio's music (issue #42)
+		AddChild( new Net() );        // online co-op (host or join); the same node path on every machine
 		GameSettings.Load();
 		GameSettings.Apply();
 		// Tests on an exported build (which cannot take a scene path): -- --scene res://scenes/forest.tscn

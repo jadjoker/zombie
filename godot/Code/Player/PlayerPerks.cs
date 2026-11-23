@@ -219,10 +219,11 @@ public partial class PlayerPerks : Node
 	}
 
 	/// <summary> G or RB was pressed for the blast this frame (so the axe stands aside). </summary>
-	public bool BlastPressed => Count( PerkKind.Blast ) > 0 && Input.IsActionJustPressed( "blast" ) && (BlastReady || blastFrame == Engine.GetProcessFrames());
+	public bool BlastPressed => Count( PerkKind.Blast ) > 0 && controller.In.JustPressed( "blast" ) && (BlastReady || blastFrame == Engine.GetProcessFrames());
 
 	public override void _Process( double delta )
 	{
+		using var remoteSounds = Sfx.Remote( controller );   // online: another player's robot is heard where it is
 		if ( survivor is null ) { Hook(); if ( survivor is null ) return; }
 		if ( skillsVersion != PlayerSkills.Version ) CountSkills();
 		var dt = (float)delta;
@@ -239,7 +240,7 @@ public partial class PlayerPerks : Node
 		if ( shieldGlow is not null && IsInstanceValid( shieldGlow ) )
 			shieldGlow.LightEnergy = MathX.Lerp( shieldGlow.LightEnergy, Shield > 0f ? 0.9f + 0.25f * MathF.Sin( (float)Clock.Now * 3f ) : 0f, 1f - MathF.Exp( -6f * dt ) );
 
-		if ( survivor.IsAlive && BlastReady && Input.IsActionJustPressed( "blast" ) && !DevMenu.IsOpen && !PlayerWeapon.MouseFree && !DockHouse.WeaponsHeld ) LetOffBlast();
+		if ( survivor.IsAlive && BlastReady && controller.In.JustPressed( "blast" ) && (controller.IsRemote || (!DevMenu.IsOpen && !PlayerWeapon.MouseFree && !DockHouse.WeaponsHeld)) ) LetOffBlast();
 	}
 
 	/// <summary> The Biden Blast: a blue ring out from the player, 500 to every creature within 8 m. Once a wave. </summary>

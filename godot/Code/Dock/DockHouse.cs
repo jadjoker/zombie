@@ -424,7 +424,7 @@ public partial class DockHouse : Node3D
 	TimeSince timeSinceBubble;
 	double hitStopUntil;
 
-	PlayerSurvivor LocalPlayer => PlayerSurvivor.All.FirstOrDefault();
+	PlayerSurvivor LocalPlayer => PlayerSurvivor.Local;
 
 	Vector3 hutMin, hutMax;
 	Godot.Environment env;

@@ -24,8 +24,11 @@ public partial class Jetpack
 	public bool Reversing => reversalAt > 0;
 	// Roll
 	public bool Rolling { get; private set; }
-	float rollLeft;
+	float rollLeft, sinceBounce;
+	bool rollWasThird;
 	readonly HashSet<Creature> bowled = new();
+	readonly Dictionary<Creature, double> rollHits = new();
+	Node3D rollShell;
 	public int BowledThisRoll => bowled.Count;
 
 	/// <summary> Testing aids: the moves as if mouse 4 were tapped. </summary>
@@ -174,6 +177,148 @@ public partial class Jetpack
 
 	// ---- Pinball-Bot: the roll ----
 
+	float SpinUp => 1f + PinballFx.SpinUpPer * Skill( SkillId.SpinUp );
+	Vector3 BallCentre => controller.GlobalPosition + Vector3.Up * 0.6f;
+
+	/// <summary> One physics tick of the roll: the body is a ball with momentum (the controller's own walk is off). </summary>
+	bool RollStep( float dt )
+	{
+		if ( !Rolling ) return false;
+		var c = controller;
+		var v = c.Velocity;
+		var h = v.Flat();
+		var input = c.UseInputControls ? c.In.GetVector( "left", "right", "backward", "forward" ) : Vector2.Zero;
+		var yaw = new Angles( 0f, c.EyeAngles.Yaw, 0f );
+		var dir = (yaw.Forward * input.Y + yaw.Right * input.X).Flat().ClampLength( 1f );
+		var top = PinballFx.RollTop * SpinUp;
+		// Steering pushes the ball the way you press; rolling on its own it slows only a little.
+		if ( dir.Length() > 0.1f ) h += dir * PinballFx.RollAccel * dt;
+		h *= MathF.Exp( -(dir.Length() > 0.1f ? 0.2f : 0.5f) * dt );
+		// Downhill it gathers speed, uphill it loses it.
+		if ( c.IsOnGround )
+		{
+			var n = c.GroundNormal;
+			var g = Vector3.Down * PinballFx.RollGravity;
+			h += (g - n * g.Dot( n )).Flat() * dt;
+		}
+		// Past its top speed (a slope, a bumper) it eases back down to it; never more than twice it.
+		var speed = h.Length();
+		if ( speed > top ) h = h / speed * MathF.Min( top * 2f, MathF.Max( top, speed - (speed - top) * 1.5f * dt ) );
+		var y = v.Y;
+		if ( c.IsOnGround )
+		{
+			y = -1f;
+			if ( c.UseInputControls && c.In.JustPressed( "jump" ) ) { y = PinballFx.RollHop; c.PreventGrounding( 0.15f ); Sfx.Play( "boing", c.GlobalPosition, 0.5f, 1.3f ); }
+		}
+		else y -= PinballFx.RollGravity * 1.3f * dt;
+		var before = h + Vector3.Up * y;
+		c.Velocity = before;
+		c.MoveAndSlide();
+		// Off a wall it bounces like a ball off a rail.
+		for ( var i = 0; i < c.GetSlideCollisionCount(); i++ )
+		{
+			var n = c.GetSlideCollision( i ).GetNormal();
+			if ( MathF.Abs( n.Y ) > 0.55f ) continue;
+			var flat = n.Flat().SafeNormal();
+			var into = -before.Flat().Dot( flat );
+			if ( into < 2.5f || sinceBounce < 0.1f ) continue;
+			sinceBounce = 0f;
+			var hb = before.Flat();
+			hb = (hb - 2f * hb.Dot( flat ) * flat) * 0.75f;
+			c.Velocity = hb + Vector3.Up * c.Velocity.Y;
+			PinballFx.HitSound( c.GlobalPosition + Vector3.Up * 0.6f, 1, MathX.Clamp( into / 12f, 0.4f, 1f ) );
+			BumperFlash.Spawn( c.GlobalPosition + Vector3.Up * 0.6f - flat * 0.6f, flat, PinballFx.Neon, 1.2f );
+			Juice?.Shake( MathX.Clamp( into / 30f, 0.1f, 0.4f ) );
+			Controls.Rumble( 0.3f );
+			break;
+		}
+		c.SetGround( c.IsOnFloor() && c.Velocity.Y <= 0.5f, c.GetFloorNormal() );
+		return true;
+	}
+
+	/// <summary> Enemies the ball meets: damage by its speed; light ones are knocked flying (human pinballs), heavy ones bounce it off. </summary>
+	void RollHits()
+	{
+		var at = BallCentre;
+		var v = controller.Velocity;
+		var speed = v.Flat().Length();
+		if ( speed < PinballFx.RollMinSpeed ) return;
+		var now = Clock.Now;
+		var strike = 1f + PinballFx.StrikePer * Skill( SkillId.Strike );
+		var launcher = controller.GetChildren().OfType<PlayerWeapon>().FirstOrDefault( w => w.Pinball );
+		foreach ( var c in Creature.Everyone.ToList() )
+		{
+			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || c.Grabbed ) continue;
+			var part = SkillFx.NearestPart( c, at );
+			if ( part.DistanceTo( at ) > PinballFx.RollReach ) continue;
+			if ( rollHits.TryGetValue( c, out var last ) && now - last < PinballFx.RollRehit ) continue;
+			rollHits[c] = now;
+			var fresh = bowled.Add( c );
+			PinballFx.Bowled++;
+			var damage = PinballFx.RollDamagePer * speed * strike;
+			SkillFx.HitPart( c, damage, at, controller );
+			var away = (c.GlobalPosition - controller.GlobalPosition).Flat().SafeNormal();
+			if ( away == Vector3.Zero ) away = v.Flat().SafeNormal();
+			BumperFlash.Spawn( part, -away, bowled.Count >= 3 ? PinballFx.Yellow : PinballFx.Neon, 1.3f );
+			PinballFx.HitSound( part, bowled.Count, 1f, heavy: true );
+			if ( fresh && bowled.Count >= 2 ) PinballPopup.Show( part + Vector3.Up * 0.6f, bowled.Count >= 5 ? "STRIKE!" : $"x{bowled.Count}", bowled.Count >= 3 ? PinballFx.Yellow : PinballFx.Neon, 1f + 0.08f * bowled.Count );
+			Power = MathF.Min( MaxPower, Power + PinballFx.TiltPer * Skill( SkillId.TiltBonus ) );
+			Juice?.Shake( MathX.Clamp( speed / 40f, 0.15f, 0.4f ) );
+			Controls.Rumble( 0.35f );
+			if ( c.IsDead ) { launcher?.MarkKill(); continue; }
+			launcher?.MarkHit();
+			if ( c.Pullable && !c.Carried && launcher is not null )
+			{
+				// A light one is bowled away ahead of the ball, into the others; the ball loses a little.
+				var fling = (v.Flat().SafeNormal() * 0.6f + away * 0.4f).SafeNormal();
+				HumanPinball.Launch( launcher, controller, c, (fling + Vector3.Up * 0.35f).SafeNormal() * MathF.Max( PinballFx.LaunchSpeed, speed * 1.1f ), damage * 0.6f );
+				controller.Velocity = v * 0.85f;
+			}
+			else
+			{
+				// A heavy one: the ball bounces off it.
+				var hb = v.Flat();
+				hb = (hb - 2f * hb.Dot( -away ) * -away) * 0.7f;
+				controller.Velocity = hb + Vector3.Up * MathF.Max( v.Y, 2.5f );
+				c.Stun( 0.4f );
+			}
+		}
+	}
+
+	/// <summary> A see-through pinball round the curled-up robot, with neon bands, turning as it rolls. </summary>
+	void Shell( bool on )
+	{
+		if ( on && rollShell is null )
+		{
+			rollShell = new Node3D { Name = "Roll Shell" };
+			controller.AddChild( rollShell );
+			var glass = new StandardMaterial3D
+			{
+				AlbedoColor = new Color( 0.75f, 0.9f, 1f, 0.16f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.05f,
+				Metallic = 0.6f, RimEnabled = true, Rim = 1f, RimTint = 0.2f, CullMode = BaseMaterial3D.CullModeEnum.Back,
+			};
+			glass.SetMeta( "no_caustics", true );
+			rollShell.AddChild( new MeshInstance3D { Mesh = new SphereMesh { Radius = 0.78f, Height = 1.56f, RadialSegments = 32, Rings = 16 }, MaterialOverride = glass, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
+			var neon = GunKit.Paint( PinballFx.Neon, 0.3f, 0f, 3f );
+			var cyan = GunKit.Paint( PinballFx.Cyan, 0.3f, 0f, 3f );
+			var band = new TorusMesh { InnerRadius = 0.76f, OuterRadius = 0.81f, Rings = 40, RingSegments = 6 };
+			rollShell.AddChild( new MeshInstance3D { Mesh = band, MaterialOverride = neon, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
+			rollShell.AddChild( new MeshInstance3D { Mesh = band, MaterialOverride = cyan, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Rotation = new Vector3( MathF.PI * 0.5f, 0f, 0f ) } );
+		}
+		if ( rollShell is null ) return;
+		rollShell.Visible = on;
+		rollShell.Position = Vector3.Up * 0.62f;
+	}
+
+	void SpinShell( float dt )
+	{
+		if ( rollShell is null ) return;
+		var flat = controller.Velocity.Flat();
+		if ( flat.LengthSquared() < 0.01f ) return;
+		var axis = Vector3.Up.Cross( flat ).Normalized();
+		rollShell.GlobalBasis = (new Basis( axis, flat.Length() * dt / 0.78f ) * rollShell.GlobalBasis).Orthonormalized();
+	}
+
 	void ToggleRoll()
 	{
 		if ( Rolling ) { EndRoll(); return; }
@@ -184,9 +329,22 @@ public partial class Jetpack
 		PinballFx.Rolls++;
 		Rolling = true;
 		bowled.Clear();
+		rollHits.Clear();
 		rollLeft = PinballFx.RollTime + PinballFx.LongRollPer * Skill( SkillId.LongRoll );
-		if ( PlayerPerks.Of( controller ) is { } perks ) { perks.Boost = PinballFx.RollBoost * (1f + PinballFx.SpinUpPer * Skill( SkillId.SpinUp )); perks.BoostUntil = Clock.Now + rollLeft; }
+		// Into third person (first person showed nothing of it), back to the view you had at the end.
+		rollWasThird = controller.ThirdPerson;
+		if ( !controller.IsRemote ) controller.ThirdPerson = true;
+		// Launched off in the way you move (or look), at least `RollStart` fast.
+		var yaw = new Angles( 0f, controller.EyeAngles.Yaw, 0f );
+		var input = controller.UseInputControls ? controller.In.GetVector( "left", "right", "backward", "forward" ) : Vector2.Zero;
+		var dir = (yaw.Forward * input.Y + yaw.Right * input.X).Flat().SafeNormal();
+		if ( dir == Vector3.Zero ) dir = yaw.Forward.Flat().SafeNormal();
+		var h = controller.Velocity.Flat();
+		controller.Velocity = dir * MathF.Max( h.Length(), PinballFx.RollStart * SpinUp ) + Vector3.Up * controller.Velocity.Y;
+		controller.MoveOverride = RollStep;
+		Shell( true );
 		Sfx.Play( "pinball_ding", controller.GlobalPosition, 0.8f, 0.7f );
+		Sfx.Play( "boing", controller.GlobalPosition, 0.6f, 0.8f );
 		Sfx.Play( "slide", controller.GlobalPosition, 0.7f, 1.3f );
 		Juice?.KickFov( 8f );
 	}
@@ -196,7 +354,9 @@ public partial class Jetpack
 		if ( !Rolling ) return;
 		Rolling = false;
 		rollLeft = 0f;
-		if ( PlayerPerks.Of( controller ) is { } perks ) perks.BoostUntil = 0;
+		if ( controller.MoveOverride == RollStep ) controller.MoveOverride = null;
+		if ( !controller.IsRemote ) controller.ThirdPerson = rollWasThird;
+		Shell( false );
 		var n = Skill( SkillId.HighScore );
 		if ( n <= 0 || bowled.Count < PinballFx.HighScoreNeeds ) return;
 		// High Score: a big enough strike ends in a blast, and pinballs spray out of it.
@@ -252,23 +412,11 @@ public partial class Jetpack
 		if ( Rolling )
 		{
 			rollLeft -= dt;
+			sinceBounce += dt;
 			controller.EyeDrop = MathX.Lerp( controller.EyeDrop, PinballFx.EyeDrop, 1f - MathF.Exp( -14f * dt ) );
-			var at = controller.GlobalPosition;
-			var damage = PinballFx.RollDamage * (1f + PinballFx.StrikePer * Skill( SkillId.Strike ));
-			foreach ( var c in Creature.Everyone.ToList() )
-			{
-				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || bowled.Contains( c ) ) continue;
-				if ( SkillFx.NearestPart( c, at + Vector3.Up * 0.5f ).DistanceTo( at + Vector3.Up * 0.5f ) > PinballFx.RollReach ) continue;
-				bowled.Add( c );
-				PinballFx.Bowled++;
-				SkillFx.HitPart( c, damage, at, controller );
-				SkillFx.Shove( c, (controller.Velocity.Flat().SafeNormal() + (c.GlobalPosition - at).Flat().SafeNormal()).SafeNormal() * 2f + Vector3.Up * 0.8f );
-				if ( !c.IsDead ) c.Stun( 0.5f );
-				Power = MathF.Min( MaxPower, Power + PinballFx.TiltPer * Skill( SkillId.TiltBonus ) );
-				Sfx.Play( "pinball_ding", at, 0.8f, 1f + 0.1f * bowled.Count );
-				Juice?.Shake( 0.2f );
-			}
-			if ( rollLeft <= 0f ) EndRoll();
+			SpinShell( dt );
+			RollHits();
+			if ( rollLeft <= 0f || !(controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.IsAlive ?? true) ) EndRoll();
 		}
 	}
 }

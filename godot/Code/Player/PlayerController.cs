@@ -43,6 +43,14 @@ public partial class PlayerController : CharacterBody3D
 	public float Gravity = U.Gravity;
 	/// <summary> Scales gravity (water, jetpack). </summary>
 	public float GravityScale = 1f;
+	/// <summary> A move that drives the body itself this tick (the Pinball-Bot's roll): returns true when it did. </summary>
+	public Func<float, bool> MoveOverride;
+	/// <summary> For a move that drives the body itself: whether it is on the ground, and the ground's slope. </summary>
+	public void SetGround( bool grounded, Vector3 normal )
+	{
+		if ( grounded ) { GroundNormal = normal; TimeSinceGrounded = 0f; } else { GroundNormal = Vector3.Up; TimeSinceUngrounded = 0f; }
+		IsOnGround = grounded;
+	}
 
 	// ---- Look and camera ----
 	public bool UseInputControls = true;
@@ -281,6 +289,7 @@ public partial class PlayerController : CharacterBody3D
 		var dt = (float)delta;
 		if ( IsRemote ) return;   // its owner simulates it (NetPlayer places it)
 		if ( Scripted ) { Velocity = Vector3.Zero; IsOnGround = false; return; }
+		if ( MoveOverride is not null && MoveOverride( dt ) ) return;
 		// Anchor snapped: the float mode moves us (s&box MoveModeFloat outscores the walk mode).
 		if ( GetNodeOrNull<MoveModeFloat>( "MoveModeFloat" ) is { Active: true } floating )
 		{

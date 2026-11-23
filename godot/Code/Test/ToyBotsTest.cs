@@ -390,27 +390,36 @@ public partial class AutoTest
 		Check( PinballFx.Ramps == 1 && hp - Hp( ramped ) > PinballFx.RampDamage( 2 ), "Ramp did not crash the human pinball down" );
 		Clear( a );
 
-		// ---- The roll bowls a line of crabs over; High Score ----
+		// ---- The roll: third person, a ball with its own momentum that bowls a line of crabs over (and kills a weak
+		// one at the end); High Score ----
 		skills.Set( SkillId.HighScore, 2 );
-		var line = new[] { 2.5f, 4.5f, 6.5f }.Select( d => Crab( a, a.Spot + a.Ahead * d, 600f ) ).ToList();
+		var line = new[] { 3f, 5.5f, 8f }.Select( d => Crab( a, a.Spot + a.Ahead * d, 600f ) ).ToList();
+		var weak = Crab( a, a.Spot + a.Ahead * 10.5f, 100f );
 		await Wait( 0.8f );
 		Stand( a );
+		await Face( a, a.Spot + a.Ahead * 10f + Vector3.Up * 0.5f );
 		await Wait( 0.1f );
 		var hps = line.Select( Hp ).ToList();
+		var bowledBefore = PinballFx.Bowled;
+		var start = player.GlobalPosition;
 		jet.TestRoll();
+		var wentThird = player.ThirdPerson;
 		var low = 0f;
-		for ( var i = 0; i < 30 && jet.Rolling; i++ )
+		var fastest = 0f;
+		for ( var i = 0; i < 40 && jet.Rolling; i++ )
 		{
-			// Roll on down the line (the test moves the player, as the keys would).
-			player.GlobalPosition = Nav.Closest( player, a.Spot + a.Ahead * (0.3f * i) ) + Vector3.Up * 0.1f;
 			low = MathF.Max( low, player.EyeDrop );
-			if ( i == 6 && shots is not null ) await Shot( "pinball_roll" );
+			fastest = MathF.Max( fastest, player.Velocity.Flat().Length() );
+			if ( i == 8 && shots is not null ) await Shot( "pinball_roll" );
 			await Wait( 0.05f );
 		}
+		var travelled = (player.GlobalPosition - start).Flat().Length();
 		if ( jet.Rolling ) jet.TestRoll();
-		await Wait( 0.2f );
-		GD.Print( $"[autotest] pinballbot: rolls {PinballFx.Rolls}, bowled {PinballFx.Bowled}, High Scores {PinballFx.HighScores}; the view dropped {low:0.00} m; crabs {string.Join( ", ", hps.Select( h => h.ToString( "0" ) ) )} -> {string.Join( ", ", line.Select( c => Hp( c ).ToString( "0" ) ) )}" );
-		Check( PinballFx.Bowled >= 3 && low > 0.5f, "the roll did not bowl the line of crabs over" );
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] pinballbot: rolls {PinballFx.Rolls}, third person {wentThird} (after {player.ThirdPerson}), bowled {PinballFx.Bowled - bowledBefore}, High Scores {PinballFx.HighScores}; rolled {travelled:0.0} m at up to {fastest:0.0} m/s; the view dropped {low:0.00} m; crabs {string.Join( ", ", hps.Select( h => h.ToString( "0" ) ) )} -> {string.Join( ", ", line.Select( c => Hp( c ).ToString( "0" ) ) )}, the weak one {(IsInstanceValid( weak ) && !weak.IsDead ? "lived" : "died")}" );
+		Check( wentThird && !player.ThirdPerson, "the roll did not go to third person and back" );
+		Check( PinballFx.Bowled - bowledBefore >= 3 && travelled > 5f && low > 0.5f, "the roll did not bowl the line of crabs over" );
+		Check( !IsInstanceValid( weak ) || weak.IsDead, "the roll did not kill a weak crab" );
 		Check( PinballFx.HighScores == 1, "High Score did not go off after bowling three" );
 		Clear( a );
 		foreach ( var b in BotBall.All.ToList() ) b.End();

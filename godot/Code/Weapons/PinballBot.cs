@@ -27,8 +27,12 @@ public static class PinballFx
 	public static float RampDamage( int n ) => 40f + 35f * n;
 	public const float RampSplash = 2.5f;
 	// The roll (mouse 4).
-	public const float RollCost = 30f, RollTime = 1.6f, RollBoost = 4f, RollReach = 1.3f, RollDamage = 50f, EyeDrop = 0.75f;
-	public const float SpinUpPer = 0.15f, LongRollPer = 0.4f, StrikePer = 0.15f, TiltPer = 3f;
+	// The roll is its own physics (user's ask): momentum you steer, faster downhill, bouncing off walls, a hop on jump;
+	// enemies it meets take damage by its speed (`RollDamagePer` a m/s), light ones fly off as human pinballs and slow it
+	// a little, heavy ones bounce it off. Third person while it lasts.
+	public const float RollCost = 30f, RollTime = 3.5f, RollStart = 9f, RollTop = 12f, RollAccel = 16f, RollGravity = 14f, RollHop = 5.5f;
+	public const float RollReach = 1.25f, RollDamagePer = 9f, RollMinSpeed = 3f, RollRehit = 0.45f, EyeDrop = 0.75f;
+	public const float SpinUpPer = 0.15f, LongRollPer = 0.6f, StrikePer = 0.15f, TiltPer = 3f;
 	public const int HighScoreNeeds = 3;
 	public static float HighScoreDamage( int n ) => 70f + 45f * n;
 	public const float HighScoreRadius = 4f;

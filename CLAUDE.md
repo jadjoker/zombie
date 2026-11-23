@@ -288,8 +288,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   off after letting go is a SKILL SHOT. Skills: Rebound (more chain hits), Sweet Spot, Launch Pad (human pinballs),
   Ball Return, Ramp (human pinballs crash down). Models: `Tools/blender/pinball_guns.py` (gun space, exported without
   the Y-up turn) to `pinball_launcher.glb` and `pinball_flippers.glb`, posed by `PinballModels.PoseLauncher` and
-  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck). Mouse 4
-  rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
+  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck); `PlungerArm` bends the left arm to
+  the plunger knob while pulling (in view, and the third person rig follows that hand). Mouse 4 is the roll
+  (`JetpackToys.RollStep` through `PlayerController.MoveOverride`): third person while it lasts, a glass pinball shell,
+  its own momentum (steer, faster downhill, wall bounces, a hop on jump); enemies take `RollDamagePer` a m/s, light
+  ones fly off as `HumanPinball`s, heavy ones bounce it off. Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
   `PinballModels`); suits `MagnetTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
   Sounds `magnet_hum`, `magnet_clang`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.

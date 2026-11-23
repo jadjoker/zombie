@@ -124,6 +124,15 @@ public sealed class NavAgent
 	public const float SnapEvery = 0.25f;
 	float snapIn = Rng.Float( 0f, SnapEvery );
 	float lift;
+	bool liftKnown;
+
+	/// <summary> The navmesh's height over the floor where the agent stands now (it stands on the mesh when it spawns). </summary>
+	void LearnLift()
+	{
+		if ( liftKnown ) return;
+		liftKnown = true;
+		if ( FloorUnder( owner.GlobalPosition ) is float f ) lift = MathX.Clamp( owner.GlobalPosition.Y - f, -0.2f, 0.6f );
+	}
 
 	float? FloorUnder( Vector3 at )
 	{
@@ -137,6 +146,7 @@ public sealed class NavAgent
 	/// </summary>
 	public void SetAgentPosition( Vector3 position )
 	{
+		LearnLift();   // shoved before its first snap: it would drop by the mesh's height (and shots aimed at it miss)
 		if ( FloorUnder( position ) is float floorY ) position.Y = floorY + lift;
 		owner.GlobalPosition = position;
 		snapIn = MathF.Min( snapIn, 0.1f );   // back onto the mesh soon
@@ -174,9 +184,10 @@ public sealed class NavAgent
 			var snapped = Nav.Closest( owner, next );
 			owner.GlobalPosition = snapped == Vector3.Zero && next.Length() > 1f ? next : snapped;
 			// The navmesh sits a little over the floor: keep that height between snaps, or the feet bob up and down.
-			if ( snapped != Vector3.Zero && FloorUnder( snapped ) is float f ) lift = MathX.Clamp( snapped.Y - f, -0.2f, 0.6f );
+			if ( snapped != Vector3.Zero && FloorUnder( snapped ) is float f ) { lift = MathX.Clamp( snapped.Y - f, -0.2f, 0.6f ); liftKnown = true; }
 			return;
 		}
+		LearnLift();
 		if ( FloorUnder( next ) is float floorY ) next.Y = floorY + lift;
 		owner.GlobalPosition = next;
 	}

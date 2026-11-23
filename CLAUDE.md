@@ -387,7 +387,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, imports, builds, plays through `play_dev.bat`).
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
   Every push to `main` also publishes (a push to a `claude/**` branch is built and tested, not uploaded):
-  `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (needs the `BUTLER_API_KEY` repo secret; the
+  `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (channel
+  `windows`) and the tested Linux build (channel `linux`, for the Steam Machine) (needs the `BUTLER_API_KEY` repo secret; the
   page is `Tools/godot/itch_target.txt` unless the `ITCH_TARGET` repo variable is set).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).

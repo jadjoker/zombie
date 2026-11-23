@@ -1,8 +1,12 @@
 RISK OF COPYRIGHT - playtest build
 
-Start: unzip the whole folder, then double-click RiskOfCopyright.exe.
+Start on Windows: unzip the whole folder, then double-click RiskOfCopyright.exe.
 If Windows says "Windows protected your PC", click "More info" then "Run anyway"
 (the game isn't code-signed yet).
+
+Start on Linux / Steam Deck / Steam Machine: the itch app installs and starts it for you.
+From the zip: unzip the whole folder and run RiskOfCopyright.x86_64 (mark it executable if it won't start).
+To play from Steam: Steam > Games > Add a Non-Steam Game, browse to RiskOfCopyright.x86_64.
 
 You start on a dock. Walk to the end of the diving board and press E to dive to the sea floor, then survive the waves.
 

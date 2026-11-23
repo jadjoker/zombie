@@ -278,8 +278,17 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Plunger-Bot (175, "Plunger"; `PlungerBot.cs`, `PlungerFx`): plungers stick (`StuckPlunger`) and pop off at
   `PopAt` with a SHLORP, right click yanks them back; the Flush Bomb toilet (`FlushBomb`) whirlpools enemies in and
   geysers them up; mouse 4 slings you off a plunger on a bungee (`Sling`) into a belly flop. Pinball-Bot (150,
-  "Pinball"; `PinballBot.cs`, `PinballFx`): hold to pull the launcher's spring, a `Pinball` speeds up off each enemy;
-  the Flipper Arms (left and right click each flip one) whack enemies away and slap balls back out harder; mouse 4
+  "Pinball"; `PinballBot.cs`, `PinballFx`; the deep pass): hold to pull the launcher's plunger; a `Pinball` hitting
+  an enemy is a pop bumper hit (`BotBall.BounceOffEnemy`): a `BumpPause` beat, a `BumperFlash`, the user's hit sounds
+  (`pinball_hit_1..6`, cut from their recordings), a `PinballPopup` (x2, JACKPOT!), and a kick out at `BumperKick`+
+  aimed most of the way (`ChainAim`) at the next enemy (`PinballFx.NextTarget`, `AimPoint`), flattened along the floor.
+  The Flipper Arms are real flippers (user's choice): a click raises that flipper (the flip), holding keeps it up;
+  flips launch light enemies as `HumanPinball`s that bounce off other enemies; a hit out at the tip (`SweetFrom`) is
+  PERFECT; a held flipper cradles your balls (`Pinball.Catch`, on the view model's flipper tip) and a flip as one rolls
+  off after letting go is a SKILL SHOT. Skills: Rebound (more chain hits), Sweet Spot, Launch Pad (human pinballs),
+  Ball Return, Ramp (human pinballs crash down). Models: `Tools/blender/pinball_guns.py` (gun space, exported without
+  the Y-up turn) to `pinball_launcher.glb` and `pinball_flippers.glb`, posed by `PinballModels.PoseLauncher` and
+  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck). Mouse 4
   rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
   `PinballModels`); suits `MagnetTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.

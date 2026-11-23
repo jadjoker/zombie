@@ -1012,6 +1012,16 @@ def highscore():
     return img
 
 
+
+def sweetspot():
+    # A flipper with its tip lit up like a target.
+    img, d = badge((255, 150, 40))
+    poly(d, [(22, 84), (94, 52), (100, 62), (26, 98)], YEL)
+    circle(d, 24, 90, 12, fill=CHROME)
+    circle(d, 98, 56, 18, fill=None, outline=W, width=5)
+    circle(d, 98, 56, 7, fill=W)
+    return img
+
 ICONS = {
     "deepmag": deepmag, "headhunter": headhunter, "overclock": overclock, "wideload": wideload, "pointblank": pointblank,
     "shellshuffle": shellshuffle, "kickback": kickback, "dragon": dragon, "limbripper": limbripper, "fullchoke": fullchoke,
@@ -1032,6 +1042,7 @@ ICONS = {
     "polereversal": polereversal, "plunger": plunger, "shlorp": shlorp, "nightmare": nightmare, "flush": flush,
     "geyser": geyser, "clogged": clogged, "cannonball": cannonball, "spring": spring, "bumper": bumper,
     "jackpot": jackpot, "multiball": multiball, "flipper": flipper, "combo": combo, "ramp": ramp, "highscore": highscore,
+    "sweetspot": sweetspot,
 }
 
 if __name__ == "__main__":

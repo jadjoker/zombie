@@ -16,6 +16,10 @@ public abstract partial class BotBall : Node3D
 	protected int bounces, enemyHits;
 	protected float age;
 	protected Node3D look;
+	/// <summary> A beat of stillness after a bumper hit (the ball sits in the bumper a moment before it is kicked out). </summary>
+	protected float holdFor;
+	/// <summary> Held somewhere by its owner (a raised flipper): no physics of its own. </summary>
+	public bool Cradled;
 	bool ended;
 	readonly Dictionary<Creature, double> lastHit = new();
 	Godot.Collections.Array<Rid> exclude;
@@ -56,6 +60,10 @@ public abstract partial class BotBall : Node3D
 	protected virtual void HitWorld( Vector3 at, Vector3 normal, float speed ) { }
 	protected virtual void Step( float dt ) { }
 	protected virtual void Finish() { }
+	/// <summary> The velocity it leaves an enemy with (a plain bounce, `BumperGain` faster, unless a ball says otherwise). </summary>
+	protected virtual Vector3 BounceOffEnemy( Creature c, Vector3 normal, Vector3 at, Vector3 velocity ) => velocity.Bounce( normal ) * BumperGain;
+	/// <summary> Whether this ball hit that enemy within the last `HitGap` seconds. </summary>
+	protected bool RecentlyHit( Creature c ) => lastHit.TryGetValue( c, out var at ) && Clock.Now - at <= HitGap;
 
 	public override void _PhysicsProcess( double delta )
 	{
@@ -63,6 +71,8 @@ public abstract partial class BotBall : Node3D
 		var dt = (float)delta;
 		age += dt;
 		if ( !IsInstanceValid( owner ) || age > Life ) { End(); return; }
+		if ( Cradled ) { Step( dt ); return; }
+		if ( holdFor > 0f ) { holdFor -= dt; Step( dt ); return; }
 		Velocity += Vector3.Down * Gravity * dt;
 		Velocity *= MathF.Exp( -Drag * dt );
 		Step( dt );
@@ -90,6 +100,10 @@ public abstract partial class BotBall : Node3D
 					var bounce = HitEnemy( c, tr.Node, tr.HitPosition, speed );
 					if ( ended ) return;
 					if ( !bounce ) { foreach ( var p in CreaturePart.All ) if ( p.Creature == c && IsInstanceValid( p ) ) exclude.Add( p.GetRid() ); move = remaining; continue; }
+					Velocity = BounceOffEnemy( c, normal, tr.HitPosition, Velocity );
+					if ( holdFor > 0f ) break;   // it sits in the bumper a beat, then goes
+					move = Velocity.SafeNormal() * remaining.Length();
+					continue;
 				}
 				Velocity = Velocity.Bounce( normal ) * BumperGain;
 				move = remaining.Bounce( normal );

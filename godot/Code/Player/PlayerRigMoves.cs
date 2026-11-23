@@ -185,21 +185,10 @@ public partial class PlayerRig
 		ankleRef = ankle; poleRef = pole;
 	}
 
-	readonly Dictionary<(Node3D, string), Node3D> gunParts = new();
-
-	/// <summary> The third person Pinball-Bot guns move like the ones in view: the flippers flick up, the spring squashes. </summary>
+	/// <summary> The third person Pinball-Bot guns move like the ones in view: the flippers flick up, the plunger pulls. </summary>
 	void PinballParts( PlayerWeapon weapon, Node3D root )
 	{
-		Node3D Find( string name )
-		{
-			if ( !gunParts.TryGetValue( (root, name), out var n ) || (n is not null && !IsInstanceValid( n )) ) gunParts[(root, name)] = n = root.FindChild( name, true, false ) as Node3D;
-			return n;
-		}
-		if ( weapon.Flippers )
-		{
-			if ( Find( "Left Flipper" ) is { } l ) l.Rotation = new Vector3( 0f, 0f, MathX.Rad( 55f * weapon.FlipSwing( true ) ) );
-			if ( Find( "Right Flipper" ) is { } r ) r.Rotation = new Vector3( 0f, 0f, -MathX.Rad( 55f * weapon.FlipSwing( false ) ) );
-		}
-		if ( weapon.Pinball && Find( "Spring" ) is { } spring ) spring.Scale = new Vector3( 1f, 1f, 1f - 0.6f * weapon.SpringPull );
+		if ( weapon.Flippers ) PinballModels.PoseFlippers( root, weapon.FlipSwing( true ), weapon.FlipSwing( false ) );
+		if ( weapon.Pinball ) PinballModels.PoseLauncher( root, weapon.SpringPull, weapon.Ammo, weapon.MagazineSize, weapon.TimeSinceShot );
 	}
 }

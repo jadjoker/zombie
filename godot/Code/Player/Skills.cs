@@ -46,9 +46,9 @@ public enum SkillId
 	// Plunger-Bot: core
 	RubberPlating, SpringyLegs, LongBungee, Elastic, BellyFlop, BounceBack, Cannonball,
 	// Pinball-Bot: Pinball Launcher
-	HeavySteel, SuperSpring, ExtraBall, Bumper, Jackpot, MagneticSave, Multiball,
+	HeavySteel, SuperSpring, ExtraBall, Bumper, Jackpot, Rebound, Multiball,
 	// Pinball-Bot: Flipper Arms
-	PowerFlip, WideFlipper, QuickFlip, Combo, LaunchPad, BallReturn, Ramp,
+	PowerFlip, WideFlipper, QuickFlip, SweetSpot, LaunchPad, BallReturn, Ramp,
 	// Pinball-Bot: core
 	ChromePlating, BumperGuard, SpinUp, LongRoll, Strike, TiltBonus, HighScore,
 }
@@ -312,18 +312,18 @@ public static class Skills
 			S( SkillId.HeavySteel, pin, 0, 0, "Heavy Steel", "heavymetal", Steel, n => $"+{Pct( PinballFx.HeavySteelPer * n )} ball damage" ),
 			S( SkillId.SuperSpring, pin, 0, 0, "Super Spring", "spring", Gold, n => $"+{Pct( PinballFx.SpringPer * n )} launch speed" ),
 			S( SkillId.ExtraBall, pin, 0, 1, "Extra Ball", "deepmag", Steel, n => $"+{n} ball{(n == 1 ? "" : "s")} a load" ),
-			S( SkillId.Bumper, pin, 0, 1, "Bumper", "bumper", Magenta, n => $"Balls speed up {Pct( PinballFx.BumperGain - 1f + PinballFx.BumperPer * n )} off each enemy (from {Pct( PinballFx.BumperGain - 1f )})" ),
+			S( SkillId.Bumper, pin, 0, 1, "Bumper", "bumper", Magenta, n => $"Balls are kicked off each enemy {Pct( PinballFx.BumperGain - 1f + PinballFx.BumperPer * n )} faster (from {Pct( PinballFx.BumperGain - 1f )})" ),
 			S( SkillId.Jackpot, pin, 0, 2, "Jackpot", "jackpot", Gold, n => $"+{Pct( PinballFx.JackpotPer * n )} damage for each enemy a ball already hit" ),
-			S( SkillId.MagneticSave, pin, 0, 2, "Magnetic Save", "junkmagnet", Red, n => "Balls bend toward enemies ahead of them" + (n > 1 ? $" ({n}x harder)" : "") ),
+			S( SkillId.Rebound, pin, 0, 2, "Rebound", "ricochet", Red, n => $"Balls chain to {PinballFx.MaxEnemyHits + n} enemies (from {PinballFx.MaxEnemyHits}) and aim harder at the next one" ),
 			S( SkillId.Multiball, pin, 0, 3, "Multiball", "multiball", Magenta, n => $"A ball splits into {PinballFx.MultiballSplit( n ) + 1} off the first enemy it hits (the new ones at 60%)", max: 3 ),
 			// ---- Pinball-Bot: Flipper Arms ----
 			S( SkillId.PowerFlip, pin, 1, 0, "Power Flip", "flipper", Orange, n => $"+{Pct( PinballFx.PowerFlipPer * n )} flipper damage" ),
 			S( SkillId.WideFlipper, pin, 1, 0, "Wide Flipper", "reach", Teal, n => $"+{Pct( PinballFx.WidePer * n )} flipper reach" ),
 			S( SkillId.QuickFlip, pin, 1, 1, "Quick Flip", "reload", Blue, n => $"-{Pct( PinballFx.QuickFlipPer * n )} flipper cooldown" ),
-			S( SkillId.Combo, pin, 1, 1, "Combo", "combo", Gold, n => $"Each flip that hits within {PinballFx.ComboTime:0.0} s of the last adds {Pct( PinballFx.ComboPer * n )} (up to {PinballFx.ComboMax})" ),
-			S( SkillId.LaunchPad, pin, 1, 2, "Launch Pad", "kickback", Sky, n => $"+{Pct( PinballFx.LaunchPadPer * n )} flipper knock back" ),
-			S( SkillId.BallReturn, pin, 1, 2, "Ball Return", "riposte", Magenta, n => $"A flipped pinball hits {Pct( PinballFx.BallReturnPer * n )} harder (stacking each flip)" ),
-			S( SkillId.Ramp, pin, 1, 3, "Ramp", "ramp", Violet, n => $"Flipped enemies fly up and crash down for {PinballFx.RampDamage( n ):0}, half to enemies they land near", max: 3 ),
+			S( SkillId.SweetSpot, pin, 1, 1, "Sweet Spot", "combo", Gold, n => $"PERFECT tip hits from {Pct( 1f - MathF.Max( 0.3f, PinballFx.SweetFrom - PinballFx.SweetSpotPer * n ) )} of the reach (from {Pct( 1f - PinballFx.SweetFrom )}), x{PinballFx.SweetBonus + PinballFx.SweetBonusPer * n:0.00} damage" ),
+			S( SkillId.LaunchPad, pin, 1, 2, "Launch Pad", "kickback", Sky, n => $"Human pinballs fly {Pct( PinballFx.LaunchPadPer * n )} faster and hit {Pct( PinballFx.LaunchPadPer * n )} harder" ),
+			S( SkillId.BallReturn, pin, 1, 2, "Ball Return", "riposte", Magenta, n => $"Flipped pinballs and skill shots hit {Pct( PinballFx.BallReturnPer * n )} harder (stacking each flip)" ),
+			S( SkillId.Ramp, pin, 1, 3, "Ramp", "ramp", Violet, n => $"Human pinballs come down in a crash for {PinballFx.RampDamage( n ):0}, half to enemies they land near", max: 3 ),
 			// ---- Pinball-Bot: core ----
 			S( SkillId.ChromePlating, pin, 2, 0, "Chrome Plating", "plating", Steel, n => $"+{SkillFx.PlatingPer * n:0} max health" ),
 			S( SkillId.BumperGuard, pin, 2, 0, "Bumper Guard", "shield", Sky, n => $"A {PlayerPerks.ShieldFirst + PlayerPerks.ShieldPerStack * (n - 1):0} point energy shield soaks hits before health", perk: PerkKind.Shield ),

@@ -352,6 +352,10 @@ public partial class Pinball : BotBall
 	public int OnFlipper { get; private set; }
 	public bool Rolling { get; private set; }
 	float rollAge, heldAge;
+	/// <summary> The enemy a kick sent it to: it homes on it until it gets there (an enemy that moves, or a bump in the sand, used to end the chain). </summary>
+	Creature chasing;
+	float chaseLeft;
+	public Creature Chasing => chasing;
 	TimeSince sinceFlipped = 9f;
 	public float SinceFlipped => sinceFlipped;
 
@@ -396,6 +400,7 @@ public partial class Pinball : BotBall
 
 	protected override void Step( float dt )
 	{
+		Chase( dt );
 		// The streak: from the ball back along where it came from.
 		var speed = Cradled || holdFor > 0f ? 0f : Velocity.Length();
 		var length = MathX.Clamp( speed * 0.035f, 0f, 1.6f );
@@ -416,11 +421,31 @@ public partial class Pinball : BotBall
 		else if ( OnFlipper != 0 && (heldAge += dt) > PinballFx.CradleHold ) Drop();
 	}
 
+	/// <summary>
+	/// Homing on the enemy the last kick chose: straight at its middle at its speed (no drop), so the chain carries on
+	/// through a moving crowd. If that one dies first it picks the next; after `chaseLeft` it flies on free.
+	/// </summary>
+	void Chase( float dt )
+	{
+		if ( chasing is null || Cradled || holdFor > 0f ) return;
+		chaseLeft -= dt;
+		if ( !IsInstanceValid( chasing ) || chasing.IsDead )
+		{
+			chasing = PinballFx.NextTarget( GlobalPosition, Velocity.SafeNormal(), PinballFx.ChainRange, null, RecentlyHit, -1f );
+			chaseLeft = chasing is null ? 0f : 0.6f;
+		}
+		if ( chasing is null || chaseLeft <= 0f ) { chasing = null; return; }
+		var speed = MathF.Max( Velocity.Length(), PinballFx.BumperKick );
+		var want = (PinballFx.AimPoint( chasing ) - GlobalPosition).SafeNormal() * speed;
+		Velocity = Velocity.Lerp( want, MathF.Min( 1f, dt * 30f ) ).Normalized() * speed;
+	}
+
 	/// <summary> A held flipper caught it (1 left, 2 right). </summary>
 	public void Catch( int flipper )
 	{
 		look.Scale = Vector3.One * 0.35f;
 		OnFlipper = flipper;
+		chasing = null;
 		Rolling = false;
 		heldAge = 0f;
 		Cradled = true;
@@ -469,6 +494,8 @@ public partial class Pinball : BotBall
 		}
 		else dir = (dir + Vector3.Up * 0.08f).SafeNormal();
 		holdFor = PinballFx.BumpPause;
+		chasing = next;
+		chaseLeft = next is null ? 0f : 0.9f;
 		return dir * MathX.Clamp( MathF.Max( speed * BumperGain, PinballFx.BumperKick ), 0f, PinballFx.MaxBallSpeed );
 	}
 
@@ -523,6 +550,7 @@ public partial class Pinball : BotBall
 	{
 		PinballFx.BallsFlipped++;
 		look.Scale = Vector3.One;
+		chasing = null;
 		OnFlipper = 0;
 		Rolling = false;
 		Cradled = false;

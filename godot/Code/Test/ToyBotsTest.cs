@@ -320,11 +320,34 @@ public partial class AutoTest
 		Check( PinballFx.BallHits >= 1 && hp - Hp( crab ) > 12f && hp - Hp( crab ) < 260f, "the pinball did not hit the crab for a fair amount" );
 		Check( PinballFx.LongestChain >= 4 && hp2 - Hp( second ) - Hp( third ) > 5f, "the pinball was not kicked on to another crab" );
 		foreach ( var b in BotBall.All.ToList() ) b.End();
+		Clear( a );
+		// A crowd walking in (the user's case: one shot into a pack should bounce round it many times).
+		DevFlags.FreezeEnemies = false;
+		var pack = new[] { (9f, 0f), (10.2f, 1.1f), (10.2f, -1.1f), (11.4f, 0.4f), (8.6f, -1.6f) }.Select( p => Crab( a, a.Spot + a.Ahead * p.Item1 + a.Side * p.Item2, 2000f ) ).ToList();
+		await Wait( 0.9f );
+		await Face( a, pack[0].GlobalPosition + Vector3.Up * 0.3f );
+		var longestBefore = PinballFx.LongestChain;
+		PinballFx.LongestChain = 0;
+		launcher.TestLaunch( 1f );
+		if ( shots is not null ) { await Wait( 0.5f ); await Shot( "pinball_pack" ); }
+		await Wait( 2.5f );
+		var packHurt = pack.Count( c => IsInstanceValid( c ) && Hp( c ) < 2000f );
+		GD.Print( $"[autotest] pinballbot: into a walking pack of 5: chain {PinballFx.LongestChain}, crabs hit {packHurt}" );
+		Check( PinballFx.LongestChain >= 8 && packHurt >= 4, "a ball into a pack didn't bounce round it" );
+		PinballFx.LongestChain = Math.Max( PinballFx.LongestChain, longestBefore );
+		DevFlags.FreezeEnemies = true;
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+		Clear( a );
+		crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
+		await Wait( 0.8f );
 		skills.Set( SkillId.Multiball, 2 );
 		await Wait( 2f );
-		AimAt( crab.GlobalPosition + Vector3.Up * 0.3f );
+		Stand( a );
+		await Face( a, crab.GlobalPosition + Vector3.Up * 0.3f );   // (the pack may have shoved the player about)
+		var splitsBefore = PinballFx.Splits;
 		launcher.TestLaunch( 1f );
 		await Wait( 0.8f );
+		PinballFx.Splits -= splitsBefore;
 		GD.Print( $"[autotest] pinballbot: Multiball split {PinballFx.Splits}" );
 		Check( PinballFx.Splits == 2, "Multiball did not split the ball in three" );
 		Clear( a );

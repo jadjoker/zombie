@@ -37,6 +37,7 @@ public partial class CreaturePart : StaticBody3D, IShootable
 	public void ReceiveShot( float damage, Node3D hitPart, Vector3 direction, Vector3 position, Vector3 origin, Node attacker, bool scoreHit )
 	{
 		if ( Creature is null || !IsInstanceValid( Creature ) ) return;
+		if ( attacker is not null && !IsInstanceValid( attacker ) ) attacker = null;   // its player left (online)
 		var shooter = (attacker as PlayerController)?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) ?? attacker as PlayerSurvivor;
 		Owner?.ReceiveShot( Index, damage, direction, position, origin, shooter, scoreHit );
 	}

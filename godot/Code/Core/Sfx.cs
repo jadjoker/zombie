@@ -152,8 +152,15 @@ public static class Sfx
 	public readonly struct RemoteScope : IDisposable
 	{
 		readonly bool set;
-		public RemoteScope( bool set ) { this.set = set; }
-		public void Dispose() { if ( set ) RemoteSource = null; }
+		readonly Vector3 startVelocity;
+		public RemoteScope( bool set, Vector3 startVelocity ) { this.set = set; this.startVelocity = startVelocity; }
+		public void Dispose()
+		{
+			if ( !set ) return;
+			// What the robot's own code did to its speed isn't a creature's shove (NetPlayer sends only those on).
+			if ( RemoteSource is PlayerController c && GodotObject.IsInstanceValid( c ) ) c.GetNodeOrNull<NetPlayer>( "NetPlayer" )?.AbsorbOwnMotion( c.Velocity - startVelocity );
+			RemoteSource = null;
+		}
 	}
 
 	/// <summary> `using var _ = Sfx.Remote( controller );` at the top of a player method: see RemoteSource. </summary>
@@ -161,7 +168,7 @@ public static class Sfx
 	{
 		if ( controller is not { IsRemote: true } ) return default;
 		RemoteSource = controller;
-		return new RemoteScope( true );
+		return new RemoteScope( true, controller.Velocity );
 	}
 
 	/// <summary> A sound for the local player only (UI, own gun, wave banners). </summary>

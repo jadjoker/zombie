@@ -263,6 +263,21 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   of each). Their suits have their own patterns (`PlayerRig.BuoyTexture`: Hook-Bot's slanted orange and white life
   buoy bands with navy rope lines; `PolypTexture`: Coral-Bot's pink with orange polyp cups) and eye glow (lantern green,
   polyp pink; `CharacterSkins.GlowOf`).
+- Online co-op (`Code/Net`, up to 4, ENet on UDP `Net.DefaultPort` 24565): host or join on the robot picker (`ClassPicker.OnlineRow`), or
+  `-- --host` / `-- --join <address>`. `Net` lives at /root/Clock/Net and carries every message with the sender's peer id.
+  Each machine runs its own robot; others are `PlayerFactory.CreateRemote` copies (`PlayerController.IsRemote`, `PeerId`,
+  `Robot`, `SeenFromOutside`) moved by their owner's state (`NetPlayer`, 30 a second) and driven by their owner's button
+  presses through `controller.In` (`PlayerInput`: `LocalInput` or `RemoteInput`). Player and weapon code must read
+  `controller.In`, never Godot's Input, and gate on this machine's menus only for the local robot (`PlayerWeapon.LocalBlocked`).
+  The host runs every creature; joiners get numbered puppets (`NetCreatures`, `Creature.Puppet`: brain off, placed from
+  snapshots, `PuppetMoved` for leg animation). Every creature's `ReceiveShot` starts with `NetCreatures.Intercept` and
+  creature `Health.OnDamage` goes through `InterceptHealth`: the host sends each hit and joiners replay it (so limbs and
+  deaths match); a joiner's own shots never hurt a puppet. Enemy hits on another player's robot go to its owner
+  (`NetHits`); shoves and grabs (Scripted) the host's creatures put on it are sent on (`NetPlayer.HostSide`, own moves
+  inside `Sfx.Remote` scopes don't count). Remote robots' "own" sounds play at the robot (`Sfx.Remote`). Waves, game
+  over, restarts, teleporters and areas follow the host (`NetWorld`, `WaveDirector.ApplyNet`); wave bonuses, tokens and
+  respawns for a remote robot are sent to its owner. Bubbles on puppets come from the host (`Net.Bubble`). Online the
+  menus don't pause the game. Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

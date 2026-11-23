@@ -158,7 +158,7 @@ void fragment() {
 		var t = (float)Clock.Now;
 		Animate( t, dt );
 		if ( mode == Mode.Dead ) { Sink( dt ); return; }
-		if ( DevFlags.FreezeEnemies && mode is not Mode.Appear and not Mode.Vanish ) return;
+		if ( (DevFlags.FreezeEnemies || Puppet) && mode is not Mode.Appear and not Mode.Vanish ) return;
 		if ( sinceFloor > 0.3f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition, 80f ); }
 
 		var prey = Target;

@@ -234,6 +234,8 @@ public partial class BubbleTrap : Node3D
 
 	public static BubbleTrap Create( Creature victim, PlayerController owner, float damage, bool mega = false )
 	{
+		// Online: a joiner's copy of the host's creature is only bubbled when the host's is (NetBubbles).
+		if ( victim.Puppet && !NetCreatures.Applying ) return null;
 		var parts = CreaturePart.All.Where( p => IsInstanceValid( p ) && p.Creature == victim ).Select( p => p.GlobalPosition ).ToList();
 		var centre = parts.Count > 0 ? parts.Aggregate( Vector3.Zero, ( a, p ) => a + p ) / parts.Count : victim.GlobalPosition + Vector3.Up * 0.5f;
 		var reach = parts.Count > 0 ? parts.Max( p => p.DistanceTo( centre ) ) : 0.6f;
@@ -250,6 +252,7 @@ public partial class BubbleTrap : Node3D
 		if ( victim.Health is { } hp ) hp.Damaged += trap.OnDamaged;
 		live.Add( trap );
 		Trapped++;
+		if ( Net.IsHost && victim.NetId > 0 ) Net.Instance?.SendBubble( victim.NetId, mega, owner?.NetPeer ?? 0, damage );
 		BubbleFilm.PopFx( centre, trap.size * 0.6f );
 		Sfx.Play( "bubble_trap", centre, 0.9f, Rng.Float( 0.9f, 1.1f ) );
 		return trap;
@@ -258,7 +261,8 @@ public partial class BubbleTrap : Node3D
 	/// <summary> Another bubble fired into this one: it swells, rises higher and holds longer. </summary>
 	public void Inflate( int times = 1 )
 	{
-		if ( popped ) return;
+		if ( popped || (Victim.Puppet && !NetCreatures.Applying) ) return;
+		if ( Net.IsHost && Victim.NetId > 0 ) Net.Instance?.SendBubbleInflate( Victim.NetId, times );
 		Inflated++;
 		rise += InflateRise * times;
 		hold = MathF.Max( hold, age + InflateTime * times );
@@ -310,7 +314,7 @@ public partial class BubbleTrap : Node3D
 		fall += 16f * dt;
 		var drop = MathF.Min( fall * dt, risen );
 		risen -= drop;
-		Victim.GlobalPosition += Vector3.Down * drop;
+		if ( !Victim.Puppet ) Victim.GlobalPosition += Vector3.Down * drop;   // a joiner's copy drops with the host's
 		if ( risen > 0.001f ) return;
 		Land();
 	}
@@ -328,7 +332,7 @@ public partial class BubbleTrap : Node3D
 			var gap = size + other.size - away.Length();
 			if ( gap > 0f ) push += away.SafeNormal() * MathF.Min( gap, 1f ) * 2f * dt;
 		}
-		Victim.GlobalPosition += Vector3.Up * lift + push;
+		if ( !Victim.Puppet ) Victim.GlobalPosition += Vector3.Up * lift + push;   // a joiner's copy rises with the host's
 
 		// It struggles: a kick every so often bulges the film and twists the enemy inside.
 		if ( sinceStruggle > nextStruggle )
@@ -341,7 +345,7 @@ public partial class BubbleTrap : Node3D
 		}
 		bulge = bulge.Lerp( Vector3.Zero, MathF.Min( 1f, dt * 6f ) );
 		var twist = MathF.Sin( age * 7f ) * 0.18f * MathF.Min( 1f, bulge.Length() * 4f + 0.3f );
-		Victim.GlobalBasis = new Basis( Vector3.Up, twist ) * restBasis;
+		if ( !Victim.Puppet ) Victim.GlobalBasis = new Basis( Vector3.Up, twist ) * restBasis;
 		GlobalPosition = Victim.GlobalPosition + centreOffset;
 
 		var grow = MathX.Clamp( age / 0.2f, 0f, 1f );
@@ -351,10 +355,14 @@ public partial class BubbleTrap : Node3D
 		film.Scale = wobble * size * warn * (1f - (1f - grow) * (1f - grow));
 	}
 
+	/// <summary> Online, a joiner: the host's bubble round this creature popped. </summary>
+	public static void PopNet( Creature victim ) { if ( Of( victim ) is { } trap ) trap.Pop(); }
+
 	void Pop()
 	{
 		if ( popped ) return;
 		popped = true;
+		if ( Net.IsHost && Victim.NetId > 0 ) Net.Instance?.SendBubblePop( Victim.NetId );
 		Popped++;
 		film.Visible = false;
 		dropFrom = risen;

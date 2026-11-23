@@ -59,6 +59,7 @@ public partial class AutoTest
 			await Wait( 1f );
 		}
 		await NetEnemies( host, other );
+		await NetStage3( host, other );
 		Finish();
 	}
 
@@ -143,6 +144,81 @@ public partial class AutoTest
 			for ( var t = 0f; t < 14f && WaveDirector.Current.Wave < 3; t += 0.25f ) await Wait( 0.25f );
 			GD.Print( $"[autotest] net: joiner shows wave {WaveDirector.Current.Wave} ({WaveDirector.Current.State})" );
 			Check( WaveDirector.Current.Wave == 3, "the joiner never saw the host's wave 3" );
+			await Wait( 2f );
+		}
+	}
+
+	/// <summary>
+	/// Stage 3: the joiner's skill points reach its robot on the host; a host creature's grab carries the joiner and
+	/// its shove pushes it; the joiner's Bubble Cannon traps a host crab and the joiner sees that bubble.
+	/// </summary>
+	async Task NetStage3( bool host, PlayerController other )
+	{
+		DevFlags.FreezeEnemies = true;
+		if ( host )
+		{
+			for ( var t = 0f; t < 10f && Skills.Rank( other, SkillId.HighLift ) == 0; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: the joiner's High Lift here: {PlayerSkills.Of( other ).Held( SkillId.HighLift )}" );
+			Check( PlayerSkills.Of( other ).Held( SkillId.HighLift ) == 2, "the joiner's skill points never reached its robot here" );
+			// A grab: held here and carried 5 m, then let go; then a shove.
+			await Wait( 1f );
+			var from = other.GlobalPosition;
+			other.Scripted = true;
+			for ( var t = 0f; t < 1.2f; t += 0.05f ) { other.GlobalPosition = from + Vector3.Up * 0.2f + Vector3.Right * (5f * t / 1.2f); await Wait( 0.05f ); }
+			other.Scripted = false;
+			await Wait( 1.5f );
+			other.Velocity += Vector3.Up * 6f;
+			await Wait( 1.5f );
+			// A crab for the joiner's bubble.
+			var (spot, yaw) = OpenLane( 10f );
+			var crab = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, other.GlobalPosition + new Vector3( 0f, 0f, -5f ) ) + Vector3.Up * 0.3f, other.GlobalPosition ) as Creature;
+			var trapped = BubbleTrap.Trapped;
+			for ( var t = 0f; t < 20f && BubbleTrap.Trapped == trapped; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: bubbles the joiner caught crabs in here: {BubbleTrap.Trapped - trapped}" );
+			Check( BubbleTrap.Trapped > trapped, "the joiner's bubble never caught the host's crab" );
+			await Wait( 6f );
+		}
+		else
+		{
+			PlayerSkills.Of( player ).Set( SkillId.HighLift, 2 );
+			RobotClass.Pick( RobotClass.VacBot, player );
+			await Wait( 1f );
+			var start = player.GlobalPosition;
+			var maxMove = 0f;
+			var wasHeld = false;
+			var maxRise = 0f;
+			for ( var t = 0f; t < 8f; t += 0.05f )
+			{
+				await Wait( 0.05f );
+				wasHeld |= player.Scripted;
+				maxMove = MathF.Max( maxMove, (player.GlobalPosition - start).Flat().Length() );
+				maxRise = MathF.Max( maxRise, player.Velocity.Y );
+			}
+			GD.Print( $"[autotest] net: held by the host {wasHeld}, carried {maxMove:0.0} m, pushed up to {maxRise:0.0} m/s; held now {player.Scripted}" );
+			Check( wasHeld && maxMove > 3f, "the host's grab never carried the joiner" );
+			Check( !player.Scripted, "the joiner was never let go" );
+			Check( maxRise > 3f, "the host's shove never reached the joiner" );
+			// Bubble the host's crab.
+			Creature crab = null;
+			for ( var t = 0f; t < 10f && crab is null; t += 0.25f ) { await Wait( 0.25f ); crab = Creature.Everyone.FirstOrDefault( c => c.Puppet && c is JunkCrab && !c.IsDead ); }
+			Check( crab is not null, "no crab for the bubble" );
+			if ( crab is null ) return;
+			var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+			inventory.Select( inventory.Weapons.First( w => w.Bubbles ), force: true );
+			await Wait( 0.8f );
+			for ( var t = 0f; t < 4f && BubbleTrap.Of( crab ) is null && IsInstanceValid( crab ); t += 0.5f )
+			{
+				var to = (crab.GlobalPosition + Vector3.Up * 0.35f - player.Camera.GlobalPosition).Normalized();
+				player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( to.Y ) ), MathX.Deg( MathF.Atan2( -to.X, -to.Z ) ), 0f );
+				await Wait( 0.1f );
+				Input.ActionPress( "attack1" );
+				await Wait( 0.06f );
+				Input.ActionRelease( "attack1" );
+				await Wait( 0.35f );
+			}
+			for ( var t = 0f; t < 3f && IsInstanceValid( crab ) && BubbleTrap.Of( crab ) is null; t += 0.1f ) await Wait( 0.1f );
+			GD.Print( $"[autotest] net: the host's bubble shows round the crab here: {IsInstanceValid( crab ) && BubbleTrap.Of( crab ) is not null}" );
+			Check( IsInstanceValid( crab ) && BubbleTrap.Of( crab ) is not null, "the bubble the host made never showed on the joiner" );
 			await Wait( 2f );
 		}
 	}

@@ -261,7 +261,7 @@ public partial class PlayerSkills : Node
 	PlayerController controller;
 
 	public static PlayerSkills Local { get; private set; }
-	public static PlayerSkills Of( Node controller ) => controller?.GetNodeOrNull<PlayerSkills>( "PlayerSkills" );
+	public static PlayerSkills Of( Node controller ) => controller is not null && IsInstanceValid( controller ) ? controller.GetNodeOrNull<PlayerSkills>( "PlayerSkills" ) : null;   // the player may have left (online)
 
 	public override void _Ready()
 	{
@@ -348,6 +348,18 @@ public partial class PlayerSkills : Node
 		if ( give <= 0 ) return;
 		Earned += give;
 		Tokens += give;
+		Version++;
+		Changed?.Invoke();
+	}
+
+	/// <summary> Online: the points another player has spent (their skills work on their robot here). </summary>
+	public int[] Ranks => (int[])ranks.Clone();
+	public void SetRanks( int[] incoming )
+	{
+		if ( incoming is null ) return;
+		var changed = false;
+		for ( var i = 0; i < ranks.Length && i < incoming.Length; i++ ) if ( ranks[i] != incoming[i] ) { ranks[i] = incoming[i]; changed = true; }
+		if ( !changed ) return;
 		Version++;
 		Changed?.Invoke();
 	}

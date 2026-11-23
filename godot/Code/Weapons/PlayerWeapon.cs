@@ -107,6 +107,8 @@ public partial class PlayerWeapon : Node
 
 	public int Ammo { get; private set; }
 	public int Reserve { get; private set; }
+	/// <summary> Online: a remote robot's gun has what its owner's has (so it fires when theirs did). </summary>
+	public void SetNetAmmo( int ammo ) { Ammo = Math.Max( 0, ammo ); if ( Reserve < 1 ) Reserve = 1; }
 	public bool InfiniteAmmo;
 	public bool IsReloading { get; private set; }
 	PlayerPerks Perks => PlayerPerks.Of( controller );
@@ -217,7 +219,8 @@ public partial class PlayerWeapon : Node
 	{
 		if ( ViewModel is not null && IsInstanceValid( ViewModel ) ) ViewModel.QueueFree();
 		ViewModel = null;
-		if ( Bubbles ) BubbleTrap.PopAll( controller );
+		// (Its bubbles pop when the robot is swapped: WeaponInventory.Replace. Not here, where a level being torn down
+		// would be handed new pieces.)
 	}
 
 	void OnEnabled()

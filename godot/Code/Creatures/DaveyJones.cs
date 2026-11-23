@@ -668,7 +668,7 @@ void fragment() {
 	{
 		var c = buried?.Controller;
 		if ( c is null || !IsInstanceValid( c ) || !buried.IsAlive ) { EndSink( false ); return; }
-		if ( buried == PlayerSurvivor.Local && Input.IsActionJustPressed( "jump" ) ) Mash();
+		if ( c.In.JustPressed( "jump" ) ) Mash();   // the buried player's jump (online, its owner's presses)
 		if ( buried is null ) return;
 		// Deeper as time goes on, a little way back up with each press.
 		var depth = MaxBury * MathX.Clamp( (float)sinceBuried / BuryTime, 0f, 1f ) * (1f - 0.6f * Mashes / (float)MashesNeeded);

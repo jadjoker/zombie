@@ -42,5 +42,12 @@ CONTROLLER (the game switches by itself to whichever you touched last: pad, or k
   Dev menu            D-pad or left stick to move, A to press, bumpers change tab, right stick scrolls, B closes;
                       after Spawn, right trigger places the enemy and B cancels
 
+Play online (co-op, up to 4)
+  Host        On the "Pick your robot" screen, click Host. Give your friend your address (with Tailscale or
+              ZeroTier it's the address the app shows for this PC; otherwise your public IP, with UDP port
+              24565 forwarded to this PC).
+  Join        Type the host's address in the box next to Join and click Join.
+  The host runs the waves and the enemies; everyone picks their own robot and dives in.
+
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

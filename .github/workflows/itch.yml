@@ -93,6 +93,19 @@ jobs:
           done
           exit $failed
 
+      - name: Online co-op test (a host and a joiner on this machine)
+        run: |
+          host="$PWD/build/test_net_host.log"; join="$PWD/build/test_net_join.log"
+          for attempt in 1 2; do
+            timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$host" -- --autotest --nettest --host > "$host.out" 2>&1 &
+            sleep 8
+            timeout 290 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$join" -- --autotest --nettest --join 127.0.0.1 --class vacbot > "$join.out" 2>&1 || true
+            wait || true
+            if grep -q "net: PASS" "$host" && grep -q "net: PASS" "$join"; then echo "online test passed"; grep "net:" "$host" "$join"; exit 0; fi
+            echo "::warning::online test attempt $attempt failed"; grep -E "net:|FAIL|ERROR" "$host" "$join" | head -30
+          done
+          echo "::error::online test failed"; exit 1
+
       # Only main goes to players; a work branch is built and tested (and gets its screenshots) but not uploaded.
       - name: Push to itch.io
         if: github.ref == 'refs/heads/main'

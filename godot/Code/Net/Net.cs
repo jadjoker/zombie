@@ -381,4 +381,63 @@ public partial class Net : Node
 			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, local ); else AreaThree.Go( level, local );
 		}
 	}
+
+	// ---- Bubbles (the Bubble Cannon's traps on the host's creatures) ----
+
+	public void SendBubble( int id, bool mega, long owner, float damage ) { if ( Connected ) Rpc( MethodName.Bubble, id, mega, owner, damage ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void Bubble( int id, bool mega, long owner, float damage )
+	{
+		if ( NetCreatures.Find( id ) is not { IsDead: false } c || BubbleTrap.Of( c ) is not null ) return;
+		NetCreatures.Applying = true;
+		try { BubbleTrap.Create( c, NetCreatures.PlayerOf( owner ), damage, mega ); }
+		finally { NetCreatures.Applying = false; }
+	}
+
+	public void SendBubbleInflate( int id, int times ) { if ( Connected ) Rpc( MethodName.BubbleInflate, id, times ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void BubbleInflate( int id, int times )
+	{
+		if ( NetCreatures.Find( id ) is not { } c || BubbleTrap.Of( c ) is not { } trap ) return;
+		NetCreatures.Applying = true;
+		try { trap.Inflate( times ); }
+		finally { NetCreatures.Applying = false; }
+	}
+
+	public void SendBubblePop( int id ) { if ( Connected ) Rpc( MethodName.BubblePop, id ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void BubblePop( int id )
+	{
+		if ( NetCreatures.Find( id ) is { } c ) BubbleTrap.PopNet( c );
+	}
+
+	// ---- Shoves and grabs on another player's robot (NetPlayer.HostSide) ----
+
+	public void SendImpulse( long peer, Vector3 impulse ) { if ( Connected ) RpcId( peer, MethodName.Impulse, impulse ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void Impulse( Vector3 impulse )
+	{
+		if ( local is null || !IsInstanceValid( local ) || local.Scripted ) return;
+		if ( impulse.Y > 0.5f ) local.PreventGrounding( 0.15f );   // knocked up off the ground, not pinned to it
+		local.Velocity += impulse;
+	}
+
+	public void SendHeld( long peer, Vector3 at, bool held ) { if ( Connected ) RpcId( peer, MethodName.HeldAt, at, held ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 7 )]
+	void HeldAt( Vector3 at, bool held )
+	{
+		if ( local is not null && IsInstanceValid( local ) ) local.GetNodeOrNull<NetPlayer>( "NetPlayer" )?.Held( at, held );
+	}
+
+	// ---- A player's skills and upgrades (NetPlayer) ----
+
+	public void SendLoadout( int[] ranks, int damageLevel ) => Rpc( MethodName.Loadout, ranks, damageLevel );
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 2 )]
+	void Loadout( int[] ranks, int damageLevel ) => RemoteOf( Multiplayer.GetRemoteSenderId() )?.GetNodeOrNull<NetPlayer>( "NetPlayer" )?.ApplyLoadout( ranks, damageLevel );
 }

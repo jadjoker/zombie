@@ -159,7 +159,7 @@ public partial class HomingMissile : Creature
 		var pitch = MathX.Clamp( MathF.Atan2( local.Y, MathF.Sqrt( local.X * local.X + local.Z * local.Z ) ), -0.5f, 0.5f );
 		for ( var i = 1; i < joints.Count; i++ )
 			joints[i].Rotation = new Vector3( pitch * 0.75f + MathF.Sin( t * 7f - i * 1.1f ) * 0.07f, yaw * 0.75f + MathF.Cos( t * 6f - i * 1.3f ) * 0.07f, 0f );
-		if ( DevFlags.FreezeEnemies ) return;
+		if ( DevFlags.FreezeEnemies || Puppet ) return;
 
 		var prey = PlayerSurvivor.FindNearestAlive( GlobalPosition );
 		if ( !diving )

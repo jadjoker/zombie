@@ -118,7 +118,7 @@ public partial class WaterFeel : Node, ICameraModifier
 
 	public override void _PhysicsProcess( double delta )
 	{
-		if ( Blend <= 0.001f || controller.IsOnGround ) return;
+		if ( Blend <= 0.001f || controller.IsOnGround || controller.IsRemote ) return;   // a remote robot's speed is its owner's
 		var dt = (float)delta;
 		var b = Blend * Blend * (3f - 2f * Blend);
 		var v = controller.Velocity;

@@ -897,7 +897,7 @@ public partial class MC61 : PartCreature, MC61Marker
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !DevFlags.FreezeEnemies ) Think( dt );
+		if ( !DevFlags.FreezeEnemies && !Puppet ) Think( dt );
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		if ( State != seenState ) { seenState = State; localStateTime = 0f; }
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );

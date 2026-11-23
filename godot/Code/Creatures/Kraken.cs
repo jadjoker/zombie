@@ -311,8 +311,8 @@ public partial class Kraken : PartCreature
 		if ( State == Mode.Burrowing ) Burrow();
 		else
 		{
-			if ( !DevFlags.FreezeEnemies ) Think( dt );
-			UpdateAttack( dt );
+			if ( !DevFlags.FreezeEnemies && !Puppet ) Think( dt );
+			if ( !Puppet ) UpdateAttack( dt );   // online, a joiner's copy: the host's Kraken does the attacking
 		}
 		PlaceRig();
 		UpdateLife( dt );
@@ -321,7 +321,7 @@ public partial class Kraken : PartCreature
 		Bleed();
 		UpdateWounds();
 		RefreshRing();
-		UpdateWhirlpool( dt );
+		if ( !Puppet ) UpdateWhirlpool( dt );
 		CreatureGore.BleedTrail( parts[Head].Go.GlobalPosition + Vector3.Up * 1.4f * Size, Goo, health.Fraction, ref bleedTimer );
 	}
 

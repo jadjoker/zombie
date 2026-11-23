@@ -126,7 +126,7 @@ public partial class PlayerPerks : Node
 		+ (Clock.Now < BoostUntil ? Boost : 0f);
 	public float StaminaBonus => StaminaPerStack * Count( PerkKind.Move );
 
-	public static PlayerPerks Of( Node controller ) => controller?.GetNodeOrNull<PlayerPerks>( "PlayerPerks" );
+	public static PlayerPerks Of( Node controller ) => controller is not null && IsInstanceValid( controller ) ? controller.GetNodeOrNull<PlayerPerks>( "PlayerPerks" ) : null;   // the player may have left (online)
 	/// <summary> Tests: pickups taken, shocks dealt and jumps made, clips thrown, blasts let off. </summary>
 	public static int Taken, Shocks, ShockJumps, ClipsThrown, Blasts, Blocked;
 

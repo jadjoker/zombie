@@ -17,6 +17,14 @@ public partial class NetPlayer : Node
 	int lastSlot = -1;
 	readonly bool[] sentDown = new bool[RemoteInput.Actions.Length];
 
+	// Host, for a remote robot: what its owner said its speed was (anything else on it came from the host's creatures).
+	Vector3 lastSetVelocity, pendingImpulse;
+	bool hostHeld;
+	float heldTimer, impulseTimer;
+	// Local: held in place by the host's creature (a grab) until this time.
+	double forcedUntil;
+	bool forced;
+
 	// Remote: the latest state.
 	Vector3 targetPosition, targetVelocity;
 	float targetPitch, targetYaw;
@@ -24,7 +32,9 @@ public partial class NetPlayer : Node
 	double stateAt;
 
 	/// <summary> The fields of a state packet, in order. </summary>
-	enum F { X, Y, Z, VX, VY, VZ, Pitch, Yaw, Flags, MoveX, MoveY, Health, MaxHealth, Count }
+	enum F { X, Y, Z, VX, VY, VZ, Pitch, Yaw, Flags, MoveX, MoveY, Health, MaxHealth, Ammo, Count }
+	int loadoutVersion = -1;
+	float loadoutTimer;
 
 	public override void _Ready()
 	{
@@ -52,6 +62,8 @@ public partial class NetPlayer : Node
 	void Send( float dt )
 	{
 		var net = Net.Instance;
+		// A grab whose messages stopped (the host's creature died mid-grab): free again.
+		if ( forced && Clock.Real > forcedUntil ) { forced = false; controller.Scripted = false; }
 		// Presses and releases, as they happen (reliable).
 		var live = ButtonsLive;
 		for ( var i = 0; i < RemoteInput.Actions.Length; i++ )
@@ -83,7 +95,19 @@ public partial class NetPlayer : Node
 		state[(int)F.MoveX] = move.X; state[(int)F.MoveY] = move.Y;
 		state[(int)F.Health] = survivor?.Health?.Current ?? 0f;
 		state[(int)F.MaxHealth] = survivor?.Health?.MaxHealth ?? 100f;
+		state[(int)F.Ammo] = inventory?.Current?.Ammo ?? 0;
 		net.SendState( state );
+
+		// Skill points and the damage upgrades bought: when they change (and now and then, for a late joiner).
+		loadoutTimer -= 1f / Net.SendRate;
+		if ( loadoutVersion != PlayerSkills.Version || loadoutTimer <= 0f )
+		{
+			loadoutVersion = PlayerSkills.Version;
+			loadoutTimer = 3f;
+			var ranks = PlayerSkills.Of( controller )?.Ranks ?? Array.Empty<int>();
+			var level = inventory?.Weapons.Count > 0 ? inventory.Weapons.Max( w => w.DamageLevel ) : 0;
+			net.SendLoadout( ranks, level );
+		}
 	}
 
 	// ---- Remote: applying ----
@@ -101,8 +125,9 @@ public partial class NetPlayer : Node
 		targetYaw = s[(int)F.Yaw];
 		var flags = (int)s[(int)F.Flags];
 		controller.SetRemoteGround( (flags & 1) != 0, (flags & 2) != 0 );
-		controller.Scripted = (flags & 8) != 0;
+		if ( !Net.IsHost ) controller.Scripted = (flags & 8) != 0;   // on the host a remote robot is only held by the host's own creatures
 		if ( controller.In is RemoteInput input ) input.Move = new Vector2( s[(int)F.MoveX], s[(int)F.MoveY] );
+		inventory?.Current?.SetNetAmmo( (int)s[(int)F.Ammo] );
 		if ( survivor?.Health is { } h )
 		{
 			h.MaxHealth = s[(int)F.MaxHealth];
@@ -117,15 +142,66 @@ public partial class NetPlayer : Node
 	{
 		if ( controller.In is RemoteInput input ) input.Apply();
 		if ( !hasState ) return;
+		if ( Net.IsHost && HostSide( dt ) ) return;
 		// A little ahead along its speed (the packet is a few frames old), eased so it never jumps.
 		var age = (float)Math.Min( 0.15, Clock.Real - stateAt );
 		var want = targetPosition + targetVelocity * age;
 		controller.GlobalPosition = controller.GlobalPosition.Lerp( want, 1f - MathF.Exp( -18f * dt ) );
 		controller.Velocity = targetVelocity;
+		lastSetVelocity = targetVelocity;
 		var e = controller.EyeAngles;
 		e.Pitch = MathX.Lerp( e.Pitch, targetPitch, 1f - MathF.Exp( -25f * dt ) );
 		e.Yaw = LerpAngle( e.Yaw, targetYaw, 1f - MathF.Exp( -25f * dt ) );
 		controller.EyeAngles = e;
+	}
+
+	/// <summary>
+	/// The host's view of another player's robot. A creature that shoved it (its speed changed since this set it) sends
+	/// the shove to the owner; one that grabbed it (Scripted: the Kraken's whirlpool, the angler's hook, Davey) holds it
+	/// here and sends where it is, so the owner is carried along. True while held (it isn't eased to its owner's spot).
+	/// </summary>
+	bool HostSide( float dt )
+	{
+		var shove = controller.Velocity - lastSetVelocity;
+		if ( !controller.Scripted && shove.LengthSquared() > 0.25f ) pendingImpulse += shove;
+		impulseTimer -= dt;
+		if ( impulseTimer <= 0f && pendingImpulse.LengthSquared() > 0.25f )
+		{
+			impulseTimer = 0.05f;
+			Net.Instance.SendImpulse( controller.PeerId, pendingImpulse );
+			pendingImpulse = Vector3.Zero;
+		}
+		if ( controller.Scripted )
+		{
+			hostHeld = true;
+			heldTimer -= dt;
+			if ( heldTimer <= 0f ) { heldTimer = 1f / Net.SendRate; Net.Instance.SendHeld( controller.PeerId, controller.GlobalPosition, true ); }
+			lastSetVelocity = controller.Velocity;
+			return true;
+		}
+		if ( hostHeld ) { hostHeld = false; Net.Instance.SendHeld( controller.PeerId, controller.GlobalPosition, false ); }
+		return false;
+	}
+
+	/// <summary> The robot's own code (its gun, moves) changed its speed: that isn't a shove from a creature. </summary>
+	public void AbsorbOwnMotion( Vector3 change ) => lastSetVelocity += change;
+
+	/// <summary> Local: a host creature is holding this robot (or let go). </summary>
+	public void Held( Vector3 at, bool held )
+	{
+		forced = held;
+		forcedUntil = held ? Clock.Real + 0.4 : 0;
+		controller.Scripted = held;
+		controller.GlobalPosition = at;
+		controller.Velocity = Vector3.Zero;
+		controller.ResetPhysicsInterpolation();
+	}
+
+	/// <summary> Remote: its owner's skill points and damage upgrades. </summary>
+	public void ApplyLoadout( int[] ranks, int damageLevel )
+	{
+		PlayerSkills.Of( controller )?.SetRanks( ranks );
+		foreach ( var w in controller.GetChildren().OfType<PlayerWeapon>() ) w.DamageLevel = damageLevel;
 	}
 
 	static float LerpAngle( float from, float to, float t )

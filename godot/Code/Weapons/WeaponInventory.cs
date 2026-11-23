@@ -71,6 +71,7 @@ public partial class WeaponInventory : Node
 		foreach ( var old in GetParent().GetChildren().OfType<PlayerWeapon>().ToList() )
 		{
 			old.Active = false;
+			if ( old.Bubbles ) BubbleTrap.PopAll( GetParent<PlayerController>() );   // its bubbles go with it
 			GetParent().RemoveChild( old );   // gone now, so the new weapons get their names (and its model goes with it)
 			old.QueueFree();
 		}

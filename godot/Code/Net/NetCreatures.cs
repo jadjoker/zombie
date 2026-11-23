@@ -88,6 +88,7 @@ public static class NetCreatures
 			"Kraken" => Set( Kraken.Spawn( scene, position, maxHealth ), x => x.HelmetHealth = L( 0, 1200f ) ),
 			"Poseidon" => Poseidon.Spawn( scene, position, maxHealth ),
 			"DaveyJones" => DaveyJones.Spawn( scene, position, maxHealth ),
+			"HomingMissile" => HomingMissile.Launch( scene, position, Vector3.Forward, null ),
 			_ => null,
 		};
 		if ( c is null ) { GD.PushWarning( $"[net] can't build a {kind} here yet" ); return; }

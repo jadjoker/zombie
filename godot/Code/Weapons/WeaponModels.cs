@@ -31,7 +31,8 @@ public static class WeaponModels
 	public static (Node3D Root, AnimationPlayer Player, Skeleton3D Skeleton) Create( string name )
 	{
 		// The trident shooter has no file of its own: it is the Blaster's rig with its own gun (TridentModel).
-		var trident = name is "trident" or "gorevac" or "bubble" or "spear" or "harpoon" or "lure" or "spines" or "seeds";   // the spear too   // the Gore Vac and Bubble Cannon borrow the same rig
+		var trident = name is "trident" or "gorevac" or "bubble" or "spear" or "harpoon" or "lure" or "spines" or "seeds"
+			or "scrap" or "polarity" or "plunger" or "toilet" or "pinball" or "flippers";   // the spear too   // the Gore Vac and Bubble Cannon borrow the same rig
 		var file = trident ? TridentModel.Rig : name;
 		var scene = GD.Load<PackedScene>( $"res://assets/models/weapons/{file}/{file}.fbx" );
 		var model = scene.Instantiate<Node3D>();
@@ -53,6 +54,12 @@ public static class WeaponModels
 			else if ( skeleton is not null && name == "lure" ) GunKit.Attach( skeleton, "Lantern Lure", HookModels.LureLauncher, HookModels.LureMuzzle );
 			else if ( skeleton is not null && name == "spines" ) GunKit.Attach( skeleton, "Spine Gun", CoralModels.SpineGun, CoralModels.SpineMuzzle );
 			else if ( skeleton is not null && name == "seeds" ) GunKit.Attach( skeleton, "Reef Seeds", CoralModels.SeedPod, CoralModels.SeedMuzzle );
+			else if ( skeleton is not null && name == "scrap" ) GunKit.Attach( skeleton, "Scrap Cannon", MagnetModels.ScrapCannon, MagnetModels.ScrapMuzzle );
+			else if ( skeleton is not null && name == "polarity" ) GunKit.Attach( skeleton, "Polarity Gun", MagnetModels.PolarityGun, MagnetModels.PolarityMuzzle );
+			else if ( skeleton is not null && name == "plunger" ) GunKit.Attach( skeleton, "Plunger Launcher", PlungerModels.PlungerGun, PlungerModels.PlungerMuzzle );
+			else if ( skeleton is not null && name == "toilet" ) GunKit.Attach( skeleton, "Flush Bomb", PlungerModels.ToiletLauncher, PlungerModels.ToiletMuzzle );
+			else if ( skeleton is not null && name == "pinball" ) GunKit.Attach( skeleton, "Pinball Launcher", PinballModels.Launcher, PinballModels.LauncherMuzzle );
+			else if ( skeleton is not null && name == "flippers" ) GunKit.Attach( skeleton, "Flipper Arms", PinballModels.Flippers, PinballModels.FlipperMuzzle );
 			else if ( skeleton is not null ) TridentModel.Attach( skeleton );
 		}
 		var player = new AnimationPlayer { Name = "AnimationPlayer" };

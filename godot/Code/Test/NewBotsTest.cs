@@ -66,17 +66,17 @@ public partial class AutoTest
 		var harpoon = inventory.Weapons.FirstOrDefault( w => w.Harpoon );
 		var lure = inventory.Weapons.FirstOrDefault( w => w.Lure );
 		Check( harpoon is not null && lure is not null, "Hook-Bot has no harpoon reel or lantern lure" );
-		Check( RobotClass.All.Length == 5 && me.Health.MaxHealth == RobotClass.HookBot.BaseHealth, $"Hook-Bot's health is {me.Health.MaxHealth}, not {RobotClass.HookBot.BaseHealth}" );
+		Check( RobotClass.All.Length == 8 && me.Health.MaxHealth == RobotClass.HookBot.BaseHealth, $"Hook-Bot's health is {me.Health.MaxHealth}, not {RobotClass.HookBot.BaseHealth}" );
 		if ( harpoon is null || lure is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		// The picker fits all five robots on screen.
+		// The picker fits every robot on screen.
 		var picker = ClassPicker.Find( GetTree() );
 		picker?.SetOpen( true );
 		await Wait( 0.3f );
 		var cards = picker?.FindChildren( "Pick", "Button", true, false ).OfType<Control>().ToList() ?? new();
 		var screen = GetViewport().GetVisibleRect();
 		GD.Print( $"[autotest] hookbot: the picker shows {cards.Count} robots, all on screen {cards.All( c => screen.Encloses( c.GetGlobalRect() ) )}" );
-		Check( cards.Count == 5 && cards.All( c => screen.Encloses( c.GetGlobalRect() ) ), "the robot picker does not fit five robots on screen" );
-		if ( shots is not null ) await Shot( "class_picker5" );
+		Check( cards.Count == RobotClass.All.Length && cards.All( c => screen.Encloses( c.GetGlobalRect() ) ), $"the robot picker does not fit {RobotClass.All.Length} robots on screen" );
+		if ( shots is not null ) await Shot( "class_picker" );
 		picker?.SetOpen( false );
 		await Wait( 0.2f );
 		var (spot, ahead, side) = BotArena();
@@ -347,7 +347,7 @@ public partial class AutoTest
 	}
 
 	/// <summary> What a weapon's hits come to against a crab on wave 1, 10, 20 and 30 (base damage, no upgrades). </summary>
-	void BalanceLine( PlayerWeapon w )
+	public void BalanceLine( PlayerWeapon w )
 	{
 		var director = WaveDirector.Current;
 		if ( director is null ) return;

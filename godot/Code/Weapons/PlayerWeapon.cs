@@ -115,7 +115,8 @@ public partial class PlayerWeapon : Node
 	/// <summary> Reload time and rate of fire with the player's pickups counted in. </summary>
 	/// <summary> The rifle's tree (Fire Rate, Faster Reload, Overclock) is the only one that speeds these up. </summary>
 	public float CurrentReloadTime => ReloadTime * (ModelName == "rifle" ? Perks?.ReloadScale ?? 1f : 1f) * (Seeds ? CoralFx.SeedReloadScale( Skill( SkillId.QuickSeed ) ) : 1f);
-	public float CurrentFireRate => FireRate * (ModelName == "rifle" ? (Perks?.FireRateScale ?? 1f) * (overclockLeft > 0 ? 1f + SkillFx.OverclockRate : 1f) : 1f);
+	public float CurrentFireRate => FireRate * (ModelName == "rifle" ? (Perks?.FireRateScale ?? 1f) * (overclockLeft > 0 ? 1f + SkillFx.OverclockRate : 1f) : 1f)
+		* (Plunger ? 1f + PlungerFx.RapidPer * Skill( SkillId.RapidPlunge ) : 1f);
 	public float ReloadProgress => !IsReloading ? 0f : ShellReload ? (float)Ammo / MagazineSize : 1f - MathX.Clamp( reloadFinished / MathF.Max( 0.01f, CurrentReloadTime ), 0f, 1f );
 
 	public bool HasScope => DisplayName == "Rifle" && RifleModels.Get().Scope && !(controller?.SeenFromOutside ?? false);
@@ -301,7 +302,18 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		if ( !Bubbles && !Lure && !Seeds ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
+		if ( Scrap || Polarity || Pinball || Flippers )
+		{
+			// The Magnet-Bot's and Pinball-Bot's guns work their own triggers (MagnetBot.cs, PinballBot.cs).
+			var free = !(DevFlags.Placing || melee || LocalBlocked);
+			if ( Scrap || Polarity ) UpdateMagnet( dt, free );
+			else if ( Pinball ) UpdatePinball( dt, free );
+			else UpdateFlippers( dt, free );
+			ShowLoaded();
+			return;
+		}
+
+		if ( !Bubbles && !Lure && !Seeds && !Plunger && !Toilet ) UpdateAiming( dt );   // the Bubble Cannon's right click pops its bubbles, the lure's bursts it, the seeds' grows a wall
 
 		if ( controller.In.JustPressed( "reload" ) ) StartReload();
 		if ( ShellReload && IsReloading && controller.In.JustPressed( "attack1" ) && Ammo > 0 ) CancelReload();
@@ -309,6 +321,8 @@ public partial class PlayerWeapon : Node
 		if ( LocalBlocked ) return;   // not during the dive, nor while clicking the dev menu, nor while Esc has the mouse
 		if ( Bubbles && controller.In.JustPressed( "attack2" ) ) BubbleTrap.PopAll( controller, true );
 		if ( Lure && controller.In.JustPressed( "attack2" ) ) ActiveLure?.Burst();
+		if ( Plunger && controller.In.JustPressed( "attack2" ) ) Unclog();
+		if ( Toilet && controller.In.JustPressed( "attack2" ) ) ActiveBomb?.Flush();
 		if ( Seeds && controller.In.JustPressed( "attack2" ) && !IsReloading && TimeSinceShot >= 0.3f )
 		{
 			if ( Ammo > 0 ) { TimeSinceShot = 0f; Ammo--; PlantSeed( controller.Camera.GlobalPosition, -controller.Camera.GlobalBasis.Z, true ); }
@@ -431,7 +445,7 @@ public partial class PlayerWeapon : Node
 	void ShowLoaded()
 	{
 		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
-		if ( !(Projectile || Harpoon || Lure) || ViewModel is null ) return;
+		if ( !(Projectile || Harpoon || Lure || Plunger || Toilet || Scrap || Pinball) || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
 		if ( loaded is not null ) loaded.Visible = Ammo > 0 && TimeSinceShot > 0.35f && !LineOut;
 	}
@@ -508,6 +522,8 @@ public partial class PlayerWeapon : Node
 		else if ( Harpoon ) FireHarpoon( start, forward, spread, trailStart );
 		else if ( Lure ) ThrowLure( start, forward );
 		else if ( Seeds ) PlantSeed( start, forward, false );
+		else if ( Plunger ) FirePlunger( start, forward, spread );
+		else if ( Toilet ) ThrowToilet( start, forward );
 		else if ( Projectile )
 		{
 			// The trident flies from the muzzle to whatever is under the crosshair (or as far as it reaches).
@@ -532,7 +548,7 @@ public partial class PlayerWeapon : Node
 			if ( WaterFeel.IsOn() ) WaterBubble.Trail( trailStart, tr.Hit ? tr.HitPosition : start + direction * MathF.Min( Range, 900f * U.In ) );
 		}
 
-		if ( !Bubbles && !Projectile && !Harpoon && !Lure && !Seeds ) EndShotSkills( start, forward, trailStart );
+		if ( !Bubbles && !Projectile && !Harpoon && !Lure && !Seeds && !Plunger && !Toilet ) EndShotSkills( start, forward, trailStart );
 		juice?.Shake( ShakePerShot );
 		juice?.KickFov( FovKickPerShot );
 

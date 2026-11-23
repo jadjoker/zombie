@@ -149,6 +149,7 @@ public partial class Jetpack : Node
 		SurgeEffects();
 		SurgeSkills( dt );
 		MoveSkills( dt );
+		ToySkills( dt );
 
 		var stalling = wantThrust && Stalled;
 		if ( (stalling || Thrusting || Surging) && timeSinceBubble > (Surging ? 0.02f : 0.045f) )
@@ -202,13 +203,17 @@ public partial class Jetpack : Node
 		var pressed = controller.In.JustPressed( "surge" ) || testSurge;
 		var released = controller.In.JustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
 		testSurge = false;
-		if ( controller.Robot.Blink || controller.Robot.Grapple || controller.Robot.Burrow )
+		var robot = controller.Robot;
+		if ( robot.Blink || robot.Grapple || robot.Burrow || robot.Pulse || robot.Sling || robot.Roll )
 		{
 			Charging = false;
 			testHold = 0f;
-			if ( pressed && controller.Robot.Blink ) TryBlink();
-			else if ( pressed && controller.Robot.Grapple ) TryGrapple();
-			else if ( pressed && controller.Robot.Burrow ) ToggleBurrow();
+			if ( pressed && robot.Blink ) TryBlink();
+			else if ( pressed && robot.Grapple ) TryGrapple();
+			else if ( pressed && robot.Burrow ) ToggleBurrow();
+			else if ( pressed && robot.Pulse ) TryPulse();
+			else if ( pressed && robot.Sling ) TrySling();
+			else if ( pressed && robot.Roll ) ToggleRoll();
 			return;
 		}
 		if ( !Charging && pressed && !Surging )
@@ -523,7 +528,7 @@ public partial class Jetpack : Node
 			}
 			return;
 		}
-		if ( TimeSinceSurgeEnded < 0.4f && !controller.Robot.Blink && !controller.Robot.Grapple && !controller.Robot.Burrow && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
+		if ( TimeSinceSurgeEnded < 0.4f && !controller.Robot.OwnMove && controller.Velocity.Length() / U.In >= SlamMinSpeed && TimeSinceSlam > 0.4f )
 		{
 			var v = controller.Velocity;
 			if ( FindImpactBody( Feet, v * dt + v.Normalized() * RamRadius * U.In, out var hitAt, out var enemy ) && enemy is not null )

@@ -57,7 +57,7 @@ public partial class TridentSurge : Node
 		jetpack ??= controller.GetNodeOrNull<Jetpack>( "Jetpack" );
 		var held = controller.GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
 		var on = controller.Robot == RobotClass.TridentBot && jetpack is not null && !jetpack.Blinking && (jetpack.Charging || jetpack.Surging)
-			&& !PlayerSurvivor.LocalDead && held is not null;
+			&& controller.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) is { IsAlive: true } && held is not null;
 		show = on ? MathX.Clamp( show + dt / 0.12f, 0f, 1f ) : MathX.Clamp( show - dt / FadeTime, 0f, 1f );
 
 		// The pose: cocked back while winding up, a lunge that overshoots as the surge goes, held out, then back.

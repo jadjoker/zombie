@@ -752,6 +752,266 @@ def barrier():
     return img
 
 
+# ---- Magnet-Bot, Plunger-Bot, Pinball-Bot ----
+RED = (230, 50, 45, 255)
+BLUE = (60, 130, 255, 255)
+STEEL = (200, 205, 215, 255)
+RUBBER = (200, 25, 30, 255)
+WOOD = (170, 115, 60, 255)
+CHROME = (225, 230, 240, 255)
+NEON = (255, 80, 220, 255)
+YEL = (255, 220, 40, 255)
+
+
+def horseshoe(d, x, y, s=1.0, w=14):
+    pts = [(x + math.cos(a) * 26 * s, y + math.sin(a) * 26 * s) for a in [math.pi * i / 29 for i in range(30)]]
+    line(d, [(x - 26 * s, y - 24 * s), (x - 26 * s, y)] , w, RED)
+    line(d, [(x + 26 * s, y - 24 * s), (x + 26 * s, y)], w, RED)
+    line(d, pts, w, RED)
+    for sx in (-1, 1):
+        d.rectangle((p(x + sx * 26 * s - w / 2, y - 36 * s), p(x + sx * 26 * s + w / 2, y - 22 * s)), fill=STEEL)
+
+
+def scrapball(d, x, y, r):
+    circle(d, x, y, r, fill=(120, 80, 60, 255))
+    for i in range(7):
+        a = i * 2.4
+        circle(d, x + math.cos(a) * r * 0.55, y + math.sin(a) * r * 0.55, r * 0.3, fill=STEEL if i % 2 else (180, 60, 60, 255))
+
+
+def heavymetal():
+    img, d = badge((150, 160, 175))
+    scrapball(d, 64, 70, 30)
+    arrow(d, 64, 18, 64, 34, 6, 12)
+    return img
+
+
+def shrapnel():
+    img, d = badge((230, 70, 50))
+    circle(d, 64, 64, 14, fill=(120, 80, 60, 255))
+    for i in range(8):
+        a = i * math.tau / 8
+        x0, y0 = 64 + math.cos(a) * 20, 64 + math.sin(a) * 20
+        x1, y1 = 64 + math.cos(a) * 44, 64 + math.sin(a) * 44
+        poly(d, [(x1, y1), (x0 + math.cos(a + 1.6) * 5, y0 + math.sin(a + 1.6) * 5), (x0 - math.cos(a + 1.6) * 5, y0 - math.sin(a + 1.6) * 5)], STEEL)
+    return img
+
+
+def wreckingball():
+    img, d = badge((140, 150, 170))
+    line(d, [(64, 12), (82, 50)], 4, DARK)
+    circle(d, 86, 74, 30, fill=DARK)
+    circle(d, 76, 64, 8, fill=(90, 95, 110, 255))
+    return img
+
+
+def junkmagnet():
+    img, d = badge((60, 130, 255))
+    horseshoe(d, 64, 54, 1.0)
+    for x, y in ((40, 100), (64, 108), (88, 100)):
+        circle(d, x, y, 7, fill=STEEL)
+        arrow(d, x, y - 10, x, y - 22, 3, 7)
+    return img
+
+
+def katamari():
+    img, d = badge((255, 200, 60))
+    scrapball(d, 64, 64, 26)
+    for i, a in enumerate((0.3, 2.2, 4.2)):
+        cx, cy = 64 + math.cos(a) * 34, 64 + math.sin(a) * 34
+        circle(d, cx, cy, 12, fill=(255, 150, 90, 255))
+        circle(d, cx - 4, cy - 3, 3, fill=DARK)
+        circle(d, cx + 4, cy - 3, 3, fill=DARK)
+    return img
+
+
+def smash():
+    img, d = badge((230, 60, 50))
+    circle(d, 34, 64, 16, fill=RED)
+    circle(d, 94, 64, 16, fill=BLUE)
+    star(d, 64, 64, 18, 8, 8, W)
+    arrow(d, 12, 40, 30, 50, 4, 8)
+    arrow(d, 116, 40, 98, 50, 4, 8)
+    return img
+
+
+def arcweld():
+    img, d = badge((255, 200, 60))
+    circle(d, 40, 70, 14, fill=RED)
+    circle(d, 88, 70, 14, fill=BLUE)
+    line(d, [(40, 52), (50, 30), (60, 44), (72, 22), (80, 40), (88, 52)], 5, W)
+    return img
+
+
+def magnetar():
+    img, d = badge((100, 60, 180))
+    spiral(d, 64, 64, 46, 2.2, 5, BLUE)
+    circle(d, 64, 64, 14, fill=W)
+    star(d, 64, 64, 10, 4, 4, RED)
+    return img
+
+
+def scraparmour():
+    img, d = badge((150, 160, 175))
+    poly(d, [(64, 18), (100, 32), (96, 76), (64, 108), (32, 76), (28, 32)], STEEL)
+    for x, y in ((52, 46), (76, 52), (58, 74), (78, 80)):
+        d.rectangle((p(x - 6, y - 5), p(x + 6, y + 5)), fill=(150, 90, 60, 255))
+    return img
+
+
+def polereversal():
+    img, d = badge((60, 130, 255))
+    horseshoe(d, 64, 60, 0.9)
+    arrow(d, 20, 100, 44, 100, 5, 10)
+    arrow(d, 108, 100, 84, 100, 5, 10)
+    arrow(d, 64, 110, 64, 92, 5, 10)
+    return img
+
+
+def plunger_shape(d, x, y, s=1.0):
+    line(d, [(x, y - 40 * s), (x, y + 6 * s)], 7, WOOD)
+    d.chord((p(x - 26 * s, y), p(x + 26 * s, y + 44 * s)), 180, 360, fill=RUBBER)
+    d.rectangle((p(x - 28 * s, y + 20 * s), p(x + 28 * s, y + 25 * s)), fill=(150, 15, 20, 255))
+
+
+def plunger():
+    img, d = badge((90, 200, 255))
+    plunger_shape(d, 64, 56)
+    return img
+
+
+def shlorp():
+    img, d = badge((90, 200, 255))
+    for dx, a in ((-26, -0.5), (0, 0), (26, 0.5)):
+        plunger_shape(d, 64 + dx, 50 - abs(dx) * 0.4, 0.55)
+    for x, y in ((40, 100), (64, 104), (88, 100)):
+        circle(d, x, y, 7, fill=(140, 10, 20, 255))
+    return img
+
+
+def nightmare():
+    img, d = badge((140, 230, 60))
+    plunger_shape(d, 44, 60, 0.6)
+    arrow(d, 60, 50, 96, 30, 4, 9)
+    arrow(d, 60, 64, 98, 70, 4, 9)
+    circle(d, 104, 28, 8, fill=RUBBER)
+    circle(d, 106, 72, 8, fill=RUBBER)
+    return img
+
+
+def toilet(d, x, y, s=1.0):
+    d.rectangle((p(x - 16 * s, y - 34 * s), p(x + 16 * s, y - 10 * s)), fill=W)
+    d.chord((p(x - 30 * s, y - 20 * s), p(x + 30 * s, y + 24 * s)), 0, 180, fill=W)
+    d.rectangle((p(x - 30 * s, y - 4 * s), p(x + 30 * s, y + 2 * s)), fill=(220, 220, 215, 255))
+    d.rectangle((p(x - 10 * s, y + 18 * s), p(x + 10 * s, y + 30 * s)), fill=W)
+
+
+def flush():
+    img, d = badge((60, 130, 255))
+    toilet(d, 64, 64)
+    spiral(d, 64, 66, 18, 2.0, 4, (60, 130, 255, 255))
+    return img
+
+
+def geyser():
+    img, d = badge((70, 190, 255))
+    toilet(d, 64, 84, 0.7)
+    for dx in (-10, 0, 10):
+        line(d, [(64 + dx, 70), (64 + dx * 1.6, 20)], 6, W)
+    circle(d, 64, 18, 10, fill=W)
+    return img
+
+
+def clogged():
+    img, d = badge((160, 130, 50))
+    toilet(d, 64, 72, 0.8)
+    for x, y in ((40, 34), (64, 24), (88, 34), (52, 46), (78, 46)):
+        circle(d, x, y, 9, fill=(110, 85, 30, 255))
+    return img
+
+
+def cannonball():
+    img, d = badge((60, 130, 255))
+    circle(d, 64, 54, 24, fill=DARK)
+    circle(d, 56, 46, 6, fill=(90, 95, 110, 255))
+    for i in range(7):
+        a = math.pi * (0.1 + 0.8 * i / 6)
+        line(d, [(64 - math.cos(a) * 30, 104 - math.sin(a) * 6), (64 - math.cos(a) * 46, 104 - math.sin(a) * 26)], 5, W)
+    return img
+
+
+def spring():
+    img, d = badge((255, 200, 60))
+    pts = [(64 + (18 if i % 2 else -18), 100 - i * 9) for i in range(9)]
+    line(d, pts, 6, CHROME)
+    circle(d, 64, 22, 12, fill=(230, 40, 50, 255))
+    return img
+
+
+def bumper():
+    img, d = badge((255, 80, 220))
+    circle(d, 64, 64, 34, fill=W)
+    circle(d, 64, 64, 26, fill=NEON)
+    circle(d, 64, 64, 10, fill=W)
+    for i in range(6):
+        a = i * math.tau / 6
+        line(d, [(64 + math.cos(a) * 40, 64 + math.sin(a) * 40), (64 + math.cos(a) * 52, 64 + math.sin(a) * 52)], 5, YEL)
+    return img
+
+
+def jackpot():
+    img, d = badge((255, 200, 60))
+    for i, (x, y) in enumerate(((34, 80), (64, 56), (94, 32))):
+        star(d, x, y, 12 + i * 4, 5 + i * 2, 5, W)
+    return img
+
+
+def multiball():
+    img, d = badge((255, 80, 220))
+    for x, y in ((40, 76), (64, 46), (88, 76)):
+        circle(d, x, y, 16, fill=CHROME)
+        circle(d, x - 5, y - 5, 5, fill=W)
+    return img
+
+
+def flipper():
+    img, d = badge((255, 150, 40))
+    poly(d, [(26, 60), (102, 84), (100, 96), (24, 76)], YEL)
+    circle(d, 26, 68, 12, fill=CHROME)
+    circle(d, 96, 40, 12, fill=CHROME)
+    arrow(d, 72, 66, 92, 50, 4, 8)
+    return img
+
+
+def combo():
+    img, d = badge((255, 200, 60))
+    for i in range(3):
+        x = 30 + i * 30
+        poly(d, [(x - 10, 92), (x + 10, 92), (x + 10, 92 - 20 - i * 18), (x - 10, 92 - 20 - i * 18)], W)
+    return img
+
+
+def ramp():
+    img, d = badge((150, 80, 255))
+    poly(d, [(18, 104), (96, 104), (96, 58)], W)
+    pts = [(96 + math.cos(a) * 0, 0) for a in []]
+    arc = [(96 - 30 * math.cos(math.pi * t / 20), 58 - 40 * math.sin(math.pi * t / 20)) for t in range(21)]
+    line(d, [(x + 0, y) for x, y in arc], 4, YEL)
+    circle(d, 66, 58, 10, fill=CHROME)
+    return img
+
+
+def highscore():
+    img, d = badge((255, 200, 60))
+    d.rectangle((p(18, 44), p(110, 84)), fill=DARK)
+    for i in range(5):
+        x = 26 + i * 18
+        for seg in ((0, -12, 0, 12),):
+            line(d, [(x, 54), (x + 8, 54), (x + 8, 74), (x, 74), (x, 54)], 3, YEL)
+    star(d, 64, 26, 14, 6, 5, W)
+    return img
+
+
 ICONS = {
     "deepmag": deepmag, "headhunter": headhunter, "overclock": overclock, "wideload": wideload, "pointblank": pointblank,
     "shellshuffle": shellshuffle, "kickback": kickback, "dragon": dragon, "limbripper": limbripper, "fullchoke": fullchoke,
@@ -767,6 +1027,11 @@ ICONS = {
     "bloom": bloom, "seadog": seadog, "leviathan": leviathan, "spines": spines, "growth": growth, "clusters": clusters,
     "ricochet": ricochet, "bleach": bleach, "heal": heal, "spikedwall": spikedwall, "anemone": anemone,
     "livingreef": livingreef, "dig": dig, "upheaval": upheaval, "calcify": calcify, "barrier": barrier,
+    "heavymetal": heavymetal, "shrapnel": shrapnel, "wreckingball": wreckingball, "junkmagnet": junkmagnet,
+    "katamari": katamari, "smash": smash, "arcweld": arcweld, "magnetar": magnetar, "scraparmour": scraparmour,
+    "polereversal": polereversal, "plunger": plunger, "shlorp": shlorp, "nightmare": nightmare, "flush": flush,
+    "geyser": geyser, "clogged": clogged, "cannonball": cannonball, "spring": spring, "bumper": bumper,
+    "jackpot": jackpot, "multiball": multiball, "flipper": flipper, "combo": combo, "ramp": ramp, "highscore": highscore,
 }
 
 if __name__ == "__main__":

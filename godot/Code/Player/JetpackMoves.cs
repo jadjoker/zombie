@@ -225,6 +225,7 @@ public partial class Jetpack
 			}
 			if ( burrowLeft <= 0f ) Erupt();
 		}
+		else if ( Rolling ) { }   // the roll keeps the view low (JetpackToys)
 		else if ( controller.EyeDrop > 0.001f ) controller.EyeDrop = MathX.Lerp( controller.EyeDrop, 0f, 1f - MathF.Exp( -10f * dt ) );
 		else controller.EyeDrop = 0f;
 		stillFor = controller.Velocity.Length() < 0.4f && controller.IsOnGround ? stillFor + dt : 0f;

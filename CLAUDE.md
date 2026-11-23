@@ -263,6 +263,22 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   of each). Their suits have their own patterns (`PlayerRig.BuoyTexture`: Hook-Bot's slanted orange and white life
   buoy bands with navy rope lines; `PolypTexture`: Coral-Bot's pink with orange polyp cups) and eye glow (lantern green,
   polyp pink; `CharacterSkins.GlowOf`).
+- Magnet-Bot, Plunger-Bot and Pinball-Bot (robots 6 to 8, the physics robots; three skill trees each). Balls that
+  bounce share `Weapons/BotBall.cs` (a sphere trace a step, bounces off the world, bumpers off enemies, rolls, `Strike`
+  lands a hit like a shot). Magnet-Bot (175 health, `Paint` "Magnet"; `Weapons/MagnetBot.cs`, `MagnetFx`): the Scrap
+  Cannon (hold to gather gore into a `ScrapBall`, more junk hits harder; right click recalls the balls, each caught one
+  back in the magazine), the Polarity Gun (left click tags red, right click blue: `MagnetTag` drags opposites together
+  until they smash, likes push apart); mouse 4 is the Repulsor Pulse (`RobotClass.Pulse`, `Player/JetpackToys.cs`).
+  Plunger-Bot (175, "Plunger"; `PlungerBot.cs`, `PlungerFx`): plungers stick (`StuckPlunger`) and pop off at
+  `PopAt` with a SHLORP, right click yanks them back; the Flush Bomb toilet (`FlushBomb`) whirlpools enemies in and
+  geysers them up; mouse 4 slings you off a plunger on a bungee (`Sling`) into a belly flop. Pinball-Bot (150,
+  "Pinball"; `PinballBot.cs`, `PinballFx`): hold to pull the launcher's spring, a `Pinball` speeds up off each enemy;
+  the Flipper Arms (left and right click each flip one) whack enemies away and slap balls back out harder; mouse 4
+  rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
+  `PinballModels`); suits `MagnetTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
+  effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
+  Sounds `magnet_hum`, `magnet_clang`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.
+  Tests: `--magnetbot`, `--plungerbot`, `--pinballbot`.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets

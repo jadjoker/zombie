@@ -4,7 +4,8 @@ using Godot;
 /// The playable robots. Each has its own weapons and its own mouse 4 move; both swing the axe. Ram-Bot is the
 /// original kit (rifle, shotgun, the charged surge that rams through enemies). Vac-Bot carries the Gore Vac and the
 /// Bubble Cannon and blinks with a reverse-thrust burst instead. Hook-Bot reels enemies in on a harpoon line, lures them to a lantern and grapples about; Coral-Bot
-/// encrusts them in coral, plants turrets and walls, and burrows. Picked at the dock before the dive (ClassPicker),
+/// encrusts them in coral, plants turrets and walls, and burrows. Magnet-Bot balls up scrap and smashes tagged enemies
+/// together; Plunger-Bot sticks plungers on them and flushes them; Pinball-Bot bounces steel balls and flips them. Picked at the dock before the dive (ClassPicker),
 /// or any time in the dev menu; saved with the settings (`game/robot_class`); `--class <name>` forces one.
 /// Buy stations only sell what fits the robot (`Sells`): the trident and Gore Vac stations are for nobody now.
 /// </summary>
@@ -22,6 +23,14 @@ public sealed class RobotClass
 	public bool Grapple;
 	/// <summary> Mouse 4 digs you into the sand and erupts (Coral-Bot, `JetpackMoves.cs`). </summary>
 	public bool Burrow;
+	/// <summary> Mouse 4 throws enemies back with a magnetic pulse (Magnet-Bot, `JetpackToys.cs`). </summary>
+	public bool Pulse;
+	/// <summary> Mouse 4 flings you off a plunger on a bungee (Plunger-Bot). </summary>
+	public bool Sling;
+	/// <summary> Mouse 4 curls you into a ball that bowls enemies over (Pinball-Bot). </summary>
+	public bool Roll;
+	/// <summary> Mouse 4 is a tap move of its own, not the charged surge. </summary>
+	public bool OwnMove => Blink || Grapple || Burrow || Pulse || Sling || Roll;
 	public Func<PlayerWeapon[]> Kit;
 
 	public static readonly RobotClass RamBot = new()
@@ -65,7 +74,31 @@ public sealed class RobotClass
 		Kit = () => new[] { PlayerWeapon.SpineGun( 1 ), PlayerWeapon.ReefSeeds( 2 ) },
 	};
 
-	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot, HookBot, CoralBot };
+	public static readonly RobotClass MagnetBot = new()
+	{
+		Id = "magnetbot", Name = "Magnet-Bot", Tagline = "Opposites attract. Violently.",
+		Weapons = "Scrap Cannon, Polarity Gun", Movement = "Repulsor pulse: tap mouse 4 to throw every enemy near you back",
+		Tint = new Color( 1f, 0.3f, 0.28f ), BaseHealth = 175f, Paint = "Magnet", Pulse = true,
+		Kit = () => new[] { PlayerWeapon.ScrapCannon( 1 ), PlayerWeapon.PolarityGun( 2 ) },
+	};
+
+	public static readonly RobotClass PlungerBot = new()
+	{
+		Id = "plungerbot", Name = "Plunger-Bot", Tagline = "Unclog the deep.",
+		Weapons = "Plunger Launcher, Flush Bomb", Movement = "Slingshot: tap mouse 4 to fling yourself off a plunger on a bungee (land on them for a belly flop)",
+		Tint = new Color( 0.4f, 0.8f, 1f ), BaseHealth = 175f, Paint = "Plunger", Sling = true,
+		Kit = () => new[] { PlayerWeapon.PlungerLauncher( 1 ), PlayerWeapon.FlushBombs( 2 ) },
+	};
+
+	public static readonly RobotClass PinballBot = new()
+	{
+		Id = "pinballbot", Name = "Pinball-Bot", Tagline = "Tilt the odds.",
+		Weapons = "Pinball Launcher, Flipper Arms", Movement = "Roll: tap mouse 4 to curl into a ball and bowl enemies over",
+		Tint = new Color( 1f, 0.35f, 0.88f ), BaseHealth = 150f, Paint = "Pinball", Roll = true,
+		Kit = () => new[] { PlayerWeapon.PinballLauncher( 1 ), PlayerWeapon.FlipperArms( 2 ) },
+	};
+
+	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot, HookBot, CoralBot, MagnetBot, PlungerBot, PinballBot };
 
 	public static RobotClass Find( string id ) => All.FirstOrDefault( c => string.Equals( c.Id, id, StringComparison.OrdinalIgnoreCase ) || string.Equals( c.Name, id, StringComparison.OrdinalIgnoreCase ) ) ?? RamBot;
 

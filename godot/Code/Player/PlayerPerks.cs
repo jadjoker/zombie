@@ -56,6 +56,9 @@ public partial class PlayerPerks : Node
 	/// <summary> A short burst of speed (m/s) until then: Hook-Bot's Momentum after a zip, Coral-Bot's burrow. </summary>
 	public double BoostUntil;
 	public float Boost;
+	/// <summary> A share of each hit turned away until `GuardUntil` (Magnet-Bot's Scrap Armour). </summary>
+	public double GuardUntil;
+	public float Guard;
 	public const float BlastDamage = 500f, BlastRadius = 8f;
 
 	readonly int[] counts = new int[Enum.GetValues<PerkKind>().Length];
@@ -196,6 +199,7 @@ public partial class PlayerPerks : Node
 			if ( survivor.Decoy is { Gone: false } decoy && IsInstanceValid( decoy ) && damage.Position != Vector3.Zero
 				&& damage.Position.DistanceTo( decoy.GlobalPosition + Vector3.Up * 1f ) < damage.Position.DistanceTo( controller.GlobalPosition + Vector3.Up * 1f ) ) { decoy.Struck(); return 0f; }
 		}
+		if ( damage.Attacker is not PlayerAfflictions && Clock.Now < GuardUntil ) damage.Damage *= 1f - Guard;
 		// Calcify (Coral-Bot): standing still hardens the shell.
 		if ( damage.Attacker is not PlayerAfflictions && Skills.Rank( controller, SkillId.Calcify ) is var calcify && calcify > 0
 			&& controller.GetNodeOrNull<Jetpack>( "Jetpack" ) is { StillFor: >= CoralFx.CalcifyAfter } )

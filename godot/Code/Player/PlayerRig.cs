@@ -298,6 +298,12 @@ public partial class PlayerRig : Node
 		["Hook"] = new[] { new Color( 0.08f, 0.12f, 0.22f ), new Color( 0.95f, 0.50f, 0.16f ), new Color( 0.86f, 0.73f, 0.46f ), new Color( 0.80f, 0.64f, 0.30f ) },
 		// The Coral-Bot: coral pink suit, bleached sand frame, orange shoulders, teal metal.
 		["Coral"] = new[] { new Color( 0.92f, 0.86f, 0.74f ), new Color( 1f, 0.45f, 0.50f ), new Color( 1f, 0.68f, 0.20f ), new Color( 0.18f, 0.58f, 0.58f ) },
+		// The Magnet-Bot: a horseshoe magnet's red with silver poles, a dark steel frame, blue field lines.
+		["Magnet"] = new[] { new Color( 0.15f, 0.16f, 0.20f ), new Color( 0.85f, 0.13f, 0.13f ), new Color( 0.86f, 0.88f, 0.92f ), new Color( 0.25f, 0.5f, 0.95f ) },
+		// The Plunger-Bot: white bathroom tiles, a wooden handle frame, red rubber shoulders, chrome.
+		["Plunger"] = new[] { new Color( 0.62f, 0.42f, 0.22f ), new Color( 0.95f, 0.95f, 0.92f ), new Color( 0.78f, 0.10f, 0.12f ), new Color( 0.82f, 0.84f, 0.88f ) },
+		// The Pinball-Bot: a purple playfield, a dark cabinet frame, neon yellow shoulders, chrome.
+		["Pinball"] = new[] { new Color( 0.10f, 0.08f, 0.16f ), new Color( 0.36f, 0.14f, 0.72f ), new Color( 1f, 0.86f, 0.12f ), new Color( 0.90f, 0.92f, 0.95f ) },
 		["Hazard"] = new[] { new Color( 0.14f, 0.14f, 0.16f ), new Color( 0.96f, 0.80f, 0.14f ), new Color( 0.12f, 0.12f, 0.14f ), new Color( 0.80f, 0.80f, 0.84f ) },
 		["Frost"] = new[] { new Color( 0.30f, 0.38f, 0.50f ), new Color( 0.90f, 0.94f, 0.98f ), new Color( 0.30f, 0.58f, 0.90f ), new Color( 0.80f, 0.88f, 0.96f ) },
 		["Gold"] = new[] { new Color( 0.20f, 0.17f, 0.14f ), new Color( 0.92f, 0.70f, 0.22f ), new Color( 0.70f, 0.12f, 0.14f ), new Color( 0.98f, 0.86f, 0.50f ) },
@@ -391,6 +397,94 @@ public partial class PlayerRig : Node
 		return ImageTexture.CreateFromImage( image );
 	}
 
+	/// <summary>
+	/// The Magnet-Bot's suit: bands of horseshoe red with silver pole caps, crossed by thin blue field lines that arc
+	/// from pole to pole (sine curves, so the tile wraps).
+	/// </summary>
+	public static ImageTexture MagnetTexture( Color red, Color silver, Color field )
+	{
+		const int size = 256;
+		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
+		for ( var y = 0; y < size; y++ )
+			for ( var x = 0; x < size; x++ )
+			{
+				var u = x / (float)size;
+				var v = y / (float)size;
+				var band = (v * 2f) % 1f;
+				var c = band < 0.72f ? red : silver;
+				if ( band >= 0.72f && band < 0.75f ) c = red.Darkened( 0.5f );
+				if ( band < 0.72f )
+					for ( var k = 0; k < 3; k++ )
+					{
+						var line = 0.12f + 0.2f * k + 0.08f * MathF.Sin( u * MathF.Tau * 2f + k );
+						if ( MathF.Abs( band - line ) < 0.012f ) c = field;
+					}
+				image.SetPixel( x, y, c );
+			}
+		image.GenerateMipmaps();
+		return ImageTexture.CreateFromImage( image );
+	}
+
+	/// <summary> The Plunger-Bot's suit: white bathroom tiles in pale grout, with a blue tile here and there. </summary>
+	public static ImageTexture TileTexture( Color tile, Color grout, Color blue )
+	{
+		const int size = 256, cells = 8;
+		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
+		for ( var y = 0; y < size; y++ )
+			for ( var x = 0; x < size; x++ )
+			{
+				var u = x / (float)size * cells;
+				var v = y / (float)size * cells;
+				int cx = (int)u, cy = (int)v;
+				float fu = u - cx, fv = v - cy;
+				var c = Hash( cx, cy, 21 ) < 0.14f ? blue : tile;
+				// A soft shine across each tile.
+				c = c.Lerp( Colors.White, 0.25f * MathF.Max( 0f, 1f - MathF.Abs( fu - fv ) * 3f ) );
+				if ( fu < 0.06f || fv < 0.06f ) c = grout;
+				image.SetPixel( x, y, c );
+			}
+		image.GenerateMipmaps();
+		return ImageTexture.CreateFromImage( image );
+	}
+
+	/// <summary>
+	/// The Pinball-Bot's suit: a purple playfield with yellow stars, pink pop bumpers ringed in white, and cyan lane
+	/// arrows (a jittered grid, so it wraps).
+	/// </summary>
+	public static ImageTexture PlayfieldTexture( Color purple, Color yellow, Color pink, Color cyan )
+	{
+		const int size = 256, cells = 6;
+		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
+		for ( var y = 0; y < size; y++ )
+			for ( var x = 0; x < size; x++ )
+			{
+				var u = (x + 0.5f) / size * cells;
+				var v = (y + 0.5f) / size * cells;
+				int cx = (int)MathF.Floor( u ), cy = (int)MathF.Floor( v );
+				float fu = u - cx - 0.5f, fv = v - cy - 0.5f;
+				var kind = Hash( cx, cy, 31 );
+				var c = purple;
+				var r = MathF.Sqrt( fu * fu + fv * fv );
+				if ( kind < 0.35f )
+				{
+					// A five-pointed star.
+					var a = MathF.Atan2( fv, fu );
+					var edge = 0.2f + 0.1f * MathF.Cos( 5f * a );
+					if ( r < edge ) c = yellow;
+				}
+				else if ( kind < 0.7f )
+				{
+					if ( r < 0.26f ) c = Colors.White;
+					if ( r < 0.2f ) c = pink;
+					if ( r < 0.07f ) c = Colors.White;
+				}
+				else if ( fv > -0.25f && fv < 0.25f && MathF.Abs( fu ) < 0.3f - (fv + 0.25f) * 0.6f ) c = cyan;   // an arrow pointing up the lane
+				image.SetPixel( x, y, c );
+			}
+		image.GenerateMipmaps();
+		return ImageTexture.CreateFromImage( image );
+	}
+
 	/// <summary> Smooth value noise that wraps at the tile's edges, two octaves, 0 to 1. </summary>
 	static float TileNoise( float u, float v, int seed )
 	{
@@ -428,7 +522,10 @@ public partial class PlayerRig : Node
 		var frameCamo = FrameCamo.Contains( appliedSkin );
 		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] )
 			: appliedSkin == "Hook" ? BuoyTexture( paint[1], new Color( 0.96f, 0.94f, 0.88f ), paint[0] )
-			: appliedSkin == "Coral" ? PolypTexture( paint[1], new Color( 1f, 0.62f, 0.25f ), new Color( 0.98f, 0.9f, 0.82f ) ) : null;
+			: appliedSkin == "Coral" ? PolypTexture( paint[1], new Color( 1f, 0.62f, 0.25f ), new Color( 0.98f, 0.9f, 0.82f ) )
+			: appliedSkin == "Magnet" ? MagnetTexture( paint[1], paint[2], new Color( 0.3f, 0.6f, 1f ) )
+			: appliedSkin == "Plunger" ? TileTexture( paint[1], new Color( 0.55f, 0.75f, 0.85f ), new Color( 0.45f, 0.78f, 0.95f ) )
+			: appliedSkin == "Pinball" ? PlayfieldTexture( paint[1], new Color( 1f, 0.86f, 0.12f ), new Color( 1f, 0.3f, 0.85f ), new Color( 0.2f, 0.9f, 1f ) ) : null;
 		// About three tiles of camo from head to foot, whatever units the model's meshes are in.
 		var extent = meshes.Select( m => m.Mesh.GetAabb().GetLongestAxisSize() ).DefaultIfEmpty( 1f ).Max();
 		foreach ( var mesh in meshes )
@@ -455,7 +552,7 @@ public partial class PlayerRig : Node
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
 					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
-					m.Metallic = appliedSkin is "Hook" or "Coral" ? 0.05f : 0.25f;   // the stripes and polyps read brighter less metallic
+					m.Metallic = appliedSkin is "Hook" or "Coral" or "Plunger" or "Pinball" ? 0.05f : 0.25f;   // the stripes and polyps read brighter less metallic
 				}
 				if ( slot == "frame" && frameCamo )
 				{

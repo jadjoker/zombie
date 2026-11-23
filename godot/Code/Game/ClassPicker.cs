@@ -9,7 +9,10 @@ public partial class ClassPicker : CanvasLayer
 {
 	public static bool IsOpen { get; private set; }
 	/// <summary> Cards narrow down to fit the row on screen. </summary>
-	static int CardWidth => RobotClass.All.Length > 3 ? 286 : 380;
+	static int CardWidth => RobotClass.All.Length > 5 ? 300 : RobotClass.All.Length > 3 ? 286 : 380;
+	/// <summary> More than five robots: two rows of cards, with smaller text. </summary>
+	static bool Grid => RobotClass.All.Length > 5;
+	static float TextScale => Grid ? 0.7f : RobotClass.All.Length > 3 ? 0.82f : 1f;
 
 	Control window;
 	readonly List<Button> buttons = new();
@@ -32,14 +35,16 @@ public partial class ClassPicker : CanvasLayer
 		center.SetAnchorsPreset( Control.LayoutPreset.FullRect );
 		window.AddChild( center );
 		var column = new VBoxContainer();
-		column.AddThemeConstantOverride( "separation", 22 );
+		column.AddThemeConstantOverride( "separation", RobotClass.All.Length > 5 ? 12 : 22 );
 		center.AddChild( column );
-		var title = UiStyle.Big( column, 56, UiStyle.Gold );
+		var title = UiStyle.Big( column, Grid ? 44 : 56, UiStyle.Gold );
 		title.Text = "PICK YOUR ROBOT";
 		title.HorizontalAlignment = HorizontalAlignment.Center;
 
-		var row = new HBoxContainer();
+		Container row = Grid ? new GridContainer { Columns = (RobotClass.All.Length + 1) / 2 } : new HBoxContainer();
 		row.AddThemeConstantOverride( "separation", RobotClass.All.Length > 3 ? 14 : 28 );
+		row.AddThemeConstantOverride( "h_separation", 12 );
+		row.AddThemeConstantOverride( "v_separation", 12 );
 		column.AddChild( row );
 		for ( var i = 0; i < RobotClass.All.Length; i++ ) row.AddChild( Card( RobotClass.All[i], i + 1 ) );
 
@@ -65,11 +70,11 @@ public partial class ClassPicker : CanvasLayer
 		frame.SetBorderWidthAll( 3 );
 		panel.AddThemeStyleboxOverride( "panel", frame );
 		var column = new VBoxContainer();
-		column.AddThemeConstantOverride( "separation", 10 );
+		column.AddThemeConstantOverride( "separation", Grid ? 3 : 10 );
 		panel.AddChild( column );
 
 		rowAt = 0;
-		var name = UiStyle.Big( column, RobotClass.All.Length > 3 ? 32 : 44, robot.Tint );
+		var name = UiStyle.Big( column, Grid ? 26 : RobotClass.All.Length > 3 ? 32 : 44, robot.Tint );
 		name.Text = $"{number}  {robot.Name.ToUpperInvariant()}";
 		Row( name );
 		Line( column, robot.Tagline, 20, UiStyle.Readout );
@@ -80,13 +85,17 @@ public partial class ClassPicker : CanvasLayer
 		Line( column, robot.Movement, 18, Colors.White );
 		Line( column, "MELEE", 16, UiStyle.Gold );
 		Line( column, robot.Melee, 20, Colors.White );
-		Line( column, "HEALTH", 16, UiStyle.Gold );
-		Line( column, $"{robot.BaseHealth:0}", 20, Colors.White );
+		if ( Grid ) Line( column, $"HEALTH  {robot.BaseHealth:0}", 16, UiStyle.Gold );
+		else
+		{
+			Line( column, "HEALTH", 16, UiStyle.Gold );
+			Line( column, $"{robot.BaseHealth:0}", 20, Colors.White );
+		}
 
 		// Whatever height is left goes above the button, so every card's button sits on the same line at the bottom.
 		column.AddChild( new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill } );
-		var pick = new Button { Text = $"Play as {robot.Name}", CustomMinimumSize = new Vector2( 0, 50 ), Name = "Pick" };
-		pick.AddThemeFontSizeOverride( "font_size", 22 );
+		var pick = new Button { Text = $"Play as {robot.Name}", CustomMinimumSize = new Vector2( 0, Grid ? 38 : 50 ), Name = "Pick" };
+		pick.AddThemeFontSizeOverride( "font_size", Grid ? 18 : 22 );
 		pick.Pressed += () => Choose( robot );
 		column.AddChild( pick );
 		buttons.Add( pick );
@@ -124,7 +133,7 @@ public partial class ClassPicker : CanvasLayer
 	void Line( Control parent, string text, int size, Color colour )
 	{
 		var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2( CardWidth - 20, 0 ) };
-		label.AddThemeFontSizeOverride( "font_size", RobotClass.All.Length > 3 ? (int)(size * 0.82f) : size );
+		label.AddThemeFontSizeOverride( "font_size", (int)(size * TextScale) );
 		label.AddThemeColorOverride( "font_color", colour );
 		parent.AddChild( label );
 		Row( label );

@@ -412,6 +412,20 @@ def build():
                     (spectral(tone(0.14, 98, shape="square"), hi=1500) * env(int(SR * 0.14), 0.003, 0.1, 0.05), 0.14, 1.0))
     s["ui_click"] = click(3000, 0.025, 0.006)
     s["low_health"] = mix((thump(0.15, 70, 45, 0.06), 0, 1.0), (thump(0.18, 65, 40, 0.08), 0.22, 0.8))
+    # Magnet-Bot, Plunger-Bot and Pinball-Bot.
+    hum = tone(1.2, 60, 120, "saw") * 0.5 + tone(1.2, 120, 240, "square") * 0.25
+    s["magnet_hum"] = reverb(spectral(hum, hi=1800) * bell(int(SR * 1.2), 0.85), room=0.3, wet=0.2)
+    s["magnet_clang"] = reverb(mix((thump(0.3, 160, 60, 0.12), 0, 1.0), (chime((420, 615, 980, 1330), 0.004, 0.6, "tri"), 0, 0.6), (click(5200, 0.03, 0.01), 0, 0.6)), room=0.5, wet=0.3)
+    thwop = mix((blub(900, 220, 0.09), 0, 1.0), (thump(0.12, 180, 90, 0.05), 0, 0.6))
+    s["plunger_pop"] = reverb(thwop, room=0.2, wet=0.15)
+    shlorp = mix((squelch(0.3, 300, 1800), 0, 0.8), (blub(240, 1300, 0.14), 0.02, 1.0))
+    s["plunger_shlorp"] = reverb(shlorp, room=0.3, wet=0.2)
+    wob = tone(0.55, 180, 90) * (1 + 0.6 * np.sin(2 * np.pi * 14 * t(0.55))) * env(int(SR * 0.55), 0.003, 0.45)
+    s["boing"] = reverb(wob * 0.7, room=0.3, wet=0.2)
+    gurgle = mix(*[(blub(rng.uniform(150, 400), rng.uniform(500, 1200), 0.08), i * 0.07, 0.5) for i in range(16)], (sweep_lp(noise(1.4), 3000, 300) * bell(int(SR * 1.4), 0.3) * 0.6, 0, 1.0))
+    s["flush"] = reverb(gurgle, room=0.5, wet=0.3)
+    s["pinball_ding"] = reverb(chime((1568, 2093), 0.03, 0.35, "tri"), room=0.3, wet=0.2)
+    s["flipper"] = mix((thump(0.12, 220, 90, 0.04), 0, 1.0), (click(2600, 0.03, 0.01), 0, 0.8))
     return s
 
 

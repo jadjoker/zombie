@@ -82,6 +82,10 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--skills" ) ) { await SkillTest(); return; }
 		if ( args.Contains( "--hookbot" ) ) { await HookBotTest(); return; }
 		if ( args.Contains( "--coralbot" ) ) { await CoralBotTest(); return; }
+		if ( args.Contains( "--magnetbot" ) ) { await MagnetBotTest(); return; }
+		if ( args.Contains( "--plungerbot" ) ) { await PlungerBotTest(); return; }
+		if ( args.Contains( "--pinballbot" ) ) { await PinballBotTest(); return; }
+		if ( args.Contains( "--moveposes" ) ) { await MovePosesTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
 		if ( args.Contains( "--poseidongallery" ) ) { await PoseidonGalleryTest(); return; }

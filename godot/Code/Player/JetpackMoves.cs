@@ -24,6 +24,8 @@ public partial class Jetpack
 	/// <summary> How long the player has stood still (Calcify). </summary>
 	public float StillFor => stillFor;
 	public bool Zipping => zip && Surging;
+	/// <summary> For the third person rig: when the last eruption came. </summary>
+	public double EruptedAt => eruptedAt;
 
 	static StandardMaterial3D grappleRope;
 
@@ -225,6 +227,7 @@ public partial class Jetpack
 			}
 			if ( burrowLeft <= 0f ) Erupt();
 		}
+		else if ( Rolling ) { }   // the roll keeps the view low (JetpackToys)
 		else if ( controller.EyeDrop > 0.001f ) controller.EyeDrop = MathX.Lerp( controller.EyeDrop, 0f, 1f - MathF.Exp( -10f * dt ) );
 		else controller.EyeDrop = 0f;
 		stillFor = controller.Velocity.Length() < 0.4f && controller.IsOnGround ? stillFor + dt : 0f;

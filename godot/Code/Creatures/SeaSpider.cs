@@ -1023,6 +1023,15 @@ public partial class SeaSpider : PartCreature
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
 	protected override void PuppetMoved( Vector3 velocity ) => agent?.SetPuppetVelocity( velocity );
 
+	// Online: a joiner's copy stabs when the host's does.
+	public override void NetWrite( List<float> s ) { s.Add( Stabbing ? 1f : 0f ); s.Add( (float)timeSinceStab ); }
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 2 ) return;
+		Stabbing = s[0] > 0.5f;
+		NetTimer( ref timeSinceStab, s[1], s[1] < (float)timeSinceStab - 0.05f );
+	}
+
 	public override void Pull( Vector3 delta )
 	{
 		if ( Puppet ) return;   // online: the host's copy is the one dragged

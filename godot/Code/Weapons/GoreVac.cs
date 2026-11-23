@@ -458,7 +458,7 @@ public partial class PlayerWeapon
 	static float GunkOf( Gib gib ) => gib.Goo is null ? DryGunk : gib.Recycled ? RecycledGunk : MathX.Clamp( gib.Radius / U.In * 0.4f, GibGunkMin, GibGunkMax );
 
 	/// <summary> Gunk per piece the Black Hole swallows (gore, goo, limbs; a recycled lump from a burst stays cheap, so no free loop). </summary>
-	public const float HoleGunkPer = 5f;
+	public const float HoleGunkPer = 2f;
 	/// <summary> For tests: gunk the Black Hole has sent back to the tank. </summary>
 	public static float HoleGunk;
 	TimeSince sinceHoleGulp = 9f;

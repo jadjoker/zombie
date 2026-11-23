@@ -74,6 +74,19 @@ public abstract partial class Creature : Node3D, ICreature
 		PuppetMoved( puppetVelocity );
 	}
 
+	/// <summary>
+	/// Online, the host: what a joiner's copy needs to draw its attacks (its move, how far into it, where it aims),
+	/// added to each snapshot. Most creatures send nothing.
+	/// </summary>
+	public virtual void NetWrite( List<float> state ) { }
+	/// <summary> Online, a joiner's copy: the host's attack state from <see cref="NetWrite"/>. </summary>
+	public virtual void NetRead( ReadOnlySpan<float> state ) { }
+	/// <summary> A timer from the host: taken when the move changed or it drifted (so it runs smoothly between snapshots). </summary>
+	protected static void NetTimer( ref TimeSince timer, float host, bool changed )
+	{
+		if ( changed || MathF.Abs( (float)timer - host ) > 0.2f ) timer = host;
+	}
+
 	/// <summary> A puppet's speed, for the ones that animate from their own walking (the crab and spider legs). </summary>
 	protected virtual void PuppetMoved( Vector3 velocity ) { }
 

@@ -84,7 +84,7 @@ public partial class Kraken
 		if ( !inkLaunched )
 		{
 			inkLaunched = true;
-			SpitInk();
+			if ( !Puppet ) SpitInk();   // a joiner's copy throws the host's globs (KrakenNet)
 			headLeanSpeed += new Vector2( -110f, 0f );
 		}
 		if ( attackTime >= InkWindTime + 0.7f ) Begin( Attack.None );
@@ -108,8 +108,11 @@ public partial class Kraken
 			var velocity = (at - mouth) / flight - KrakenInk.Fall * 0.5f * flight;
 			KrakenInk.Launch( this, mouth - GlobalBasis.Z * 0.6f, velocity );
 			InkSpat++;
+			inkFrom = mouth - GlobalBasis.Z * 0.6f;
+			inkVelocity[i] = velocity;
 		}
 		gore.GooBurst( mouth, -GlobalBasis.Z, KrakenInk.Ink, 10, 420f, 3f );
+		inkShots++;
 	}
 
 	/// <summary> A glob of ink has landed: a splash, a stain, and anyone near it is inked. </summary>
@@ -126,9 +129,11 @@ public partial class Kraken
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			if ( !player.IsAlive ) continue;
+			// Online, a joiner's copy of a glob only inks this machine's own player (the host's glob does the damage).
+			if ( Puppet && player.Controller is not { IsRemote: false } ) continue;
 			var body = player.WorldPosition + Vector3.Up * 0.9f;
 			if ( body.DistanceTo( at ) > InkSplash ) continue;
-			player.Health?.OnDamage( new DamageInfo { Damage = InkDamage, Attacker = this, Position = body, Origin = at } );
+			if ( !Puppet ) player.Health?.OnDamage( new DamageInfo { Damage = InkDamage, Attacker = this, Position = body, Origin = at } );
 			player.Afflictions?.Cursed( PlayerAfflictions.Curse.Ink );
 			player.Afflictions?.Irradiate( InkRadiationTime, poison: false );
 			player.Afflictions?.Splattered( Green, 5 );

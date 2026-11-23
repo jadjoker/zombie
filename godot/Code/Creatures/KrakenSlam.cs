@@ -70,6 +70,7 @@ public partial class Kraken
 
 	void Begin( Attack next )
 	{
+		if ( Puppet && !netBegin ) return;   // online, a joiner's copy moves on when the host's does
 		Attacking = next;
 		attackTime = 0f;
 		switch ( next )
@@ -137,11 +138,11 @@ public partial class Kraken
 		switch ( Attacking )
 		{
 			case Attack.Suck:
-				Suck( dt );
+				if ( !Puppet ) Suck( dt );
 				if ( attackTime >= SuckTime ) Begin( Attack.Raise );
 				break;
 			case Attack.Raise:
-				if ( !aimLocked && target is not null ) aimPoint = target.WorldPosition.WithY( GlobalPosition.Y );
+				if ( !aimLocked && !Puppet && target is not null ) aimPoint = target.WorldPosition.WithY( GlobalPosition.Y );
 				if ( attackTime >= RearTime - LockBefore ) aimLocked = true;
 				foreach ( var k in slammers )
 				{
@@ -339,6 +340,7 @@ public partial class Kraken
 			SandBurst( from + direction * reach, 0.9f, 26, 3.4f );
 			foreach ( var player in PlayerSurvivor.All )
 			{
+				if ( Puppet ) break;   // online, the host's Kraken lands the hits
 				if ( !player.IsAlive || struck.Contains( player ) || player.Controller is not { } controller ) continue;
 				var offset = (player.RealPosition - from).Flat();
 				var along = MathX.Clamp( offset.Dot( direction ), 0f, reach );

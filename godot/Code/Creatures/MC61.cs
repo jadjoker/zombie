@@ -898,6 +898,11 @@ public partial class MC61 : PartCreature, MC61Marker
 			return;
 		}
 		if ( !DevFlags.FreezeEnemies && !Puppet ) Think( dt );
+		if ( Puppet && State is Mode.Charge or Mode.Beam )
+		{
+			beamDirection = beamDirection.Slerp( netBeam, 1f - MathF.Exp( -14f * dt ) ).Normalized();
+			UpdateBeamEnd();
+		}
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		if ( State != seenState ) { seenState = State; localStateTime = 0f; }
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
@@ -1397,6 +1402,35 @@ public partial class MC61 : PartCreature, MC61Marker
 			missilesThisAttack = Rng.Int( MissilesMin, MissilesMax );
 			SetState( Mode.Cards );
 		}
+	}
+
+	// ---- Online: a joiner's copy draws the host's beam and missile kicks ----
+
+	Vector3 netBeam = Vector3.Forward;
+	/// <summary> Tests: the beam is drawn. </summary>
+	public bool BeamShown => beam is not null && beam.Visible;
+
+	public override void NetWrite( List<float> s )
+	{
+		s.Add( (int)State ); s.Add( (float)stateTime ); s.Add( cardRingsThrown );
+		s.Add( beamDirection.X ); s.Add( beamDirection.Y ); s.Add( beamDirection.Z );
+	}
+
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 6 ) return;
+		var next = (Mode)(int)s[0];
+		netBeam = new Vector3( s[3], s[4], s[5] ).SafeNormal();
+		var changed = next != State;
+		if ( changed )
+		{
+			if ( next == Mode.Charge ) { beamDirection = netBeam; Say( "I SEEE YOUUU" ); }
+			else if ( next == Mode.Cards ) Say( "FETCH!" );
+			else if ( next == Mode.Dance ) Say( "*breaks out the worm*" );
+			SetState( next );
+		}
+		NetTimer( ref stateTime, s[1], changed );
+		cardRingsThrown = (int)s[2];
 	}
 
 	void EndAttack()

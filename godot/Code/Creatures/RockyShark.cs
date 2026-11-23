@@ -112,6 +112,14 @@ public partial class RockyShark : PartCreature
 	Vector3 heading;
 	Vector3 lastForward;
 	TimeSince sinceBite = 999f;
+
+	// Online: a joiner's copy snaps its jaw when the host's bites.
+	public override void NetWrite( List<float> s ) => s.Add( MathF.Min( (float)sinceBite, 99f ) );
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 1 ) return;
+		NetTimer( ref sinceBite, s[0], s[0] < (float)sinceBite - 0.05f );
+	}
 	TimeSince sinceOoze = 999f;
 	TimeSince bleedTimer;
 	float bank;

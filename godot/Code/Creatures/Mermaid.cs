@@ -243,6 +243,38 @@ void fragment() {
 		inMode = 0f;
 	}
 
+	// ---- Online: a joiner's copy winds up, stabs, draws and looses when the host's does (its arrows only for show) ----
+
+	int shots, seenShots = -1;
+	Vector3 lastShotFrom, lastShotVelocity;
+
+	public override void NetWrite( List<float> s )
+	{
+		s.Add( (int)mode ); s.Add( (float)inMode ); s.Add( shots );
+		s.Add( lastShotFrom.X ); s.Add( lastShotFrom.Y ); s.Add( lastShotFrom.Z );
+		s.Add( lastShotVelocity.X ); s.Add( lastShotVelocity.Y ); s.Add( lastShotVelocity.Z );
+		var look = lookAt ?? Vector3.Zero;
+		s.Add( lookAt.HasValue ? 1f : 0f ); s.Add( look.X ); s.Add( look.Y ); s.Add( look.Z );
+	}
+
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 13 ) return;
+		var next = (Mode)(int)s[0];
+		var changed = next != mode;
+		if ( changed ) SetMode( next );
+		NetTimer( ref inMode, s[1], changed );
+		var count = (int)s[2];
+		if ( seenShots >= 0 && count > seenShots )
+		{
+			var from = new Vector3( s[3], s[4], s[5] );
+			MermaidArrow.Shoot( this, from, new Vector3( s[6], s[7], s[8] ), 0f );
+			Sfx.Play( "harpoon", from, 0.6f, 1.4f );
+		}
+		seenShots = count;
+		lookAt = s[9] > 0.5f ? new Vector3( s[10], s[11], s[12] ) : null;
+	}
+
 	public override void _Process( double delta )
 	{
 		if ( health is null || body is null ) return;
@@ -339,6 +371,7 @@ void fragment() {
 		aim += prey.Controller.Velocity * flight * 0.5f;
 		MermaidArrow.Shoot( this, from, (aim - from).SafeNormal() * ArrowSpeed, ArrowDamage );
 		ArrowsShot++;
+		shots++; lastShotFrom = from; lastShotVelocity = (aim - from).SafeNormal() * ArrowSpeed;
 		Sfx.Play( "harpoon", from, 0.6f, 1.4f );
 	}
 
@@ -487,8 +520,11 @@ public partial class MermaidArrow : Node3D
 			var chest = player.WorldPosition + Vector3.Up * 1f;
 			var closest = Geometry3D.GetClosestPointToSegment( chest, from, to );
 			if ( closest.DistanceTo( chest ) > 0.6f ) continue;
-			player.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( archer ) ? archer : this, Position = closest, Origin = from } );
-			if ( IsInstanceValid( archer ) ) archer.ArrowHit();
+			if ( damage > 0f )
+			{
+				player.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( archer ) ? archer : this, Position = closest, Origin = from } );
+				if ( IsInstanceValid( archer ) ) archer.ArrowHit();
+			}
 			Sfx.Play( "hit_flesh", closest, 0.6f, 1.3f );
 			QueueFree();
 			return;

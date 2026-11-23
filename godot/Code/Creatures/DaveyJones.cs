@@ -432,6 +432,7 @@ void fragment() {
 		Animate( t, dt );
 		if ( mode == Mode.Dead ) { Dying( dt ); return; }
 		if ( buried is not null ) UpdateSink();
+		if ( Puppet ) { PuppetShow( dt ); return; }   // online, a joiner's copy follows the host's (DaveyNet)
 		if ( Frozen && mode is not Mode.Appear and not Mode.Grab ) return;
 		if ( sinceFloor > 0.3f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition + Vector3.Up * 0.5f, 80f ); }
 		if ( !lockerDone && health.Current <= health.MaxHealth * 0.5f + 0.5f && mode is not Mode.Grab ) StartGrab();
@@ -607,7 +608,10 @@ void fragment() {
 			if ( !InLocker && Nav.Closest( this, spot ) is var ground && ground != Vector3.Zero && ground.Flat().DistanceTo( spot.Flat() ) < 4f ) spot = ground;
 			spot.Y = Sculpt.FloorBelow( this, spot + Vector3.Up * 3f, 30f );
 			DaveyCannon.Raise( this, spot, prey, 0.5f + i * 0.9f, CannonDamage );
+			cannonAt[i] = spot;
 		}
+		cannonVolleys++;
+		cannonTarget = c.NetPeer;
 	}
 
 	// ---- Sink ----
@@ -639,7 +643,13 @@ void fragment() {
 		c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 1.2f );
 		Controls.Rumble( 0.6f );
 		gore?.GooBurst( buryAt + Vector3.Up * 0.3f, Vector3.Up, GooColor, 8, 180f, 0.7f );
-		// A mound of churned sand round them.
+		BuildMound();
+		if ( AutoTest.Requested ) GD.Print( $"[autotest] davey slams the player in: {MashesNeeded} presses to get out" );
+	}
+
+	/// <summary> A mound of churned sand round the buried player. </summary>
+	void BuildMound()
+	{
 		mound = new Node3D { Name = "Davey Sink" };
 		GetTree().CurrentScene.AddChild( mound );
 		mound.GlobalPosition = buryAt;
@@ -651,7 +661,6 @@ void fragment() {
 			var a = i * MathF.Tau / 7f + Rng.Float( -0.3f, 0.3f );
 			Sculpt.Blob( mound, new Vector3( MathF.Cos( a ) * 0.75f, 0.05f, MathF.Sin( a ) * 0.75f ), new Vector3( 0.4f, 0.22f, 0.35f ) * Rng.Float( 0.8f, 1.3f ), sand );
 		}
-		if ( AutoTest.Requested ) GD.Print( $"[autotest] davey slams the player in: {MashesNeeded} presses to get out" );
 	}
 
 	/// <summary> One press of jump while buried (also what the jump action does). </summary>
@@ -959,7 +968,7 @@ public partial class DaveyCannon : Node3D
 		Sfx.Play( "bubbles", GlobalPosition, 0.6f, 0.7f );
 	}
 
-	Vector3 TargetPoint => target?.Controller is { } c && IsInstanceValid( c ) ? c.GlobalPosition + Vector3.Up * 1f : GlobalPosition + -GlobalBasis.Z * 10f;
+	Vector3 TargetPoint => target is not null && IsInstanceValid( target ) && target.Controller is { } c && IsInstanceValid( c ) ? c.GlobalPosition + Vector3.Up * 1f : GlobalPosition + -GlobalBasis.Z * 10f;
 
 	void Aim( float rate )
 	{
@@ -1016,7 +1025,7 @@ public partial class DaveyCannon : Node3D
 		Cannonball.Shoot( owner, muzzle, (aim - muzzle).SafeNormal() * 20f, damage, target );
 		Sfx.Play( "cannon_fire", muzzle, 1.1f, Rng.Float( 0.9f, 1.05f ) );
 		AlienBlast.Spawn( GetTree().CurrentScene, muzzle, 0.35f );
-		if ( target?.Controller?.GetNodeOrNull<CameraJuice>( "CameraJuice" ) is { } juice ) juice.Shake( 0.3f );
+		if ( target is not null && IsInstanceValid( target ) && target.Controller?.GetNodeOrNull<CameraJuice>( "CameraJuice" ) is { } juice ) juice.Shake( 0.3f );
 	}
 }
 
@@ -1031,8 +1040,8 @@ public partial class Cannonball : Node3D
 
 	public static void Shoot( Creature owner, Vector3 from, Vector3 velocity, float damage, PlayerSurvivor aimedAt )
 	{
-		var ball = new Cannonball { Name = "Cannonball", velocity = velocity, damage = damage, owner = owner };
-		owner.GetTree().CurrentScene.AddChild( ball );
+		var ball = new Cannonball { Name = "Cannonball", velocity = velocity, damage = damage, owner = IsInstanceValid( owner ) ? owner : null };
+		(Engine.GetMainLoop() as SceneTree)?.CurrentScene?.AddChild( ball );   // the owner may be gone (Davey died mid-volley)
 		ball.GlobalPosition = from;
 		var iron = Sculpt.Paint( new Color( 0.1f, 0.12f, 0.11f ), 0.35f, 0.8f );
 		iron.EmissionEnabled = true;
@@ -1052,10 +1061,13 @@ public partial class Cannonball : Node3D
 			if ( !p.IsAlive || p.Controller is not { } c ) continue;
 			var chest = c.GlobalPosition + Vector3.Up * 1f;
 			if ( DistanceToSegment( chest, from, to ) > 0.8f ) continue;
-			Hits++;
-			p.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( owner ) ? owner : null, Position = chest, Origin = from } );
-			c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.9f );
-			if ( !c.Scripted ) c.Velocity += velocity.Flat().SafeNormal() * 5f + Vector3.Up * 2f;
+			if ( damage > 0f )   // 0: online, a joiner's copy of the host's ball (the host's one does the hurting)
+			{
+				Hits++;
+				p.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( owner ) ? owner : null, Position = chest, Origin = from } );
+				c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.9f );
+				if ( !c.Scripted ) c.Velocity += velocity.Flat().SafeNormal() * 5f + Vector3.Up * 2f;
+			}
 			Burst( chest );
 			return;
 		}

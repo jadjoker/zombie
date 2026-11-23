@@ -459,6 +459,7 @@ void fragment() {
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
 
+		if ( Puppet && !IsDead ) PuppetHook( dt );
 		if ( IsDead || Frozen ) { PoseHook(); return; }
 		Think( dt );
 		PoseHook();
@@ -655,6 +656,44 @@ void fragment() {
 	}
 
 	void End() { act = Act.Swim; sinceAct = 0f; }
+
+	// ---- Online: a joiner's copy draws the host's attacks ----
+
+	Vector3 netHookAt;
+	/// <summary> Tests: the hook's line is out and drawn. </summary>
+	public bool HookShown => hookLine is not null && hookLine.Visible;
+
+	public override void NetWrite( List<float> s )
+	{
+		s.Add( (int)act ); s.Add( (float)sinceAct ); s.Add( (int)line ); s.Add( struck ? 1f : 0f );
+		s.Add( hookAt.X ); s.Add( hookAt.Y ); s.Add( hookAt.Z );
+		s.Add( hookDir.X ); s.Add( hookDir.Y ); s.Add( hookDir.Z );
+	}
+
+	public override void NetRead( ReadOnlySpan<float> s )
+	{
+		if ( s.Length < 10 ) return;
+		var next = (Act)(int)s[0];
+		var nextLine = (Line)(int)s[2];
+		var changed = next != act;
+		if ( changed && next != Act.Swim ) Begin( next );
+		act = next;
+		NetTimer( ref sinceAct, s[1], changed );
+		struck = s[3] > 0.5f;
+		netHookAt = new Vector3( s[4], s[5], s[6] );
+		hookDir = new Vector3( s[7], s[8], s[9] );
+		// The hook leaves the mouth: start it there and let it fly out to the host's spot.
+		if ( line == Line.Stowed && nextLine != Line.Stowed ) { hookAt = GapeAt; Sfx.Play( "trident_charge", hookAt, 0.7f, 1.4f ); }
+		if ( line == Line.Out && nextLine == Line.Reel ) Sfx.Play( "trident_flesh", netHookAt, 1f, 0.8f );
+		line = nextLine;
+	}
+
+	/// <summary> A joiner's copy: the hook eases toward where the host's is (snapshots come 15 times a second). </summary>
+	void PuppetHook( float dt )
+	{
+		if ( line == Line.Stowed ) return;
+		hookAt = hookAt.Lerp( netHookAt, 1f - MathF.Exp( -18f * dt ) );
+	}
 
 	void Hurt( PlayerSurvivor prey, float damage, Vector3 push, float shove, ref int count )
 	{

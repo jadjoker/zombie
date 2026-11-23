@@ -5,12 +5,12 @@ public static class PinballFx
 {
 	// The Pinball Launcher: hold to pull the spring back, let go to launch a steel ball that bounces off everything.
 	public const float PullTime = 0.6f, MinSpeed = 18f, MaxSpeed = 34f, RefSpeed = 26f, Radius = 0.14f;
-	public const int MaxEnemyHits = 4;
+	public const int MaxEnemyHits = 12, ReboundPer = 2;   // a ball chains through a crowd (user's ask), each hit lighter
 	// Off an enemy a ball is kicked out like off a pop bumper: it sits in it a beat (`BumpPause`), then leaves at least
 	// `BumperKick` fast (`BumperGain` faster than it came, up to `MaxBallSpeed`), steered `ChainAim` of the way (most of it) toward
 	// the next enemy within `ChainRange` ahead of it, so a good shot chains through a crowd.
-	public const float BumperGain = 1.1f, BumperKick = 20f, MaxBallSpeed = 46f, ChainAim = 0.82f, ChainRange = 14f, ChainCone = 0.15f, BumpPause = 0.035f;
-	public const float HeavySteelPer = 0.1f, SpringPer = 0.1f, BumperPer = 0.04f, JackpotPer = 0.1f, RicochetAimPer = 0.04f;
+	public const float BumperGain = 1.1f, BumperKick = 20f, MaxBallSpeed = 46f, ChainAim = 0.97f, ChainRange = 14f, ChainCone = 0.15f, BumpPause = 0.035f;
+	public const float HeavySteelPer = 0.1f, SpringPer = 0.1f, BumperPer = 0.04f, JackpotPer = 0.04f, RicochetAimPer = 0.04f;
 	public static int MultiballSplit( int n ) => n;
 	// The Flipper Arms (user's design, real flippers): a click raises that flipper and holding keeps it up; the flip
 	// whacks what is in front, launching light enemies as human pinballs that bounce off the others. A flip that meets an
@@ -40,7 +40,7 @@ public static class PinballFx
 	public static float FastestBall;
 
 	/// <summary> The next enemy a ball (or a flung enemy) could go on to: in front of `dir` within `range`, not `skip`. </summary>
-	public static Creature NextTarget( Vector3 from, Vector3 dir, float range, Creature skip, Func<Creature, bool> exclude = null )
+	public static Creature NextTarget( Vector3 from, Vector3 dir, float range, Creature skip, Func<Creature, bool> exclude = null, float minDot = ChainCone )
 	{
 		Creature best = null;
 		var bestScore = float.MaxValue;
@@ -51,7 +51,7 @@ public static class PinballFx
 			var d = to.Length();
 			if ( d > range || d < 0.2f ) continue;
 			var dot = (to / d).Dot( dir );
-			if ( dot < ChainCone ) continue;
+			if ( dot < minDot ) continue;
 			var score = d * (2f - dot);   // near and straight ahead
 			if ( score < bestScore ) { bestScore = score; best = c; }
 		}
@@ -99,7 +99,7 @@ public partial class PlayerWeapon
 	public static PlayerWeapon PinballLauncher( int slot = 1 ) => new()
 	{
 		Name = "PinballLauncher", DisplayName = "Pinball Launcher", Slot = slot, ModelName = "pinball", Pinball = true,
-		Damage = 42f, FireRate = 2.4f, Range = 40f, SpreadDegrees = 0f, Recoil = 1.4f,
+		Damage = 22f, FireRate = 2.4f, Range = 40f, SpreadDegrees = 0f, Recoil = 1.4f,
 		MagazineSize = 5, StartingReserve = 60, ReloadTime = 1.8f, Automatic = false,
 		MuzzleFlashScale = 0f, ShakePerShot = 0.15f, FovKickPerShot = 1.2f, ShootSound = "flipper",
 	};
@@ -351,7 +351,7 @@ public partial class Pinball : BotBall
 		b.Restitution = 0.82f;
 		b.BumperGain = PinballFx.BumperGain + PinballFx.BumperPer * Skills.Rank( owner, SkillId.Bumper );
 		b.MaxBounces = 7;
-		b.Life = 5f;
+		b.Life = 6f;
 		b.HitGap = 0.25f;
 		b.Launch( weapon, owner, from, velocity );
 		return b;
@@ -445,13 +445,14 @@ public partial class Pinball : BotBall
 		// Out across the floor, as a bumper kicks along its table (a hit on the top or underside of a part would send it into the sand or the sky).
 		dir = (dir with { Y = MathX.Clamp( dir.Y * 0.3f, 0.02f, 0.25f ) }).SafeNormal();
 		var aim = PinballFx.ChainAim + PinballFx.RicochetAimPer * Skills.Rank( owner, SkillId.Rebound );
-		var next = PinballFx.NextTarget( GlobalPosition, dir, PinballFx.ChainRange, c, RecentlyHit );
+		var next = PinballFx.NextTarget( GlobalPosition, dir, PinballFx.ChainRange, c, RecentlyHit, -1f );   // any way round: a bumper kicks it on to the nearest one, ahead preferred
 		if ( next is not null )
 		{
 			// Aimed a little high, as gravity takes it down on the way.
 			var to = PinballFx.AimPoint( next ) - GlobalPosition;
-			var want = (to + Vector3.Up * 0.5f * 3.5f * MathF.Pow( to.Length() / PinballFx.BumperKick, 2f )).SafeNormal();
-			dir = dir.Lerp( want, MathF.Min( 0.95f, aim ) ).SafeNormal();
+			var outSpeed = MathX.Clamp( MathF.Max( speed * BumperGain, PinballFx.BumperKick ), 0f, PinballFx.MaxBallSpeed );
+			var want = (to + Vector3.Up * 0.5f * Gravity * MathF.Pow( to.Length() / outSpeed, 2f )).SafeNormal();
+			dir = dir.Lerp( want, MathF.Min( 1f, aim ) ).SafeNormal();
 		}
 		else dir = (dir + Vector3.Up * 0.08f).SafeNormal();
 		holdFor = PinballFx.BumpPause;
@@ -468,7 +469,7 @@ public partial class Pinball : BotBall
 		Strike( c, part, at, damage * bonus * jackpot * MathX.Clamp( speed / PinballFx.RefSpeed, 0.6f, 2f ) );
 		PinballFx.HitSound( at, enemyHits );
 		BumperFlash.Spawn( at, -Velocity.SafeNormal(), enemyHits >= 3 ? PinballFx.Yellow : PinballFx.Neon, 0.8f + 0.15f * enemyHits );
-		if ( enemyHits >= 2 ) PinballPopup.Show( at + Vector3.Up * 0.35f, enemyHits >= PinballFx.MaxEnemyHits ? "JACKPOT!" : $"x{enemyHits}", enemyHits >= 3 ? PinballFx.Yellow : PinballFx.Neon, 0.8f + 0.1f * enemyHits );
+		if ( enemyHits >= 2 ) PinballPopup.Show( at + Vector3.Up * 0.35f, enemyHits % 5 == 0 ? "JACKPOT!" : $"x{enemyHits}", enemyHits >= 3 ? PinballFx.Yellow : PinballFx.Neon, 0.8f + 0.1f * enemyHits );
 		CreatureGore.Jiggle( part, 1.2f );
 		glow.LightEnergy = 5f;
 		if ( owner.GlobalPosition.DistanceTo( at ) < 8f ) owner.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.08f );
@@ -494,7 +495,8 @@ public partial class Pinball : BotBall
 				Fire( weapon, owner, GlobalPosition + dir * 0.3f, dir * MathF.Max( speed, PinballFx.BumperKick ), damage * 0.6f, true );
 			}
 		}
-		if ( enemyHits >= PinballFx.MaxEnemyHits + Skills.Rank( owner, SkillId.Rebound ) ) { End(); return true; }
+		Life = MathF.Max( Life, age + 3f );   // still chaining: keep going
+		if ( enemyHits >= PinballFx.MaxEnemyHits + PinballFx.ReboundPer * Skills.Rank( owner, SkillId.Rebound ) ) { End(); return true; }
 		return true;
 	}
 

@@ -310,11 +310,11 @@ public static class Skills
 			S( SkillId.Cannonball, plu, 2, 3, "Cannonball", "cannonball", Blue, n => $"Landing is a cannonball: {PlungerFx.CannonballDamage( n ):0} more to enemies within {PlungerFx.CannonballRadius( n ):0.0} m, thrown up", max: 3 ),
 			// ---- Pinball-Bot: Pinball Launcher ----
 			S( SkillId.HeavySteel, pin, 0, 0, "Heavy Steel", "heavymetal", Steel, n => $"+{Pct( PinballFx.HeavySteelPer * n )} ball damage" ),
-			S( SkillId.SuperSpring, pin, 0, 0, "Super Spring", "spring", Gold, n => $"+{Pct( PinballFx.SpringPer * n )} launch speed" ),
+			S( SkillId.Rebound, pin, 0, 0, "Rebound", "ricochet", Red, n => $"Balls chain to {PinballFx.MaxEnemyHits + PinballFx.ReboundPer * n} enemies (from {PinballFx.MaxEnemyHits}) and aim harder at the next one" ),
 			S( SkillId.ExtraBall, pin, 0, 1, "Extra Ball", "deepmag", Steel, n => $"+{n} ball{(n == 1 ? "" : "s")} a load" ),
 			S( SkillId.Bumper, pin, 0, 1, "Bumper", "bumper", Magenta, n => $"Balls are kicked off each enemy {Pct( PinballFx.BumperGain - 1f + PinballFx.BumperPer * n )} faster (from {Pct( PinballFx.BumperGain - 1f )})" ),
 			S( SkillId.Jackpot, pin, 0, 2, "Jackpot", "jackpot", Gold, n => $"+{Pct( PinballFx.JackpotPer * n )} damage for each enemy a ball already hit" ),
-			S( SkillId.Rebound, pin, 0, 2, "Rebound", "ricochet", Red, n => $"Balls chain to {PinballFx.MaxEnemyHits + n} enemies (from {PinballFx.MaxEnemyHits}) and aim harder at the next one" ),
+			S( SkillId.SuperSpring, pin, 0, 2, "Super Spring", "spring", Gold, n => $"+{Pct( PinballFx.SpringPer * n )} launch speed" ),
 			S( SkillId.Multiball, pin, 0, 3, "Multiball", "multiball", Magenta, n => $"A ball splits into {PinballFx.MultiballSplit( n ) + 1} off the first enemy it hits (the new ones at 60%)", max: 3 ),
 			// ---- Pinball-Bot: Flipper Arms ----
 			S( SkillId.PowerFlip, pin, 1, 0, "Power Flip", "flipper", Orange, n => $"+{Pct( PinballFx.PowerFlipPer * n )} flipper damage" ),

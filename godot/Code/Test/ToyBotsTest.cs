@@ -282,7 +282,7 @@ public partial class AutoTest
 		// ---- A ball off a crab, kicked on to the next like off a pop bumper; Multiball ----
 		var crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
 		var second = Crab( a, a.Spot + a.Ahead * 8f + a.Side * 4f, 2000f );
-		var third = Crab( a, a.Spot + a.Ahead * 5f - a.Side * 3.5f, 2000f );
+		var third = Crab( a, a.Spot + a.Ahead * 12f + a.Side * 0.5f, 2000f );   // clear of the station that stands off to one side
 		await Wait( 0.8f );
 		await Face( a, crab.GlobalPosition + Vector3.Up * 0.3f );
 		var hp = Hp( crab );
@@ -291,8 +291,8 @@ public partial class AutoTest
 		if ( shots is not null ) { await Wait( 0.12f ); await Shot( "pinball_ball" ); await Wait( 0.18f ); await Shot( "pinball_bumper" ); }
 		await Wait( 1.2f );
 		GD.Print( $"[autotest] pinballbot: balls {PinballFx.Balls}, hits {PinballFx.BallHits}, longest chain {PinballFx.LongestChain}, fastest {PinballFx.FastestBall:0.0} m/s; the crab lost {hp - Hp( crab ):0}, the other two {hp2 - Hp( second ) - Hp( third ):0}" );
-		Check( PinballFx.BallHits >= 1 && hp - Hp( crab ) > 25f && hp - Hp( crab ) < 260f, "the pinball did not hit the crab for a fair amount" );
-		Check( PinballFx.LongestChain >= 2 && hp2 - Hp( second ) - Hp( third ) > 5f, "the pinball was not kicked on to another crab" );
+		Check( PinballFx.BallHits >= 1 && hp - Hp( crab ) > 12f && hp - Hp( crab ) < 260f, "the pinball did not hit the crab for a fair amount" );
+		Check( PinballFx.LongestChain >= 4 && hp2 - Hp( second ) - Hp( third ) > 5f, "the pinball was not kicked on to another crab" );
 		foreach ( var b in BotBall.All.ToList() ) b.End();
 		skills.Set( SkillId.Multiball, 2 );
 		await Wait( 2f );

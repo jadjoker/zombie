@@ -23,6 +23,9 @@ public abstract partial class BotBall : Node3D
 	bool ended;
 	readonly Dictionary<Creature, double> lastHit = new();
 	Godot.Collections.Array<Rid> exclude;
+	/// <summary> The enemy it just bounced off, passed through for a moment (a kick toward the next one could clip it again). </summary>
+	readonly List<Rid> leaving = new();
+	float leaveFor;
 
 	public static readonly List<BotBall> All = new();
 
@@ -73,6 +76,7 @@ public abstract partial class BotBall : Node3D
 		if ( !IsInstanceValid( owner ) || age > Life ) { End(); return; }
 		if ( Cradled ) { Step( dt ); return; }
 		if ( holdFor > 0f ) { holdFor -= dt; Step( dt ); return; }
+		if ( leaving.Count > 0 && (leaveFor -= dt) <= 0f ) { foreach ( var r in leaving ) exclude.Remove( r ); leaving.Clear(); }
 		Velocity += Vector3.Down * Gravity * dt;
 		Velocity *= MathF.Exp( -Drag * dt );
 		Step( dt );
@@ -101,6 +105,10 @@ public abstract partial class BotBall : Node3D
 					if ( ended ) return;
 					if ( !bounce ) { foreach ( var p in CreaturePart.All ) if ( p.Creature == c && IsInstanceValid( p ) ) exclude.Add( p.GetRid() ); move = remaining; continue; }
 					Velocity = BounceOffEnemy( c, normal, tr.HitPosition, Velocity );
+					foreach ( var r in leaving ) exclude.Remove( r );
+					leaving.Clear();
+					foreach ( var p in CreaturePart.All ) if ( p.Creature == c && IsInstanceValid( p ) ) { leaving.Add( p.GetRid() ); exclude.Add( p.GetRid() ); }
+					leaveFor = 0.2f;
 					if ( holdFor > 0f ) break;   // it sits in the bumper a beat, then goes
 					move = Velocity.SafeNormal() * remaining.Length();
 					continue;

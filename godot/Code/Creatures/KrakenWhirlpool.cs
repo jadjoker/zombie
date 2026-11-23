@@ -85,7 +85,7 @@ public partial class Kraken
 			if ( controller is null || !player.IsAlive ) { Drop( controller, leash ); continue; }
 			if ( leash.Pulling ) { Carry( player, leash, dt ); anyOutside = true; continue; }
 
-			var away = (player.WorldPosition - GlobalPosition).Flat().Length();
+			var away = (player.RealPosition - GlobalPosition).Flat().Length();
 			// Flying about with the dev noclip is left alone.
 			var outside = away > FightRadius && !DevFlags.Noclip && !controller.Scripted;
 			if ( outside )
@@ -116,7 +116,7 @@ public partial class Kraken
 	void StartPull( PlayerSurvivor player, Leash leash )
 	{
 		var controller = player.Controller;
-		var offset = (player.WorldPosition - GlobalPosition).Flat();
+		var offset = (player.RealPosition - GlobalPosition).Flat();
 		var bearing = offset.SafeNormal();
 		if ( bearing == Vector3.Zero ) bearing = -GlobalBasis.Z;
 		leash.Pulling = true;

@@ -32,6 +32,9 @@ public partial class PlayerWeapon : Node
 	bool thirdPersonMuzzle;
 	/// <summary> The trigger has stayed down since the last shot (holding on charges the next trident). </summary>
 	bool heldSinceShot;
+	/// <summary> Vac-Bot's guns: a press shorter than this is a tap (a plain shot on release); longer starts the charge. </summary>
+	public const float TapWindow = 0.18f;
+	TimeSince sincePress;
 	TimeSince sinceChargeStart;
 	ulong chargeFrame;
 	public bool ShellReload;
@@ -316,10 +319,9 @@ public partial class PlayerWeapon : Node
 
 		if ( ChargeTime > 0f )
 		{
-			// A pull fires at once. Keep holding after the shot and the next trident charges; let go with it full to
-			// fire it charged (let go early and it stays loaded). A charge the gun was put away during is dropped.
+			// Charged guns (the trident shooter, the Bubble Cannon). A charge or press the gun was put away during is dropped.
 			var frame = Engine.GetProcessFrames();
-			if ( charging && frame - chargeFrame > 3 ) charging = false;
+			if ( frame - chargeFrame > 3 ) { charging = false; heldSinceShot = false; }
 			chargeFrame = frame;
 			if ( IsReloading ) charging = false;
 			var held = Input.IsActionPressed( "attack1" );
@@ -349,27 +351,36 @@ public partial class PlayerWeapon : Node
 			}
 			else if ( !charging )
 			{
+				// The Bubble Cannon (user's ask: a hold must not blow a bubble first): a tap blows a bubble when it is let
+				// go; holding past `TapWindow` starts the Mega Bubble charging instead.
 				if ( Input.IsActionJustPressed( "attack1" ) && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
 				{
-					if ( Ammo > 0 ) { Shoot(); heldSinceShot = true; }
+					if ( Ammo > 0 ) { heldSinceShot = true; sincePress = 0f; }
 					else if ( Reserve > 0 ) StartReload();
 					else Sfx.Play2D( "dry_fire" );
 				}
-				else if ( held && heldSinceShot && Ammo > 0 && !IsReloading && TimeSinceShot >= 1f / CurrentFireRate )
+				else if ( held && heldSinceShot && sincePress > TapWindow && Ammo > 0 && !IsReloading )
 				{
 					charging = true; chargeFull = false; sinceChargeStart = 0f;
 					Sfx.Play2D( Bubbles ? "bubble_charge" : "trident_charge", 0.5f, bus: Sfx.GunBus );
 				}
-				if ( !held ) heldSinceShot = false;
+				if ( !held )
+				{
+					if ( heldSinceShot && Ammo > 0 && !IsReloading ) Shoot();
+					heldSinceShot = false;
+				}
 			}
 			else
 			{
 				if ( !chargeFull && ChargeAmount >= 1f ) { chargeFull = true; Controls.Rumble( 0.3f ); }
 				if ( !held )
 				{
+					// Let go full: the Mega Bubble; early: a plain bubble, so a hold is never wasted.
 					charging = false;
 					heldSinceShot = false;
-					if ( chargeFull ) { chargedShot = true; Shoot(); chargedShot = false; }
+					chargedShot = chargeFull;
+					Shoot();
+					chargedShot = false;
 				}
 			}
 			return;

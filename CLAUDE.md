@@ -117,7 +117,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   The Bubble Cannon (`Weapons/BubbleCannon.cs`, model `BubbleCannonModel` on the Blaster rig; the globe's "Loaded"
   bubble regrows after a shot and swells while charging): left click blows a `BubbleShot` (grows out of the bell,
   stretches and wobbles, gentle homing via `GoreBall.NearestToLine`, drifts up, bounces off the world `Bounces` times).
-  Hold after a shot (`ChargeTime`) for a Mega Bubble: big and slow, it rolls through and wraps up to `MegaCatches`
+  A tap blows a bubble on release; holding past `PlayerWeapon.TapWindow` charges instead (the Gore Vac's huge shot works the same), and letting go full (`ChargeTime`) throws a Mega Bubble: big and slow, it rolls through and wraps up to `MegaCatches`
   light enemies, splashes heavy ones for triple. A `Pullable` enemy is caught in a `BubbleTrap`: `Creature.Bubbled`
   turns its brain off (`Creature.Frozen` gates every creature's Think), it floats up (`RiseHeight`, `MegaRise`),
   struggles (film bulges, it twists), bubbles push apart. A bubble fired into a trapped enemy inflates it (`Inflate`:

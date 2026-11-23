@@ -128,6 +128,27 @@ public partial class AutoTest
 		await Wait( 2f );   // let it finish before the next crabs come
 		foreach ( var flying in GetTree().CurrentScene.GetChildren().OfType<BubbleShot>() ) flying.QueueFree();
 
+		// ---- The real trigger: a tap blows one bubble on release; a hold blows nothing until it is let go full ----
+		LookAt( player.Camera.GlobalPosition + ahead * 5f + Vector3.Up * 4f );
+		await Wait( 0.6f );
+		var firedBefore = BubbleShot.Fired;
+		var megaBefore = BubbleShot.MegaFired;
+		Input.ActionPress( "attack1" );
+		await Wait( 0.06f );
+		Input.ActionRelease( "attack1" );
+		await Wait( 0.1f );
+		Check( BubbleShot.Fired == firedBefore + 1 && BubbleShot.MegaFired == megaBefore, $"a tap blew {BubbleShot.Fired - firedBefore} bubbles ({BubbleShot.MegaFired - megaBefore} mega), not one plain one" );
+		await Wait( 0.6f );
+		firedBefore = BubbleShot.Fired;
+		Input.ActionPress( "attack1" );
+		await Wait( cannon.ChargeTime + PlayerWeapon.TapWindow + 0.3f );
+		Check( BubbleShot.Fired == firedBefore, "holding to charge blew a bubble before the Mega Bubble" );
+		Input.ActionRelease( "attack1" );
+		await Wait( 0.1f );
+		Check( BubbleShot.MegaFired == megaBefore + 1, "letting go of a full charge didn't blow a Mega Bubble" );
+		await Wait( 1.5f );
+		foreach ( var flying in GetTree().CurrentScene.GetChildren().OfType<BubbleShot>() ) flying.QueueFree();
+
 		// ---- Crabs in a row: a Mega Bubble wraps several up, a second bubble inflates one, a pop chains ----
 		var row = new List<Creature>();
 		var side = ahead.Cross( Vector3.Up );

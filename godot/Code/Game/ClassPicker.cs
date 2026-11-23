@@ -68,8 +68,10 @@ public partial class ClassPicker : CanvasLayer
 		column.AddThemeConstantOverride( "separation", 10 );
 		panel.AddChild( column );
 
+		rowAt = 0;
 		var name = UiStyle.Big( column, RobotClass.All.Length > 3 ? 32 : 44, robot.Tint );
 		name.Text = $"{number}  {robot.Name.ToUpperInvariant()}";
+		Row( name );
 		Line( column, robot.Tagline, 20, UiStyle.Readout );
 		column.AddChild( new HSeparator() );
 		Line( column, "WEAPONS", 16, UiStyle.Gold );
@@ -81,6 +83,8 @@ public partial class ClassPicker : CanvasLayer
 		Line( column, "HEALTH", 16, UiStyle.Gold );
 		Line( column, $"{robot.BaseHealth:0}", 20, Colors.White );
 
+		// Whatever height is left goes above the button, so every card's button sits on the same line at the bottom.
+		column.AddChild( new Control { SizeFlagsVertical = Control.SizeFlags.ExpandFill } );
 		var pick = new Button { Text = $"Play as {robot.Name}", CustomMinimumSize = new Vector2( 0, 50 ), Name = "Pick" };
 		pick.AddThemeFontSizeOverride( "font_size", 22 );
 		pick.Pressed += () => Choose( robot );
@@ -89,12 +93,41 @@ public partial class ClassPicker : CanvasLayer
 		return panel;
 	}
 
-	static void Line( Control parent, string text, int size, Color colour )
+	/// <summary> Each card's labels in order; the Nth of every card is one row, made as tall as its tallest (AlignRows). </summary>
+	readonly List<List<Label>> rows = new();
+	int rowAt;
+
+	void Row( Label label )
+	{
+		if ( rows.Count <= rowAt ) rows.Add( new List<Label>() );
+		rows[rowAt++].Add( label );
+	}
+
+	/// <summary>
+	/// Lines the cards up: every row (tagline, weapons, mouse 4, ...) takes the height of its tallest card, so each
+	/// heading starts at the same height on every card. Wrapped labels only know their height once laid out, so it
+	/// measures a frame after the window shows.
+	/// </summary>
+	async void AlignRows()
+	{
+		foreach ( var row in rows ) foreach ( var label in row ) label.CustomMinimumSize = label.CustomMinimumSize with { Y = 0 };
+		await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+		if ( !IsInstanceValid( this ) ) return;
+		foreach ( var row in rows )
+		{
+			var tallest = 0f;
+			foreach ( var label in row ) tallest = MathF.Max( tallest, label.GetMinimumSize().Y );
+			foreach ( var label in row ) label.CustomMinimumSize = label.CustomMinimumSize with { Y = tallest };
+		}
+	}
+
+	void Line( Control parent, string text, int size, Color colour )
 	{
 		var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2( CardWidth - 20, 0 ) };
 		label.AddThemeFontSizeOverride( "font_size", RobotClass.All.Length > 3 ? (int)(size * 0.82f) : size );
 		label.AddThemeColorOverride( "font_color", colour );
 		parent.AddChild( label );
+		Row( label );
 	}
 
 	public void Choose( RobotClass robot )
@@ -123,6 +156,7 @@ public partial class ClassPicker : CanvasLayer
 		if ( IsOpen == open ) return;
 		IsOpen = open;
 		window.Visible = open;
+		if ( open ) AlignRows();
 		GetTree().Paused = open;
 		Input.MouseMode = open ? (Controls.IsController ? Input.MouseModeEnum.Hidden : Input.MouseModeEnum.Visible) : Input.MouseModeEnum.Captured;
 		if ( open ) buttons[Math.Max( 0, Array.IndexOf( RobotClass.All, RobotClass.Current ) )].GrabFocus();

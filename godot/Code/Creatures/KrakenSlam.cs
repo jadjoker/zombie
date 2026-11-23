@@ -175,7 +175,7 @@ public partial class Kraken
 		foreach ( var player in PlayerSurvivor.All )
 		{
 			if ( !player.IsAlive || player.Controller is not { Scripted: false } controller ) continue;
-			var to = (mouth - player.WorldPosition).Flat();
+			var to = (mouth - player.RealPosition).Flat();
 			var distance = to.Length();
 			if ( distance > FightRadius * 1.25f || distance < 5f ) continue;
 			controller.Velocity += to / distance * SuckPull * dt;
@@ -340,12 +340,12 @@ public partial class Kraken
 			foreach ( var player in PlayerSurvivor.All )
 			{
 				if ( !player.IsAlive || struck.Contains( player ) || player.Controller is not { } controller ) continue;
-				var offset = (player.WorldPosition - from).Flat();
+				var offset = (player.RealPosition - from).Flat();
 				var along = MathX.Clamp( offset.Dot( direction ), 0f, reach );
 				if ( (offset - direction * along).Length() > SlamHalfWidth + controller.BodyRadius ) continue;
 				struck.Add( player );
 				LastSlamHits++;
-				var high = player.WorldPosition.Y - GlobalPosition.Y > SwatHeight;
+				var high = player.RealPosition.Y - GlobalPosition.Y > SwatHeight;
 				if ( high )
 				{
 					// Swatted out of the water above: straight back down to the sea bed, but it only glanced them.
@@ -353,7 +353,7 @@ public partial class Kraken
 					if ( !controller.Scripted ) controller.Velocity = Vector3.Down * 22f + direction * 2f;
 				}
 				else if ( !controller.Scripted ) controller.Velocity += direction * 7f + Vector3.Up * 3.5f;
-				player.Health?.OnDamage( new DamageInfo { Damage = high ? SwatDamage : SlamDamage, Attacker = this, Position = player.WorldPosition + Vector3.Up, Origin = from } );
+				player.Health?.OnDamage( new DamageInfo { Damage = high ? SwatDamage : SlamDamage, Attacker = this, Position = player.RealPosition + Vector3.Up, Origin = from } );
 				player.Juice?.Shake( high ? 0.5f : 0.9f );
 			}
 		}

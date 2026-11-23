@@ -279,29 +279,15 @@ public partial class AutoTest
 		var skills = PlayerSkills.Of( player );
 		var jet = player.GetNode<Jetpack>( "Jetpack" );
 
-		// ---- The left hand pulls the plunger back (in view, then in third person) ----
+		// ---- The plunger pulls back on its own as the trigger is held ----
 		launcher.TestHoldPull = true;
 		await Wait( 0.7f );
-		var grabbed = PlungerArm.LastGrab;
-		if ( shots is not null )
-		{
-			await Shot( "pinball_pull" );
-			player.ThirdPerson = true;
-			await Wait( 0.3f );
-			var body = player.GlobalPosition + Vector3.Up * 1.15f;
-			var face = new Angles( 0f, player.EyeAngles.Yaw, 0f ).Forward;
-			var from = body + face * 0.7f - face.Cross( Vector3.Up ) * 1.1f + Vector3.Up * 0.2f;   // close, from the robot's left
-			var cam = new Transform3D( Basis.LookingAt( (body - from).Normalized(), Vector3.Up ), from );
-			player.CameraOverride = _ => cam;
-			await Wait( 0.3f );
-			await Shot( "pinball_pull_3p" );
-			player.CameraOverride = null;
-			player.ThirdPerson = false;
-		}
+		var pulled = launcher.SpringPull;
+		if ( shots is not null ) await Shot( "pinball_pull" );
 		launcher.TestHoldPull = false;
 		await Wait( 0.3f );
-		GD.Print( $"[autotest] pinballbot: the hand on the plunger {grabbed:0.00}, pulled {launcher.PlungerPose:0.00} -> after the shot {launcher.PlungerGrab:0.00}" );
-		Check( grabbed > 0.9f, "the left hand did not go back to the plunger" );
+		GD.Print( $"[autotest] pinballbot: the plunger pulled to {pulled:0.00}" );
+		Check( pulled > 0.9f, "holding the trigger did not pull the plunger back" );
 		foreach ( var b in BotBall.All.ToList() ) b.End();
 		await Wait( 0.5f );
 

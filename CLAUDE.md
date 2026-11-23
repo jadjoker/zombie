@@ -288,8 +288,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   off after letting go is a SKILL SHOT. Skills: Rebound (more chain hits), Sweet Spot, Launch Pad (human pinballs),
   Ball Return, Ramp (human pinballs crash down). Models: `Tools/blender/pinball_guns.py` (gun space, exported without
   the Y-up turn) to `pinball_launcher.glb` and `pinball_flippers.glb`, posed by `PinballModels.PoseLauncher` and
-  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck); `PlungerArm` bends the left arm to
-  the plunger knob while pulling (in view, and the third person rig follows that hand). Mouse 4 is the roll
+  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck); the plunger at the back pulls on its
+  own as the trigger is held (a hand pulling it was tried and dropped, user's choice). Mouse 4 is the roll
   (`JetpackToys.RollStep` through `PlayerController.MoveOverride`): third person while it lasts, a glass pinball shell,
   its own momentum (steer, faster downhill, wall bounces, a hop on jump); enemies take `RollDamagePer` a m/s, light
   ones fly off as `HumanPinball`s, heavy ones bounce it off. Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,

@@ -83,6 +83,8 @@ public partial class Kraken
 			if ( !leashes.TryGetValue( player, out var leash ) ) leashes[player] = leash = new Leash();
 			var controller = player.Controller;
 			if ( controller is null || !player.IsAlive ) { Drop( controller, leash ); continue; }
+			// Online, a joiner's copy warns only its own player; the host's Kraken does the carrying.
+			if ( Puppet && controller.IsRemote ) continue;
 			if ( leash.Pulling ) { Carry( player, leash, dt ); anyOutside = true; continue; }
 
 			var away = (player.RealPosition - GlobalPosition).Flat().Length();
@@ -97,9 +99,9 @@ public partial class Kraken
 				if ( beep != leash.LastBeep && left > 0f )
 				{
 					leash.LastBeep = beep;
-					Sfx.Play2D( "whirl_warn", 0.8f, 1f + (WarningSeconds - beep) * 0.06f );
+					if ( !controller.IsRemote ) Sfx.Play2D( "whirl_warn", 0.8f, 1f + (WarningSeconds - beep) * 0.06f );
 				}
-				if ( left <= 0f ) StartPull( player, leash );
+				if ( left <= 0f && !Puppet ) StartPull( player, leash );
 			}
 			else
 			{

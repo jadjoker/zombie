@@ -158,7 +158,8 @@ void fragment() {
 		var t = (float)Clock.Now;
 		Animate( t, dt );
 		if ( mode == Mode.Dead ) { Sink( dt ); return; }
-		if ( (DevFlags.FreezeEnemies || Puppet) && mode is not Mode.Appear and not Mode.Vanish ) return;
+		if ( Puppet ) { PuppetShow( dt ); return; }   // online, a joiner's copy follows the host's (PoseidonNet)
+		if ( DevFlags.FreezeEnemies && mode is not Mode.Appear and not Mode.Vanish ) return;
 		if ( sinceFloor > 0.3f ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, GlobalPosition, 80f ); }
 
 		var prey = Target;
@@ -301,6 +302,7 @@ void fragment() {
 		var flight = from.DistanceTo( aim ) / TridentSpeed;
 		aim += prey.Controller.Velocity * flight * 0.6f;
 		PoseidonTrident.Throw( this, from, (aim - from).SafeNormal() * TridentSpeed, TridentDamage );
+		tridents++; tridentFrom = from; tridentVelocity = (aim - from).SafeNormal() * TridentSpeed;
 		if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon throws a trident from {from} at {aim}" );
 		heldTrident.Visible = false;   // in flight now; another is in his hand when the swing is over
 		GetTree().CreateTimer( 0.9 ).Timeout += () => { if ( IsInstanceValid( heldTrident ) ) heldTrident.Visible = true; };
@@ -314,7 +316,7 @@ void fragment() {
 		var start = GlobalPosition with { Y = Sculpt.FloorBelow( this, GlobalPosition, 80f ) };
 		var toward = (prey.WorldPosition - start).Flat().SafeNormal();
 		if ( toward == Vector3.Zero ) toward = -GlobalBasis.Z.Flat().SafeNormal();
-		PoseidonVortex.Throw( this, start + toward * 3f, toward );
+		thrown = PoseidonVortex.Throw( this, start + toward * 3f, toward );
 		Sfx.Play( "whirlpool", GlobalPosition, 0.9f, 1.1f );
 	}
 
@@ -566,8 +568,11 @@ public partial class PoseidonTrident : Node3D
 			var chest = player.WorldPosition + Vector3.Up * 1f;
 			var closest = Geometry3D.GetClosestPointToSegment( chest, from, to );
 			if ( closest.DistanceTo( chest ) > 0.8f ) continue;
-			player.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( thrower ) ? thrower : this, Position = closest, Origin = from } );
-			player.Controller.Velocity += velocity.SafeNormal() * 4f;
+			if ( damage > 0f )   // 0: online, a joiner's copy of the host's trident (the host's one does the hurting)
+			{
+				player.Health?.OnDamage( new DamageInfo { Damage = damage, Attacker = IsInstanceValid( thrower ) ? thrower : this, Position = closest, Origin = from } );
+				player.Controller.Velocity += velocity.SafeNormal() * 4f;
+			}
 			Sfx.Play( "hit_flesh", closest, 0.9f, 0.8f );
 			if ( AutoTest.Requested ) GD.Print( $"[autotest] poseidon trident hit a player at {closest}" );
 			QueueFree();
@@ -616,7 +621,9 @@ public partial class PoseidonVortex : Node3D
 	readonly List<Node3D> rings = new();
 	static StandardMaterial3D ringMaterial, coreMaterial;
 
-	public static void Throw( Poseidon owner, Vector3 at, Vector3 heading ) => Make( owner, at, heading, true, 1f, Life );
+	public static PoseidonVortex Throw( Poseidon owner, Vector3 at, Vector3 heading ) => Make( owner, at, heading, true, 1f, Life );
+	/// <summary> Online, a joiner's copy of a thrown one: it sits where the host's copy says (Poseidon moves it). </summary>
+	public static PoseidonVortex Shown( Poseidon owner, Vector3 at ) => Make( owner, at, Vector3.Zero, false, 1f, 60f );
 
 	/// <summary> Its work is done (the player it carried has been stabbed, or let go): it dies away. </summary>
 	public void Finish() => life = MathF.Min( life, (float)age + 0.5f );
@@ -624,15 +631,19 @@ public partial class PoseidonVortex : Node3D
 	/// <summary> A short burst at a spot (Poseidon vanishing or appearing, a seahorse arriving). </summary>
 	public static void Burst( Node3D source, Vector3 at, float size = 1f ) => Make( source as Poseidon, at, Vector3.Zero, false, size, 1.6f );
 
-	static void Make( Poseidon owner, Vector3 at, Vector3 heading, bool travelling, float size, float life )
+	static PoseidonVortex Make( Poseidon owner, Vector3 at, Vector3 heading, bool travelling, float size, float life )
 	{
 		var scene = (Engine.GetMainLoop() as SceneTree)?.CurrentScene;
-		if ( scene is null ) return;
+		if ( scene is null ) return null;
 		var v = new PoseidonVortex { Name = "Poseidon Whirlpool", owner = owner, heading = heading, travelling = travelling, size = size, life = life };
 		scene.AddChild( v );
 		v.GlobalPosition = at;
 		v.age = 0f;
+		return v;
 	}
+
+	/// <summary> Still going (not dying away). </summary>
+	public bool Live => IsInstanceValid( this ) && (float)age < life - 0.5f;
 
 	public override void _Ready()
 	{

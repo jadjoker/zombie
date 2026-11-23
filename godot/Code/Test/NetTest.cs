@@ -300,22 +300,48 @@ public partial class AutoTest
 			boss.ForceState( MC61.Mode.Charge );
 			await Wait( 6f );
 			if ( IsInstanceValid( boss ) ) boss.QueueFree();
+			// The bosses: the Kraken's slam, Poseidon's trident, Davey's cannons.
+			var kraken = Kraken.Spawn( scene, at + new Vector3( -14f, 0f, 0f ), 20000f );
+			for ( var t = 0f; t < 12f && kraken.State != Kraken.Mode.Idle; t += 0.25f ) await Wait( 0.25f );
+			kraken.ForceSlam();
+			GD.Print( $"[autotest] net: host Kraken {kraken.State}, attacking {kraken.Attacking}" );
+			await Wait( 4f );
+			if ( IsInstanceValid( kraken ) ) kraken.QueueFree();
+			var god = Poseidon.Spawn( scene, at + new Vector3( 0f, 2f, 10f ), 18000f );
+			await Wait( 2.5f );
+			god.ForceAttack( "trident" );
+			await Wait( 3f );
+			if ( IsInstanceValid( god ) ) god.QueueFree();
+			var davey = DaveyJones.Spawn( scene, at + new Vector3( 0f, 1.5f, -8f ), 11000f );
+			davey.OnlyWhenTold = true;
+			await Wait( 2.5f );
+			davey.ForceAttack( "cannons" );
+			await Wait( 2f );
+			GD.Print( $"[autotest] net: host Davey cannons {DaveyCannon.All.Count}" );
+			await Wait( 2f );
+			if ( IsInstanceValid( davey ) ) davey.QueueFree();
 			DevFlags.FreezeEnemies = true;
 			await Wait( 1f );
 		}
 		else
 		{
 			player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
-			bool hook = false, beam = false;
-			for ( var t = 0f; t < 30f && !(hook && beam); t += 0.05f )
+			bool hook = false, beam = false, slam = false, cannons = false;
+			var tridents = Poseidon.PuppetTridents;
+			for ( var t = 0f; t < 70f && !(hook && beam && slam && cannons && Poseidon.PuppetTridents > tridents); t += 0.05f )
 			{
 				await Wait( 0.05f );
 				hook |= Angler.All.Any( a => a.Puppet && a.HookShown );
 				beam |= MC61.All.Any( m => m.Puppet && m.BeamShown );
+				slam |= Kraken.All.Any( k => k.Puppet && k.Attacking is Kraken.Attack.Raise or Kraken.Attack.Slam );
+				cannons |= DaveyCannon.All.Count > 0;
 			}
-			GD.Print( $"[autotest] net: the host's angler hook showed here {hook}; MC-51's beam showed here {beam}" );
+			GD.Print( $"[autotest] net: shown here: angler hook {hook}, MC-51 beam {beam}, Kraken slam {slam}, Poseidon tridents {Poseidon.PuppetTridents - tridents}, Davey cannons {cannons}" );
 			Check( hook, "the host's angler hook never showed on the joiner" );
 			Check( beam, "the host's MC-51 beam never showed on the joiner" );
+			Check( slam, "the host's Kraken slam never showed on the joiner" );
+			Check( Poseidon.PuppetTridents > tridents, "the host's Poseidon trident never showed on the joiner" );
+			Check( cannons, "the host's Davey cannons never showed on the joiner" );
 		}
 	}
 

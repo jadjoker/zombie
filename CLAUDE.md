@@ -417,7 +417,11 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
   update in turns; gib templates are shared between colour shades (`GibRecipe.Shape`, `GibKit.Recolour`), built
   at most two a frame, prewarmed when each creature spawns and in batches on the dock; `ShaderWarmup` draws the
   common effects once on the dock so their first-draw stalls happen there; `Sfx.PreloadAll` loads every sound on a
-  worker thread at start; the Gore Vac catches resting pieces a few a frame.
+  worker thread at start; the Gore Vac catches resting pieces a few a frame. Mass deaths: past `Creature.DeathBudgetMs` a frame the falling
+  apart waits for the next frame (`RunLateDeaths`, Killed still fires at once); a killing shot skips the hit's wound
+  (`Creature.Lethal`); goo spray rays run in the next physics tick; the goo decal textures and the visor splats are
+  loaded at level start and held (a texture no decal uses leaves the decal atlas, rebuilt when it comes back). `--perf`
+  kills the dozen inside the measurement and splits each hitch into process, deferred calls, frame end, draw, physics.
 
 ## Rules
 - The user often plays in the editor while agents work. Before saving code, editing the scene, or play_start,

@@ -37,6 +37,7 @@ public partial class Clock : Node
 	{
 		Now += delta;
 		Sfx.CollectLoaded();
+		Creature.RunLateDeaths();
 	}
 
 	public override void _PhysicsProcess( double delta )

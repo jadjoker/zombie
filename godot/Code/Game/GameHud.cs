@@ -73,6 +73,8 @@ public partial class GameHud : Control
 
 	public override void _Ready()
 	{
+		_ = Splats;   // the visor goo textures: loading them on the first close kill cost 35 ms mid-fight
+		AmmoPickup.Preload();
 		Build();
 		UiStyle.Changed += Rebuild;
 	}

@@ -545,7 +545,7 @@ public partial class JunkCrab : PartCreature
 			GoneMask |= SubtreeMask( index );
 			CutLocal( index, direction );
 		}
-		else Hit( index, position, direction, Rng.Float() < 0.3f, hurt );
+		else if ( !Lethal( damage * multiplier ) ) Hit( index, position, direction, Rng.Float() < 0.3f, hurt );   // a killing shot: the death burst covers it
 
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );

@@ -34,7 +34,38 @@ public partial class GoreSystem : Node
 
 	Node Root => GetTree().CurrentScene;
 
-	public override void _Process( double delta ) => GibKit.PrewarmStep();
+	public override void _Ready()
+	{
+		// The goo decal textures, loaded now and each held by a hidden decal for the whole level: the first splat used
+		// to load them (and a texture no decal uses drops out of the renderer's decal atlas, which is rebuilt when it comes
+		// back), 45 ms in the middle of a fight.
+		foreach ( var (albedo, normal) in GooDecals )
+			AddChild( new Decal { Name = "Atlas Keeper", TextureAlbedo = albedo, TextureNormal = normal, Size = Vector3.One * 0.01f, Visible = false, CullMask = 0 } );
+	}
+
+	public override void _Process( double delta )
+	{
+		GibKit.PrewarmStep();
+	}
+
+	public override void _PhysicsProcess( double delta ) => SprayStep();
+
+	// Goo spray rays wait for the next physics tick: cast in the same frame as a death's new physics pieces, the first
+	// ray paid for adding them all to the physics world (a dozen deaths at once spent 44 ms). At most SprayRaysPerFrame a tick.
+	readonly Queue<(Vector3 From, Vector3 To, float Size, Color Color, ulong Frame)> sprays = new();
+	const int SprayRaysPerFrame = 40;
+
+	void SprayStep()
+	{
+		if ( sprays.Count == 0 ) return;
+		using var perfSpan = Perf.Time( "goo spray" );
+		var frame = Engine.GetProcessFrames();
+		for ( var i = 0; i < SprayRaysPerFrame && sprays.Count > 0 && sprays.Peek().Frame < frame; i++ )
+		{
+			var (from, to, size, color, _) = sprays.Dequeue();
+			if ( TraceWorld( from, to ) is { } hit ) GooSplat( hit.Position, hit.Normal, size, color );
+		}
+	}
 
 	/// <summary> The loose pieces in the level right now (the Gore Vac pulls these in). </summary>
 	public IReadOnlyList<Gib> Gibs
@@ -149,12 +180,11 @@ public partial class GoreSystem : Node
 
 	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{
-		using var perfSpan = Perf.Time( "goo spray" );
+		if ( sprays.Count > 400 ) return;   // a backlog already: skip this one
 		for ( var i = 0; i < drops; i++ )
 		{
 			var dir = (direction.SafeNormal() + Rng.InSphere( 1f ) * 0.7f + Vector3.Down * Rng.Float( 0.2f, 0.9f ) * sag).SafeNormal();
-			if ( TraceWorld( origin, origin + dir * reach * U.In ) is { } hit )
-				GooSplat( hit.Position, hit.Normal, Rng.Float( sizeMin, sizeMax ), color );
+			sprays.Enqueue( (origin, origin + dir * reach * U.In, Rng.Float( sizeMin, sizeMax ), color, Engine.GetProcessFrames()) );
 		}
 	}
 

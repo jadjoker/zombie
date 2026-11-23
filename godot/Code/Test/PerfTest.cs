@@ -45,13 +45,26 @@ public partial class AutoTest
 			double process = 0, physics = 0, draws = 0;
 			var last = Time.GetTicksUsec();
 			var start = last;
+			var before = new Dictionary<string, double>();
 			while ( (Time.GetTicksUsec() - start) / 1e6 < seconds )
 			{
+				before.Clear();
+				foreach ( var (k, v) in Perf.Totals ) before[k] = v.Ms;
+				var gc0 = GC.CollectionCount( 0 ); var gc1 = GC.CollectionCount( 1 ); var gc2 = GC.CollectionCount( 2 );
+				var pipes = Performance.GetMonitor( Performance.Monitor.PipelineCompilationsMesh ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsSurface ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsSpecialization ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsCanvas );
 				everyFrame?.Invoke();
 				await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
 				var now = Time.GetTicksUsec();
-				frames.Add( (now - last) / 1000.0 );
+				var ms = (now - last) / 1000.0;
+				frames.Add( ms );
 				last = now;
+				// A hitch: what its own code did that frame, and how many render pipelines were built.
+				if ( ms > 40.0 && frames.Count > 1 )
+				{
+					var spent = Perf.Totals.Select( kv => (kv.Key, kv.Value.Ms - before.GetValueOrDefault( kv.Key )) ).Where( x => x.Item2 > 0.3 ).OrderByDescending( x => x.Item2 ).Take( 10 );
+					var newPipes = Performance.GetMonitor( Performance.Monitor.PipelineCompilationsMesh ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsSurface ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsSpecialization ) + Performance.GetMonitor( Performance.Monitor.PipelineCompilationsCanvas ) - pipes;
+					GD.Print( $"[autotest] hitch {name}: {ms:0} ms, gc {GC.CollectionCount( 0 ) - gc0}/{GC.CollectionCount( 1 ) - gc1}/{GC.CollectionCount( 2 ) - gc2}, pipelines built {newPipes:0}; code: {string.Join( ", ", spent.Select( x => $"{x.Key} {x.Item2:0}" ) )}" );
+				}
 				process += Performance.GetMonitor( Performance.Monitor.TimeProcess ) * 1000.0;
 				physics += Performance.GetMonitor( Performance.Monitor.TimePhysicsProcess ) * 1000.0;
 				draws += Performance.GetMonitor( Performance.Monitor.RenderTotalDrawCallsInFrame );

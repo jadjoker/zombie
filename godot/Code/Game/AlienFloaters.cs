@@ -327,7 +327,7 @@ public partial class AlienFloaters : Node3D
 			// A player too close sets it off: it swells and flashes, faster and faster, then bursts.
 			f.At ??= f.Node.GlobalPosition;
 			var nearest = Nearest( chests, f.At.Value );
-			if ( !f.Puffing && nearest > FarAway && ((frames + (ulong)i) & 1) == 1 ) continue;
+			if ( !f.Puffing && nearest > FarAway && ((frames + (ulong)i) & 3) != 0 ) continue;   // far ones drift in turns (every 4th frame)
 			if ( !f.Puffing && nearest < PuffRadius )
 			{
 				f.Puffing = true;
@@ -359,8 +359,12 @@ public partial class AlienFloaters : Node3D
 		switch ( f.State )
 		{
 			case FernState.Rest:
-				f.Node.Rotation = new Vector3( MathF.Sin( t * f.Rate + f.Phase ) * 0.05f, f.Node.Rotation.Y, MathF.Cos( t * f.Rate * 0.8f + f.Phase ) * 0.05f );
-				if ( f.SinceState > FernRest && Nearest( feet, centre ) < FernReach )
+			{
+				var near = Nearest( feet, centre );
+				// A far fern's slight sway in turns (every 4th frame); the check for a player stays every frame.
+				if ( near < FarAway || ((frames + (ulong)f.Phase.GetHashCode()) & 3) == 0 )
+					f.Node.Rotation = new Vector3( MathF.Sin( t * f.Rate + f.Phase ) * 0.05f, f.Node.Rotation.Y, MathF.Cos( t * f.Rate * 0.8f + f.Phase ) * 0.05f );
+				if ( f.SinceState > FernRest && near < FernReach )
 				{
 					f.State = FernState.Tell;
 					f.SinceState = 0f;
@@ -368,6 +372,7 @@ public partial class AlienFloaters : Node3D
 					SetTips( f, Hot );
 				}
 				break;
+			}
 			case FernState.Tell:
 				// A shudder: the warning to step back.
 				f.Node.Rotation = new Vector3( Rng.Float( -0.12f, 0.12f ), f.Node.Rotation.Y, Rng.Float( -0.12f, 0.12f ) );

@@ -149,6 +149,7 @@ public partial class GoreSystem : Node
 
 	public void GooSpray( Vector3 origin, Vector3 direction, int drops, Color color, float reach = 180f, float sizeMin = 0.5f, float sizeMax = 1.3f, float sag = 1f )
 	{
+		using var perfSpan = Perf.Time( "goo spray" );
 		for ( var i = 0; i < drops; i++ )
 		{
 			var dir = (direction.SafeNormal() + Rng.InSphere( 1f ) * 0.7f + Vector3.Down * Rng.Float( 0.2f, 0.9f ) * sag).SafeNormal();
@@ -166,6 +167,7 @@ public partial class GoreSystem : Node
 	/// <summary> A burst of goo droplets (speed in s&box units/s). </summary>
 	public void GooBurst( Vector3 position, Vector3 direction, Color color, int count = 10, float speed = 260f, float size = 1f )
 	{
+		using var perfSpan = Perf.Time( "goo burst" );
 		for ( var i = 0; i < count; i++ )
 		{
 			var velocity = (direction.SafeNormal() * 0.8f + Rng.InSphere( 1f )).SafeNormal() * speed * Rng.Float( 0.4f, 1.2f ) + Vector3.Up * Rng.Float( 30f, 140f );

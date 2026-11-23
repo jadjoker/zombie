@@ -360,6 +360,7 @@ public partial class JunkCrab : PartCreature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "JunkCrab total" );
 		if ( health is null || rig is null ) return;
 		var dt = (float)delta;
 		if ( IsDead )
@@ -367,11 +368,11 @@ public partial class JunkCrab : PartCreature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( dt );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "JunkCrab think" ); Think( dt ); }
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
-		Animate( dt );
+		{ using var perfAnim = Perf.Time( "JunkCrab animate" ); Animate( dt ); }
 		TintParts( dt );
 		rig.Visible = true;
 	}

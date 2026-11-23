@@ -386,6 +386,7 @@ public partial class SeaSpider : PartCreature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "SeaSpider total" );
 		if ( health is null || rig is null ) return;
 		var dt = (float)delta;
 		if ( IsDead )
@@ -393,11 +394,11 @@ public partial class SeaSpider : PartCreature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( dt );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "SeaSpider think" ); Think( dt ); }
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
-		Animate( dt );
+		{ using var perfAnim = Perf.Time( "SeaSpider animate" ); Animate( dt ); }
 		Tint( dt );
 	}
 
@@ -442,11 +443,14 @@ public partial class SeaSpider : PartCreature
 
 	Vector3 Outward( int i ) => new Angles( 0f, LegYaws[i], 0f ).Forward;
 
-	Vector3 DesiredFoot( int i, Vector3 velocity, float leadSeconds = 0.1f )
+	Vector3 DesiredFoot( int i, Vector3 velocity, float leadSeconds = 0.1f ) => Grounded( DesiredFootAbove( i, velocity, leadSeconds ) );
+
+	/// <summary> Where a foot wants to be, before it is put on the ground (no ray: enough to tell how stretched a leg is). </summary>
+	Vector3 DesiredFootAbove( int i, Vector3 velocity, float leadSeconds = 0.1f )
 	{
 		var reach = (Crawling ? RestReach * 0.7f : RestReach) * S;
 		var lead = (Flat( velocity ) * leadSeconds).ClampLength( 95f * S );
-		return Grounded( rig.GlobalPosition + RigRot * (Outward( i ) * reach) + lead );
+		return rig.GlobalPosition + RigRot * (Outward( i ) * reach) + lead;
 	}
 
 	void Animate( float dt )
@@ -556,14 +560,14 @@ public partial class SeaSpider : PartCreature
 		var stepping = feet.Count( f => f.T >= 0f );
 		var order = Enumerable.Range( 0, LegCount )
 			.Where( i => Has( FirstThigh + i ) && feet[i].T < 0f )
-			.OrderByDescending( i => Flat( feet[i].Pos - DesiredFoot( i, velocity ) ).Length() )
+			.OrderByDescending( i => Flat( feet[i].Pos - DesiredFootAbove( i, velocity ) ).Length() )
 			.ToList();
 		var speedIn = velocity.Length() / U.In;
 		foreach ( var i in order )
 		{
 			if ( stab && (i == 0 || i == 3) ) continue;
 			var foot = feet[i];
-			var desired = DesiredFoot( i, velocity );
+			var desired = DesiredFootAbove( i, velocity );   // grounded only when it steps (rays are the costly part)
 			var stretch = Flat( foot.Pos - desired ).Length() / U.In;
 			var threshold = MathX.Lerp( 12f, 20f, moving ) * Size * (1f + MathX.Clamp( speedIn / 350f, 0f, 1f ) * 1.8f);
 			var probing = moving < 0.2f && foot.NextProbe <= 0f;

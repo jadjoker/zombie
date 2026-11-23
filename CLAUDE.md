@@ -407,6 +407,17 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
   collision only while fast; all `Sway` plants are moved by one driver; `UiStyle.DrawFrame` and the HUD widgets reuse
   their style boxes; alien floaters far from the player update every other frame. Don't reintroduce per-frame
   allocations (LINQ `ToList`, new StyleBoxes, group queries) in hot paths.
+  The Godot perf pass (Nov 2026): `--perftypes` switches off each code type's per-frame work in turn (paired
+  before/after) in idle and in a fight; `--perfcreatures` times ten of each enemy (`Perf.Time` labels in their
+  `_Process`); `--perf` logs each hitch frame (its code labels, GC counts and render pipelines built; `--warmup` runs
+  the dock warm-up as in play). Kept on purpose: `NavAgent` asks the navmesh's closest point only every `SnapEvery`
+  (it cost ~0.5 ms a call) and keeps the feet on the floor by a ray (plus the navmesh's height) between, and plans paths
+  at most every `RepathEvery`; `Shapes.Tint` only touches a material when its colour changed; HUD labels go through
+  `LabelSet.Show`/`FontColour` (setting a label's text relays it out); far sea mines, swaying plants and alien floaters
+  update in turns; gib templates are shared between colour shades (`GibRecipe.Shape`, `GibKit.Recolour`), built
+  at most two a frame, prewarmed when each creature spawns and in batches on the dock; `ShaderWarmup` draws the
+  common effects once on the dock so their first-draw stalls happen there; `Sfx.PreloadAll` loads every sound on a
+  worker thread at start; the Gore Vac catches resting pieces a few a frame.
 
 ## Rules
 - The user often plays in the editor while agents work. Before saving code, editing the scene, or play_start,

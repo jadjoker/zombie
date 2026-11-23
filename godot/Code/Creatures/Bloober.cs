@@ -381,13 +381,14 @@ public partial class Bloober : Creature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "Bloober total" );
 		if ( health is null ) return;
 		if ( IsDead )
 		{
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( (float)delta );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "Bloober think" ); Think( (float)delta ); }
 		if ( diedLocally ) return;
 
 		var leaking = segments.Where( s => !s.Gone ).ToList();

@@ -75,9 +75,13 @@ public partial class Level : Node3D
 		if ( water )
 		{
 			GoreSystem.Get( this );
+			GibKit.Prewarm( GibRecipes.Crab( new Color( 0.6f, 0.3f, 0.2f ), new Color( 0.9f, 0.8f, 0.6f ), new Color( 0.35f, 1f, 0.28f ) ) );   // every crab and spider shade
+			GibKit.Prewarm( GibRecipes.Jelly( new Color( 0.5f, 0.3f, 0.9f ), new Color( 0.9f, 0.9f, 1f ), new Color( 0.35f, 1f, 0.28f ), false ) );   // Bloobers
+			GibKit.Prewarm( GibRecipes.Jelly( new Color( 0.5f, 0.3f, 0.9f ), new Color( 0.9f, 0.9f, 1f ), new Color( 0.35f, 1f, 0.28f ), true ) );   // Squiliens
 			GibKit.Prewarm( GibRecipes.RockyShark( new Color( 0.35f, 1f, 0.28f ) ) );
 			GibKit.Prewarm( MC61.GibsFor );
 			GibKit.Prewarm( Kraken.GibsFor );
+			ShaderWarmup.Run( Player );   // the effects' first-draw stalls happen now, on the dock, not in the first fight
 		}   // enemies stand off the scenery (the clutter pass)
 		if ( settings.TryGetProperty( "stylize", out var sty ) )
 		{
@@ -438,6 +442,7 @@ public partial class Sway : Node
 	float phase;
 	bool started;
 	Node3D target;
+	Vector3 at;
 
 	// Every sway is driven from one place (there are a couple of hundred plants; each running its own per-frame
 	// callback cost more than the swaying itself). Same motion as before.
@@ -467,10 +472,18 @@ public partial class Sway : Node
 		if ( frame == drivenFrame ) return;
 		drivenFrame = frame;
 		var now = (float)Clock.Now;
+		// Near plants every frame; the slow sway of far ones in turns (every 3rd frame past 20 m, every 8th past 60 m).
+		var eye = GetViewport().GetCamera3D()?.GlobalPosition ?? Vector3.Zero;
 		for ( var i = active.Count - 1; i >= 0; i-- )
 		{
 			var s = active[i];
 			if ( !IsInstanceValid( s ) || !IsInstanceValid( s.target ) ) { active.RemoveAt( i ); continue; }
+			if ( s.started )
+			{
+				var d = s.at.DistanceSquaredTo( eye );
+				var every = d < 400f ? 1UL : d < 3600f ? 3UL : 8UL;
+				if ( every > 1 && ((ulong)i + frame) % every != 0 ) continue;
+			}
 			s.Pose( now );
 		}
 	}
@@ -479,7 +492,7 @@ public partial class Sway : Node
 	{
 		// The rest pose is taken on the first frame, not on entering the tree: copies of a plant get their own turn
 		// and size after they are added, which _Ready would miss (they all snapped back to the original's).
-		if ( !started ) { rest = target.Basis; started = true; }
+		if ( !started ) { rest = target.Basis; at = target.GlobalPosition; started = true; }
 		var t = now * MathF.PI * 2f / MathF.Max( 0.5f, Period ) + phase;
 		var pitch = MathF.Sin( t ) * Amount;
 		var roll = MathF.Sin( t * 0.63f + 1.7f ) * Amount * 0.6f;

@@ -434,6 +434,7 @@ public partial class RockyShark : PartCreature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "RockyShark total" );
 		var dt = (float)delta;
 		if ( parts is null || rig is null || !IsInstanceValid( rig ) || diedLocally ) return;
 		if ( !Frozen )

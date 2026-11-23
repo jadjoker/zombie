@@ -75,6 +75,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--jelly" ) ) { await JellyTest(); return; }
 		if ( args.Contains( "--angler" ) ) { await AnglerTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
+		if ( args.Contains( "--perftypes" ) ) { await PerfTypesTest(); return; }
+		if ( args.Contains( "--perfcreatures" ) ) { await PerfCreaturesTest(); return; }
 		if ( args.Contains( "--perfsplit" ) ) { await PerfSplitTest(); return; }
 		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
 		if ( args.Contains( "--nettest" ) ) { await NetTest(); return; }

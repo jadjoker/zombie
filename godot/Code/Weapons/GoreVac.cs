@@ -187,6 +187,9 @@ public partial class PlayerWeapon
 	}
 
 	/// <summary> Pulls in gibs, puddles, enemies, loose limbs, floor props and mines in the cone. </summary>
+	/// <summary> Resting pieces newly caught a frame (they wake and lift off in turn). </summary>
+	const int CatchPerFrame = 10;
+
 	void Suck( float dt, Vector3 from, Vector3 forward, Vector3 nozzle, HashSet<Node> touched )
 	{
 		using var perf = Perf.Time( "GoreVac suck" );
@@ -195,11 +198,16 @@ public partial class PlayerWeapon
 		// Full or not, it keeps taking things in (when full, they are blown out the back: Vent).
 		{
 			// Pieces in the cone are caught, and stay caught while the trigger is held (sweep the gun and they follow).
+			// New pieces are caught a few a frame: waking a whole field of resting pieces at once was one long frame.
+			var newlyCaught = 0;
 			foreach ( var gib in gore.Gibs )
-				if ( !caught.ContainsKey( gib ) && !gib.IsFading && InCone( from, forward, gib.GlobalPosition, VacRange, VacCone, out _ ) ) caught[gib] = 0f;
+			{
+				if ( newlyCaught >= CatchPerFrame ) break;
+				if ( !caught.ContainsKey( gib ) && !gib.IsFading && InCone( from, forward, gib.GlobalPosition, VacRange, VacCone, out _ ) ) { caught[gib] = 0f; newlyCaught++; }
+			}
 			caughtBuffer.Clear();
 			caughtBuffer.AddRange( caught.Keys );
-			foreach ( var gib in caughtBuffer )
+				foreach ( var gib in caughtBuffer )
 			{
 				if ( !IsInstanceValid( gib ) || gib.IsQueuedForDeletion() ) { caught.Remove( gib ); continue; }
 				SuckIn( gib, caught[gib] += dt, dt, forward, nozzle );

@@ -120,7 +120,12 @@ public abstract partial class Creature : Node3D, ICreature
 		Cleanup();
 	}
 
-	void RunSetup() => Setup();
+	void RunSetup()
+	{
+		Setup();
+		// Its pieces are built while it swims in (a frame at a time), not all at once on the frame it dies.
+		if ( Gibs is { } recipe ) GibKit.Prewarm( recipe );
+	}
 
 	/// <summary> Adds this to (or removes it from) its own kind's list. </summary>
 	protected abstract void Track( bool add );
@@ -184,6 +189,8 @@ public abstract partial class PartCreature : Creature
 		public float Hurt;
 		public TimeSince Flash = 99f;
 		public readonly List<(MeshInstance3D Renderer, Color Tint)> Renderers = new();
+		/// <summary> The colour last given to each renderer (same order): unchanged, it isn't sent again. </summary>
+		public readonly List<Color> Applied = new();
 		public Vector3 LastPosition;
 		public Vector3 Velocity;
 		public Basis Rest = Basis.Identity;
@@ -269,17 +276,30 @@ public abstract partial class PartCreature : Creature
 	protected virtual void Tinted( Part part, MeshInstance3D renderer, Color tint ) { }
 
 	/// <summary> Every frame: darkens hurt parts, flashes ones just hit, and tracks how fast each part is moving. </summary>
+	/// <summary> Re-tint every frame even when nothing changed (MC-51's eye glow writes over its tint). </summary>
+	protected virtual bool AlwaysTint => false;
+
 	protected void TintParts( float dt )
 	{
+		var ready = TintReady;
+		var always = AlwaysTint;
 		foreach ( var part in parts )
 		{
 			if ( part is null || part.Gone ) continue;
 			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
-			foreach ( var (renderer, tint) in part.Renderers )
+			var renderers = part.Renderers;
+			while ( part.Applied.Count < renderers.Count ) part.Applied.Add( new Color( -1f, -1f, -1f, -1f ) );
+			for ( var i = 0; i < renderers.Count && ready; i++ )
 			{
-				if ( !IsInstanceValid( renderer ) || !TintReady ) continue;
-				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
-				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
+				var (renderer, tint) = renderers[i];
+				if ( !IsInstanceValid( renderer ) ) continue;
+				var color = (tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f }).Lerp( Colors.White * 3f, flash );
+				// A material change is costly (every renderer of every enemy, every frame): only when the colour moved.
+				if ( always || !color.IsEqualApprox( part.Applied[i] ) )
+				{
+					Shapes.Tint( renderer, color );
+					part.Applied[i] = color;
+				}
 				Tinted( part, renderer, tint );
 			}
 			var position = part.Go.GlobalPosition;

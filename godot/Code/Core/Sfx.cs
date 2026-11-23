@@ -8,6 +8,42 @@ using Godot;
 public static class Sfx
 {
 	static readonly Dictionary<string, AudioStream> streams = new();
+	static readonly Dictionary<string, string> loading = new();   // name -> path, loading on a worker thread
+
+	/// <summary>
+	/// Starts loading every sound in the background (game start). A sound used to load from disk the first time it
+	/// played: a little freeze the first time anything was heard (a gulp, a splat, an explosion).
+	/// </summary>
+	public static void PreloadAll()
+	{
+		const string dir = "res://assets/sounds";
+		foreach ( var file in DirAccess.GetFilesAt( dir ) )
+		{
+			// In an exported game the folder lists the .import (or .remap) files, not the sounds themselves.
+			var f = file.EndsWith( ".import" ) ? file[..^7] : file.EndsWith( ".remap" ) ? file[..^6] : file;
+			var dot = f.LastIndexOf( '.' );
+			if ( dot < 0 || f[(dot + 1)..] is not ("wav" or "ogg" or "mp3") ) continue;
+			var name = f[..dot];
+			if ( streams.ContainsKey( name ) || loading.ContainsKey( name ) ) continue;
+			var path = $"{dir}/{f}";
+			if ( ResourceLoader.LoadThreadedRequest( path ) == Error.Ok ) loading[name] = path;
+		}
+	}
+
+	/// <summary> Collects the sounds that finished loading (called every frame by the Clock). </summary>
+	public static void CollectLoaded()
+	{
+		if ( loading.Count == 0 ) return;
+		List<string> done = null;
+		foreach ( var (name, path) in loading )
+		{
+			var status = ResourceLoader.LoadThreadedGetStatus( path );
+			if ( status == ResourceLoader.ThreadLoadStatus.InProgress ) continue;
+			if ( status == ResourceLoader.ThreadLoadStatus.Loaded && ResourceLoader.LoadThreadedGet( path ) is AudioStream s && !streams.ContainsKey( name ) ) streams[name] = s;
+			(done ??= new()).Add( name );
+		}
+		if ( done is not null ) foreach ( var n in done ) loading.Remove( n );
+	}
 
 	/// <summary> How often each name was asked for this run, and whether it had a file (for tests). </summary>
 	public static readonly Dictionary<string, (int Count, bool Found)> Requested = new();

@@ -25,6 +25,11 @@ public sealed class GibRecipe
 	public readonly List<Action<Random, Node3D, float>> Specials = new();
 	/// <summary> How many of a burst's pieces are its specials (0 to 1). </summary>
 	public float SpecialShare = 0.3f;
+	/// <summary>
+	/// Recipes of one shape that differ only in colour (every crab shade, every jelly shade) share their piece
+	/// templates: a copy gets this recipe's materials put in place of the ones it was built with.
+	/// </summary>
+	public string Shape;
 }
 
 /// <summary>
@@ -383,7 +388,8 @@ public static class GibKit
 
 	const float TemplateSize = 0.2f;
 	const int Variants = 6;
-	static readonly Dictionary<(GibRecipe, int), List<Node3D>> templates = new();
+	static readonly Dictionary<object, List<(Node3D Node, GibRecipe For)>> templates = new();
+	static object Key( GibRecipe r, int kind ) => r.Shape is { } shape ? (shape, kind) : (r, kind);
 	static readonly Dictionary<Mesh, Shape3D> hulls = new();
 	/// <summary> Tests: templates built (each built once). </summary>
 	public static int TemplatesBuilt;
@@ -402,6 +408,9 @@ public static class GibKit
 	{
 		if ( holder is not null && GodotObject.IsInstanceValid( holder ) && holder.IsInsideTree() ) return holder;
 		templates.Clear();
+		prewarmed.Clear();
+		queued.Clear();
+		warming.Clear();
 		var gore = GoreSystem.Get();
 		holder = new Node3D { Name = "Gib Templates", Visible = false, ProcessMode = Node.ProcessModeEnum.Disabled };
 		gore.AddChild( holder );
@@ -411,10 +420,20 @@ public static class GibKit
 	static Node3D Make( GibRecipe r, int kind, float size )
 	{
 		var keep = Holder();
-		if ( !templates.TryGetValue( (r, kind), out var list ) ) templates[(r, kind)] = list = new List<Node3D>();
+		var key = Key( r, kind );
+		if ( !templates.TryGetValue( key, out var list ) ) templates[key] = list = new List<(Node3D, GibRecipe)>();
 		Node3D template;
-		if ( list.Count < Variants )
+		GibRecipe builtFor = r;
+		// A first kill used to build every variant of every piece in one frame (a visible hitch): now only the first of
+		// each is built on the spot, at most a couple a frame, and the rest are built in the background (PrewarmStep).
+		var frame = Engine.GetProcessFrames();
+		if ( frame != buildFrame ) { buildFrame = frame; builtThisFrame = 0; }
+		var mustBuild = list.Count == 0 || (list.Count < Variants && builtThisFrame < 2);
+		if ( list.Count < Variants && !mustBuild && !queued.Contains( (r, kind) ) ) { queued.Add( (r, kind) ); for ( var v = list.Count; v < Variants; v++ ) warming.Enqueue( (r, kind) ); }
+		if ( mustBuild )
 		{
+			using var perfBuild = Perf.Time( "gib template" );
+			builtThisFrame++;
 			template = kind switch
 			{
 				0 => OuterPiece( r, random, TemplateSize ),
@@ -423,14 +442,41 @@ public static class GibKit
 				_ => Special( r, kind - 3 ),
 			};
 			keep.AddChild( template );
-			list.Add( template );
+			list.Add( (template, r) );
 			TemplatesBuilt++;
 		}
-		else template = list[random.Next( list.Count )];
+		else (template, builtFor) = list[random.Next( list.Count )];
 		var copy = (Node3D)template.Duplicate();
+		if ( builtFor != r ) Recolour( copy, builtFor, r );
 		copy.Scale = Vector3.One * (size / TemplateSize);
 		copy.Visible = true;
 		return copy;
+	}
+
+	/// <summary> A copy of another shade's template: its materials swapped for this recipe's. </summary>
+	static void Recolour( Node root, GibRecipe from, GibRecipe to )
+	{
+		Material Map( Material m )
+		{
+			if ( m is null ) return null;
+			if ( m == from.Outer ) return to.Outer;
+			if ( m == from.Inner ) return to.Inner;
+			if ( m == from.Layer ) return to.Layer ?? to.Inner;
+			if ( m == from.Bone ) return to.Bone ?? to.Inner;
+			if ( m == from.Sinew ) return to.Sinew ?? to.Inner;
+			return m;
+		}
+		void Walk( Node n )
+		{
+			if ( n is MeshInstance3D mi )
+			{
+				if ( mi.MaterialOverride is { } o ) mi.MaterialOverride = Map( o );
+				var count = mi.Mesh?.GetSurfaceCount() ?? 0;
+				for ( var i = 0; i < count; i++ ) if ( mi.GetSurfaceOverrideMaterial( i ) is { } s ) mi.SetSurfaceOverrideMaterial( i, Map( s ) );
+			}
+			foreach ( var k in n.GetChildren() ) Walk( k );
+		}
+		Walk( root );
 	}
 
 	static Node3D Special( GibRecipe r, int index )
@@ -441,11 +487,16 @@ public static class GibKit
 	}
 
 	static readonly Queue<(GibRecipe, int)> warming = new();
+	static readonly HashSet<(GibRecipe, int)> queued = new();
+	static ulong buildFrame;
+	static int builtThisFrame;
 
-	/// <summary> Builds a recipe's templates ahead of time, one a frame (so a first kill does not hitch). </summary>
+	static readonly HashSet<object> prewarmed = new();
+
+	/// <summary> Builds a recipe's templates ahead of time, one a frame (so a first kill does not hitch). Once per recipe. </summary>
 	public static void Prewarm( GibRecipe r )
 	{
-		if ( r is null ) return;
+		if ( r is null || !prewarmed.Add( (object)r.Shape ?? r ) ) return;   // one prewarm per shape (shades share)
 		for ( var v = 0; v < Variants; v++ )
 		{
 			warming.Enqueue( (r, 0) );
@@ -459,9 +510,17 @@ public static class GibKit
 	/// <summary> One template from the warming queue (called each frame by the gore system). </summary>
 	public static void PrewarmStep()
 	{
+		// On the dock (or with the robot picker up) a stall doesn't matter: build a batch a frame there.
+		var batch = DockHouse.WeaponsHeld || ClassPicker.IsOpen ? 8 : 1;
+		for ( var i = 0; i < batch && warming.Count > 0; i++ ) PrewarmOne();
+	}
+
+	static void PrewarmOne()
+	{
 		if ( warming.Count == 0 ) return;
 		var (r, kind) = warming.Dequeue();
-		if ( templates.TryGetValue( (r, kind), out var list ) && list.Count >= Variants ) return;
+		if ( templates.TryGetValue( Key( r, kind ), out var list ) && list.Count >= Variants ) { queued.Remove( (r, kind) ); return; }
+		builtThisFrame = 0;   // the background step always builds its one
 		Make( r, kind, TemplateSize ).Free();
 	}
 
@@ -478,6 +537,7 @@ public static class GibKit
 	/// </summary>
 	public static void Chips( GibRecipe r, Vector3 at, Vector3 normal, Vector3 direction, float size, int count = 2, float speed = 1f )
 	{
+		using var perfSpan = Perf.Time( "gib chips" );
 		if ( r is null ) return;
 		var reflect = direction - 2f * direction.Dot( normal ) * normal;
 		for ( var i = 0; i < count; i++ )
@@ -495,6 +555,7 @@ public static class GibKit
 	/// </summary>
 	public static void Burst( GibRecipe r, Vector3 centre, Vector3 direction, float size, int count, float speed = 1f )
 	{
+		using var perfSpan = Perf.Time( "gib burst" );
 		if ( r is null ) return;
 		direction = direction == Vector3.Zero ? Vector3.Up : direction.Normalized();
 		var specials = r.Specials.Count > 0 ? Math.Max( 1, (int)MathF.Round( count * r.SpecialShare ) ) : 0;

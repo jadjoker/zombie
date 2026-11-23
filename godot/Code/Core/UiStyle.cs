@@ -657,3 +657,28 @@ public static class UiStyle
 	public static float BigWidth( string text, int size ) => Number.GetStringSize( text, HorizontalAlignment.Left, -1f, size ).X;
 	public static float TagWidth( string text, int size, bool mono = false ) => (mono ? MonoWide : Caption).GetStringSize( text.ToUpperInvariant(), HorizontalAlignment.Left, -1f, size ).X;
 }
+
+/// <summary>
+/// HUD labels updated every frame: setting a Label's text or font colour makes Godot shape and lay it out again even
+/// when nothing changed (it was much of the HUD's cost), so these only touch the label when the value is new.
+/// </summary>
+public static class LabelSet
+{
+	static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Label, System.Runtime.CompilerServices.StrongBox<string>> texts = new();
+	static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Label, System.Runtime.CompilerServices.StrongBox<Color>> colours = new();
+
+	public static void Show( this Label label, string text )
+	{
+		var last = texts.GetOrCreateValue( label );
+		if ( last.Value == text ) return;
+		last.Value = text;
+		label.Text = text;
+	}
+
+	public static void FontColour( this Label label, Color colour )
+	{
+		if ( colours.TryGetValue( label, out var last ) && last.Value == colour ) return;
+		colours.AddOrUpdate( label, new System.Runtime.CompilerServices.StrongBox<Color>( colour ) );
+		label.AddThemeColorOverride( "font_color", colour );
+	}
+}

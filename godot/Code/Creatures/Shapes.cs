@@ -1,3 +1,4 @@
+using System.Runtime.CompilerServices;
 using Godot;
 
 /// <summary>
@@ -98,11 +99,24 @@ public static class Shapes
 		return m;
 	}
 
-	/// <summary> Sets a piece's colour (s&box ModelRenderer.Tint). </summary>
+	/// <summary> The colour each material was last tinted (a material change is costly; most frames nothing changed). </summary>
+	static readonly System.Runtime.CompilerServices.ConditionalWeakTable<Material, StrongBox<Color>> tinted = new();
+
+	/// <summary> Something else wrote the material's colour: the next Tint sets it again. </summary>
+	public static void ForgetTint( MeshInstance3D mesh )
+	{
+		if ( mesh?.MaterialOverride is { } material ) tinted.Remove( material );
+	}
+
+	/// <summary> Sets a piece's colour (s&box ModelRenderer.Tint). Unchanged since last time, nothing is sent. </summary>
 	public static void Tint( MeshInstance3D mesh, Color color )
 	{
-		if ( mesh?.MaterialOverride is ShaderMaterial sm ) { sm.SetShaderParameter( "tint", color ); return; }
-		if ( mesh?.MaterialOverride is StandardMaterial3D m )
+		if ( mesh?.MaterialOverride is not { } material ) return;
+		var last = tinted.GetOrCreateValue( material );
+		if ( last.Value == color ) return;
+		last.Value = color;
+		if ( material is ShaderMaterial sm ) { sm.SetShaderParameter( "tint", color ); return; }
+		if ( material is StandardMaterial3D m )
 		{
 			m.AlbedoColor = color;
 			if ( m.EmissionEnabled ) m.Emission = color;

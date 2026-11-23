@@ -283,6 +283,7 @@ public partial class Squilien : Creature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "Squilien total" );
 		if ( health is null || bell is null ) return;
 		var dt = (float)delta;
 		if ( IsDead )
@@ -290,7 +291,7 @@ public partial class Squilien : Creature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( dt );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "Squilien think" ); Think( dt ); }
 		if ( diedLocally ) return;
 		UpdateBlink();
 		if ( !bell.Gone ) CreatureGore.BleedTrail( bell.Position + Vector3.Down * BellRadius * 0.4f * U.In, GooColor, health.Fraction, ref bleedTimer );

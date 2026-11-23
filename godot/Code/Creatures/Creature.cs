@@ -12,7 +12,7 @@ public abstract partial class Creature : Node3D, ICreature
 	public static readonly List<Creature> Everyone = new();
 
 	public bool IsDead => health?.IsDead ?? false;
-	public Health Health => health;
+	public Health Health => health ?? GetNodeOrNull<Health>( "Health" );   // the Health Spawn added, before Setup has run
 	/// <summary> Allies are left alone by the things that hunt creatures (the jetpack ram, the ally spider). </summary>
 	public virtual bool IsEnemy => true;
 	/// <summary> What it comes apart into (the chunking pass: <see cref="GibRecipes"/>); null keeps the old round blobs. </summary>
@@ -28,16 +28,58 @@ public abstract partial class Creature : Node3D, ICreature
 	/// <summary> Can the Gore Vac drag it at all (bosses are far too heavy). </summary>
 	public virtual bool Pullable => Weight < 1000f;
 	/// <summary> Dragged by the Gore Vac (or blown away): moved this far (m) on top of its own movement. </summary>
-	public virtual void Pull( Vector3 delta ) => GlobalPosition += delta;
+	public virtual void Pull( Vector3 delta ) { if ( !Puppet ) GlobalPosition += delta; }   // a puppet goes where the host's copy goes
 	/// <summary> Caught in a Bubble Cannon bubble (BubbleTrap): it stops thinking while the bubble carries it. </summary>
 	public bool Bubbled;
-	/// <summary> Its brain is off: the dev menu froze enemies, or it is in a bubble. </summary>
-	protected bool Frozen => DevFlags.FreezeEnemies || Bubbled || Clock.Now < StunnedUntil || (DaveyJones.InLocker && this is not DaveyJones);
+	/// <summary> Its brain is off: the dev menu froze enemies, it is in a bubble, or it is an online copy of the host's (Puppet). </summary>
+	protected bool Frozen => Puppet || DevFlags.FreezeEnemies || Bubbled || Clock.Now < StunnedUntil || (DaveyJones.InLocker && this is not DaveyJones);
 	/// <summary> Stunned until then (a harpoon yank, a burrow eruption, a lure's jaw): its brain is off for a moment. Bosses ignore it. </summary>
 	public double StunnedUntil;
 	/// <summary> Stuns it for a while (never shortens one; bosses, too heavy to pull, shrug it off). </summary>
 	public void Stun( float seconds ) { if ( Pullable ) StunnedUntil = Math.Max( StunnedUntil, Clock.Now + seconds ); }
 	public event Action<Creature> Killed;
+
+	// ---- Online (NetCreatures) ----
+	/// <summary> Its number online (0 offline, or not shared). </summary>
+	public int NetId;
+	/// <summary> A joiner's copy of the host's creature: no brain here, placed from the host's snapshots. </summary>
+	public bool Puppet;
+	Vector3 puppetPosition, puppetVelocity;
+	Quaternion puppetRotation = Quaternion.Identity;
+	double puppetStateAt = -1;
+
+	/// <summary> A snapshot from the host: where it is and its facing. </summary>
+	public void SetPuppetTarget( Vector3 position, Quaternion rotation )
+	{
+		var now = Clock.Real;
+		if ( puppetStateAt > 0 && now - puppetStateAt > 0.01 ) puppetVelocity = puppetVelocity.Lerp( (position - puppetPosition) / (float)(now - puppetStateAt), 0.5f );
+		if ( puppetStateAt < 0 || position.DistanceTo( GlobalPosition ) > 6f ) GlobalPosition = position;
+		puppetPosition = position;
+		puppetRotation = rotation;
+		puppetStateAt = now;
+	}
+
+	/// <summary> Every frame on a joiner: eased toward the host's spot, a little ahead along its speed. </summary>
+	public void StepPuppet( float dt )
+	{
+		if ( puppetStateAt < 0 ) return;
+		var ahead = (float)Math.Min( 0.12, Clock.Real - puppetStateAt );
+		GlobalPosition = GlobalPosition.Lerp( puppetPosition + puppetVelocity * ahead, 1f - MathF.Exp( -14f * dt ) );
+		var q = GlobalBasis.Orthonormalized().GetRotationQuaternion().SafeSlerp( puppetRotation, 1f - MathF.Exp( -12f * dt ) );
+		GlobalBasis = new Basis( q ) * Basis.FromScale( GlobalBasis.Scale );
+		PuppetMoved( puppetVelocity );
+	}
+
+	/// <summary> A puppet's speed, for the ones that animate from their own walking (the crab and spider legs). </summary>
+	protected virtual void PuppetMoved( Vector3 velocity ) { }
+
+	/// <summary> The host's health for this creature: a joiner's copy follows it, and dies when it does. </summary>
+	public void SetNetHealth( float current )
+	{
+		if ( health is null || health.IsDead || current < 0f ) return;   // -1: the host's copy isn't set up yet
+		if ( current <= 0f ) { health.Kill(); return; }
+		health.Current = MathF.Min( health.MaxHealth, current );
+	}
 
 	protected Health health;
 	protected GoreSystem gore;
@@ -60,6 +102,7 @@ public abstract partial class Creature : Node3D, ICreature
 	public override void _Ready()
 	{
 		Everyone.Add( this );
+		NetCreatures.Born( this );
 		Track( true );
 		// Deferred: Spawn adds the Health and sets hue, size and so on after the node enters the tree.
 		CallDeferred( MethodName.RunSetup );
@@ -68,6 +111,7 @@ public abstract partial class Creature : Node3D, ICreature
 	public override void _ExitTree()
 	{
 		Everyone.Remove( this );
+		NetCreatures.Gone( this );
 		Track( false );
 		Cleanup();
 	}

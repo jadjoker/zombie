@@ -343,6 +343,7 @@ public partial class PlayerSkills : Node
 	/// <summary> A wave was cleared: a token, while the run has some left to give. </summary>
 	public void Award( int count = 1 )
 	{
+		if ( NetWorld.ForwardToken( this, controller, count ) ) return;   // online: another player's tokens are theirs
 		var give = Math.Min( count, Skills.MaxTokens - Earned );
 		if ( give <= 0 ) return;
 		Earned += give;

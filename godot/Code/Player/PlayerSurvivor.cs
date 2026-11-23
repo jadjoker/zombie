@@ -112,10 +112,12 @@ public partial class PlayerSurvivor : Node
 		else if ( scoreHit ) AddPoints( PointsPerHit );
 	}
 
-	public void RewardPoints( int amount ) => AddPoints( amount );
+	/// <summary> Points handed out by the run (the wave bonus). Online, another player's robot's go to that player's machine. </summary>
+	public void RewardPoints( int amount ) { if ( !NetWorld.ForwardPoints( this, amount ) ) AddPoints( amount ); }
 
 	public void Respawn( Vector3 position, bool fullReset )
 	{
+		if ( NetWorld.ForwardRespawn( this, position, fullReset ) ) return;   // online: another player's robot comes back on its own machine
 		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); PlayerSkills.Of( Controller )?.Clear(); }
 		else Health.ResetTo( Health.MaxHealth );
 		Afflictions?.Clear();

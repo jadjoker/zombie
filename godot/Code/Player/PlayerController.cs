@@ -88,6 +88,8 @@ public partial class PlayerController : CharacterBody3D
 	public bool IsRemote;
 	/// <summary> The network peer that owns this player (1 is the host; 0 offline). </summary>
 	public long PeerId;
+	/// <summary> This player's peer id right now (the local player's is this machine's, even if it went online after the level began). </summary>
+	public long NetPeer => IsRemote ? PeerId : Net.Me;
 	/// <summary> Where this player's buttons come from: the keyboard and pad, or the network. </summary>
 	public PlayerInput In = LocalInput.Instance;
 	/// <summary> The robot this player is (the local pick, or what a remote player picked). </summary>

@@ -1017,14 +1017,18 @@ public partial class SeaSpider : PartCreature
 	// ---- Getting shot ----
 
 	/// <summary> Dragged along the floor (its nav agent carries it, so the agent is moved). </summary>
+	protected override void PuppetMoved( Vector3 velocity ) => agent?.SetPuppetVelocity( velocity );
+
 	public override void Pull( Vector3 delta )
 	{
+		if ( Puppet ) return;   // online: the host's copy is the one dragged
 		if ( Bubbled ) GlobalPosition += delta;
 		else agent?.SetAgentPosition( GlobalPosition + delta.Flat() );
 	}
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
+		if ( NetCreatures.Intercept( this, index, damage, direction, position, origin, shooter, scoreHit ) ) return;   // online: the host takes the hit and sends it
 		if ( IsDead || IsAlly ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
 		NoteShot( direction, position, origin );

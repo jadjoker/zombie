@@ -375,6 +375,8 @@ public partial class WaveDirector : Node3D
 
 	public override void _Process( double delta )
 	{
+		// Online, a joiner's director only shows the host's run (ApplyNet); the host's spawns and counts.
+		if ( Net.IsClient ) { alive.RemoveAll( n => !IsInstanceValid( n ) ); return; }
 		if ( State == WaveState.GameOver && Input.IsActionJustPressed( "jump" ) ) Restart();
 
 		alive.RemoveAll( n => !IsInstanceValid( n ) || (n is ICreature c && c.IsDead) );
@@ -673,11 +675,32 @@ public partial class WaveDirector : Node3D
 	{
 		if ( State != WaveState.GameOver || restarting ) return;
 		restarting = true;
+		Net.Instance?.SendReload();   // online: everyone starts the new run together
 		GameSettings.Save();
 		GetTree().ReloadCurrentScene();
 	}
 
 	bool restarting;
+
+	/// <summary> Online, a joiner: the host's wave state. The banners and sounds follow its changes. </summary>
+	public void ApplyNet( int wave, WaveState state, float nextIn, int remaining, int kills, bool boss, bool floatRound, bool waitingTeleport, bool kraken )
+	{
+		if ( state != State )
+		{
+			if ( state == WaveState.Fighting ) { TimeSinceWaveStarted = 0f; MalfunctionJustEnded = false; Sfx.Play2D( floatRound ? "suit_alarm" : "wave_start" ); }
+			else if ( state == WaveState.Intermission && State == WaveState.Fighting ) { TimeSinceWaveCleared = 0f; MalfunctionJustEnded = FloatRound; Sfx.Play2D( FloatRound ? "suit_restore" : "wave_cleared" ); }
+		}
+		Wave = wave;
+		State = state;
+		nextWaveAt = nextIn;
+		SecondsUntilNextWave = nextIn;
+		ZombiesRemaining = remaining;
+		Kills = kills;
+		BossWave = boss;
+		FloatRound = floatRound;
+		WaitingForTeleport = waitingTeleport;
+		KrakenWave = kraken;
+	}
 
 	/// <summary> Where the Nth survivor comes back: around the director's spot, 90 units apart. </summary>
 	Vector3 RespawnPosition( int index ) =>

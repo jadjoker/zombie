@@ -8,6 +8,8 @@ using Godot;
 /// </summary>
 public partial class NetPlayer : Node
 {
+	/// <summary> A remote robot is being set from its owner's state (its respawn here isn't sent back). </summary>
+	public static bool ApplyingState;
 	PlayerController controller;
 	PlayerSurvivor survivor;
 	WeaponInventory inventory;
@@ -105,7 +107,7 @@ public partial class NetPlayer : Node
 		{
 			h.MaxHealth = s[(int)F.MaxHealth];
 			var alive = (flags & 4) != 0;
-			if ( alive && h.IsDead ) survivor.Respawn( position, fullReset: false );
+			if ( alive && h.IsDead ) { ApplyingState = true; try { survivor.Respawn( position, fullReset: false ); } finally { ApplyingState = false; } }
 			if ( !alive && !h.IsDead ) h.Kill();
 			else if ( alive ) h.Current = s[(int)F.Health];
 		}

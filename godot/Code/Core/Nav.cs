@@ -93,6 +93,9 @@ public sealed class NavAgent
 		if ( snapped != Vector3.Zero && snapped.DistanceTo( owner.GlobalPosition ) < 4f ) owner.GlobalPosition = snapped;
 	}
 
+	/// <summary> Online: a puppet's legs walk at the host copy's speed. </summary>
+	public void SetPuppetVelocity( Vector3 velocity ) => Velocity = velocity;
+
 	public void SetAgentPosition( Vector3 position )
 	{
 		owner.GlobalPosition = Nav.Closest( owner, position );

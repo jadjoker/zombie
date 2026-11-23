@@ -632,6 +632,7 @@ public partial class Bloober : Creature
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
+		if ( NetCreatures.Intercept( this, index, damage, direction, position, origin, shooter, scoreHit ) ) return;   // online: the host takes the hit and sends it
 		if ( IsDead || segments.Count == 0 ) return;
 		if ( index < 0 || index >= segments.Count || segments[index].Gone )
 			index = segments.Where( s => !s.Gone ).OrderBy( s => s.Position.DistanceSquaredTo( position ) ).First().Index;

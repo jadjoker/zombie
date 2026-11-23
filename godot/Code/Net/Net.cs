@@ -43,6 +43,7 @@ public partial class Net : Node
 		Name = "Net";
 		Instance = this;
 		ProcessMode = ProcessModeEnum.Always;
+		ProcessPriority = -400;   // puppets are placed before the creatures run
 		Multiplayer.PeerConnected += OnPeerConnected;
 		Multiplayer.PeerDisconnected += OnPeerDisconnected;
 		Multiplayer.ConnectedToServer += OnConnected;
@@ -141,6 +142,9 @@ public partial class Net : Node
 		RpcId( id, MethodName.Joined, 1L, RobotClass.Current.Id );
 		Rpc( MethodName.Joined, id, robot );
 		AddPeer( id, robot );
+		// Everything already swimming about, and where the run is.
+		foreach ( var c in Creature.Everyone ) if ( c.NetId > 0 && !c.IsDead ) SendCreatureTo( id, c );
+		NetWorld.SendWaveTo( id );
 	}
 
 	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable )]
@@ -163,6 +167,7 @@ public partial class Net : Node
 		local = player;
 		player.PeerId = Me;
 		remotes.Clear();
+		NetCreatures.Reset();
 		foreach ( var id in peers.Keys ) SpawnRemote( id );
 	}
 
@@ -235,5 +240,145 @@ public partial class Net : Node
 	{
 		if ( local is null || !IsInstanceValid( local ) ) return;
 		local.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" )?.Health?.OnDamage( new DamageInfo { Damage = amount, Position = position, Origin = origin } );
+	}
+
+	// ---- The host's creatures (NetCreatures) ----
+
+	float snapshotTimer;
+
+	public override void _Process( double delta )
+	{
+		if ( !Connected ) return;
+		var dt = (float)delta;
+		if ( IsClient ) { NetCreatures.StepPuppets( dt ); return; }
+		snapshotTimer -= dt;
+		if ( snapshotTimer > 0f || peers.Count == 0 ) return;
+		snapshotTimer = 1f / NetCreatures.SnapshotRate;
+		var snap = NetCreatures.Snapshot();
+		if ( snap.Length > 0 ) Rpc( MethodName.CreatureSnapshot, snap );
+		NetWorld.HostTick();
+	}
+
+	/// <summary> Deferred from NetCreatures.Born: the spawner has set its look by now. </summary>
+	void AnnounceCreature( Creature c )
+	{
+		if ( !Connected || !IsInstanceValid( c ) || c.NetId == 0 || c.IsDead ) return;
+		var (kind, look) = NetCreatures.Describe( c );
+		Rpc( MethodName.SpawnCreature, c.NetId, kind, c.GlobalPosition, c.GlobalBasis.Orthonormalized().GetRotationQuaternion(), c.Health?.MaxHealth ?? 100f, c.Health?.Current ?? 100f, look );
+	}
+
+	void SendCreatureTo( long peer, Creature c )
+	{
+		var (kind, look) = NetCreatures.Describe( c );
+		RpcId( peer, MethodName.SpawnCreature, c.NetId, kind, c.GlobalPosition, c.GlobalBasis.Orthonormalized().GetRotationQuaternion(), c.Health?.MaxHealth ?? 100f, c.Health?.Current ?? 100f, look );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void SpawnCreature( int id, string kind, Vector3 position, Quaternion rotation, float maxHealth, float health, float[] look )
+		=> NetCreatures.Build( id, kind, position, rotation, maxHealth, health, look );
+
+	public void SendCreatureGone( int id ) { if ( Connected ) Rpc( MethodName.CreatureGone, id ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void CreatureGone( int id )
+	{
+		if ( NetCreatures.Find( id ) is { } c && !c.IsDead ) c.QueueFree();
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 5 )]
+	void CreatureSnapshot( float[] data ) => NetCreatures.ApplySnapshot( data );
+
+	public void SendShot( int id, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, long shooter, bool scoreHit )
+	{
+		if ( Connected ) Rpc( MethodName.Shot, id, index, damage, direction, position, origin, shooter, scoreHit );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void Shot( int id, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, long shooter, bool scoreHit )
+		=> NetCreatures.ApplyShot( id, index, damage, direction, position, origin, shooter, scoreHit );
+
+	public void SendHealthHit( int id, float damage, Vector3 position, Vector3 origin, long attacker )
+	{
+		if ( Connected ) Rpc( MethodName.HealthHit, id, damage, position, origin, attacker );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void HealthHit( int id, float damage, Vector3 position, Vector3 origin, long attacker )
+		=> NetCreatures.ApplyHealthHit( id, damage, position, origin, attacker );
+
+	// ---- The run (NetWorld) ----
+
+	/// <summary> The wave state to everyone (peer 0), or to one joiner. </summary>
+	public void SendWave( float[] state, long peer )
+	{
+		if ( !Connected ) return;
+		if ( peer == 0 ) Rpc( MethodName.Wave, state ); else RpcId( peer, MethodName.Wave, state );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.UnreliableOrdered, TransferChannel = 6 )]
+	void Wave( float[] state ) => NetWorld.ApplyWave( state );
+
+	public void SendPoints( long peer, int amount ) => RpcId( peer, MethodName.Points, amount );
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void Points( int amount ) => PlayerSurvivor.Local?.AddPoints( amount );
+
+	public void SendToken( long peer, int count ) => RpcId( peer, MethodName.Token, count );
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void Token( int count )
+	{
+		if ( PlayerSkills.Local is not { } skills || skills.Earned >= Skills.MaxTokens ) return;
+		skills.Award( count );
+		GameHud.Announce( $"+1 skill token  ({Controls.Label( "pause" )})", UiStyle.Gold );
+	}
+
+	public void SendRespawn( long peer, Vector3 position, bool fullReset ) => RpcId( peer, MethodName.RespawnHere, position, fullReset );
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void RespawnHere( Vector3 position, bool fullReset ) => PlayerSurvivor.Local?.Respawn( position, fullReset );
+
+	/// <summary> The host restarts the run: everyone builds the level afresh. </summary>
+	public void SendReload() { if ( Connected && IsHost ) Rpc( MethodName.ReloadLevel ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void ReloadLevel()
+	{
+		GameSettings.Save();
+		GetTree().ReloadCurrentScene();
+	}
+
+	public void SendTeleporter( Vector3 at, long peer = 0 )
+	{
+		if ( !Connected || !IsHost ) return;
+		if ( peer == 0 ) Rpc( MethodName.TeleporterHere, at ); else RpcId( peer, MethodName.TeleporterHere, at );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void TeleporterHere( Vector3 at )
+	{
+		if ( Teleporter.Current is null && GetTree().CurrentScene is Node3D level ) Teleporter.Spawn( level, at, exact: true );
+	}
+
+	/// <summary> A joiner stepped into the teleporter: the host takes everyone through. </summary>
+	public void RequestTeleport() { if ( Connected && IsClient ) RpcId( 1, MethodName.TeleportRequest ); }
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void TeleportRequest()
+	{
+		if ( IsHost && Teleporter.Current is { } pad && local is not null ) pad.Take( local );
+	}
+
+	public void SendTeleportAll() { if ( Connected && IsHost ) Rpc( MethodName.TeleportAll ); }
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void TeleportAll()
+	{
+		if ( local is null || !IsInstanceValid( local ) ) return;
+		if ( Teleporter.Current is { } pad && IsInstanceValid( pad ) ) pad.Take( local, fromHost: true );
+		else if ( GetTree().CurrentScene is Node3D level )
+		{
+			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, local ); else AreaThree.Go( level, local );
+		}
 	}
 }

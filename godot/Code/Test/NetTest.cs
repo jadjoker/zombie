@@ -38,7 +38,6 @@ public partial class AutoTest
 			GD.Print( $"[autotest] net: the joiner's robot moved {moved:0.0} m here; bubbles it blew here: {BubbleShot.Fired - firedBefore}" );
 			Check( moved >= 3f, "the joiner walked but its robot didn't move on the host" );
 			Check( BubbleShot.Fired > firedBefore, "the joiner's Bubble Cannon tap didn't fire on the host" );
-			await Wait( 8f );   // the joiner finishes its own checks first
 		}
 		else
 		{
@@ -57,9 +56,95 @@ public partial class AutoTest
 			Input.ActionRelease( "attack1" );
 			await Wait( 1f );
 			Check( BubbleShot.Fired > mine, "the tap didn't blow a bubble here" );
-			await Wait( 4f );
+			await Wait( 1f );
 		}
+		await NetEnemies( host, other );
 		Finish();
+	}
+
+	/// <summary>
+	/// Stage 2: the host's crabs show on the joiner as puppets in the same spots; the joiner's rifle, fired at one,
+	/// hurts it on the host (through its robot there), and the joiner's copy loses the same health.
+	/// </summary>
+	async Task NetEnemies( bool host, PlayerController other )
+	{
+		DevFlags.FreezeEnemies = true;
+		if ( host )
+		{
+			// Crabs in front of the host's robot.
+			var (spot, yaw) = OpenLane( 10f );
+			player.GlobalPosition = spot + Vector3.Up * 0.1f;
+			var ahead = new Vector3( -MathF.Sin( MathX.Rad( yaw ) ), 0f, -MathF.Cos( MathX.Rad( yaw ) ) );
+			var crabs = new List<Creature>();
+			for ( var i = 0; i < 3; i++ )
+				if ( WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, spot + ahead * (6f + i * 2f) ) + Vector3.Up * 0.3f, spot ) is Creature c ) crabs.Add( c );
+			GD.Print( $"[autotest] net: host spawned {crabs.Count} crabs, numbers {string.Join( ", ", crabs.Select( c => c.NetId ) )}" );
+			for ( var t = 0f; t < 20f && other.Robot != RobotClass.RamBot; t += 0.25f ) await Wait( 0.25f );
+			Check( other.Robot == RobotClass.RamBot, $"the joiner switched to Ram-Bot but shows as {other.Robot.Name}" );
+			var before = NetCreatures.RemoteShots;
+			for ( var t = 0f; t < 20f && NetCreatures.RemoteShots == before; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: the joiner's robot landed {NetCreatures.RemoteShots - before} hits on the host's crabs" );
+			Check( NetCreatures.RemoteShots > before, "the joiner's rifle never hit the host's crabs" );
+			await Wait( 4f );   // the joiner checks its copies
+
+			// An enemy at the joiner's robot: its bites land on the joiner's machine.
+			DevFlags.FreezeEnemies = false;
+			foreach ( var c in crabs ) if ( IsInstanceValid( c ) && !c.IsDead ) c.QueueFree();
+			var biter = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, other.GlobalPosition + Vector3.Right * 1.2f ) + Vector3.Up * 0.3f, other.GlobalPosition ) as Creature;
+			GD.Print( $"[autotest] net: a crab ({biter?.NetId}) put by the joiner's robot to bite it" );
+			await Wait( 10f );
+			// The run: the joiner sees the host's wave.
+			WaveDirector.Current.JumpToWave( 3 );
+			await Wait( 8f );
+			GD.Print( $"[autotest] net: host is on wave {WaveDirector.Current.Wave}" );
+		}
+		else
+		{
+			Creature target = null;
+			for ( var t = 0f; t < 15f && target is null; t += 0.25f )
+			{
+				await Wait( 0.25f );
+				target = Creature.Everyone.FirstOrDefault( c => c.Puppet && c is JunkCrab && !c.IsDead );
+			}
+			Check( target is not null, "no puppet crab showed up from the host" );
+			if ( target is null ) return;
+			var puppets = Creature.Everyone.Count( c => c.Puppet );
+			GD.Print( $"[autotest] net: {puppets} puppets here; crab {target.NetId} at {target.GlobalPosition}" );
+			// Stand by the host's robot, look at the crab, hold the trigger.
+			player.GlobalPosition = other.GlobalPosition + Vector3.Up * 0.1f;
+			await Wait( 1f );
+			var before = target.Health.Current;
+			RobotClass.Pick( RobotClass.RamBot, player );   // a rifle (and the host swaps this robot's kit too)
+			await Wait( 1f );
+			var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
+			inventory.Select( inventory.Weapons.First( w => w.ModelName == "rifle" ), force: true );
+			await Wait( 0.8f );
+			for ( var t = 0f; t < 2f; t += 0.05f )
+			{
+				if ( !IsInstanceValid( target ) || target.IsDead ) { GD.Print( $"[autotest] net: the crab is gone ({(IsInstanceValid( target ) ? "dead" : "freed")}) at {t:0.00} s" ); break; }
+				var to = (target.GlobalPosition + Vector3.Up * 0.35f - player.Camera.GlobalPosition).Normalized();
+				player.EyeAngles = new Angles( MathX.Deg( -MathF.Asin( to.Y ) ), MathX.Deg( MathF.Atan2( -to.X, -to.Z ) ), 0f );
+				if ( t < 0.06f ) Input.ActionPress( "attack1" );
+				await Wait( 0.05f );
+			}
+			Input.ActionRelease( "attack1" );
+			await Wait( 1.5f );
+			var after = IsInstanceValid( target ) ? target.Health.Current : 0f;
+			GD.Print( $"[autotest] net: the puppet crab went {before:0} -> {after:0}" );
+			Check( after < before, "the host's hits never reached the joiner's copy of the crab" );
+
+			// Bitten by the host's crab.
+			var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+			me.Health.Invulnerable = false;
+			var hp = me.Health.Current;
+			for ( var t = 0f; t < 14f && me.Health.Current >= hp; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: the joiner's health {hp:0} -> {me.Health.Current:0}" );
+			Check( me.Health.Current < hp, "the host's crab never hurt the joiner" );
+			for ( var t = 0f; t < 14f && WaveDirector.Current.Wave < 3; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: joiner shows wave {WaveDirector.Current.Wave} ({WaveDirector.Current.State})" );
+			Check( WaveDirector.Current.Wave == 3, "the joiner never saw the host's wave 3" );
+			await Wait( 2f );
+		}
 	}
 
 	void Finish()

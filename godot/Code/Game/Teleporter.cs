@@ -24,13 +24,14 @@ public partial class Teleporter : Node3D
 	static readonly Color Purple = new( 0.66f, 0.25f, 1f );
 
 	/// <summary> Zaps the station in near a spot, on the clearest ground nearby. </summary>
-	public static Teleporter Spawn( Node3D level, Vector3 near )
+	public static Teleporter Spawn( Node3D level, Vector3 near, bool exact = false )
 	{
-		var at = FindSpot( level, near );
+		var at = exact ? near : FindSpot( level, near );   // online, a joiner puts it where the host's is
 		var t = new Teleporter { Name = "Teleporter" };
 		level.AddChild( t );
 		t.GlobalPosition = at;
 		Current = t;
+		Net.Instance?.SendTeleporter( at );
 		return t;
 	}
 
@@ -199,9 +200,12 @@ public partial class Teleporter : Node3D
 		!Arrival && !taking && (float)born > 1f && controller.GlobalPosition.Flat().DistanceTo( GlobalPosition.Flat() ) < Reach && MathF.Abs( controller.GlobalPosition.Y - GlobalPosition.Y ) < 2.5f;
 
 	/// <summary> Into the beam: a fade to a loading screen, and out the other side in the next area, where its first wave begins. </summary>
-	public void Take( PlayerController controller )
+	public void Take( PlayerController controller, bool fromHost = false )
 	{
 		if ( taking ) return;
+		// Online the host takes everyone through together: a joiner asks it to.
+		if ( Net.IsClient && !fromHost ) { Net.Instance?.RequestTeleport(); return; }
+		if ( Net.IsHost ) Net.Instance?.SendTeleportAll();
 		taking = true;
 		Sfx.Play2D( "surge", 1f );
 		Sfx.Play2D( "beam_fire", 0.8f, 1.3f );

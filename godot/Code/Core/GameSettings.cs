@@ -41,6 +41,9 @@ public static class GameSettings
 	public static string RobotClass = Argument( "--class" ) ?? global::RobotClass.RamBot.Id;
 	/// <summary> The address last joined online (the picker's Join box remembers it). </summary>
 	public static string LastJoin = "";
+	/// <summary> The name other players see online (the picker's Name box). </summary>
+	public static string PlayerName = "";
+	public static string PlayerNameOrDefault => string.IsNullOrWhiteSpace( PlayerName ) ? "Player" : PlayerName.Trim();
 
 	static string RifleArgument() => Argument( "--rifle" );
 
@@ -76,6 +79,7 @@ public static class GameSettings
 		UiStyle.Theme = global::HudTheme.Find( HudTheme );
 		RobotClass = Argument( "--class" ) ?? (string)file.GetValue( "game", "robot_class", RobotClass );
 		LastJoin = (string)file.GetValue( "net", "last_join", LastJoin );
+		PlayerName = (string)file.GetValue( "net", "name", PlayerName );
 	}
 
 	public static void Save()
@@ -96,6 +100,7 @@ public static class GameSettings
 		file.SetValue( "game", "hud_theme", HudTheme );
 		file.SetValue( "game", "robot_class", RobotClass );
 		file.SetValue( "net", "last_join", LastJoin );
+		file.SetValue( "net", "name", PlayerName );
 		file.Save( Path );
 	}
 

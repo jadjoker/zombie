@@ -25,6 +25,7 @@ public static class PlayerFactory
 		if ( ClassPicker.Find( parent.GetTree() ) is null ) parent.AddChild( new ClassPicker() );   // after the pause menu: it sees Esc first
 		hud.AddChild( WeaponHud.Create( player ) );
 		hud.AddChild( GameHud.Create( survivor ) );
+		hud.AddChild( TeamHud.Create( player ) );   // teammates' names and health, pings, the Tab scoreboard, spectating
 		Net.Instance?.LocalPlayerReady( player );
 		return player;
 	}

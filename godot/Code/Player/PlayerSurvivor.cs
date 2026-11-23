@@ -100,12 +100,15 @@ public partial class PlayerSurvivor : Node
 
 	/// <summary> Kills this life (Hook-Bot's Sea Dog watches it). </summary>
 	public int Kills;
+	/// <summary> Kills this run (the Tab scoreboard). </summary>
+	public int RunKills;
 
 	public void RewardHit( bool killed, bool headshot, bool scoreHit )
 	{
 		if ( killed )
 		{
 			Kills++;
+			RunKills++;
 			Weapon?.MarkKill();
 			AddPoints( headshot ? PointsPerKill * 3 / 2 : PointsPerKill );
 		}
@@ -118,7 +121,7 @@ public partial class PlayerSurvivor : Node
 	public void Respawn( Vector3 position, bool fullReset )
 	{
 		if ( NetWorld.ForwardRespawn( this, position, fullReset ) ) return;   // online: another player's robot comes back on its own machine
-		if ( fullReset ) { Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); PlayerSkills.Of( Controller )?.Clear(); }
+		if ( fullReset ) { RunKills = 0; Points = StartingPoints; Health.ResetTo( startingMaxHealth ); PlayerPerks.Of( Controller )?.Clear(); PlayerSkills.Of( Controller )?.Clear(); }
 		else Health.ResetTo( Health.MaxHealth );
 		Afflictions?.Clear();
 		Controller.GetNodeOrNull<PlayerMovement>( "PlayerMovement" )?.ResetStamina();

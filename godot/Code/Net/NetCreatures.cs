@@ -122,6 +122,9 @@ public static class NetCreatures
 		if ( Net.IsHost )
 		{
 			if ( c.NetId == 0 ) return false;
+			// Another player's shots count as their own machine saw them land (sent as requests): the copy of their
+			// robot here, aiming from a few frames ago, would miss what they hit.
+			if ( shooter?.Controller is { IsRemote: true } && !requested ) return true;
 			inShot = c;
 			inShotFrame = Engine.GetProcessFrames();
 			var peer = shooter?.Controller?.NetPeer ?? 0;
@@ -129,7 +132,10 @@ public static class NetCreatures
 			Net.Instance?.SendShot( c.NetId, index, damage, direction, position, origin, peer, scoreHit );
 			return false;
 		}
-		return c.Puppet && !Applying;
+		if ( !c.Puppet || Applying ) return false;
+		// This player's own shot on the host's creature: the host takes it (and sends it back to everyone).
+		if ( shooter?.Controller is { IsRemote: false } && c.NetId > 0 ) Net.Instance?.SendShotRequest( c.NetId, index, damage, direction, position, origin, scoreHit );
+		return true;
 	}
 
 	/// <summary>
@@ -143,11 +149,42 @@ public static class NetCreatures
 		{
 			if ( c.NetId == 0 ) return false;
 			if ( inShot == c && inShotFrame == Engine.GetProcessFrames() ) { inShot = null; return false; }
+			if ( ControllerOf( damage.Attacker ) is { IsRemote: true } && !requested ) return true;   // its owner sends it
 			var peer = damage.Attacker is PlayerSurvivor s ? s.Controller?.NetPeer ?? 0 : damage.Attacker is PlayerController pc ? pc.NetPeer : 0;
 			Net.Instance?.SendHealthHit( c.NetId, damage.Damage, damage.Position, damage.Origin, peer );
 			return false;
 		}
-		return c.Puppet && !Applying;
+		if ( !c.Puppet || Applying ) return false;
+		if ( ControllerOf( damage.Attacker ) is { IsRemote: false } && c.NetId > 0 ) Net.Instance?.SendHealthRequest( c.NetId, damage.Damage, damage.Position, damage.Origin );
+		return true;
+	}
+
+	static PlayerController ControllerOf( Node attacker ) => attacker switch
+	{
+		PlayerSurvivor s when GodotObject.IsInstanceValid( s ) => s.Controller,
+		PlayerController pc when GodotObject.IsInstanceValid( pc ) => pc,
+		_ => null,
+	};
+
+	/// <summary> The host is applying a joiner's own hit. </summary>
+	static bool requested;
+
+	/// <summary> The host: a joiner's shot landed on its copy of this creature; it counts here as if fired here. </summary>
+	public static void ApplyShotRequest( long peer, int id, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, bool scoreHit )
+	{
+		if ( Find( id ) is not { IsDead: false } c ) return;
+		var shooter = Net.RemoteOf( peer )?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" );
+		requested = true;
+		try { c.ReceiveShot( index, damage, direction, position, origin, shooter, scoreHit ); }
+		finally { requested = false; }
+	}
+
+	public static void ApplyHealthRequest( long peer, int id, float damage, Vector3 position, Vector3 origin )
+	{
+		if ( Find( id ) is not { IsDead: false } c || c.Health is not { } h ) return;
+		requested = true;
+		try { h.OnDamage( new DamageInfo { Damage = damage, Position = position, Origin = origin, Attacker = Net.RemoteOf( peer )?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) } ); }
+		finally { requested = false; }
 	}
 
 	/// <summary> A joiner replays the host's shot on its puppet. </summary>

@@ -103,6 +103,8 @@ public partial class PlayerWeapon
 	{
 		var camera = controller.Camera;
 		if ( ViewModel is not null && ViewModel.Visible ) return ViewModel.Muzzle().Origin;
+		// Third person, or another player's robot: the nozzle of the gun in its hands.
+		if ( controller.SeenFromOutside && controller.GetNodeOrNull<PlayerRig>( "PlayerRig" )?.WorldMuzzle() is { } held ) return held.Origin;
 		return camera.GlobalPosition - camera.GlobalBasis.Z * 0.7f - camera.GlobalBasis.Y * 0.2f + camera.GlobalBasis.X * 0.15f;
 	}
 
@@ -176,7 +178,11 @@ public partial class PlayerWeapon
 		}
 		else { charging = false; triggerHeld = false; }
 		cone ??= SuctionCone.Create( controller.Camera );
-		cone.Show( dt, Nozzle(), -controller.Camera.GlobalBasis.Z, Sucking ? 1f : Blowing ? -1f : 0f, TankColour );
+		// From the nozzle toward where the player aims (in third person the gun is off to the side of the eyes).
+		var coneFrom = Nozzle();
+		var coneDir = -controller.Camera.GlobalBasis.Z;
+		if ( controller.SeenFromOutside ) coneDir = (controller.EyeTransform.Origin + coneDir * 12f - coneFrom).SafeNormal() is var d && d != Vector3.Zero ? d : coneDir;
+		cone.Show( dt, coneFrom, coneDir, Sucking ? 1f : Blowing ? -1f : 0f, TankColour );
 		UpdateTankModel( dt );
 	}
 
@@ -810,9 +816,13 @@ public partial class GoreBall : Node3D
 	{
 		// Black Hole (Vac-Bot's capstone): the huge shot tears a hole open here instead, and bursts when it collapses.
 		var holeRank = kind == Kind.Big && !fromHole && shooter is not null && IsInstanceValid( shooter ) ? Skills.Rank( shooter, SkillId.BlackHole ) : 0;
+		// Online, another player's black hole opens where their own shot burst (Net.BlackHoleAt), not where the copy of
+		// their shot here happened to go off; this copy just bursts.
+		if ( holeRank > 0 && shooter.IsRemote ) holeRank = 0;
 		if ( holeRank > 0 )
 		{
 			BlackHole.Open( GetParent(), at + normal * 0.2f, damage, radius, size, colour, shooter, weapon, holeRank );
+			if ( Net.Online ) Net.Instance?.SendBlackHole( at + normal * 0.2f, damage, radius, size, colour, holeRank );
 			QueueFree();
 			return;
 		}

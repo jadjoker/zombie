@@ -35,7 +35,7 @@ public partial class Controls : Node
 	static readonly (string Action, JoyButton Button)[] Buttons =
 	{
 		("jump", JoyButton.A), ("duck", JoyButton.B), ("reload", JoyButton.X), ("use", JoyButton.Y),
-		("run", JoyButton.LeftShoulder), ("run", JoyButton.LeftStick), ("melee", JoyButton.RightShoulder), ("surge", JoyButton.RightStick),
+		("run", JoyButton.LeftShoulder), ("ping", JoyButton.LeftStick), ("scoreboard", JoyButton.Back), ("melee", JoyButton.RightShoulder), ("surge", JoyButton.RightStick),
 		("view", JoyButton.DpadUp), ("command", JoyButton.DpadDown), ("weapon_prev", JoyButton.DpadLeft), ("weapon_next", JoyButton.DpadRight),
 		("pause", JoyButton.Start),
 	};
@@ -89,6 +89,11 @@ public partial class Controls : Node
 		Action( "weapon_next", 0.5f );
 		Action( "pause", 0.5f );
 		InputMap.ActionAddEvent( "pause", new InputEventKey { PhysicalKeycode = Key.Escape } );
+		// Co-op: hold Tab for the scoreboard, middle mouse to ping (the pad's are in Buttons).
+		Action( "scoreboard", 0.5f );
+		InputMap.ActionAddEvent( "scoreboard", new InputEventKey { PhysicalKeycode = Key.Tab } );
+		Action( "ping", 0.5f );
+		InputMap.ActionAddEvent( "ping", new InputEventMouseButton { ButtonIndex = MouseButton.Middle } );
 
 		void Axis( string action, JoyAxis axis, float value ) => InputMap.ActionAddEvent( action, new InputEventJoypadMotion { Axis = axis, AxisValue = value } );
 		Axis( "left", JoyAxis.LeftX, -1f ); Axis( "right", JoyAxis.LeftX, 1f );

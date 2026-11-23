@@ -394,7 +394,9 @@ public partial class CoralWall : ReefPiece
 {
 	StaticBody3D body;
 	Node3D look;
-	float tick;
+	float tick, width = CoralFx.WallWidth;
+	/// <summary> Tests: enemies the wall has held back. </summary>
+	public static int Blocked;
 	public override Vector3 Heart => GlobalPosition + Vector3.Up * CoralFx.WallHeight * 0.55f;
 
 	public static CoralWall Grow( PlayerController owner, PlayerWeapon weapon, Vector3 at, Vector3 facing, float life = CoralFx.WallLife, float width = CoralFx.WallWidth, bool thin = true )
@@ -415,6 +417,7 @@ public partial class CoralWall : ReefPiece
 
 	void Build( float width )
 	{
+		this.width = width;
 		body = new StaticBody3D { Name = "Wall Body", CollisionLayer = Layers.World, CollisionMask = 0 };
 		AddChild( body );
 		body.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( width, CoralFx.WallHeight, CoralFx.WallThick ) }, Position = Vector3.Up * CoralFx.WallHeight * 0.5f } );
@@ -442,12 +445,41 @@ public partial class CoralWall : ReefPiece
 		look.Scale = new Vector3( 1f, 0.05f, 1f );
 	}
 
+	/// <summary>
+	/// Enemies don't walk by physics (crabs and spiders follow the navmesh, swimmers steer), so the solid body alone
+	/// never stopped them: anything that has come into the wall's footprint is put back out on the side it came from,
+	/// so it is held there and slides along it. (Bosses are too big for a wall.)
+	/// </summary>
+	void HoldBack()
+	{
+		const float body = 0.55f;   // about an enemy's half width
+		var right = GlobalBasis.X;
+		var normal = GlobalBasis.Z;
+		var halfW = width * 0.5f + body;
+		var halfT = CoralFx.WallThick * 0.5f + body;
+		var everyone = Creature.Everyone;
+		for ( var i = 0; i < everyone.Count; i++ )
+		{
+			var c = everyone[i];
+			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || !c.Pullable || c.Puppet ) continue;
+			var rel = c.GlobalPosition - GlobalPosition;
+			if ( rel.Y > CoralFx.WallHeight || rel.Y < -1.5f ) continue;
+			var along = rel.Dot( right );
+			var across = rel.Dot( normal );
+			if ( MathF.Abs( along ) > halfW || MathF.Abs( across ) > halfT ) continue;
+			var side = across >= 0f ? 1f : -1f;
+			c.Pull( normal * side * (halfT - MathF.Abs( across ) + 0.02f) );
+			Blocked++;
+		}
+	}
+
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
 		var grown = Age( dt );
 		look.Scale = new Vector3( 1f, MathF.Max( 0.05f, grown ), 1f );
 		body.Position = Vector3.Down * CoralFx.WallHeight * (1f - grown);
+		if ( grown > 0.5f && !IsQueuedForDeletion() ) HoldBack();
 		if ( !IsInstanceValid( owner ) || IsQueuedForDeletion() ) return;
 		var spiked = Skill( SkillId.SpikedWalls );
 		if ( spiked <= 0 || (tick -= dt) > 0f ) return;

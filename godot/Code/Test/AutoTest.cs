@@ -2346,7 +2346,7 @@ public partial class AutoTest : Node
 		Check( aiming, "the left trigger does not aim" );
 
 		// Every button reaches its action, and the real ones do their job.
-		foreach ( var (action, button) in new[] { ("reload", JoyButton.X), ("use", JoyButton.Y), ("duck", JoyButton.B), ("run", JoyButton.LeftShoulder), ("run", JoyButton.LeftStick), ("melee", JoyButton.RightShoulder), ("surge", JoyButton.RightStick), ("view", JoyButton.DpadUp), ("command", JoyButton.DpadDown), ("jump", JoyButton.A) } )
+		foreach ( var (action, button) in new[] { ("reload", JoyButton.X), ("use", JoyButton.Y), ("duck", JoyButton.B), ("run", JoyButton.LeftShoulder), ("ping", JoyButton.LeftStick), ("scoreboard", JoyButton.Back), ("melee", JoyButton.RightShoulder), ("surge", JoyButton.RightStick), ("view", JoyButton.DpadUp), ("command", JoyButton.DpadDown), ("jump", JoyButton.A) } )
 		{
 			Pad( button, true );
 			await Wait( 0.15f );

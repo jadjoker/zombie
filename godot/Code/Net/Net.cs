@@ -31,6 +31,8 @@ public partial class Net : Node
 
 	/// <summary> The other players: their robot ids (what they last picked). </summary>
 	readonly Dictionary<long, string> peers = new();
+	/// <summary> The other players' names (what they typed on the robot picker). </summary>
+	readonly Dictionary<long, string> names = new();
 	/// <summary> Their robots in this level. </summary>
 	readonly Dictionary<long, PlayerController> remotes = new();
 	PlayerController local;
@@ -108,7 +110,7 @@ public partial class Net : Node
 	void OnConnected()
 	{
 		SetStatus( "Connected" );
-		RpcId( 1, MethodName.Hello, RobotClass.Current.Id );
+		RpcId( 1, MethodName.Hello, RobotClass.Current.Id, GameSettings.PlayerNameOrDefault );
 	}
 
 	void OnConnectionFailed() { SetStatus( "Couldn't connect" ); Leave(); }
@@ -123,24 +125,36 @@ public partial class Net : Node
 
 	void OnPeerDisconnected( long id )
 	{
+		var who = PlayerName( id );
 		peers.Remove( id );
 		RemoveRemote( id );
-		SetStatus( $"{PlayerName( id )} left ({peers.Count + 1} playing)" );
+		names.Remove( id );
+		SetStatus( $"{who} left ({peers.Count + 1} playing)" );
 	}
 
-	public static string PlayerName( long id ) => id == 1 ? "Host" : $"Player {id % 1000}";
+	public static string PlayerName( long id )
+	{
+		if ( id == Me || (!Online && id == 0) ) return GameSettings.PlayerNameOrDefault;
+		if ( Instance is not null && Instance.names.TryGetValue( id, out var n ) && !string.IsNullOrWhiteSpace( n ) ) return n;
+		return id == 1 ? "Host" : $"Player {id % 1000}";
+	}
+
+	/// <summary> This joiner's round trip to the host, in milliseconds (0 on the host). </summary>
+	public static int MyPing => Instance?.Multiplayer.MultiplayerPeer is ENetMultiplayerPeer p && IsClient && Connected && p.GetPeer( 1 ) is { } host
+		? (int)host.GetStatistic( ENetPacketPeer.PeerStatistic.RoundTripTime ) : 0;
 
 	// ---- Who is playing ----
 
 	/// <summary> A client arrived (on the host): tell it who is here, and tell everyone else about it. </summary>
 	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable )]
-	void Hello( string robot )
+	void Hello( string robot, string name )
 	{
 		if ( !IsHost ) return;
 		var id = Multiplayer.GetRemoteSenderId();
-		foreach ( var (other, otherRobot) in peers ) RpcId( id, MethodName.Joined, other, otherRobot );
-		RpcId( id, MethodName.Joined, 1L, RobotClass.Current.Id );
-		Rpc( MethodName.Joined, id, robot );
+		foreach ( var (other, otherRobot) in peers ) RpcId( id, MethodName.Joined, other, otherRobot, names.GetValueOrDefault( other, "" ) );
+		RpcId( id, MethodName.Joined, 1L, RobotClass.Current.Id, GameSettings.PlayerNameOrDefault );
+		Rpc( MethodName.Joined, id, robot, name );
+		names[id] = name;
 		AddPeer( id, robot );
 		// Everything already swimming about, and where the run is.
 		foreach ( var c in Creature.Everyone ) if ( c.NetId > 0 && !c.IsDead ) SendCreatureTo( id, c );
@@ -148,9 +162,10 @@ public partial class Net : Node
 	}
 
 	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable )]
-	void Joined( long id, string robot )
+	void Joined( long id, string robot, string name )
 	{
 		if ( id == Me ) return;
+		names[id] = name;
 		AddPeer( id, robot );
 	}
 
@@ -440,4 +455,62 @@ public partial class Net : Node
 
 	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 2 )]
 	void Loadout( int[] ranks, int damageLevel ) => RemoteOf( Multiplayer.GetRemoteSenderId() )?.GetNodeOrNull<NetPlayer>( "NetPlayer" )?.ApplyLoadout( ranks, damageLevel );
+
+	// ---- Davey's locker (everyone goes) ----
+
+	public void SendLocker( bool enter )
+	{
+		if ( !Connected || !IsHost ) return;
+		var slot = 1;
+		foreach ( var id in peers.Keys.OrderBy( x => x ) ) RpcId( id, MethodName.LockerGo, enter, slot++ );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.Authority, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void LockerGo( bool enter, int slot ) => NetWorld.Locker( enter, slot );
+
+	// ---- Pings (TeamHud) ----
+
+	public void SendPing( Vector3 at, int creature ) { if ( Connected ) Rpc( MethodName.PingAt, at, creature ); }
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 3 )]
+	void PingAt( Vector3 at, int creature ) => Pings.Show( Multiplayer.GetRemoteSenderId(), at, creature );
+
+	// ---- A joiner's own hits (NetCreatures: the shooter's machine decides what it hit) ----
+
+	public void SendShotRequest( int id, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, bool scoreHit )
+	{
+		if ( Connected && IsClient ) RpcId( 1, MethodName.ShotRequest, id, index, damage, direction, position, origin, scoreHit );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void ShotRequest( int id, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, bool scoreHit )
+	{
+		if ( IsHost ) NetCreatures.ApplyShotRequest( Multiplayer.GetRemoteSenderId(), id, index, damage, direction, position, origin, scoreHit );
+	}
+
+	public void SendHealthRequest( int id, float damage, Vector3 position, Vector3 origin )
+	{
+		if ( Connected && IsClient ) RpcId( 1, MethodName.HealthRequest, id, damage, position, origin );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void HealthRequest( int id, float damage, Vector3 position, Vector3 origin )
+	{
+		if ( IsHost ) NetCreatures.ApplyHealthRequest( Multiplayer.GetRemoteSenderId(), id, damage, position, origin );
+	}
+
+	// ---- Black holes (opened by their owner's own shot) ----
+
+	public void SendBlackHole( Vector3 at, float damage, float radius, float size, Color colour, int rank )
+	{
+		if ( Connected ) Rpc( MethodName.BlackHoleAt, at, damage, radius, size, colour, rank );
+	}
+
+	[Rpc( MultiplayerApi.RpcMode.AnyPeer, TransferMode = MultiplayerPeer.TransferModeEnum.Reliable, TransferChannel = 4 )]
+	void BlackHoleAt( Vector3 at, float damage, float radius, float size, Color colour, int rank )
+	{
+		var owner = RemoteOf( Multiplayer.GetRemoteSenderId() );
+		var vac = owner?.GetChildren().OfType<PlayerWeapon>().FirstOrDefault( w => w.Vacuum );
+		if ( GetTree().CurrentScene is Node3D scene ) BlackHole.Open( scene, at, damage, radius, size, colour, owner, vac, rank );
+	}
 }

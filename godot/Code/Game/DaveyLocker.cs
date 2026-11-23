@@ -30,7 +30,7 @@ public static class DaveyLocker
 	}
 
 	/// <summary> Builds the room and puts the player in it; they come back to `back` (on the floor above) when it ends. </summary>
-	public static void Enter( PlayerController player, Vector3 back )
+	public static void Enter( PlayerController player, Vector3 back, int slot = 0 )
 	{
 		if ( Room is not null ) Leave();
 		who = player;
@@ -38,7 +38,8 @@ public static class DaveyLocker
 		var top = SeaTerrain.Active ? SeaTerrain.HeightAt( Vector3.Zero ) : 0f;
 		Centre = new Vector3( 0f, top - Depth, 0f );
 		Room = Build( player.GetTree().CurrentScene );
-		player.GlobalPosition = PlayerSpot;
+		// Online every player comes down: each on their own spot along the near wall.
+		player.GlobalPosition = PlayerSpot + Vector3.Right * (slot switch { 1 => -2.2f, 2 => 2.2f, 3 => -4.4f, _ => 0f });
 		player.Velocity = Vector3.Zero;
 		player.EyeAngles = new Angles( 0f, 0f, 0f );   // facing -Z, at him
 		player.ResetPhysicsInterpolation();

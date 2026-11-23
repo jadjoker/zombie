@@ -760,7 +760,14 @@ void fragment() {
 	{
 		if ( !IsInstanceValid( this ) || grabbed?.Controller is not { } c || !IsInstanceValid( c ) ) return;
 		var ground = Nav.Closest( c, grabGround );
-		DaveyLocker.Enter( c, ground == Vector3.Zero || ground.DistanceTo( grabGround ) > 6f ? grabGround : ground );
+		var back = ground == Vector3.Zero || ground.DistanceTo( grabGround ) > 6f ? grabGround : ground;
+		if ( Net.Online )
+		{
+			// Online the locker takes everyone: each machine puts its own player in (Net.LockerEnter); here, this one.
+			Net.Instance?.SendLocker( true );
+			if ( PlayerSurvivor.Local?.Controller is { } me && IsInstanceValid( me ) ) DaveyLocker.Enter( me, me == c ? back : NetWorld.Ground( me ), 0 );
+		}
+		else DaveyLocker.Enter( c, back );
 		GlobalPosition = DaveyLocker.DaveySpot + Vector3.Up * HoverHeight;
 		GlobalBasis = Shapes.LookAt( Vector3.Back );
 		floorY = DaveyLocker.Floor;
@@ -816,7 +823,11 @@ void fragment() {
 		if ( InLocker )
 		{
 			var tree = GetTree();
-			tree.CreateTimer( 6.0 ).Timeout += () => { if ( tree.CurrentScene is { } scene ) ScreenFade.Run( scene, 0.45f, 0.35f, 0.6f, DaveyLocker.Leave ); };
+			tree.CreateTimer( 6.0 ).Timeout += () =>
+			{
+				Net.Instance?.SendLocker( false );   // online, everyone comes back up
+				if ( tree.CurrentScene is { } scene ) ScreenFade.Run( scene, 0.45f, 0.35f, 0.6f, DaveyLocker.Leave );
+			};
 		}
 	}
 

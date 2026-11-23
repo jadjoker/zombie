@@ -60,6 +60,7 @@ public partial class AutoTest
 		}
 		await NetEnemies( host, other );
 		await NetStage3( host, other );
+		await NetPlaytest1( host, other );
 		Finish();
 	}
 
@@ -220,6 +221,56 @@ public partial class AutoTest
 			GD.Print( $"[autotest] net: the host's bubble shows round the crab here: {IsInstanceValid( crab ) && BubbleTrap.Of( crab ) is not null}" );
 			Check( IsInstanceValid( crab ) && BubbleTrap.Of( crab ) is not null, "the bubble the host made never showed on the joiner" );
 			await Wait( 2f );
+		}
+	}
+
+	/// <summary>
+	/// The first online playtest's asks: a ping reaches the other player; the scoreboard knows the other's points;
+	/// Davey's locker takes both players down and brings both back up; a dead joiner watches the host.
+	/// </summary>
+	async Task NetPlaytest1( bool host, PlayerController other )
+	{
+		await Wait( 1f );
+		var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
+		if ( host )
+		{
+			for ( var t = 0f; t < 10f && Pings.Seen == 0; t += 0.25f ) await Wait( 0.25f );
+			Check( Pings.Seen > 0, "the joiner's ping never showed here" );
+			var points = other.GetNode<NetPlayer>( "NetPlayer" ).Points;
+			GD.Print( $"[autotest] net: the joiner ({Net.PlayerName( other.PeerId )}) shows {points} points here" );
+			Check( points > 0, "the scoreboard never got the joiner's points" );
+			// Davey's locker: everyone down, then everyone up.
+			Net.Instance.SendLocker( true );
+			DaveyLocker.Enter( player, NetWorld.Ground( player ), 0 );
+			await Wait( 5f );
+			Net.Instance.SendLocker( false );
+			DaveyLocker.Leave();
+			await Wait( 5f );
+			// The joiner is about to die and watch this robot.
+			await Wait( 8f );
+		}
+		else
+		{
+			Pings.Place( player );
+			await Wait( 1f );
+			var top = player.GlobalPosition;
+			for ( var t = 0f; t < 30f && !DaveyLocker.Active; t += 0.25f ) await Wait( 0.25f );
+			await Wait( 1f );
+			var down = top.Y - player.GlobalPosition.Y;
+			GD.Print( $"[autotest] net: in Davey's locker here {DaveyLocker.Active}, {down:0} m down" );
+			Check( DaveyLocker.Active && down > 100f, "Davey's locker never took the joiner down" );
+			for ( var t = 0f; t < 10f && DaveyLocker.Active; t += 0.25f ) await Wait( 0.25f );
+			await Wait( 1f );
+			GD.Print( $"[autotest] net: back up, {MathF.Abs( player.GlobalPosition.Y - top.Y ):0.0} m from where it went down" );
+			Check( !DaveyLocker.Active && MathF.Abs( player.GlobalPosition.Y - top.Y ) < 6f, "the joiner never came back up from the locker" );
+			// Dead: after a moment the camera watches the host.
+			me.Health.Invulnerable = false;
+			me.Health.Kill();
+			for ( var t = 0f; t < 6f && Spectate.Watching is null; t += 0.25f ) await Wait( 0.25f );
+			GD.Print( $"[autotest] net: dead, watching {Spectate.Watching?.Name}" );
+			Check( Spectate.Watching == other, "a dead joiner never watched the host" );
+			me.Respawn( player.GlobalPosition, fullReset: false );
+			await Wait( 1f );
 		}
 	}
 

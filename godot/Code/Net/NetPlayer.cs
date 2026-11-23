@@ -32,7 +32,9 @@ public partial class NetPlayer : Node
 	double stateAt;
 
 	/// <summary> The fields of a state packet, in order. </summary>
-	enum F { X, Y, Z, VX, VY, VZ, Pitch, Yaw, Flags, MoveX, MoveY, Health, MaxHealth, Ammo, Count }
+	enum F { X, Y, Z, VX, VY, VZ, Pitch, Yaw, Flags, MoveX, MoveY, Health, MaxHealth, Ammo, Points, Kills, Ping, Count }
+	/// <summary> Remote: its owner's points, kills this run and ping to the host (the Tab scoreboard). </summary>
+	public int Points, Kills, Ping;
 	int loadoutVersion = -1;
 	float loadoutTimer;
 
@@ -96,6 +98,9 @@ public partial class NetPlayer : Node
 		state[(int)F.Health] = survivor?.Health?.Current ?? 0f;
 		state[(int)F.MaxHealth] = survivor?.Health?.MaxHealth ?? 100f;
 		state[(int)F.Ammo] = inventory?.Current?.Ammo ?? 0;
+		state[(int)F.Points] = survivor?.Points ?? 0;
+		state[(int)F.Kills] = survivor?.RunKills ?? 0;
+		state[(int)F.Ping] = Net.MyPing;
 		net.SendState( state );
 
 		// Skill points and the damage upgrades bought: when they change (and now and then, for a late joiner).
@@ -128,6 +133,9 @@ public partial class NetPlayer : Node
 		if ( !Net.IsHost ) controller.Scripted = (flags & 8) != 0;   // on the host a remote robot is only held by the host's own creatures
 		if ( controller.In is RemoteInput input ) input.Move = new Vector2( s[(int)F.MoveX], s[(int)F.MoveY] );
 		inventory?.Current?.SetNetAmmo( (int)s[(int)F.Ammo] );
+		Points = (int)s[(int)F.Points];
+		Kills = (int)s[(int)F.Kills];
+		Ping = (int)s[(int)F.Ping];
 		if ( survivor?.Health is { } h )
 		{
 			h.MaxHealth = s[(int)F.MaxHealth];
@@ -192,6 +200,7 @@ public partial class NetPlayer : Node
 		forced = held;
 		forcedUntil = held ? Clock.Real + 0.4 : 0;
 		controller.Scripted = held;
+		if ( !held ) return;   // let go where it is (it may have been taken somewhere else meanwhile, like Davey's locker)
 		controller.GlobalPosition = at;
 		controller.Velocity = Vector3.Zero;
 		controller.ResetPhysicsInterpolation();

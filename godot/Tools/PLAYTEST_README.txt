@@ -48,6 +48,10 @@ Play online (co-op, up to 4)
               24565 forwarded to this PC).
   Join        Type the host's address in the box next to Join and click Join.
   The host runs the waves and the enemies; everyone picks their own robot and dives in.
+  Name        Type it in the Name box before you host or join; others see it over your robot.
+  Scoreboard  Hold Tab (pad: View): everyone's robot, health, points, kills and ping.
+  Ping        Middle mouse (pad: click the left stick) marks what you aim at for everyone; on an enemy it follows it.
+  Down        Dead, you watch a teammate after a moment; click to switch who.
 
 Sounds are placeholders for now. Please note anything that feels off:
 jitter, flashing, things stuck in walls, crashes, and how it feels to play.

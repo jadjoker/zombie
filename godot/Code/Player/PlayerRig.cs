@@ -223,12 +223,14 @@ public partial class PlayerRig : Node
 				if ( room > most + 0.3f ) { most = room; deathCamAngle = angle; }
 			}
 			controller.CameraOverride = DeathCamera;
+			diedAt = Clock.Now;
 		}
 		else if ( alive && ragdoll is not null )
 		{
 			if ( IsInstanceValid( ragdoll ) ) ragdoll.QueueFree();
 			ragdoll = null;
 			controller.CameraOverride = null;
+			if ( !controller.IsRemote ) Spectate.Stop();
 		}
 		var show = alive && (ShowsBody || DevFlags.FreeCam && ShowsBody);
 		rigRoot.Visible = show;
@@ -245,6 +247,7 @@ public partial class PlayerRig : Node
 
 	/// <summary> Our own over-the-shoulder camera, tightening in while aiming (PlayerAppearance). </summary>
 	Vector3 deathCamAt;
+	double diedAt;
 	float deathCamAngle;
 
 	/// <summary>
@@ -253,6 +256,8 @@ public partial class PlayerRig : Node
 	/// </summary>
 	Transform3D? DeathCamera( float dt )
 	{
+		// Online, after a moment: watch a teammate who is still in the fight.
+		if ( !controller.IsRemote && Spectate.Camera( controller, (float)(Clock.Now - diedAt), dt ) is { } watching ) return watching;
 		if ( ragdoll is null || !IsInstanceValid( ragdoll ) ) return null;
 		var body = ragdoll.Centre + Vector3.Up * 0.3f;
 		deathCamAngle += dt * 0.25f;

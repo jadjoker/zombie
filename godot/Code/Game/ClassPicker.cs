@@ -68,6 +68,10 @@ public partial class ClassPicker : CanvasLayer
 		var title = new Label { Text = "PLAY ONLINE", VerticalAlignment = VerticalAlignment.Center };
 		title.AddThemeColorOverride( "font_color", UiStyle.Gold );
 		row.AddChild( title );
+		var nameBox = new LineEdit { PlaceholderText = "Your name", Text = GameSettings.PlayerName, MaxLength = 16, CustomMinimumSize = new Vector2( 170, 40 ), Name = "PlayerName" };
+		nameBox.TextChanged += t => { GameSettings.PlayerName = t; };
+		nameBox.FocusExited += GameSettings.Save;
+		row.AddChild( nameBox );
 		var host = new Button { Text = "Host", CustomMinimumSize = new Vector2( 110, 40 ), Name = "Host" };
 		host.Pressed += () => Net.Instance?.HostGame( Net.DefaultPort );
 		row.AddChild( host );

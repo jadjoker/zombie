@@ -340,6 +340,28 @@ public partial class AutoTest
 		var through = wall is not null && Trace.Ray( player, wall.GlobalPosition + Vector3.Up * 1f - wall.GlobalBasis.Z * 2f, wall.GlobalPosition + Vector3.Up * 1f + wall.GlobalBasis.Z * 2f, Layers.World ).Hit;
 		GD.Print( $"[autotest] coralbot: walls {CoralFx.Walls}, a shot through it is stopped {through}" );
 		Check( CoralFx.Walls == 1 && through, "the coral wall did not grow, or shots go through it" );
+		// It holds enemies back too (they don't move by physics): a crab behind it walks at the player and stays behind it.
+		if ( wall is not null )
+		{
+			var n = wall.GlobalBasis.Z;
+			var playerSide = MathF.Sign( (player.GlobalPosition - wall.GlobalPosition).Dot( n ) );
+			if ( playerSide == 0 ) playerSide = 1;
+			var froze = DevFlags.FreezeEnemies;
+			DevFlags.FreezeEnemies = false;
+			var walker = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, wall.GlobalPosition - n * playerSide * 2.2f ) + Vector3.Up * 0.3f, player.GlobalPosition ) as Creature;
+			var blocked = CoralWall.Blocked;
+			var stayed = true;
+			for ( var t = 0f; t < 4f && walker is not null && IsInstanceValid( walker ) && !walker.IsDead; t += 0.1f )
+			{
+				await Wait( 0.1f );
+				var rel = walker.GlobalPosition - wall.GlobalPosition;
+				if ( MathF.Abs( rel.Dot( wall.GlobalBasis.X ) ) < CoralFx.WallWidth * 0.5f - 0.3f && MathF.Sign( rel.Dot( n ) ) == playerSide ) stayed = false;
+			}
+			GD.Print( $"[autotest] coralbot: a crab walking at the wall was held back {CoralWall.Blocked - blocked} times; it stayed behind it {stayed}" );
+			Check( stayed && CoralWall.Blocked > blocked, "enemies walk straight through the coral wall" );
+			if ( walker is not null && IsInstanceValid( walker ) ) walker.QueueFree();
+			DevFlags.FreezeEnemies = froze;
+		}
 		if ( shots is not null ) { AimAt( spot + ahead * 6f ); await Wait( 0.1f ); await Shot( "coral_reef" ); }
 
 		// Living Reef: a crab between the turret and the wall is hurt by the vein; Healing Reef heals near it.

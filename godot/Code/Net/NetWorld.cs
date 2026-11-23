@@ -43,6 +43,25 @@ public static class NetWorld
 		d.ApplyNet( (int)s[0], (WaveState)(int)s[1], s[2], (int)s[3], (int)s[4], s[5] > 0.5f, s[6] > 0.5f, s[7] > 0.5f, s[8] > 0.5f );
 	}
 
+	/// <summary> The ground under a player (where Davey's locker sends them back to). </summary>
+	public static Vector3 Ground( PlayerController p )
+	{
+		var g = Nav.Closest( p, p.GlobalPosition );
+		return g == Vector3.Zero || g.DistanceTo( p.GlobalPosition ) > 12f ? p.GlobalPosition : g;
+	}
+
+	/// <summary> A joiner: the host's Davey took everyone to his locker (or it's over and everyone comes back up). </summary>
+	public static void Locker( bool enter, int slot )
+	{
+		if ( PlayerSurvivor.Local?.Controller is not { } me || me.GetTree().CurrentScene is not { } scene ) return;
+		if ( enter )
+		{
+			var back = Ground( me );
+			ScreenFade.Run( scene, 0.45f, 0.35f, 0.6f, () => { if ( GodotObject.IsInstanceValid( me ) ) { me.Scripted = false; DaveyLocker.Enter( me, back, slot ); } } );
+		}
+		else if ( DaveyLocker.Active ) ScreenFade.Run( scene, 0.45f, 0.35f, 0.6f, DaveyLocker.Leave );
+	}
+
 	// ---- Players the host's director looks after ----
 
 	/// <summary> PlayerSurvivor.AddPoints on another player's robot: on the host, the points are theirs. True: sent (skip here). </summary>

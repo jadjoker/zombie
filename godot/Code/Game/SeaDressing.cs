@@ -168,16 +168,20 @@ public static class SeaDressing
 			}
 		} );
 
-		// ---- Fish overhead. ----
+		// ---- Fish overhead: swarms that go for a player who comes close (user's ask; `FishSwarm`). Online only the host
+		// makes them; the joiners get them as puppets. ----
 		for ( var s = 0; s < 4; s++ )
 		{
-			var school = FishSchool.Create( Bright[(s * 2 + 1) % Bright.Length], 12 + random.Next( 8 ), random );
-			if ( school is null ) break;
-			root.AddChild( school );
-			school.Home = new Vector3( Range( -16f, 16f ), Range( 2.6f, 5.5f ), Range( -16f, 16f ) );
-			school.Radius = Range( 7f, 14f );
-			school.Speed = Range( 0.1f, 0.18f ) * (s % 2 == 0 ? 1f : -1f);
-			school.Phase = Range( 0f, MathF.Tau );
+			var colour = Bright[(s * 2 + 1) % Bright.Length];
+			var count = 12 + random.Next( 8 );
+			var home = new Vector3( Range( -16f, 16f ), Range( 2.6f, 5.5f ), Range( -16f, 16f ) );
+			var radius = Range( 7f, 14f );
+			var speed = Range( 0.1f, 0.18f ) * (s % 2 == 0 ? 1f : -1f);
+			var phase = Range( 0f, MathF.Tau );
+			var swarmSeed = random.Next();
+			if ( FishSchool.Painted( colour ) is null || (Net.Online && !Net.IsHost) ) continue;
+			if ( AutoTest.Requested && !OS.GetCmdlineUserArgs().Contains( "--fish" ) ) continue;   // other tests keep their sea to themselves
+			FishSwarm.Spawn( root, home, colour, count, radius, speed, phase, swarmSeed );
 		}
 	}
 
@@ -204,6 +208,28 @@ public partial class FishSchool : MultiMeshInstance3D
 	Vector3[] offsets;
 	float[] phases, sizes;
 	static Mesh fishMesh;
+
+	/// <summary> The fish model in a school's colours (null if the model is missing). </summary>
+	public static Mesh Painted( Color colour )
+	{
+		if ( fishMesh is null )
+		{
+			var path = "res://assets/models/sea/fish.glb";
+			if ( !ResourceLoader.Exists( path ) ) return null;
+			var scene = GD.Load<PackedScene>( path ).Instantiate<Node3D>();
+			fishMesh = scene.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().FirstOrDefault()?.Mesh;
+			scene.QueueFree();
+			if ( fishMesh is null ) return null;
+		}
+		var mesh = (Mesh)fishMesh.Duplicate();
+		for ( var i = 0; i < mesh.GetSurfaceCount(); i++ )
+		{
+			var name = mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
+			var c = name switch { "Fish" => colour, "FishFin" => colour.Lightened( 0.45f ), _ => new Color( 0.03f, 0.03f, 0.04f ) };
+			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled } );
+		}
+		return mesh;
+	}
 
 	public static FishSchool Create( Color colour, int count, Random random )
 	{

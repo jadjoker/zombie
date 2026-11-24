@@ -89,6 +89,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--magnetbot" ) ) { await MagnetBotTest(); return; }
 		if ( args.Contains( "--plungerbot" ) ) { await PlungerBotTest(); return; }
 		if ( args.Contains( "--pinballbot" ) ) { await PinballBotTest(); return; }
+		if ( args.Contains( "--fish" ) ) { await FishSwarmTest(); return; }
 		if ( args.Contains( "--moveposes" ) ) { await MovePosesTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
@@ -2020,6 +2021,8 @@ public partial class AutoTest : Node
 		var toBody = ragdoll is null ? 99f : MathX.Deg( (ragdoll.Centre - cam.GlobalPosition).AngleTo( -cam.GlobalBasis.Z ) );
 		GD.Print( $"[autotest] board: dead: ragdoll {ragdoll is not null}, gun shown {weapon.ViewModel?.Visible}, ammo {ammo} -> {weapon.Ammo}, HUD alpha {hud?.Modulate.A:0.0}, camera moved {cam.GlobalPosition.DistanceTo( eye ):0.0} m and looks {toBody:0} deg off the body" );
 		Check( ragdoll is not null, "no ragdoll on death" );
+		GD.Print( $"[autotest] board: the robot came apart: {RobotRagdoll.Severed} parts off, oil sprays {RobotOil.Sprays}" );
+		Check( RobotRagdoll.Severed >= 2 && RobotOil.Sprays >= 1, "the robot did not come apart and spill oil when it died" );
 		Check( weapon.ViewModel is not { Visible: true }, "the gun is still on screen when dead" );
 		Check( weapon.Ammo == ammo, "a dead player could still shoot" );
 		Check( hud is { Modulate.A: < 0.01f }, "the HUD is still showing when dead" );

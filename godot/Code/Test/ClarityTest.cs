@@ -11,7 +11,7 @@ public partial class AutoTest
 	/// <summary>
 	/// The glow bulbs and star ferns as hazards: about 60 to 100 bulbs out (not 230), in schools; walking up to one sets
 	/// it off (it swells, then bursts and hurts); a shot bursts one at once for points, and hurts an enemy beside it; a
-	/// gold one drops a pickup; walking up to a fern gets you stuck by its spikes.
+	/// gold one drops a pickup.
 	/// </summary>
 	async Task BulbTest()
 	{
@@ -104,28 +104,6 @@ public partial class AutoTest
 		GD.Print( $"[autotest] bulbs: gold burst {goldPopped}, points +{survivor.Points - points}, pickups {pickups} -> {after}" );
 		Check( goldPopped && after > pickups && survivor.Points - points >= AlienFloaters.GoldPoints, "a gold bulb did not pay out and drop a pickup" );
 
-		// A fern: step up to it and it sticks you.
-		survivor.Health.ResetTo( 1000f );
-		var fern = floaters.NearestFern( new Vector3( 26f, 0f, 10f ) );
-		var stabs = AlienFloaters.Stabs;
-		health = survivor.Health.Current;
-		for ( var i = 0; i < 30 && AlienFloaters.Stabs == stabs; i++ )
-		{
-			player.GlobalPosition = Nav.Closest( player, fern.GlobalPosition + new Vector3( 2.0f, 0f, 0f ) ) + Vector3.Up * 0.1f;
-			player.Velocity = Vector3.Zero;
-			LookAt( fern.GlobalPosition );
-			await Wait( 0.05f );
-		}
-		if ( shots is not null )
-		{
-			var view = new Transform3D( Basis.Identity, fern.GlobalPosition + new Vector3( -2.5f, 1.4f, 2.5f ) ).LookingAt( fern.GlobalPosition, Vector3.Up );
-			player.CameraOverride = _ => view;
-			await Shot( "hazard_fern_stab" );
-			player.CameraOverride = null;
-		}
-		await Wait( 0.1f );
-		GD.Print( $"[autotest] bulbs: stood by a fern ({player.GlobalPosition.DistanceTo( fern.GlobalPosition ):0.0} m): stabs {AlienFloaters.Stabs - stabs}, health {health:0} -> {survivor.Health.Current:0}" );
-		Check( AlienFloaters.Stabs > stabs && survivor.Health.Current < health, "standing by a star fern did not get the player stuck" );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

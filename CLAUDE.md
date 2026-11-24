@@ -59,7 +59,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Controller support (issue #33): `Core/Controls.cs` adds a pad binding to every action at start, tracks the device last
   used (a pad, or keys and mouse) and switches between them, names buttons for the prompts (`Controls.Label`, Xbox or
   PlayStation style) and rumbles (`Controls.Rumble`, also driven by `CameraJuice.Shake`). Right-stick look is in
-  `PlayerController._Process`. Aim assist is `Player/AimAssist.cs` (pad only: slows the stick near an enemy and pulls toward it; pause menu slider). The dev menu works by pad (focus outline, bumpers change tab, right stick scrolls, B closes, right trigger places an enemy). Tests: `--pad` and `--padmenus` (inject pad events; headless works).
+  `PlayerController._Process`. Aim assist is `Player/AimAssist.cs` (pad only: slows the stick near an enemy and pulls toward it; pause menu slider). Reworked: whole enemies with bubbles sized to them, a sticky target, tracking while you or it move, a pull, a snap onto the sights; the stick has a round dead zone and a turn boost. Gyro aiming (`Controls.GyroRate`: Godot's joypad motion sensors, drift learned while the pad is still; pause menu: Gyro aiming Off/On/While aiming, Gyro sensitivity, Calibrate gyro). A Steam Controller's trackpad and gyro arrive as mouse moves and clicks: with a pad plugged in those don't switch the game to keys and mouse (it was showing "E" and turning aim assist off), and mouse-style look gets the assist too. The dev menu works by pad (focus outline, bumpers change tab, right stick scrolls, B closes, right trigger places an enemy). Tests: `--pad` and `--padmenus` (inject pad events; headless works).
 - The dock radio (issue #42): `Core/Radio.cs` (autoloaded through `Clock`) shuffles the songs in `godot/assets/music`
   (drop more .mp3 or .ogg files in and they join), on its own `Music` bus with the pause menu's Music volume slider; the
   dock builds the radio model (`Tools/blender/dock_props.py`, `DOCK_ONLY=radio`) on the hut table and starts it. Test: `--radio`.
@@ -331,6 +331,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Shark, Squilien, mermaid, and the bosses (`KrakenNet.cs`, `PoseidonNet.cs`, `DaveyNet.cs`). `--nettest` checks the
   hook, beam, slam, trident and cannons show on the joiner.
   Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
+- Fish swarms (`Creatures/FishSwarm.cs`, user's ask): the sea dressing's four fish schools are enemies. One swarm is
+  one creature (one health bar); its fish die as its health falls (`Thin`, the nearest to the blow first, floating off
+  as bodies); a player within `AggroRange` (or a hit) sets it on them: it circles the body at arm's length below the
+  eyes and nips (`BiteDamage`, less as it thins); back after `RespawnMin`-`Max`. The host makes them, joiners get
+  puppets (`NetCreatures` "FishSwarm"). Under tests only `--fish` makes them (its test).
+- Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
+  hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
+  head now and then) as robot pieces with chrome joints, oil gushing from both ends.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets
@@ -348,11 +356,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals
   (`AtlantisVents`). Test: `--crab` (shots need a window); `--atlantis` checks standing on an arch and a porch roof.
 - The clutter pass (visual clarity): `AlienFloaters.cs` is glow bulbs, about 80 in drifting schools (teal, violet; 1 in
-  40 gold) plus star ferns on the sand, both hazards. A bulb a player comes within 3.5 m of swells and flashes for
+  40 gold), a hazard (the star ferns were removed, user's choice). A bulb a player comes within 3.5 m of swells and flashes for
   `PuffTime`, then bursts (20 to players within 3.2 m, once per school thanks to `BlastGrace`; 80 to enemies there); a
   shot bursts it at once (`GlowBulb`, an `IShootable` on the creature layer: 25 points, gold 150 and a pickup). They grow
-  back after 45 s. None inside the wreck (too tight to step back). A star fern shudders when a player is within 2.2 m,
-  then its spikes shoot out (12 damage) and it rests 3 s.
+  back after 45 s. None inside the wreck (too tight to step back).
   Scenery keeps off neon green (that is for enemies, weak points and pickups); `AlienReef.FadeNear` dithers plants away
   within 2 m of the camera. `SeaTerrain.Fit` grows kelp and coral in groves with open sand between and keeps the lanes
   from the spawn points clear. (A warm rim overlay on enemies was tried and removed: they keep their own look.) `Atmosphere.cs` (node "Backdrop"): light shafts

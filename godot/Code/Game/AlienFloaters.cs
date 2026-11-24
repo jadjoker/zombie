@@ -1,27 +1,24 @@
 using Godot;
 
 /// <summary>
-/// The glow bulbs and star ferns: living hazards on the sea floor (the clutter pass).
+/// The glow bulbs: a living hazard drifting over the sea floor (the clutter pass). (The star ferns were removed on the
+/// user's ask.)
 /// - Glow bulbs drift about in small schools. A player who comes within <see cref="PuffRadius"/> sets one off: it puffs
 ///   up, flashing faster and faster, and after <see cref="PuffTime"/> it bursts, hurting players within
 ///   <see cref="BlastRadius"/> and any enemies there. A shot bursts it at once (no warning), for <see cref="BulbPoints"/>,
 ///   so shooting one beside a crowd of enemies is a trick worth knowing. About one in <see cref="GoldEvery"/> is gold:
 ///   worth more and drops a pickup. A burst bulb grows back after <see cref="RegrowAfter"/>.
-/// - Star ferns sit on the sand. A player within <see cref="FernReach"/> makes one shudder, then its spikes shoot out
-///   and stick anyone still in reach for <see cref="FernDamage"/>; it pulls them back and rests for
-///   <see cref="FernRest"/>.
 /// Colours keep off the enemies' neon green: teal and violet, gold for the rare bulbs. Metres.
 /// </summary>
 public partial class AlienFloaters : Node3D
 {
 	public const float PuffRadius = 3.5f, PuffTime = 0.9f, BlastRadius = 3.2f, BlastDamage = 20f, BlastCreatureDamage = 80f, RegrowAfter = 45f;
-	public const float FernReach = 2.2f, FernTell = 0.4f, FernDamage = 12f, FernRest = 3f;
 	public const int BulbPoints = 25, GoldPoints = 150, GoldEvery = 40;
 	/// <summary> Seconds after a burst hurts a player in which no other burst can (a school going off hurts once). </summary>
 	public const float BlastGrace = 0.8f;
 	readonly Dictionary<PlayerSurvivor, double> lastBlastHit = new();
-	/// <summary> Tests: bulbs burst (shot, gold among them, set off by walking up) and fern stabs that landed. </summary>
-	public static int Popped, GoldPopped, Puffed, Stabs;
+	/// <summary> Tests: bulbs burst (shot, gold among them, set off by walking up). </summary>
+	public static int Popped, GoldPopped, Puffed;
 
 	internal sealed class School
 	{
@@ -29,33 +26,26 @@ public partial class AlienFloaters : Node3D
 		public float Phase, Rate, Wander;
 	}
 
-	internal enum FernState { Rest, Tell, Out }
-
 	internal sealed class Floater
 	{
 		public Node3D Node;
 		public School School;
 		public Vector3 Offset;
 		public float Phase, Bob, Rate, Spin, Size;
-		public bool Fern, Gold, IsPopped, Puffing;
+		public bool Gold, IsPopped, Puffing;
 		public TimeSince SincePopped, SincePuff;
 		public GlowBulb Body;
 		public MeshInstance3D Bulb;
 		public Material BulbLook;
 		public OmniLight3D Light;
-		// Ferns: the blades (pivots that stretch out to stab), and what the fern is doing.
-		public List<Node3D> Blades;
-		public FernState State;
-		public TimeSince SinceState = 99f;
-		public bool Struck;
 		/// <summary> Where it was put last frame (read back from here, not from the engine, every frame). </summary>
 		public Vector3? At;
 	}
 
 	readonly List<Floater> all = new();
 	public int Count => all.Count;
-	/// <summary> Tests: the bulbs (not the ferns) that are out, where they are. </summary>
-	public IEnumerable<Node3D> Bulbs => all.Where( f => !f.Fern && !f.IsPopped ).Select( f => f.Node );
+	/// <summary> Tests: the bulbs that are out, where they are. </summary>
+	public IEnumerable<Node3D> Bulbs => all.Where( f => !f.IsPopped ).Select( f => f.Node );
 
 	static StandardMaterial3D Glow( Color c, float energy )
 	{
@@ -72,7 +62,7 @@ public partial class AlienFloaters : Node3D
 
 	static readonly StandardMaterial3D[] BulbGlow = { Glow( new Color( 0.25f, 0.85f, 0.85f ), 1.5f ), Glow( new Color( 0.62f, 0.38f, 1f ), 1.5f ), Glow( new Color( 0.35f, 0.6f, 1f ), 1.4f ) };
 	static readonly StandardMaterial3D GoldGlow = Glow( new Color( 1f, 0.78f, 0.25f ), 2.6f );
-	/// <summary> The warning flash of a bulb about to burst, and a fern about to strike. </summary>
+	/// <summary> The warning flash of a bulb about to burst. </summary>
 	static readonly StandardMaterial3D Hot = Glow( new Color( 1f, 0.92f, 0.85f ), 4f );
 	static readonly StandardMaterial3D[] Fronds = { Frond( new Color( 0.03f, 0.03f, 0.05f ) ), Frond( new Color( 0.2f, 0.06f, 0.3f ) ), Frond( new Color( 0.04f, 0.1f, 0.12f ) ) };
 
@@ -132,15 +122,12 @@ public partial class AlienFloaters : Node3D
 	/// <summary> Tests: the nearest bulb that is out, made gold or plain. </summary>
 	public Node3D NearestBulb( Vector3 to, bool? gold = null )
 	{
-		var f = all.Where( x => !x.Fern && !x.IsPopped ).OrderBy( x => x.Node.GlobalPosition.DistanceSquaredTo( to ) ).FirstOrDefault();
+		var f = all.Where( x => !x.IsPopped ).OrderBy( x => x.Node.GlobalPosition.DistanceSquaredTo( to ) ).FirstOrDefault();
 		if ( f is null ) return null;
 		if ( gold is { } g ) Gild( f, g );
 		return f.Node;
 	}
 
-	/// <summary> Tests: the nearest fern. </summary>
-	public Node3D NearestFern( Vector3 to ) =>
-		all.Where( x => x.Fern ).OrderBy( x => x.Node.GlobalPosition.DistanceSquaredTo( to ) ).FirstOrDefault()?.Node;
 
 	/// <summary> Makes a bulb gold (a light of its own, worth more, drops a pickup) or plain again. </summary>
 	void Gild( Floater f, bool gold )
@@ -159,31 +146,6 @@ public partial class AlienFloaters : Node3D
 		}
 	}
 
-	/// <summary> A spiky star fern resting on the sand. </summary>
-	public void SpawnFern( Random random, Vector3 at, float ground )
-	{
-		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
-		var node = new Node3D { Name = "Floater" };
-		AddChild( node );
-		node.GlobalPosition = at with { Y = ground + R( 0.25f, 0.45f ) };
-		var frond = Fronds[random.Next( Fronds.Length )];
-		var tip = BulbGlow[random.Next( BulbGlow.Length )];
-		var blades = new List<Node3D>();
-		for ( var i = random.Next( 5, 8 ); i > 0; i-- )
-		{
-			// Each blade on its own pivot at the centre, pointing out along its local up, so it can shoot out.
-			var dir = new Vector3( R( -1f, 1f ), R( 0.25f, 1f ), R( -1f, 1f ) ).Normalized();
-			var len = R( 0.35f, 0.9f );
-			var pivot = new Node3D { Name = "Blade" };
-			node.AddChild( pivot );
-			pivot.Basis = new Basis( new Quaternion( Vector3.Up, dir ) );
-			Part( pivot, new BoxMesh { Size = new Vector3( 0.14f, len, 0.02f ) }, frond, Vector3.Up * len * 0.5f, Basis.Identity );
-			Part( pivot, new SphereMesh { Radius = 0.04f, Height = 0.08f, RadialSegments = 6, Rings = 3 }, tip, Vector3.Up * len, Basis.Identity ).Name = "Tip";
-			blades.Add( pivot );
-		}
-		all.Add( new Floater { Node = node, School = new School { Home = node.GlobalPosition }, Fern = true, Phase = R( 0f, MathF.Tau ), Rate = R( 0.2f, 0.4f ), Blades = blades, BulbLook = tip } );
-	}
-
 	/// <summary>
 	/// After the ground changes (the wreck site, Atlantis): drops the ones where `remove` says, sets the rest at the
 	/// same height above the new ground.
@@ -199,7 +161,7 @@ public partial class AlienFloaters : Node3D
 			schools[f.School] = f.School.Home with { Y = SeaTerrain.HeightAt( f.School.Home ) + lift };
 		}
 		foreach ( var (school, home) in schools ) school.Home = home;
-		foreach ( var f in all.Where( f => f.Fern ) ) f.Node.GlobalPosition = f.School.Home; foreach ( var f in all ) f.At = null;   // moved: read again
+		foreach ( var f in all ) f.At = null;   // moved: read again
 	}
 
 	/// <summary> A shot found a bulb: it bursts at once, for points (and a pickup if it was gold). </summary>
@@ -283,7 +245,7 @@ public partial class AlienFloaters : Node3D
 	}
 
 	// Reused every frame (they were built afresh each frame).
-	readonly List<Vector3> chests = new(), feet = new();
+	readonly List<Vector3> chests = new();
 	/// <summary> Bulbs this far from every player move every other frame (their drift is slow; nobody can tell). </summary>
 	const float FarAway = 45f;
 	ulong frames;
@@ -293,18 +255,15 @@ public partial class AlienFloaters : Node3D
 		var t = (float)Clock.Now;
 		frames++;
 		chests.Clear();
-		feet.Clear();
 		foreach ( var p in PlayerSurvivor.All )
 		{
 			if ( !p.IsAlive ) continue;
 			var at = p.Controller.GlobalPosition;
 			chests.Add( at + Vector3.Up * 1f );
-			feet.Add( at + Vector3.Up * 0.4f );
 		}
 		for ( var i = 0; i < all.Count; i++ )
 		{
 			var f = all[i];
-			if ( f.Fern ) { UpdateFern( f, feet, t ); continue; }
 			if ( f.IsPopped )
 			{
 				if ( f.SincePopped < RegrowAfter ) continue;
@@ -349,64 +308,6 @@ public partial class AlienFloaters : Node3D
 			f.Node.GlobalTransform = new Transform3D( new Basis( Vector3.Up, t * f.Spin + f.Phase ) * lean * Basis.FromScale( Vector3.One * scale ), at );
 			f.At = at;
 		}
-	}
-
-	/// <summary> A fern: resting (a slight sway), shuddering as a warning, then its spikes shoot out and draw back. </summary>
-	void UpdateFern( Floater f, List<Vector3> feet, float t )
-	{
-		f.At ??= f.Node.GlobalPosition;   // ferns stay put: read once
-		var centre = f.At.Value;
-		switch ( f.State )
-		{
-			case FernState.Rest:
-			{
-				var near = Nearest( feet, centre );
-				// A far fern's slight sway in turns (every 4th frame); the check for a player stays every frame.
-				if ( near < FarAway || ((frames + (ulong)f.Phase.GetHashCode()) & 3) == 0 )
-					f.Node.Rotation = new Vector3( MathF.Sin( t * f.Rate + f.Phase ) * 0.05f, f.Node.Rotation.Y, MathF.Cos( t * f.Rate * 0.8f + f.Phase ) * 0.05f );
-				if ( f.SinceState > FernRest && near < FernReach )
-				{
-					f.State = FernState.Tell;
-					f.SinceState = 0f;
-					Sfx.Play( "crab_snap", centre, 0.5f, 0.7f );
-					SetTips( f, Hot );
-				}
-				break;
-			}
-			case FernState.Tell:
-				// A shudder: the warning to step back.
-				f.Node.Rotation = new Vector3( Rng.Float( -0.12f, 0.12f ), f.Node.Rotation.Y, Rng.Float( -0.12f, 0.12f ) );
-				if ( f.SinceState > FernTell ) { f.State = FernState.Out; f.SinceState = 0f; f.Struck = false; Sfx.Play( "stab_squish_0", centre, 0.7f, 1.2f ); }
-				break;
-			case FernState.Out:
-			{
-				// Out fast, then back slowly.
-				var s = (float)f.SinceState;
-				var reach = s < 0.08f ? MathX.Lerp( 1f, 2.1f, s / 0.08f ) : MathX.Lerp( 2.1f, 1f, MathX.Clamp( (s - 0.25f) / 0.6f, 0f, 1f ) );
-				// Thinner as they stretch: needles, not planks.
-				var thin = 1f / MathF.Sqrt( reach );
-				foreach ( var blade in f.Blades ) blade.Scale = new Vector3( thin, reach, thin );
-				if ( !f.Struck && s >= 0.08f )
-				{
-					f.Struck = true;
-					foreach ( var p in PlayerSurvivor.All )
-					{
-						if ( !p.IsAlive || (p.RealPosition + Vector3.Up * 0.4f).DistanceTo( centre ) > FernReach * 1.3f ) continue;
-						p.Health?.OnDamage( new DamageInfo { Damage = FernDamage, Attacker = this, Position = centre, Origin = centre } );
-						Stabs++;
-						Sfx.Play( "hit_flesh", p.RealPosition + Vector3.Up, 0.7f );
-					}
-				}
-				if ( s > 0.9f ) { f.State = FernState.Rest; f.SinceState = 0f; SetTips( f, f.BulbLook ); foreach ( var blade in f.Blades ) blade.Scale = Vector3.One; }
-				break;
-			}
-		}
-	}
-
-	static void SetTips( Floater f, Material material )
-	{
-		foreach ( var blade in f.Blades )
-			if ( blade.GetNodeOrNull<MeshInstance3D>( "Tip" ) is { } tip ) tip.MaterialOverride = material;
 	}
 }
 

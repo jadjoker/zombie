@@ -292,23 +292,45 @@ public partial class Jetpack
 		{
 			rollShell = new Node3D { Name = "Roll Shell" };
 			controller.AddChild( rollShell );
-			var glass = new StandardMaterial3D
-			{
-				AlbedoColor = new Color( 0.75f, 0.9f, 1f, 0.16f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.05f,
-				Metallic = 0.6f, RimEnabled = true, Rim = 1f, RimTint = 0.2f, CullMode = BaseMaterial3D.CullModeEnum.Back,
-			};
+			// Plain glass (user's ask, no neon bands): clear in the middle, bright at the edges, bending what is behind it a
+			// little, with a sharp highlight; the inside drawn too, faintly, so it reads as a hollow ball.
+			var glass = new ShaderMaterial { Shader = RollGlass };
 			glass.SetMeta( "no_caustics", true );
-			rollShell.AddChild( new MeshInstance3D { Mesh = new SphereMesh { Radius = 0.78f, Height = 1.56f, RadialSegments = 32, Rings = 16 }, MaterialOverride = glass, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
-			var neon = GunKit.Paint( PinballFx.Neon, 0.3f, 0f, 3f );
-			var cyan = GunKit.Paint( PinballFx.Cyan, 0.3f, 0f, 3f );
-			var band = new TorusMesh { InnerRadius = 0.76f, OuterRadius = 0.81f, Rings = 40, RingSegments = 6 };
-			rollShell.AddChild( new MeshInstance3D { Mesh = band, MaterialOverride = neon, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
-			rollShell.AddChild( new MeshInstance3D { Mesh = band, MaterialOverride = cyan, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Rotation = new Vector3( MathF.PI * 0.5f, 0f, 0f ) } );
+			var inner = new ShaderMaterial { Shader = RollGlass };
+			inner.SetShaderParameter( "inside", 1f );
+			inner.SetMeta( "no_caustics", true );
+			var sphere = new SphereMesh { Radius = 0.78f, Height = 1.56f, RadialSegments = 64, Rings = 32 };
+			rollShell.AddChild( new MeshInstance3D { Mesh = sphere, MaterialOverride = inner, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
+			rollShell.AddChild( new MeshInstance3D { Mesh = sphere, MaterialOverride = glass, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
 		}
 		if ( rollShell is null ) return;
 		rollShell.Visible = on;
 		rollShell.Position = Vector3.Up * 0.62f;
 	}
+
+	static readonly Shader RollGlass = new()
+	{
+		Code = @"shader_type spatial;
+render_mode blend_mix, depth_draw_never, specular_schlick_ggx;
+uniform float inside = 0.0;
+uniform sampler2D screen : hint_screen_texture, filter_linear_mipmap;
+void vertex() { if (inside > 0.5) { NORMAL = -NORMAL; } }
+void fragment() {
+	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.6);
+	// What is behind, bent toward the edges like a lens.
+	vec2 bend = NORMAL.xy * (0.025 + 0.04 * fres) * (inside > 0.5 ? -0.5 : 1.0);
+	vec3 behind = textureLod(screen, SCREEN_UV - bend, 0.0).rgb;
+	vec3 tint = vec3(0.86, 0.95, 1.0);
+	ALBEDO = mix(behind * tint, vec3(0.9, 0.97, 1.0), fres * 0.35);
+	ALPHA = (inside > 0.5 ? 0.25 : 1.0) * clamp(0.18 + fres * 0.75, 0.0, 0.92);
+	ROUGHNESS = 0.03;
+	METALLIC = 0.0;
+	SPECULAR = 1.0;
+	CLEARCOAT = 1.0;
+	CLEARCOAT_ROUGHNESS = 0.02;
+	EMISSION = vec3(0.6, 0.8, 1.0) * fres * 0.15;
+}",
+	};
 
 	void SpinShell( float dt )
 	{

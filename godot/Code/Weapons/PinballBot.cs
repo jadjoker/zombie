@@ -786,6 +786,7 @@ public static class PinballModels
 	/// <summary> How far a flipper turns from rest to up (degrees). </summary>
 	public const float FlipAngle = 60f;
 	const float PlungerTravel = 2.6f;
+	static readonly Vector3 LoadedRest = new( 3.4f, 0f, 5.95f );
 
 	static PackedScene launcher, flippers;
 
@@ -826,7 +827,14 @@ public static class PinballModels
 	{
 		if ( Find( root, "Plunger" ) is { } plunger ) plunger.Position = new Vector3( -PlungerTravel * pull + Wobble( pull, sinceShot ), 0f, 0f );
 		if ( Find( root, "Spring" ) is { } spring ) spring.Scale = new Vector3( 1f + 0.85f * pull, 1f, 1f );
-		if ( Find( root, "Loaded" ) is { } loaded ) loaded.Visible = ammo > 0 && sinceShot > 0.25f;
+		if ( Find( root, "Loaded" ) is { } loaded )
+		{
+			// The ball rides back down the lane with the plunger as it is pulled (rolling as it goes), and is gone with the shot.
+			loaded.Visible = ammo > 0 && sinceShot > 0.25f;
+			var back = PlungerTravel * pull + Wobble( pull, sinceShot );
+			loaded.Position = LoadedRest - new Vector3( back, 0f, 0f );
+			loaded.Rotation = new Vector3( 0f, back / 0.95f, 0f );
+		}
 		for ( var i = 1; i <= 5; i++ )
 			if ( Find( root, $"Ball Light {i} Lit" ) is { } lit ) lit.Visible = i <= Math.Min( ammo, 5 ) && (magazine <= 5 || i <= (int)MathF.Ceiling( ammo * 5f / magazine ));
 	}

@@ -226,7 +226,7 @@ def launcher():
         box(f"Lane Arrow {i}", "NeonCyan" if i % 2 == 0 else "Neon", (x, 0, 5.0), (0.9, 0.5, 0.1), gun, rot=(0, 0, 45), bevel=0.0)
     for x in (1.6, 11.0, 20.4):
         torus_x(f"Lane Clamp {x:.0f}", "Chrome", (x, 0, 6.0), 1.25, 0.2, gun)
-    loaded = empty("Loaded", (19.2, 0, 5.95), gun)
+    loaded = empty("Loaded", (3.4, 0, 5.95), gun)   # at the back of the lane, against the plunger
     ball("Loaded Ball", "Chrome", (0, 0, 0), 0.95, loaded)
     # The left side, which you see: a big neon star, a lightning bolt, the ball count lights and a score window.
     side = 2.32

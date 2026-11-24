@@ -26,6 +26,8 @@ public partial class Controls : Node
 
 	static bool installed;
 	static int padDevice;
+	/// <summary> When a pad was last touched (its buttons or sticks). </summary>
+	static double padUsedAt = -99;
 
 	/// <summary> The pad that was last used. </summary>
 	public static int PadDevice => padDevice;
@@ -157,26 +159,74 @@ public partial class Controls : Node
 		var pads = Input.GetConnectedJoypads();
 		if ( pads.Count > 0 ) padDevice = pads[0];
 		// A pad plugged in at the start means controller mode (a scripted test does not depend on the hardware here).
-		if ( pads.Count > 0 && !AutoTest.Requested ) Switch( Scheme.Controller );
+		if ( pads.Count > 0 && !AutoTest.Requested ) { Switch( Scheme.Controller ); EnableGyro(); }
 	}
 
 	public override void _ExitTree() => Input.JoyConnectionChanged -= OnJoyChanged;
 
 	void OnJoyChanged( long device, bool connected )
 	{
-		if ( connected ) { padDevice = (int)device; Switch( Scheme.Controller ); }
+		if ( connected ) { padDevice = (int)device; Switch( Scheme.Controller ); EnableGyro(); }
 		else if ( Input.GetConnectedJoypads().Count == 0 ) Switch( Scheme.KeyboardMouse );
+	}
+
+	// ---- gyro ----
+
+	/// <summary> Whether the pad in use has motion sensors (a Steam Controller, DualSense, Switch Pro...). </summary>
+	public static bool HasGyro => Input.GetConnectedJoypads().Contains( padDevice ) && Input.HasJoyMotionSensors( padDevice );
+	static Vector3 gyroBias;
+	static float stillFor;
+	/// <summary> Tests and the menu: the gyro's resting drift that is taken off. </summary>
+	public static Vector3 GyroBias => gyroBias;
+
+	static void EnableGyro()
+	{
+		if ( HasGyro && !Input.IsJoyMotionSensorsEnabled( padDevice ) ) Input.SetJoyMotionSensorsEnabled( padDevice, true );
+	}
+
+	/// <summary>
+	/// The pad's turn this frame as (yaw, pitch) degrees a second, its resting drift taken off (learned on its own
+	/// whenever the pad is held still, as Steam does). Zero without a gyro.
+	/// </summary>
+	public static Vector2 GyroRate( float dt )
+	{
+		if ( !HasGyro ) return Vector2.Zero;
+		EnableGyro();
+		var raw = Input.GetJoyGyroscope( padDevice );   // rad/s round the pad's X (pitch), Y (yaw), Z (roll)
+		var g = raw - gyroBias;
+		// Still (only a little sensor noise): learn the drift.
+		if ( g.Length() < 0.05f ) { stillFor += dt; if ( stillFor > 0.6f ) gyroBias = gyroBias.Lerp( raw, MathF.Min( 1f, dt * 2f ) ); }
+		else stillFor = 0f;
+		// A small dead zone for hand tremor, then degrees a second. Yaw takes the roll too, so tilting works as well
+		// as turning (players hold pads both ways).
+		var yaw = g.Y + g.Z * 0.6f;
+		var pitch = g.X;
+		Vector2 Dead( Vector2 v ) => v.Length() < 0.012f ? Vector2.Zero : v;
+		return Dead( new Vector2( yaw, pitch ) ) * (180f / MathF.PI);
+	}
+
+	/// <summary> Menu: put the pad down, then this learns its drift over a second. </summary>
+	public static void CalibrateGyro()
+	{
+		if ( !HasGyro ) return;
+		EnableGyro();
+		Input.StartJoyMotionSensorsCalibration( padDevice );
+		var tree = Engine.GetMainLoop() as SceneTree;
+		tree?.CreateTimer( 1.2, true, false, true ).Connect( SceneTreeTimer.SignalName.Timeout, Callable.From( () => { Input.StopJoyMotionSensorsCalibration( padDevice ); gyroBias = Vector3.Zero; } ) );
 	}
 
 	public override void _Input( InputEvent e )
 	{
 		switch ( e )
 		{
-			case InputEventJoypadButton { Pressed: true } b: padDevice = b.Device; Switch( Scheme.Controller ); break;
-			case InputEventJoypadMotion m when MathF.Abs( m.AxisValue ) > 0.5f: padDevice = m.Device; Switch( Scheme.Controller ); break;
+			case InputEventJoypadButton { Pressed: true } b: padDevice = b.Device; padUsedAt = Clock.Real; Switch( Scheme.Controller ); EnableGyro(); break;
+			case InputEventJoypadMotion m when MathF.Abs( m.AxisValue ) > 0.5f: padDevice = m.Device; padUsedAt = Clock.Real; Switch( Scheme.Controller ); break;
 			case InputEventKey { Pressed: true, Echo: false }: Switch( Scheme.KeyboardMouse ); break;
-			case InputEventMouseButton { Pressed: true }: Switch( Scheme.KeyboardMouse ); break;
-			case InputEventMouseMotion mm when mm.Relative.LengthSquared() > 4f: Switch( Scheme.KeyboardMouse ); break;
+			// A Steam Controller (and Steam Input on any pad) sends mouse moves and clicks from its trackpads and gyro: with
+			// a pad in hand those don't count as the mouse, so the prompts and aim assist stay on the pad. A real mouse is
+			// taken up again by a click a little after the pad was last touched, or by moving it with no pad plugged in.
+			case InputEventMouseButton { Pressed: true } when Clock.Real - padUsedAt > 3.0: Switch( Scheme.KeyboardMouse ); break;
+			case InputEventMouseMotion mm when mm.Relative.LengthSquared() > 4f && Input.GetConnectedJoypads().Count == 0: Switch( Scheme.KeyboardMouse ); break;
 		}
 	}
 

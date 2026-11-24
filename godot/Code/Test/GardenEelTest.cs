@@ -90,6 +90,17 @@ public partial class AutoTest
 			DevFlags.FreezeEnemies = false;
 		}
 
+		// Rooted in its hole: shoves and drags (the Gore Vac, the grab, explosions) don't move it, and none wander.
+		var pinned = near.First( e => IsInstanceValid( e ) );
+		var pinnedAt = pinned.GlobalPosition;
+		SkillFx.Shove( pinned, Vector3.Right * 3f + Vector3.Up );
+		pinned.Pull( Vector3.Forward * 2f );
+		await Wait( 0.3f );
+		var moved = pinned.GlobalPosition.DistanceTo( pinnedAt );
+		var wandered = EelBed.All.SelectMany( b => b.Eels.Select( ( e, i ) => (e, hole: b.Holes[i]) ) ).Where( x => x.e is not null && IsInstanceValid( x.e ) ).Max( x => x.e.GlobalPosition.Flat().DistanceTo( x.hole.Flat() ) );
+		GD.Print( $"[autotest] eels: shoved and dragged one {moved:0.000} m; furthest any eel is from its hole {wandered:0.000} m" );
+		Check( moved < 0.01f && wandered < 0.01f, "a garden eel moved out of its hole" );
+
 		// A shot sends it ducking into its hole; killed, it bursts and is not one of the round's kills.
 		var target = near.First( e => IsInstanceValid( e ) && e.IsOut );
 		var ducks = GardenEel.Ducks;

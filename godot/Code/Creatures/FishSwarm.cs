@@ -12,6 +12,8 @@ public partial class FishSwarm : Creature
 {
 	public const float FishHealth = 9f, AggroRange = 12f, LeashRange = 34f, Speed = 5.5f, BiteRange = 1.7f, BiteEvery = 0.55f, BiteDamage = 3f;
 	public const float RespawnMin = 50f, RespawnMax = 90f;
+	/// <summary> The swarm's fish are drawn this much smaller than the sea's decorative schools (user's ask: tiny). </summary>
+	public const float Small = 0.5f;
 
 	public Vector3 Home;
 	public float Radius = 10f, LoopSpeed = 0.14f, Phase;
@@ -102,9 +104,9 @@ public partial class FishSwarm : Creature
 		{
 			offsets[i] = new Vector3( (float)random.NextDouble() * 2.4f - 1.2f, (float)random.NextDouble() * 1f - 0.5f, (float)random.NextDouble() * 3.2f - 1.6f );
 			phases[i] = (float)random.NextDouble() * MathF.Tau;
-			sizes[i] = 0.8f + (float)random.NextDouble() * 0.7f;
+			sizes[i] = Small * (0.8f + (float)random.NextDouble() * 0.7f);
 			alive[i] = true;
-			var part = CreaturePart.Create( this, i, "Fish", 0.22f * sizes[i] );
+			var part = CreaturePart.Create( this, i, "Fish", 0.16f + 0.1f * sizes[i] );   // a little bigger than the fish, so the tiny ones can be hit
 			part.TopLevel = true;
 			AddChild( part );
 			parts.Add( part );

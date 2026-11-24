@@ -350,7 +350,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   green and more) and a `Theme` (most of its fish that kind, one MultiMesh per kind): plain (back to belly shading, bars on
   some colours), undead (rotted hide, a gash with bare ribs, a milky glowing eye, a brain bulging out of the skull that
   throbs and pops up, `BrainShader`; dead ones lose it as a `Fish Brain` gib) or alien (glowing spots, a lure, back spikes,
-  extra glowing eyes, neon fins, green blood). Joiners get the theme and seed. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish` (with `--shots`, each kind close up).
+  extra glowing eyes, neon fins, green blood). The fish are drawn at `FishSwarm.Small` (0.5) of the decorative schools, with hit capsules a little bigger than them. Joiners get the theme and seed. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish` (with `--shots`, each kind close up).
 - Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
   hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
   head now and then) as robot pieces with chrome joints, oil gushing from both ends.

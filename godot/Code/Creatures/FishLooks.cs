@@ -97,11 +97,10 @@ public static class FishLooks
 	{
 		var ball = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 12, Rings = 8 };
 		// The brain: a main lump and lobes bulging out of a torn hole in the skull.
+		// One smooth lump (lobes as separate balls read wrong); the shader draws the folds and the middle groove.
 		var b = Part();
-		Put( b, ball, BrainAt, new Vector3( 0.034f, 0.03f, 0.042f ) );
-		foreach ( var (x, z) in new[] { (-0.012f, 0.012f), (0.012f, 0.012f), (-0.011f, -0.012f), (0.011f, -0.012f) } )
-			Put( b, ball, BrainAt + new Vector3( x, 0.008f, z ), new Vector3( 0.02f, 0.02f, 0.024f ) );
-		Commit( b, mesh, new ShaderMaterial { Shader = brain ??= new Shader { Code = BrainShader } } );
+		Put( b, new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 20, Rings = 12 }, BrainAt + new Vector3( 0f, 0.006f, 0f ), new Vector3( 0.036f, 0.026f, 0.046f ) );
+		Commit( b, mesh, new ShaderMaterial { Shader = Brain } );
 		// The wound: the torn skull rim round the brain, and a raw gash in the flank with bare ribs.
 		var w = Part();
 		Put( w, ball, BrainAt + new Vector3( 0f, -0.01f, 0f ), new Vector3( 0.042f, 0.014f, 0.05f ) );
@@ -235,23 +234,39 @@ void fragment()
 ";
 
 	/// <summary> The undead fish's brain: wet pink folds, a throb, and every few seconds it pops up out of the skull and squelches back. </summary>
+	public static Shader Brain => brain ??= new Shader { Code = BrainShader };
+
+	/// <summary> The brain that flies out of a dead undead fish: the same folds, no throb (`size` is its width in metres). </summary>
+	public static ShaderMaterial LooseBrain( float size )
+	{
+		var m = new ShaderMaterial { Shader = Brain };
+		m.SetShaderParameter( "alive", 0f );
+		m.SetShaderParameter( "fold_scale", size );
+		return m;
+	}
+
 	const string BrainShader = @"
 shader_type spatial;
 const vec3 centre = vec3( 0.0, 0.058, 0.055 );
+uniform float alive = 1.0;
+uniform float fold_scale = 1.0;   // metres per mesh unit (the loose brain is a unit ball)
 varying vec3 lp;
 void vertex()
 {
 	float id = float( INSTANCE_ID );
-	float pop = pow( max( sin( TIME * 1.7 + id * 1.9 ), 0.0 ), 10.0 );
-	float throb = 0.07 * sin( TIME * 8.0 + id * 2.3 );
-	vec3 d = VERTEX - centre;
-	lp = VERTEX;
-	VERTEX = centre + d * ( 1.0 + throb + 0.3 * pop ) + vec3( 0.0, 0.035 * pop, 0.0 );
+	float pop = alive * pow( max( sin( TIME * 1.7 + id * 1.9 ), 0.0 ), 10.0 );
+	float throb = alive * 0.07 * sin( TIME * 8.0 + id * 2.3 );
+	lp = ( VERTEX - centre * alive ) * fold_scale;
+	if ( alive > 0.5 ) VERTEX = centre + ( VERTEX - centre ) * ( 1.0 + throb + 0.3 * pop ) + vec3( 0.0, 0.035 * pop, 0.0 );
 }
 void fragment()
 {
-	float folds = sin( lp.x * 900.0 + sin( lp.z * 700.0 ) * 2.5 ) * sin( lp.z * 520.0 + sin( lp.y * 800.0 ) * 2.0 );
-	vec3 c = mix( vec3( 0.95, 0.6, 0.64 ), vec3( 0.6, 0.22, 0.3 ), smoothstep( 0.2, 0.9, folds ) );
+	// Wiggly folds (gyri) as winding dark lines, and the groove down the middle.
+	vec2 q = vec2( lp.x, lp.z ) * 520.0;
+	float w = sin( q.x + sin( q.y * 0.9 ) * 2.2 ) + sin( q.y * 1.1 + sin( q.x * 1.3 ) * 2.0 );
+	float line = 1.0 - smoothstep( 0.0, 0.35, abs( w ) );
+	float groove = 1.0 - smoothstep( 0.0015, 0.0035, abs( lp.x ) );
+	vec3 c = mix( vec3( 0.95, 0.62, 0.66 ), vec3( 0.62, 0.24, 0.32 ), max( line * 0.85, groove ) );
 	ALBEDO = c;
 	ROUGHNESS = 0.18;
 	SPECULAR = 0.7;

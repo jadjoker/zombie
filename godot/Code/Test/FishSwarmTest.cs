@@ -25,7 +25,7 @@ public partial class AutoTest
 		foreach ( var s in FishSwarm.All.ToList() ) s.QueueFree();
 		await Wait( 0.2f );
 		// A wave swarm comes in from out past its aggro range and still finds the player.
-		var swarm = FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 20f + Vector3.Up * 2.5f, FishLooks.Colours[0], 16, 16 * FishSwarm.FishHealth, FishLooks.Kind.Undead );
+		var swarm = FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 20f + Vector3.Up * 2.5f, FishLooks.Colours[0], 64, 16 * FishSwarm.FishHealth, FishLooks.Kind.Undead );
 		await Wait( 0.3f );
 		var count = swarm.Alive;
 		var health = me.Health.Current;
@@ -49,8 +49,8 @@ public partial class AutoTest
 		Check( !IsInstanceValid( swarm ) && FishSwarm.FishKilled >= count, "the swarm did not die with all its fish" );
 		var bodies = GetTree().CurrentScene.FindChildren( "Fish *", "", true, false ).Count;
 		var joints = GetTree().CurrentScene.GetChildren().OfType<ConeTwistJoint3D>().Count();
-		GD.Print( $"[autotest] fish: the dead: {bodies} body pieces, {joints} joints holding them, {FishSwarm.FishTorn} torn apart" );
-		Check( bodies >= count * 3 && joints > 0 && FishSwarm.FishTorn > 0, "the dead fish are not ragdolls that come apart" );
+		GD.Print( $"[autotest] fish: the dead: {FishSwarm.FishRagdolls} ragdolls, {bodies} body pieces, {joints} joints holding them, {FishSwarm.FishTorn} torn apart" );
+		Check( bodies >= FishSwarm.FishRagdolls * 3 && FishSwarm.FishRagdolls > 0 && joints > 0 && FishSwarm.FishTorn > 0, "the dead fish are not ragdolls that come apart" );
 		GD.Print( $"[autotest] fish: undead brains popped out: {FishSwarm.BrainsPopped}" );
 		Check( FishSwarm.BrainsPopped > 0, "no undead fish's brain came out when it died" );
 		if ( shots is not null )
@@ -79,7 +79,7 @@ public partial class AutoTest
 		var right = ahead.Cross( Vector3.Up ).Normalized();
 		var swarms = new List<FishSwarm>();
 		for ( var k = 0; k < 3; k++ )
-			swarms.Add( FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 3f + right * (k - 1) * 3.2f + Vector3.Up * 1.4f, FishLooks.Colours[k], 10, 90f, (FishLooks.Kind)k ) );
+			swarms.Add( FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 3f + right * (k - 1) * 3.2f + Vector3.Up * 1.4f, FishLooks.Colours[k], 60, 90f, (FishLooks.Kind)k ) );
 		await Wait( 0.4f );
 		foreach ( var s in swarms ) Check( IsInstanceValid( s ) && s.GetChildren().OfType<MultiMeshInstance3D>().Any(), "a fish swarm of each kind did not build" );
 		if ( shots is not null )

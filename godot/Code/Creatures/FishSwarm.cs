@@ -30,6 +30,10 @@ public partial class FishSwarm : Creature
 	public static int FishKilled, Bites, Aggros, FishTorn;
 	/// <summary> The share of dead fish that come apart (a head or a tail torn off). </summary>
 	public const float TearChance = 0.5f;
+	/// <summary> With so many fish, only this share of the dead become full ragdolls; the rest burst into a puff of goo and a scrap. </summary>
+	public const float RagdollShare = 0.35f;
+	/// <summary> Tests: dead fish that became ragdolls. </summary>
+	public static int FishRagdolls;
 	public static readonly List<FishSwarm> All = new();
 
 	MultiMeshInstance3D view;
@@ -102,7 +106,10 @@ public partial class FishSwarm : Creature
 		view = views[(int)Theme] ?? views.First( v => v is not null );
 		for ( var i = 0; i < Count; i++ )
 		{
-			offsets[i] = new Vector3( (float)random.NextDouble() * 2.4f - 1.2f, (float)random.NextDouble() * 1f - 0.5f, (float)random.NextDouble() * 3.2f - 1.6f );
+			// A tight shoal (user's ask): a squashed ball, denser in the middle.
+			var o = new Vector3( (float)random.NextDouble() * 2f - 1f, (float)random.NextDouble() * 2f - 1f, (float)random.NextDouble() * 2f - 1f );
+			o *= 0.35f + 0.65f * (float)random.NextDouble();
+			offsets[i] = new Vector3( o.X * 0.5f, o.Y * 0.28f, o.Z * 0.75f );
 			phases[i] = (float)random.NextDouble() * MathF.Tau;
 			sizes[i] = Small * (0.8f + (float)random.NextDouble() * 0.7f);
 			alive[i] = true;
@@ -191,16 +198,17 @@ public partial class FishSwarm : Creature
 		{
 			var mm = views[(int)kinds[i]].Multimesh;
 			if ( !alive[i] ) { mm.SetInstanceTransform( slots[i], new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), centre ) ); continue; }
-			var bob = new Vector3( 0f, MathF.Sin( t * 1.3f + phases[i] ) * 0.12f, MathF.Sin( t * 0.7f + phases[i] * 2f ) * 0.25f );
+			var bob = new Vector3( 0f, MathF.Sin( t * 1.3f + phases[i] ) * 0.05f, MathF.Sin( t * 0.7f + phases[i] * 2f ) * 0.1f );
 			var wag = new Basis( Vector3.Up, MathF.Sin( t * (aggro ? 16f : 9f) + phases[i] ) * 0.25f );
 			Vector3 at;
 			var fishFacing = facing;
 			if ( ring )
 			{
-				var a = swirl * (0.8f + 0.4f * (phases[i] / MathF.Tau)) + i * MathF.Tau / Count;
-				var r = 1.25f + 0.35f * MathF.Sin( phases[i] * 3f ) + 0.12f * MathF.Sin( t * 3f + phases[i] );
+				// The shoal stays together and circles the body as one tight knot of fish.
+				var a = swirl + offsets[i].Z * 0.7f + MathF.Sin( t * 2f + phases[i] ) * 0.05f;
+				var r = 1.15f + offsets[i].X * 0.6f + 0.05f * MathF.Sin( t * 3f + phases[i] );
 				var round = new Vector3( MathF.Cos( a ), 0f, MathF.Sin( a ) );
-				at = prey.WorldPosition + round * r + Vector3.Up * (0.45f + 0.7f * (offsets[i].Y + 0.5f) + bob.Y);
+				at = prey.WorldPosition + round * r + Vector3.Up * (0.9f + offsets[i].Y * 1.2f + MathF.Sin( swirl * 0.7f ) * 0.25f + bob.Y * 0.4f);
 				fishFacing = Shapes.LookAt( new Vector3( -MathF.Sin( a ), 0f, MathF.Cos( a ) ) ) * new Basis( Vector3.Up, MathF.PI );   // nose along the circle
 			}
 			else at = centre + facing * (offsets[i] + bob);
@@ -251,6 +259,9 @@ public partial class FishSwarm : Creature
 		gore?.GooBurst( at, Vector3.Up, Blood, 5, 140f, 0.5f );
 		Sfx.Play( "splat", at, 0.35f, Rng.Float( 1.4f, 1.8f ) );
 		if ( gore is null ) return;
+		// Most of a big shoal just bursts (the first fish to go is always a body, so a kill shows one).
+		if ( Rng.Float() > RagdollShare && Alive < Count - 1 ) return;
+		FishRagdolls++;
 		var basis = bases[i] == default ? Basis.Identity : bases[i];
 		var size = mesh.GetAabb().Size * sizes[i];
 		var length = MathF.Max( size.Z, 0.1f );
@@ -301,8 +312,8 @@ public partial class FishSwarm : Creature
 			GetTree().CurrentScene.AddChild( brain );
 			brain.GlobalTransform = new Transform3D( basis.Orthonormalized(), brainAt );
 			var pink = new StandardMaterial3D { AlbedoColor = FishLooks.BrainPink, Roughness = 0.2f };
-			Add( brain, ball, pink, Vector3.Zero, new Vector3( width * 1f, height * 0.4f, length * 0.14f ) );
-			foreach ( var x in new[] { -1f, 1f } ) Add( brain, ball, pink, new Vector3( x * width * 0.3f, height * 0.08f, 0f ), new Vector3( width * 0.6f, height * 0.3f, length * 0.12f ) );
+			var brainMat = FishLooks.LooseBrain( width );
+			Add( brain, ball, brainMat, Vector3.Zero, new Vector3( width * 1f, height * 0.42f, length * 0.16f ) );
 			var gBrain = Gib.Attach( brain, gore, radius * 0.6f, 3f, 0.03f, push * 0.6f + up * Rng.Float( 2.5f, 4f ), Blood );
 			gBrain.ApplyTorqueImpulse( Rng.InSphere( 0.002f ) );
 			var spurt = new GooJet { Color = Blood, Lifetime = 1.2f, Strength = 0.4f };

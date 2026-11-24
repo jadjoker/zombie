@@ -18,8 +18,10 @@ function Update-FromGitHub {
 
 	$behind = [int](git rev-list --count HEAD..origin/main)
 	$ahead = [int](git rev-list --count origin/main..HEAD)
-	$dirty = git status --porcelain --untracked-files=no
+	# Real local work only: Godot rewrites .import files with other line endings on every import, which is not a change.
+	$dirty = git diff HEAD --ignore-cr-at-eol --name-only
 	if ($behind -eq 0) { Write-Host "Already up to date."; return $true }
+	if (-not $dirty) { git checkout -- . 2>$null }   # only line-ending noise: put it back so the pull can go ahead
 
 	if ($dirty -or $ahead -gt 0) {
 		Write-Host ""

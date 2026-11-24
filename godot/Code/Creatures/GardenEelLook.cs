@@ -230,6 +230,118 @@ void fragment() {
 		}
 	}
 
+	/// <summary> How many times an eel bent or held back to keep off a neighbour (the test reads it). </summary>
+	public static int Squeezes;
+	/// <summary> Its body's points (the joints, the head, the snout's tip) where it was posed this frame, for its neighbours. </summary>
+	public readonly Vector3[] Spine = new Vector3[Joints + 2];
+	bool spineSet;
+	readonly List<GardenEel> near = new();
+	const float BodyGap = 0.13f, HeadGap = 0.17f;
+	/// <summary> About how far the head reaches round its centre line (the skull is a little wider than the body). </summary>
+	const float HeadSize = 0.075f;
+
+	/// <summary> The other eels close enough to touch it, standing out of their holes. </summary>
+	void Neighbours()
+	{
+		near.Clear();
+		if ( rise < 0.2f ) return;
+		foreach ( var e in All )
+			if ( e != this && IsInstanceValid( e ) && e.spineSet && e.rise > 0.2f && !e.IsDead && e.GlobalPosition.DistanceSquaredTo( GlobalPosition ) < 3.2f * 3.2f ) near.Add( e );
+	}
+
+	/// <summary> Lean forward by `forward` over the lower joints and sideways by `side`, the top two curling the head over. </summary>
+	void Bend( float t, float forward, float side )
+	{
+		var leaners = Joints - 3;
+		var curl = 0.55f * MathX.Clamp( rise, 0f, 1f );
+		for ( var i = 1; i < Joints; i++ )
+		{
+			var sway = MathF.Sin( t * 1.4f - i * 0.6f ) * 0.05f * (IsOut ? 1f : 0.4f) + (i <= leaners ? side / leaners : 0f);
+			var f = i <= leaners ? forward / leaners : curl - (i == Joints - 1 ? forward * 0.25f : 0f);
+			f += MathF.Sin( t * 1.1f - i * 0.5f ) * 0.025f;
+			joints[i].Rotation = new Vector3( f, 0f, sway );
+		}
+	}
+
+	/// <summary>
+	/// How far into a neighbour its body or head goes as posed (0 when clear), and which way to bend away from the
+	/// worst one (+1 or -1, the sideways bend's sign).
+	/// </summary>
+	float Crowded( out float away )
+	{
+		away = 1f;
+		var worst = 0f;
+		for ( var i = 2; i <= Joints + 1; i++ )
+		{
+			var p = i < Joints ? joints[i].GlobalPosition : i == Joints ? head.GlobalPosition : Snout();
+			var gap = i < Joints ? BodyGap : HeadGap;
+			var q = i < Joints ? (joints[i].GlobalPosition + joints[i - 1].GlobalPosition) * 0.5f : i == Joints ? p : (p + head.GlobalPosition) * 0.5f;
+			foreach ( var e in near )
+				for ( var k = 1; k <= Joints + 1; k++ )
+				{
+					var a = e.Spine[k - 1];
+					var b = e.Spine[k];
+					var into = MathF.Max( gap - PointToSegment( p, a, b ), gap - PointToSegment( q, a, b ) );
+					if ( into <= worst ) continue;
+					worst = into;
+					// Bend away from it: the side of this eel's facing it is on, flipped.
+					var right = GlobalBasis.X;
+					away = (e.GlobalPosition - GlobalPosition).Dot( right ) > 0f ? 1f : -1f;
+				}
+		}
+		return worst;
+	}
+
+	static float PointToSegment( Vector3 p, Vector3 a, Vector3 b )
+	{
+		var ab = b - a;
+		var l = ab.LengthSquared();
+		var u = l < 1e-6f ? 0f : MathX.Clamp( (p - a).Dot( ab ) / l, 0f, 1f );
+		return p.DistanceTo( a + ab * u );
+	}
+
+	Vector3 Snout() => head.GlobalTransform * new Vector3( 0f, 0f, -0.13f );
+
+	void SaveSpine()
+	{
+		for ( var i = 0; i < Joints; i++ ) Spine[i] = joints[i].GlobalPosition;
+		Spine[Joints] = head.GlobalPosition;
+		Spine[Joints + 1] = Snout();
+		spineSet = rise > 0.2f;
+	}
+
+	/// <summary> The smallest gap between any two eels' skins (negative: one goes into the other), across all beds; the test reads it. </summary>
+	public static float ClosestPair()
+	{
+		var best = float.MaxValue;
+		foreach ( var a in All )
+			foreach ( var b in All )
+			{
+				if ( a == b || a.GetInstanceId() > b.GetInstanceId() || !a.spineSet || !b.spineSet ) continue;
+				if ( a.GlobalPosition.DistanceSquaredTo( b.GlobalPosition ) > 9f ) continue;
+				for ( var i = 1; i <= Joints + 1; i++ )
+					for ( var k = 1; k <= Joints + 1; k++ )
+					{
+						var d = SegmentToSegment( a.Spine[i - 1], a.Spine[i], b.Spine[k - 1], b.Spine[k] ) - (i >= Joints ? HeadSize : Radius) - (k >= Joints ? HeadSize : Radius);
+						if ( d < best ) best = d;
+					}
+			}
+		return best;
+	}
+
+	static float SegmentToSegment( Vector3 a, Vector3 b, Vector3 c, Vector3 d )
+	{
+		var best = float.MaxValue;
+		for ( var s = 0; s <= 4; s++ )
+		{
+			var p = a.Lerp( b, s / 4f );
+			best = MathF.Min( best, PointToSegment( p, c, d ) );
+			var q = c.Lerp( d, s / 4f );
+			best = MathF.Min( best, PointToSegment( q, a, b ) );
+		}
+		return best;
+	}
+
 	/// <summary>
 	/// Each frame: how far it stands out of its hole, its sway in the current, the lean to its target (back for the
 	/// wind-up, out for the bite), the curl that keeps its head looking forward, and the jaw.
@@ -274,16 +386,23 @@ void fragment() {
 		if ( act != Act.Hidden ) ShowHole();
 		foreach ( var p in parts ) if ( IsInstanceValid( p ) && p.Collider is not null ) p.Collider.Disabled = rise < 0.35f;
 
-		// The bends: the lower joints share the lean, the top two curl the head over to look forward; all sway.
-		var leaners = Joints - 3;
-		var curl = 0.55f * MathX.Clamp( rise, 0f, 1f );
-		for ( var i = 1; i < Joints; i++ )
+		// The bends, kept off the bed's other eels (they stand close, all leaning at the same player): try the lean as
+		// wanted, then bent round the eel in the way, then less and less of it, until the body and head are clear.
+		Neighbours();
+		var bend = lean;
+		var dodge = 0f;
+		Bend( t, bend, 0f );
+		if ( near.Count > 0 && rise > 0.2f )
 		{
-			var sway = MathF.Sin( t * 1.4f - i * 0.6f ) * 0.05f * (IsOut ? 1f : 0.4f);
-			var forward = i <= leaners ? lean / leaners : curl - (i == Joints - 1 ? lean * 0.25f : 0f);
-			forward += MathF.Sin( t * 1.1f - i * 0.5f ) * 0.025f;
-			joints[i].Rotation = new Vector3( forward, 0f, sway );
+			for ( var tries = 0; tries < 8 && Crowded( out var away ) > 0f; tries++ )
+			{
+				Squeezes++;
+				if ( tries < 2 ) dodge = away * (tries + 1) * 0.3f;
+				else bend *= 0.7f;
+				Bend( t, bend, dodge );
+			}
 		}
+		SaveSpine();
 		SmoothKit.PoseChain( bones, joints );
 		jaw.Rotation = new Vector3( -look, 0f, 0f );   // open: the chin drops
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );

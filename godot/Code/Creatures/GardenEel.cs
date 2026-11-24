@@ -288,10 +288,25 @@ public partial class EelBed : Node3D
 			if ( OpenFloor( bed, at ) is not { } floor ) continue;
 			bed.holes.Add( at with { Y = floor } );
 		}
-		if ( bed.holes.Count == 0 ) { bed.QueueFree(); return null; }
-		foreach ( var hole in bed.holes ) { bed.eels.Add( null ); bed.regrow.Add( 0f ); }
-		for ( var i = 0; i < bed.holes.Count; i++ ) bed.Grow( i );
-		return bed;
+		return bed.Fill();
+	}
+
+	/// <summary> A bed with its holes just where given (tests: the worst layouts, a row pointing at the player). </summary>
+	public static EelBed MakeAt( Node3D level, IReadOnlyList<Vector3> holes )
+	{
+		var bed = new EelBed { Name = "Garden Eels" };
+		level.AddChild( bed );
+		bed.GlobalPosition = holes[0];
+		bed.holes.AddRange( holes );
+		return bed.Fill();
+	}
+
+	EelBed Fill()
+	{
+		if ( holes.Count == 0 ) { QueueFree(); return null; }
+		foreach ( var hole in holes ) { eels.Add( null ); regrow.Add( 0f ); }
+		for ( var i = 0; i < holes.Count; i++ ) Grow( i );
+		return this;
 	}
 
 	void Grow( int i )

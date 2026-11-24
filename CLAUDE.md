@@ -457,7 +457,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   (never in the wave's `alive` list, no pickups). `EelBed.Lay` (from `AreaTwo.Go` and `AreaThree.Go`, host and offline only)
   puts 4 to 6 beds of 2 to 4 eels packed 0.45 to 0.75 m apart on open sand (Atlantis: the dry canals); a bed grows a new eel
   in a dead one's hole after 45 to 75 s. Hidden in the sand (`IsEnemy` false: no bar, no aim assist) until a player comes within
-  `WakeRange`; then it digs out (a hole appears), stands swaying with its head on them, and nips anyone within `Reach`
+  `WakeRange`; then it digs out (a hole appears), stands swaying with its head on them, and nips anyone within `Reach` (bed mates never go through each other: each pose is checked against the neighbours' `Spine` and bent round or leant less, `Crowded`)
   (`BiteDamage` 4); a shot sends it ducking into its hole. The hole (`ShowHole`) is laid on the ground in the floor's own sand (`Stingray.Sand`, `SeaTerrain.ShadeAt`; Atlantis `CanalSand`) and fades out at its edge. One skinned spotted tube (`SpotShader`), its skin green, purple or orange (`Skins`, `Tint`, sent to joiners) on a chain built hanging
   down and turned upright; angry head (yellow eyes, slanted brows, a frown, an underbite of teeth on a jaw). Dev menu:
   Enemies, Garden eels. Test: `--eels` (shots need a window).

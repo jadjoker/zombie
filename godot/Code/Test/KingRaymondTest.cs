@@ -44,6 +44,10 @@ public partial class AutoTest
 		d.JumpToWave( 15 );
 		d.SpawningPaused = false;
 		for ( var t = 0f; t < 8f && KingRaymond.All.Count == 0; t += 0.1f ) await Wait( 0.1f );
+		var banner = GameHud.BossArrives( d.BossKind );
+		GD.Print( $"[autotest] kingray: wave {d.Wave} banner \"{banner}\", MC-51s {MC61.All.Count}" );
+		Check( d.BossWave && banner.Contains( "KING RAYMOND" ) && !banner.Contains( "MC-51" ), $"wave 15's banner says \"{banner}\"" );
+		Check( MC61.All.Count == 0, "MC-51 came on wave 15 as well as the king" );
 		d.SpawningPaused = true;
 		foreach ( var c in Creature.Everyone.Where( c => c is not KingRaymond ).ToList() ) c.QueueFree();
 		var king = KingRaymond.All.FirstOrDefault();
@@ -51,7 +55,7 @@ public partial class AutoTest
 		Check( king is not null, "King Raymond IV did not come on wave 15" );
 		Check( MC61.All.Count == 0, "MC-51 came on wave 15 too" );
 		if ( king is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
-		Check( MathF.Abs( king.Health.MaxHealth - d.KingRaymondHealth ) < 1f && d.KingRaymondHealth >= 6000f, $"King Raymond's health is {king.Health.MaxHealth:0}" );
+		Check( MathF.Abs( king.Health.MaxHealth - d.KingRaymondHealth ) < 1f && d.KingRaymondHealth >= 10000f, $"King Raymond's health is {king.Health.MaxHealth:0}" );
 		Check( king.HasCrown, "King Raymond has no crown" );
 		Check( king.Size >= 2.5f, "King Raymond is not much bigger than a sting ray" );
 

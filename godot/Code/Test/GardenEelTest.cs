@@ -39,6 +39,9 @@ public partial class AutoTest
 		Check( packed && spaced, "a bed's eels are not packed close together" );
 		Check( apart, "two eel beds are on top of each other" );
 		Check( onSand, "an eel's hole is not on the sand" );
+		var tints = GardenEel.All.Select( e => e.Tint ).Distinct().Count();
+		GD.Print( $"[autotest] eels: {tints} skin colours of {GardenEel.Skins.Length}" );
+		Check( GardenEel.All.Count < 6 || tints > 1, "every garden eel has the same skin colour" );
 
 		// Asleep while nobody is near; not part of the round.
 		var bed = beds.OrderBy( b => b.GlobalPosition.Flat().Length() ).First();

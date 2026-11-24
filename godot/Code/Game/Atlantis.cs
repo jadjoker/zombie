@@ -146,7 +146,8 @@ public static class Atlantis
 	static readonly StandardMaterial3D BaseStone = Mat( new Color( 0.05f, 0.05f, 0.07f ), 0.3f, 0.2f );
 
 	/// <summary> The dry canals' floor: pale sea sand. </summary>
-	static StandardMaterial3D CanalMaterial() => Mat( new Color( 0.62f, 0.54f, 0.42f ), 0.95f );
+	public static readonly Color CanalSand = new( 0.62f, 0.54f, 0.42f );
+	static StandardMaterial3D CanalMaterial() => Mat( CanalSand, 0.95f );
 
 	/// <summary>
 	/// The glass: clear where you look straight through it, bright and sea-green at the edges where you see it side-on

@@ -645,7 +645,7 @@ public partial class GameHud : Control
 	}
 
 	/// <summary> The boss wave's line under its banner: who is coming. </summary>
-	static string BossArrives( WaveDirector.EnemyKind kind ) => kind switch
+	public static string BossArrives( WaveDirector.EnemyKind kind ) => kind switch
 	{
 		WaveDirector.EnemyKind.KingRaymond => "KING RAYMOND IV glides in. Bow down",
 		WaveDirector.EnemyKind.Davey => "DAVEY JONES has come for your soul",

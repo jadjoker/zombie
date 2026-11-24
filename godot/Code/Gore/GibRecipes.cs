@@ -307,8 +307,8 @@ public static class GibRecipes
 		return r;
 	} );
 
-	/// <summary> The garden eel: cream skin with black spots, red meat, and a spotted scrap of its body. </summary>
-	public static GibRecipe GardenEel( Color goo, Color cream, Color spots ) => Get( "garden eel", () =>
+	/// <summary> The garden eel: its skin colour (green, purple or orange) with black spots, red meat, and a spotted scrap of its body. </summary>
+	public static GibRecipe GardenEel( Color goo, Color cream, Color spots ) => Get( $"garden eel {cream.ToHtml( false )}", () =>
 	{
 		var r = new GibRecipe
 		{

@@ -148,6 +148,7 @@ uniform float alert = 0.0;
 uniform float charge = 0.0;
 uniform float flash = 0.0;
 uniform float bruise = 0.0;
+uniform float size = 1.0;   // the king is 3 times the ray: the mottling and spots keep the sea bed's own scale
 varying vec3 lp;
 varying vec3 wp;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -184,14 +185,14 @@ void fragment() {
 	if (underside < 0.5) {
 		// The camouflage: the floor's own sand where it is, so from above it blends in.
 		c = texture(sand_tex, wp.xz * 0.12).rgb * sand_tint;
-		float m = fbm(lp.xz * 7.0 + 3.0);
+		float m = fbm(lp.xz * 7.0 * size + 3.0);
 		c *= mix(0.86, 1.05, smoothstep(0.3, 0.7, m));
 		// Sneaky, not invisible: the rim of the disc and the head's ridge a little darker.
 		float rim = smoothstep(0.62, 1.0, edge);
 		c *= mix(1.0, 0.8, rim);
 		c *= 1.0 - 0.12 * exp(-pow(lp.x / 0.05, 2.0)) * step(-0.45, lp.z);
 		// Alien spots: a few round glowing dots down the back and over the wings, dim while it hunts.
-		vec2 g = lp.xz * vec2(9.0, 9.0);
+		vec2 g = lp.xz * 9.0 * size;
 		vec2 cell = floor(g);
 		float h = hash(cell + 3.7);
 		float dd = length(fract(g) - vec2(0.5));
@@ -241,7 +242,8 @@ void fragment() {
 	CreaturePart tailPart;
 
 	static Texture2D sand;
-	static Texture2D Sand()
+	/// <summary> The sea bed's sand texture (the ray's camouflage; the garden eels' holes). </summary>
+	public static Texture2D Sand()
 	{
 		const string path = "res://assets/materials/ground/seabed_color.png";
 		if ( sand is null && ResourceLoader.Exists( path ) ) sand = GD.Load<Texture2D>( path );
@@ -253,6 +255,7 @@ void fragment() {
 		var m = new ShaderMaterial { Shader = DiscShader };
 		if ( Sand() is { } tex ) m.SetShaderParameter( "sand_tex", tex );
 		m.SetShaderParameter( "underside", underside ? 1f : 0f );
+		m.SetShaderParameter( "size", Size );
 		m.SetShaderParameter( "rigid", rigid ? 1f : 0f );
 		m.SetShaderParameter( "half_span", HalfSpan );
 		m.SetShaderParameter( "half_len", HalfLength );

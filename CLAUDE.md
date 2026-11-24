@@ -441,7 +441,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   it tilts to the slope and is never let under `MinClear`; walls are felt with a sphere. Sounds `ray_zap`, `ray_charge`. Dev menu:
   Enemies, Spawn an enemy, Sting ray. Test: `--stingray` (checks the lowest clearance over the hills; shots need a window).
 - King Raymond IV (`Creatures/StingrayKing.cs`, `KingRaymond : Stingray`, `EnemyKind.KingRaymond`, user's design): the wave 15 boss
-  (`WaveDirector.KingRaymondWave`, takes MC-51's place; `BossKind` picks each boss wave's boss; health `KingRaymondHealth` 8000), the
+  (`WaveDirector.KingRaymondWave`, takes MC-51's place; `BossKind` picks each boss wave's boss; health `KingRaymondHealth` 10000), the
   sting ray at `KingSize` (3) times with a jewelled gold crown like Poseidon's (part 7, rings when shot, comes off on death). The
   sting ray's code takes `Size` (heights, reaches, walls) and `King`; the king's acts follow the ray's in `Act`. Five attacks, his
   move names on the HUD in gold (`Line`) and "KING RAYMOND" with a carved "IV" on the boss bar (`HudOverlays.RomanNumeral`): the zap
@@ -458,7 +458,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   puts 4 to 6 beds of 2 to 4 eels packed 0.45 to 0.75 m apart on open sand (Atlantis: the dry canals); a bed grows a new eel
   in a dead one's hole after 45 to 75 s. Hidden in the sand (`IsEnemy` false: no bar, no aim assist) until a player comes within
   `WakeRange`; then it digs out (a hole appears), stands swaying with its head on them, and nips anyone within `Reach`
-  (`BiteDamage` 4); a shot sends it ducking into its hole. One skinned spotted tube (`SpotShader`) on a chain built hanging
+  (`BiteDamage` 4); a shot sends it ducking into its hole. The hole (`ShowHole`) is laid on the ground in the floor's own sand (`Stingray.Sand`, `SeaTerrain.ShadeAt`; Atlantis `CanalSand`) and fades out at its edge. One skinned spotted tube (`SpotShader`), its skin green, purple or orange (`Skins`, `Tint`, sent to joiners) on a chain built hanging
   down and turned upright; angry head (yellow eyes, slanted brows, a frown, an underbite of teeth on a jaw). Dev menu:
   Enemies, Garden eels. Test: `--eels` (shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then

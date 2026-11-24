@@ -134,8 +134,7 @@ public static class SeaTerrain
 						var p = new Vector3( -HalfSize + gi * Step, h, -HalfSize + gj * Step );
 						var n = Normal( heights, verts, gi, gj );
 						// Valleys a little darker and cooler, crests and slopes warmer and lighter, so the shape reads.
-						var shade = MathX.Clamp( 0.86f + h * 0.018f, 0.62f, 1.08f ) * (0.82f + 0.18f * n.Y);
-						st.SetColor( new Color( shade, shade * 0.99f, shade * 0.96f ) );
+						st.SetColor( Shade( h, n ) );
 						st.SetNormal( n );
 						st.SetUV( new Vector2( p.X, p.Z ) * 0.12f );
 						st.AddVertex( p );
@@ -167,6 +166,22 @@ public static class SeaTerrain
 			wall.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = size } } );
 			root.AddChild( wall );
 		}
+	}
+
+	/// <summary> Valleys a little darker and cooler, crests and slopes warmer and lighter, so the shape reads (the vertex colour). </summary>
+	static Color Shade( float h, Vector3 n )
+	{
+		var shade = MathX.Clamp( 0.86f + h * 0.018f, 0.62f, 1.08f ) * (0.82f + 0.18f * n.Y);
+		return new Color( shade, shade * 0.99f, shade * 0.96f );
+	}
+
+	/// <summary> The ground's vertex colour at a point, so something drawn in the sand texture there matches it. </summary>
+	public static Color ShadeAt( Vector3 at )
+	{
+		const float e = 0.5f;
+		var h = HeightAt( at );
+		var n = new Vector3( HeightAt( at.X - e, at.Z ) - HeightAt( at.X + e, at.Z ), 2f * e, HeightAt( at.X, at.Z - e ) - HeightAt( at.X, at.Z + e ) ).Normalized();
+		return Shade( h, n );
 	}
 
 	static Vector3 Normal( float[] h, int verts, int i, int j )

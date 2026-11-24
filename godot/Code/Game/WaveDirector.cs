@@ -242,8 +242,8 @@ public partial class WaveDirector : Node3D
 
 	/// <summary> The boss wave King Raymond IV (the sting ray king, user's design) takes from MC61: the middle of the wreck site. </summary>
 	public int KingRaymondWave = 15;
-	/// <summary> Between MC-51 on that wave (5000) and Davey (11000). </summary>
-	public float KingRaymondHealth = 8000f;
+	/// <summary> 10000 (user's choice), a little under Davey (11000). </summary>
+	public float KingRaymondHealth = 10000f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
 	public int DaveyWave = 20;

@@ -1,14 +1,27 @@
 using Godot;
 
 /// <summary>
-/// The garden eel's looks (after the user's photos of spotted garden eels): a long thin cream body covered in small black
+/// The garden eel's looks (after the user's photos of spotted garden eels): a long thin body (green, purple or orange) covered in small black
 /// spots with a couple of big black blotches, one smooth skinned tube standing up out of its hole and curling over at the
 /// top so the head looks forward; a blunt head with big yellow eyes, and angry (user's ask): low slanted brows, a frown
 /// and an underbite of little teeth on a jaw that gapes to bite.
 /// </summary>
 public partial class GardenEel
 {
-	static readonly Color Cream = new( 0.93f, 0.9f, 0.8f );
+	/// <summary> The skin between the spots (user's ask: not white): green, purple or orange, one picked per eel. </summary>
+	public static readonly Color[] Skins = { new( 0.42f, 0.8f, 0.28f ), new( 0.6f, 0.36f, 0.85f ), new( 0.97f, 0.53f, 0.16f ) };
+	int tint;
+	/// <summary> Which of <see cref="Skins"/> it wears (sent to joiners, so their copy matches). </summary>
+	public int Tint
+	{
+		get => tint;
+		set
+		{
+			tint = Math.Clamp( value, 0, Skins.Length - 1 );
+			bodyPaint?.SetShaderParameter( "cream", Skins[tint] );
+			foreach ( var m in headPaints ) m.SetShaderParameter( "cream", Skins[tint] );
+		}
+	}
 	static readonly Color SpotBlack = new( 0.06f, 0.05f, 0.05f );
 	static readonly Color Blood = new( 0.72f, 0.1f, 0.1f );
 
@@ -61,7 +74,7 @@ void fragment() {
 	ShaderMaterial Spotted( bool onHead, Vector3 size )
 	{
 		var m = new ShaderMaterial { Shader = SpotShader };
-		m.SetShaderParameter( "cream", Cream );
+		m.SetShaderParameter( "cream", Skins[tint] );
 		m.SetShaderParameter( "spot", SpotBlack );
 		m.SetShaderParameter( "head", onHead ? 1f : 0f );
 		m.SetShaderParameter( "size", size );
@@ -69,18 +82,83 @@ void fragment() {
 		return m;
 	}
 
+	static readonly Shader HoleShader = new()
+	{
+		Code = @"shader_type spatial;
+render_mode blend_mix, depth_draw_never, cull_back;
+uniform sampler2D sand_tex : source_color, filter_linear_mipmap, repeat_enable;
+uniform float textured = 1.0;      // the sea bed's sand texture (the wreck site), or a flat colour (Atlantis's canals)
+uniform vec3 tint : source_color = vec3(0.86, 0.85, 0.83);
+varying vec3 wp;
+float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+void vertex() { wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz; }
+void fragment() {
+	float r = UV.x;
+	// The floor's own sand where it is, mapped and shaded as the ground is, so the edge melts into it.
+	vec3 sand = textured > 0.5 ? texture(sand_tex, wp.xz * 0.12).rgb * tint : tint;
+	// Churned sand round the mouth: a little darker and grainier toward the hole.
+	float g = hash(floor(wp.xz * 160.0));
+	vec3 c = sand * mix(0.8, 1.0, smoothstep(0.25, 0.8, r)) * mix(1.0, 0.9 + 0.2 * g, 1.0 - smoothstep(0.3, 0.9, r));
+	// The mouth: dark and soft edged, as if it goes down into shadow.
+	c = mix(c, sand * 0.1, 1.0 - smoothstep(0.16, 0.3, r));
+	ALBEDO = c;
+	ROUGHNESS = 1.0;
+	ALPHA = 1.0 - smoothstep(0.55, 1.0, r);
+}",
+	};
+
+	const float HoleRadius = 0.24f;
+
+	/// <summary>
+	/// The hole, once it has dug out: a dark mouth sunk in a low lip of churned sand, laid on the ground it sits on
+	/// (heights from the floor under each point) and drawn in the floor's own sand, fading out at its edge.
+	/// </summary>
+	void ShowHole()
+	{
+		if ( holeMark is null )
+		{
+			var centre = GlobalPosition;
+			var st = new SurfaceTool();
+			st.Begin( Mesh.PrimitiveType.Triangles );
+			const int rings = 9, segs = 28;
+			for ( var i = 0; i <= rings; i++ )
+				for ( var k = 0; k < segs; k++ )
+				{
+					var r = HoleRadius * i / rings;
+					var a = MathF.Tau * k / segs;
+					var flat = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
+					var ground = Sculpt.FloorBelow( this, centre + flat + Vector3.Up * 0.4f, 1.2f );
+					if ( ground < centre.Y - 0.6f ) ground = centre.Y;
+					// Sunk in the middle, a low lip of thrown up sand round it, back to the ground at the edge.
+					var lip = 0.018f * MathF.Exp( -MathF.Pow( (r - 0.09f) / 0.03f, 2f ) );
+					var sink = -0.03f * MathF.Max( 0f, 1f - r / 0.065f );
+					st.SetUV( new Vector2( r / HoleRadius, 0f ) );
+					st.AddVertex( new Vector3( flat.X, ground - centre.Y + 0.006f + lip + sink, flat.Z ) );
+				}
+			for ( var i = 0; i < rings; i++ )
+				for ( var k = 0; k < segs; k++ )
+				{
+					int a = i * segs + k, b = i * segs + (k + 1) % segs, c = a + segs, d = b + segs;
+					st.AddIndex( a ); st.AddIndex( c ); st.AddIndex( b );
+					st.AddIndex( b ); st.AddIndex( c ); st.AddIndex( d );
+				}
+			st.GenerateNormals();
+			var m = new ShaderMaterial { Shader = HoleShader };
+			var canal = SeaTerrain.Area == 3;
+			if ( !canal && Stingray.Sand() is { } tex ) m.SetShaderParameter( "sand_tex", tex );
+			m.SetShaderParameter( "textured", canal ? 0f : 1f );
+			m.SetShaderParameter( "tint", canal ? Atlantis.CanalSand : SeaTerrain.ShadeAt( centre ) );
+			holeMark = new MeshInstance3D { Name = "Hole", Mesh = st.Commit(), MaterialOverride = m, TopLevel = true, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+			AddChild( holeMark );
+			holeMark.GlobalTransform = new Transform3D( Basis.Identity, centre );
+		}
+		holeMark.Visible = true;
+	}
+
 	void Build()
 	{
 		body = new Node3D { Name = "Body" };
 		AddChild( body );
-
-		// The hole: a dark mouth in the sand with a low rim, there once it has dug out.
-		holeMark = new MeshInstance3D { Name = "Hole", Mesh = new CylinderMesh { TopRadius = 0.085f, BottomRadius = 0.085f, Height = 0.01f, RadialSegments = 20, Rings = 1 }, MaterialOverride = Sculpt.Paint( new Color( 0.08f, 0.07f, 0.06f ), 0.95f ), Visible = false, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-		body.AddChild( holeMark );
-		holeMark.Position = Vector3.Up * 0.012f;
-		var rim = new MeshInstance3D { Name = "Hole Rim", Mesh = new TorusMesh { InnerRadius = 0.08f, OuterRadius = 0.115f, Rings = 20, RingSegments = 6 }, MaterialOverride = Sculpt.Paint( new Color( 0.42f, 0.38f, 0.31f ), 1f ), CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-		holeMark.AddChild( rim );
-		rim.Scale = new Vector3( 1f, 0.25f, 1f );
 
 		// The body: a chain of joints standing up out of the hole (built hanging down, turned over), one skinned tube.
 		rising = new Node3D { Name = "Rising" };
@@ -193,7 +271,7 @@ void fragment() {
 		rising.Position = new Vector3( 0f, -Below - (1f - rise) * length, 0f );
 		var showing = rise > 0.01f;
 		rising.Visible = showing;
-		if ( act != Act.Hidden && holeMark is not null ) holeMark.Visible = true;
+		if ( act != Act.Hidden ) ShowHole();
 		foreach ( var p in parts ) if ( IsInstanceValid( p ) && p.Collider is not null ) p.Collider.Disabled = rise < 0.35f;
 
 		// The bends: the lower joints share the lean, the top two curl the head over to look forward; all sway.

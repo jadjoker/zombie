@@ -39,7 +39,7 @@ public partial class GardenEel : Creature
 
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 
-	public override GibRecipe Gibs => GibRecipes.GardenEel( Blood, Cream, SpotBlack );
+	public override GibRecipe Gibs => GibRecipes.GardenEel( Blood, Skins[Tint], SpotBlack );
 	/// <summary> It stays in its hole: no dragging it out with the Gore Vac or a bubble. </summary>
 	public override bool Pullable => false;
 	public override void Pull( Vector3 delta ) { }
@@ -58,6 +58,7 @@ public partial class GardenEel : Creature
 		BeginSetup( 45f );
 		phase = Rng.Float( 0f, MathF.Tau );
 		sinceBite = Rng.Float( 0f, BiteCooldown );
+		tint = Rng.Int( 0, Skins.Length - 1 );
 		Build();
 		Pose( 0f );
 	}
@@ -156,7 +157,7 @@ public partial class GardenEel : Creature
 			GpuFx.SandPuff( at, dir * Rng.Float( 0.4f, 1.1f ), new Color( 0.62f, 0.58f, 0.5f, 0.7f ), Rng.Float( 2.5f, 5f ), Rng.Float( 0.5f, 0.9f ) );
 		}
 		Sfx.Play( "land", at, 0.25f, 1.8f );
-		if ( holeMark is not null ) holeMark.Visible = true;
+		ShowHole();
 	}
 
 	// ---- Hits ----

@@ -25,7 +25,7 @@ public partial class AutoTest
 		foreach ( var s in FishSwarm.All.ToList() ) s.QueueFree();
 		await Wait( 0.2f );
 		// A wave swarm comes in from out past its aggro range and still finds the player.
-		var swarm = FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 20f + Vector3.Up * 2.5f, new Color( 1f, 0.75f, 0.2f ), 16, 16 * FishSwarm.FishHealth );
+		var swarm = FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 20f + Vector3.Up * 2.5f, FishLooks.Colours[0], 16, 16 * FishSwarm.FishHealth, FishLooks.Kind.Undead );
 		await Wait( 0.3f );
 		var count = swarm.Alive;
 		var health = me.Health.Current;
@@ -51,6 +51,8 @@ public partial class AutoTest
 		var joints = GetTree().CurrentScene.GetChildren().OfType<ConeTwistJoint3D>().Count();
 		GD.Print( $"[autotest] fish: the dead: {bodies} body pieces, {joints} joints holding them, {FishSwarm.FishTorn} torn apart" );
 		Check( bodies >= count * 3 && joints > 0 && FishSwarm.FishTorn > 0, "the dead fish are not ragdolls that come apart" );
+		GD.Print( $"[autotest] fish: undead brains popped out: {FishSwarm.BrainsPopped}" );
+		Check( FishSwarm.BrainsPopped > 0, "no undead fish's brain came out when it died" );
 		if ( shots is not null )
 		{
 			var dead = GetTree().CurrentScene.FindChildren( "Fish Body", "", true, false ).OfType<Node3D>().FirstOrDefault();
@@ -65,7 +67,38 @@ public partial class AutoTest
 				player.CameraOverride = null;
 			}
 		}
+		await FishLooksGallery( spot, ahead );
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
+	}
+
+	/// <summary> The three kinds of fish (plain, undead, alien) in rust, yellow and green, held still and close up. </summary>
+	async Task FishLooksGallery( Vector3 spot, Vector3 ahead )
+	{
+		DevFlags.FreezeEnemies = true;
+		var right = ahead.Cross( Vector3.Up ).Normalized();
+		var swarms = new List<FishSwarm>();
+		for ( var k = 0; k < 3; k++ )
+			swarms.Add( FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 3f + right * (k - 1) * 3.2f + Vector3.Up * 1.4f, FishLooks.Colours[k], 10, 90f, (FishLooks.Kind)k ) );
+		await Wait( 0.4f );
+		foreach ( var s in swarms ) Check( IsInstanceValid( s ) && s.GetChildren().OfType<MultiMeshInstance3D>().Any(), "a fish swarm of each kind did not build" );
+		if ( shots is not null )
+		{
+			player.GlobalPosition = spot - ahead * 1.5f + Vector3.Up * 0.1f;
+			LookAt( spot + ahead * 3f + Vector3.Up * 1.4f );
+			await Wait( 0.3f );
+			await Shot( "fish_kinds" );
+			for ( var k = 0; k < 3; k++ )
+			{
+				var at = swarms[k].Centre;
+				player.GlobalPosition = Nav.Closest( player, at - ahead * 2f ) + Vector3.Up * 0.1f;
+				await Wait( 0.2f );
+				LookAt( at );
+				await Wait( 0.3f );
+				await Shot( $"fish_{(FishLooks.Kind)k}".ToLowerInvariant() );
+			}
+		}
+		foreach ( var s in swarms ) if ( IsInstanceValid( s ) ) s.QueueFree();
+		DevFlags.FreezeEnemies = false;
 	}
 }

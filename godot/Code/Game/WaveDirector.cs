@@ -302,8 +302,8 @@ public partial class WaveDirector : Node3D
 		},
 		[EnemyKind.FishSwarm] = ( d, at, health ) =>
 		{
-			var colour = SeaDressing.Bright[Rng.Int( 0, SeaDressing.Bright.Length - 1 )];
-			var f = FishSwarm.SpawnHunter( d.GetTree().CurrentScene, at + Vector3.Up * 2.2f, colour, Rng.Int( 12, 18 ), health );
+			var colour = FishLooks.Colours[Rng.Int( 0, FishLooks.Colours.Length - 1 )];
+			var f = FishSwarm.SpawnHunter( d.GetTree().CurrentScene, at + Vector3.Up * 2.2f, colour, Rng.Int( 12, 18 ), health, FishLooks.RandomTheme() );
 			f.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return f;
 		},

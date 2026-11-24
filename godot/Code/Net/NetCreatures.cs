@@ -67,7 +67,7 @@ public static class NetCreatures
 		Poseidon => ("Poseidon", Array.Empty<float>()),
 		DaveyJones => ("DaveyJones", Array.Empty<float>()),
 		HomingMissile => ("HomingMissile", Array.Empty<float>()),
-		FishSwarm x => ("FishSwarm", new[] { x.Colour.R, x.Colour.G, x.Colour.B, x.Count }),
+		FishSwarm x => ("FishSwarm", new[] { x.Colour.R, x.Colour.G, x.Colour.B, x.Count, (float)x.Theme, x.Seed }),
 		_ => (c.GetType().Name, Array.Empty<float>()),
 	};
 
@@ -91,7 +91,7 @@ public static class NetCreatures
 			"Poseidon" => Poseidon.Spawn( scene, position, maxHealth ),
 			"DaveyJones" => DaveyJones.Spawn( scene, position, maxHealth ),
 			"HomingMissile" => HomingMissile.Launch( scene, position, Vector3.Forward, null ),
-			"FishSwarm" => FishSwarm.Spawn( scene, position, new Color( L( 0, 1f ), L( 1, 0.8f ), L( 2, 0.2f ) ), (int)L( 3, 14f ), 0f, 0f, 0f, 1 ),
+			"FishSwarm" => FishSwarm.Spawn( scene, position, new Color( L( 0, 1f ), L( 1, 0.8f ), L( 2, 0.2f ) ), (int)L( 3, 14f ), 0f, 0f, 0f, Math.Max( 1, (int)L( 5, 1f ) ), (FishLooks.Kind)(int)L( 4, 0f ) ),
 			_ => null,
 		};
 		if ( c is null ) { GD.PushWarning( $"[net] can't build a {kind} here yet" ); return; }

@@ -212,7 +212,7 @@ public partial class FishSchool : MultiMeshInstance3D
 		{
 			var name = mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
 			var c = name switch { "Fish" => colour, "FishFin" => colour.Lightened( 0.45f ), _ => new Color( 0.03f, 0.03f, 0.04f ) };
-			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled } );
+			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled, ResourceName = name } );
 		}
 		return mesh;
 	}
@@ -234,7 +234,7 @@ public partial class FishSchool : MultiMeshInstance3D
 		{
 			var name = mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
 			var c = name switch { "Fish" => colour, "FishFin" => colour.Lightened( 0.45f ), _ => new Color( 0.03f, 0.03f, 0.04f ) };
-			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled } );
+			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled, ResourceName = name } );
 		}
 		var school = new FishSchool
 		{

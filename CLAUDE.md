@@ -345,7 +345,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   circles the body at arm's length below the eyes and nips (`BiteDamage`, less as it thins), never gives up or comes
   back. (`Spawn` still makes the old idle kind that loops a home and respawns.) Joiners get puppets (`NetCreatures`
   "FishSwarm"). A dead fish is a ragdoll (`KillFish`: head, body and tail as gibs on cone-twist joints) and
-  `TearChance` of them come apart, spurting. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish`.
+  `TearChance` of them come apart, spurting. Looks (`Creatures/FishLooks.cs`, user's ask: less plain): each swarm has a colour (`FishLooks.Colours`: rust, yellow,
+  green and more) and a `Theme` (most of its fish that kind, one MultiMesh per kind): plain (back to belly shading, bars on
+  some colours), undead (rotted hide, a gash with bare ribs, a milky glowing eye, a brain bulging out of the skull that
+  throbs and pops up, `BrainShader`; dead ones lose it as a `Fish Brain` gib) or alien (glowing spots, a lure, back spikes,
+  extra glowing eyes, neon fins, green blood). Joiners get the theme and seed. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish` (with `--shots`, each kind close up).
 - Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
   hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
   head now and then) as robot pieces with chrome joints, oil gushing from both ends.

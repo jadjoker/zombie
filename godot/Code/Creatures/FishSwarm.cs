@@ -17,6 +17,12 @@ public partial class FishSwarm : Creature
 	public float Radius = 10f, LoopSpeed = 0.14f, Phase;
 	public Color Colour = new( 1f, 0.8f, 0.2f );
 	public int Count = 14;
+	/// <summary> What most of its fish are (`FishLooks`): plain, undead or alien. </summary>
+	public FishLooks.Kind Theme;
+	public int Seed => seed;
+	FishLooks.Kind[] kinds;
+	readonly MultiMeshInstance3D[] views = new MultiMeshInstance3D[3];
+	int[] slots;
 
 	/// <summary> Tests: fish killed, bites that landed, swarms set on a player, dead fish torn apart. </summary>
 	public static int FishKilled, Bites, Aggros, FishTorn;
@@ -26,6 +32,8 @@ public partial class FishSwarm : Creature
 
 	MultiMeshInstance3D view;
 	Mesh mesh;
+	/// <summary> Tests: undead fish whose brains came out when they died. </summary>
+	public static int BrainsPopped;
 	Vector3[] offsets, positions;
 	Basis[] bases;
 	float[] phases, sizes;
@@ -45,16 +53,17 @@ public partial class FishSwarm : Creature
 	public override GibRecipe Gibs => GibRecipes.Mermaid( new Color( 0.85f, 0.2f, 0.25f ), Colour );
 	public override bool WeakSpot( int index ) => false;
 
-	public static FishSwarm Spawn( Node parent, Vector3 home, Color colour, int count, float radius, float loopSpeed, float phase, int seed = 0 )
+	public static FishSwarm Spawn( Node parent, Vector3 home, Color colour, int count, float radius, float loopSpeed, float phase, int seed = 0, FishLooks.Kind theme = FishLooks.Kind.Plain )
 	{
-		var s = new FishSwarm { Name = "Fish Swarm", Home = home, Colour = colour, Count = count, Radius = radius, LoopSpeed = loopSpeed, Phase = phase, seed = seed };
+		var s = new FishSwarm { Name = "Fish Swarm", Home = home, Colour = colour, Count = count, Radius = radius, LoopSpeed = loopSpeed, Phase = phase, seed = seed, Theme = theme };
 		return Place( s, parent, home, count * FishHealth );
 	}
 
 	/// <summary> A wave swarm (`WaveDirector`, `EnemyKind.FishSwarm`): comes in from a spawn point already hunting the nearest player, never gives up, never comes back. </summary>
-	public static FishSwarm SpawnHunter( Node parent, Vector3 at, Color colour, int count, float health )
+	public static FishSwarm SpawnHunter( Node parent, Vector3 at, Color colour, int count, float health, FishLooks.Kind theme = FishLooks.Kind.Plain )
 	{
-		var s = new FishSwarm { Name = "Fish Swarm", Home = at, Colour = colour, Count = count, Hunter = true, seed = Rng.Int( 1, 1 << 30 ), maxHp = health };
+		// The seed fits a float exactly, so joiners rebuild the same mix of fish.
+		var s = new FishSwarm { Name = "Fish Swarm", Home = at, Colour = colour, Count = count, Hunter = true, seed = Rng.Int( 1, 1 << 22 ), maxHp = health, Theme = theme };
 		return Place( s, parent, at, health );
 	}
 
@@ -71,14 +80,24 @@ public partial class FishSwarm : Creature
 		mesh = FishSchool.Painted( Colour );
 		var random = new Random( seed == 0 ? (int)(Phase * 1000f) : seed );
 		offsets = new Vector3[Count]; positions = new Vector3[Count]; bases = new Basis[Count]; phases = new float[Count]; sizes = new float[Count]; alive = new bool[Count];
-		view = new MultiMeshInstance3D
+		// One MultiMesh per kind of fish in it; each fish has a slot in its kind's.
+		kinds = FishLooks.Mix( Theme, Count, random );
+		slots = new int[Count];
+		var counts = new int[3];
+		for ( var i = 0; i < Count; i++ ) slots[i] = counts[(int)kinds[i]]++;
+		for ( var k = 0; k < 3; k++ )
 		{
-			Name = "Fish", TopLevel = true, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
-			Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = mesh, InstanceCount = Count },
-			CustomAabb = new Aabb( -Vector3.One * 80f, Vector3.One * 160f ),
-		};
-		AddChild( view );
-		view.GlobalTransform = Transform3D.Identity;
+			if ( counts[k] == 0 ) continue;
+			views[k] = new MultiMeshInstance3D
+			{
+				Name = $"Fish {(FishLooks.Kind)k}", TopLevel = true, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
+				Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = FishLooks.Get( (FishLooks.Kind)k, Colour ) ?? mesh, InstanceCount = counts[k] },
+				CustomAabb = new Aabb( -Vector3.One * 80f, Vector3.One * 160f ),
+			};
+			AddChild( views[k] );
+			views[k].GlobalTransform = Transform3D.Identity;
+		}
+		view = views[(int)Theme] ?? views.First( v => v is not null );
 		for ( var i = 0; i < Count; i++ )
 		{
 			offsets[i] = new Vector3( (float)random.NextDouble() * 2.4f - 1.2f, (float)random.NextDouble() * 1f - 0.5f, (float)random.NextDouble() * 3.2f - 1.6f );
@@ -168,7 +187,8 @@ public partial class FishSwarm : Creature
 		var ring = aggro && prey is not null && IsInstanceValid( prey ) && (prey.WorldPosition + Vector3.Up * 0.8f).DistanceTo( centre ) < 3f;
 		for ( var i = 0; i < Count; i++ )
 		{
-			if ( !alive[i] ) { view.Multimesh.SetInstanceTransform( i, new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), centre ) ); continue; }
+			var mm = views[(int)kinds[i]].Multimesh;
+			if ( !alive[i] ) { mm.SetInstanceTransform( slots[i], new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), centre ) ); continue; }
 			var bob = new Vector3( 0f, MathF.Sin( t * 1.3f + phases[i] ) * 0.12f, MathF.Sin( t * 0.7f + phases[i] * 2f ) * 0.25f );
 			var wag = new Basis( Vector3.Up, MathF.Sin( t * (aggro ? 16f : 9f) + phases[i] ) * 0.25f );
 			Vector3 at;
@@ -185,7 +205,7 @@ public partial class FishSwarm : Creature
 			var basis = fishFacing * wag * Basis.FromScale( Vector3.One * sizes[i] );
 			positions[i] = at;
 			bases[i] = basis;
-			view.Multimesh.SetInstanceTransform( i, new Transform3D( basis, at ) );
+			mm.SetInstanceTransform( slots[i], new Transform3D( basis, at ) );
 			if ( i < parts.Count && IsInstanceValid( parts[i] ) ) parts[i].GlobalPosition = at;
 		}
 	}
@@ -222,6 +242,9 @@ public partial class FishSwarm : Creature
 		alive[i] = false;
 		FishKilled++;
 		var at = positions[i];
+		var kind = kinds[i];
+		var Blood = FishLooks.Blood( kind );
+		var hide = FishLooks.Skin( kind, Colour );
 		if ( i < parts.Count && IsInstanceValid( parts[i] ) ) parts[i].QueueFree();
 		gore?.GooBurst( at, Vector3.Up, Blood, 5, 140f, 0.5f );
 		Sfx.Play( "splat", at, 0.35f, Rng.Float( 1.4f, 1.8f ) );
@@ -235,8 +258,8 @@ public partial class FishSwarm : Creature
 		var along = (basis * Vector3.Back).Normalized();
 		var up = (basis * Vector3.Up).Normalized();
 		var push = ((at - from).SafeNormal() + Vector3.Up * 0.4f + Rng.InSphere( 0.4f )).SafeNormal() * Rng.Float( 1.5f, 3f );
-		var skin = new StandardMaterial3D { AlbedoColor = Colour, Roughness = 0.5f, RimEnabled = true, Rim = 0.4f, RimTint = 0.5f };
-		var fin = new StandardMaterial3D { AlbedoColor = Colour.Lightened( 0.45f ), Roughness = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
+		var skin = new StandardMaterial3D { AlbedoColor = hide, Roughness = 0.5f, RimEnabled = true, Rim = 0.4f, RimTint = 0.5f };
+		var fin = new StandardMaterial3D { AlbedoColor = kind == FishLooks.Kind.Alien ? FishLooks.Accent( Colour ) : hide.Lightened( 0.35f ), Roughness = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
 		var meat = new StandardMaterial3D { AlbedoColor = Blood.Darkened( 0.2f ), Roughness = 0.35f };
 		var eye = new StandardMaterial3D { AlbedoColor = new Color( 0.03f, 0.03f, 0.04f ), Roughness = 0.1f };
 		Node3D Piece( string name, Vector3 offset )
@@ -267,6 +290,26 @@ public partial class FishSwarm : Creature
 		Add( tail, new PrismMesh { Size = Vector3.One }, fin, new Vector3( 0f, 0f, -length * 0.2f ), new Vector3( 0.01f, height * 0.9f, length * 0.22f ) ).Rotation = new Vector3( MathF.PI * 0.5f, 0f, 0f );
 		var radius = MathF.Max( 0.6f, width * 0.5f / U.In );
 		var gHead = Gib.Attach( head, gore, radius, 5f, 0.08f, push * 1.1f, Blood );
+		// An undead fish's brain pops out of its skull and flies off on its own, spurting.
+		if ( kind == FishLooks.Kind.Undead )
+		{
+			BrainsPopped++;
+			var brainAt = head.GlobalPosition + up * height * 0.45f;
+			var brain = new Node3D { Name = "Fish Brain" };
+			GetTree().CurrentScene.AddChild( brain );
+			brain.GlobalTransform = new Transform3D( basis.Orthonormalized(), brainAt );
+			var pink = new StandardMaterial3D { AlbedoColor = FishLooks.BrainPink, Roughness = 0.2f };
+			Add( brain, ball, pink, Vector3.Zero, new Vector3( width * 1f, height * 0.4f, length * 0.14f ) );
+			foreach ( var x in new[] { -1f, 1f } ) Add( brain, ball, pink, new Vector3( x * width * 0.3f, height * 0.08f, 0f ), new Vector3( width * 0.6f, height * 0.3f, length * 0.12f ) );
+			var gBrain = Gib.Attach( brain, gore, radius * 0.6f, 3f, 0.03f, push * 0.6f + up * Rng.Float( 2.5f, 4f ), Blood );
+			gBrain.ApplyTorqueImpulse( Rng.InSphere( 0.002f ) );
+			var spurt = new GooJet { Color = Blood, Lifetime = 1.2f, Strength = 0.4f };
+			head.AddChild( spurt );
+			spurt.GlobalPosition = brainAt;
+			spurt.LookAt( brainAt + up + Vector3.Up * 0.01f, Vector3.Right );
+			gore.GooBurst( brainAt, up, Blood, 6, 150f, 0.5f );
+			Sfx.Play( "splat", brainAt, 0.5f, Rng.Float( 0.9f, 1.1f ) );
+		}
 		var gBody = Gib.Attach( body, gore, radius * 1.1f, 5f, 0.12f, push, Blood );
 		var gTail = Gib.Attach( tail, gore, radius * 0.8f, 5f, 0.06f, push * 0.9f, Blood );
 		// It comes apart: the head or the tail torn off, its stump and the torn end spurting.
@@ -329,10 +372,10 @@ public partial class FishSwarm : Creature
 		// Back later, at home (the host's copy brings a new puppet to the joiners).
 		if ( !Puppet && !Hunter && GetParent() is Node parent )
 		{
-			var (home, colour, count, radius, speed, phase) = (Home, Colour, Count, Radius, LoopSpeed, Phase);
+			var (home, colour, count, radius, speed, phase, theme) = (Home, Colour, Count, Radius, LoopSpeed, Phase, Theme);
 			parent.GetTree().CreateTimer( Rng.Float( RespawnMin, RespawnMax ) ).Timeout += () =>
 			{
-				if ( IsInstanceValid( parent ) && parent.IsInsideTree() && (!Net.Online || Net.IsHost) ) Spawn( parent, home, colour, count, radius, speed, phase );
+				if ( IsInstanceValid( parent ) && parent.IsInsideTree() && (!Net.Online || Net.IsHost) ) Spawn( parent, home, colour, count, radius, speed, phase, 0, theme );
 			};
 		}
 		QueueFree();

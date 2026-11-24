@@ -75,6 +75,8 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--jelly" ) ) { await JellyTest(); return; }
 		if ( args.Contains( "--angler" ) ) { await AnglerTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }
+		if ( args.Contains( "--perftypes" ) ) { await PerfTypesTest(); return; }
+		if ( args.Contains( "--perfcreatures" ) ) { await PerfCreaturesTest(); return; }
 		if ( args.Contains( "--perfsplit" ) ) { await PerfSplitTest(); return; }
 		if ( args.Contains( "--perf" ) ) { await PerfTest(); return; }
 		if ( args.Contains( "--nettest" ) ) { await NetTest(); return; }
@@ -87,6 +89,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--goobot" ) || args.Contains( "--magnetbot" ) ) { await GooBotTest(); return; }
 		if ( args.Contains( "--plungerbot" ) ) { await PlungerBotTest(); return; }
 		if ( args.Contains( "--pinballbot" ) ) { await PinballBotTest(); return; }
+		if ( args.Contains( "--fish" ) ) { await FishSwarmTest(); return; }
 		if ( args.Contains( "--moveposes" ) ) { await MovePosesTest(); return; }
 		if ( args.Contains( "--oldgallery" ) ) { await OldGalleryTest(); return; }
 		if ( args.Contains( "--mermaidgallery" ) ) { await MermaidGalleryTest(); return; }
@@ -2018,6 +2021,8 @@ public partial class AutoTest : Node
 		var toBody = ragdoll is null ? 99f : MathX.Deg( (ragdoll.Centre - cam.GlobalPosition).AngleTo( -cam.GlobalBasis.Z ) );
 		GD.Print( $"[autotest] board: dead: ragdoll {ragdoll is not null}, gun shown {weapon.ViewModel?.Visible}, ammo {ammo} -> {weapon.Ammo}, HUD alpha {hud?.Modulate.A:0.0}, camera moved {cam.GlobalPosition.DistanceTo( eye ):0.0} m and looks {toBody:0} deg off the body" );
 		Check( ragdoll is not null, "no ragdoll on death" );
+		GD.Print( $"[autotest] board: the robot came apart: {RobotRagdoll.Severed} parts off, oil sprays {RobotOil.Sprays}" );
+		Check( RobotRagdoll.Severed >= 2 && RobotOil.Sprays >= 1, "the robot did not come apart and spill oil when it died" );
 		Check( weapon.ViewModel is not { Visible: true }, "the gun is still on screen when dead" );
 		Check( weapon.Ammo == ammo, "a dead player could still shoot" );
 		Check( hud is { Modulate.A: < 0.01f }, "the HUD is still showing when dead" );
@@ -2518,6 +2523,30 @@ public partial class AutoTest : Node
 		var free = await SweepTurn( 0f );
 		GD.Print( $"[autotest] aim: a full sweep over the crab turned {slowed:0.0} deg with assist and {free:0.0} without" );
 		Check( slowed < free - 1f, "aim assist does not slow the stick across a target" );
+		// Tracking: strafing sideways past the crab, the crosshair stays on it with assist and drifts off without.
+		async Task<float> Strafe( float strength )
+		{
+			GameSettings.AimAssist = strength;
+			var start = player.GlobalPosition;
+			AimAtCrab( 0f );
+			await Wait( 0.15f );
+			var side = (-player.Camera.GlobalBasis.Z).Cross( Vector3.Up ).Flat().Normalized();
+			for ( var i = 0; i < 40; i++ )
+			{
+				player.Velocity = side * 4f;
+				player.GlobalPosition += side * 4f * 0.016f;
+				await ToSignal( GetTree(), SceneTree.SignalName.ProcessFrame );
+			}
+			var off = AngleTo( mark );
+			player.Velocity = Vector3.Zero;
+			player.GlobalPosition = start;
+			await Wait( 0.2f );
+			return off;
+		}
+		var tracked = await Strafe( 0.7f );
+		var untracked = await Strafe( 0f );
+		GD.Print( $"[autotest] aim: strafing past the crab left the aim {tracked:0.0} deg off with assist and {untracked:0.0} without" );
+		Check( tracked < untracked * 0.6f, "aim assist does not follow a target while strafing" );
 		GameSettings.AimAssist = 0.7f;
 		crab.QueueFree();
 		await Wait( 0.3f );
@@ -3322,6 +3351,11 @@ public partial class AutoTest : Node
 			picker?.SetOpen( true );
 			await Wait( 0.3f );
 			await Shot( "class_picker" );
+			// With a pad in hand the cards and the hint name its buttons.
+			Controls.Force( Scheme.Controller );
+			await Wait( 0.3f );
+			await Shot( "class_picker_pad" );
+			Controls.Force( Scheme.KeyboardMouse );
 			ClassPicker.Find( GetTree() )?.SetOpen( false );
 		}
 		player.ThirdPerson = false;

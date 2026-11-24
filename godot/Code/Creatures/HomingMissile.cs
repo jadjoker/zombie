@@ -284,6 +284,7 @@ public partial class AlienBlast : Node3D
 
 	public static void Spawn( Node parent, Vector3 at, float size )
 	{
+		using var perfSpan = Perf.Time( "alien blast" );
 		var b = new AlienBlast { Name = "Alien Blast", size = size };
 		parent.AddChild( b );
 		b.GlobalPosition = at;

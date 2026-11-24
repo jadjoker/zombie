@@ -206,6 +206,8 @@ public partial class PlayerRig : Node
 			PlaceFrame( dt );
 			Pose( dt );
 			ragdoll = RobotRagdoll.Create( model, controller.Velocity, meshes );
+			// The robot comes apart: a couple of limbs at least, the head now and then, oil everywhere.
+			ragdoll.BreakApart( Rng.Int( 2, 4 ), Rng.Float() < 0.45f, controller.Velocity + Rng.OnSphere().Flat() * 2f );
 			// The camera leaves the eyes and watches the body (issues #34 and #40).
 			deathCamAt = controller.Camera.GlobalPosition;
 			// From behind where they were looking, or the nearest side with room if something is in the way there.

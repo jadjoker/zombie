@@ -1188,6 +1188,16 @@ def gooquake():
     return img
 
 
+
+def sweetspot():
+    # A flipper with its tip lit up like a target.
+    img, d = badge((255, 150, 40))
+    poly(d, [(22, 84), (94, 52), (100, 62), (26, 98)], YEL)
+    circle(d, 24, 90, 12, fill=CHROME)
+    circle(d, 98, 56, 18, fill=None, outline=W, width=5)
+    circle(d, 98, 56, 7, fill=W)
+    return img
+
 ICONS = {
     "deepmag": deepmag, "headhunter": headhunter, "overclock": overclock, "wideload": wideload, "pointblank": pointblank,
     "shellshuffle": shellshuffle, "kickback": kickback, "dragon": dragon, "limbripper": limbripper, "fullchoke": fullchoke,
@@ -1212,6 +1222,7 @@ ICONS = {
     "bigball": bigball, "jellyhop": jellyhop, "longhop": longhop, "jiggle": jiggle, "sticky": sticky, "fatjelly": fatjelly,
     "volatile": volatile, "motherjelly": motherjelly, "superbounce": superbounce, "softlanding": softlanding, "gooshell": gooshell,
     "puddle": puddle, "gooquake": gooquake,
+    "sweetspot": sweetspot,
 }
 
 if __name__ == "__main__":

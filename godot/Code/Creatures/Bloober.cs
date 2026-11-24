@@ -393,13 +393,14 @@ public partial class Bloober : Creature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "Bloober total" );
 		if ( health is null ) return;
 		if ( IsDead )
 		{
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( (float)delta );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "Bloober think" ); Think( (float)delta ); }
 		if ( diedLocally ) return;
 
 		var leaking = segments.Where( s => !s.Gone ).ToList();
@@ -673,7 +674,7 @@ public partial class Bloober : Creature
 		else
 		{
 			var chip = Rng.Float() < (headshot ? ChipChance * 0.6f : ChipChance);
-			Hit( index, position, direction, chip, hurt );
+			if ( !Lethal( amount * (headshot ? HeadMultiplier : BodyMultiplier) ) ) Hit( index, position, direction, chip, hurt );   // a killing shot: the death burst covers it
 		}
 
 		var wasAlive = !IsDead;
@@ -744,6 +745,7 @@ public partial class Bloober : Creature
 	/// <summary> A segment comes loose and falls as a physics piece, spots and all (push in s&box units/s). </summary>
 	void Detach( Segment segment, Vector3 push )
 	{
+		using var perf = Perf.Time( "detach" );
 		var part = segment.Go;
 		Shapes.Tint( segment.Renderer, BodyColor.Lerp( BodyColor * 0.45f, segment.Hurt ) with { A = 1f } );
 		// Move the visible pieces onto a plain node and let the shootable part go.

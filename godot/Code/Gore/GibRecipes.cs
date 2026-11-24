@@ -29,7 +29,7 @@ public static class GibRecipes
 	{
 		var r = new GibRecipe
 		{
-			Kind = GibKind.Shell, Goo = goo,
+			Kind = GibKind.Shell, Goo = goo, Shape = "crab",
 			Outer = Shapes.Material( shell, "chitin" ),
 			Layer = GibKit.Paint( belly.Lerp( Colors.White, 0.35f ), 0.6f ),
 			Inner = GibKit.Paint( new Color( 0.93f, 0.66f, 0.6f ), 0.45f, wet: true ),   // crab meat, pink and wet
@@ -81,7 +81,7 @@ public static class GibRecipes
 	{
 		var r = new GibRecipe
 		{
-			Kind = GibKind.Jelly, Goo = goo, SpecialShare = 0.4f,
+			Kind = GibKind.Jelly, Goo = goo, SpecialShare = 0.4f, Shape = suckers ? "jelly-suckers" : "jelly",
 			Outer = GibKit.JellyPaint( body, 0.75f ),
 			Layer = GibKit.Paint( spot, 0.3f, wet: true, glow: 0.6f ),
 			Inner = GibKit.JellyPaint( body.Lerp( goo, 0.5f ), 0.85f ),

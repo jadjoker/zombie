@@ -43,6 +43,14 @@ public partial class PlayerController : CharacterBody3D
 	public float Gravity = U.Gravity;
 	/// <summary> Scales gravity (water, jetpack). </summary>
 	public float GravityScale = 1f;
+	/// <summary> A move that drives the body itself this tick (the Pinball-Bot's roll): returns true when it did. </summary>
+	public Func<float, bool> MoveOverride;
+	/// <summary> For a move that drives the body itself: whether it is on the ground, and the ground's slope. </summary>
+	public void SetGround( bool grounded, Vector3 normal )
+	{
+		if ( grounded ) { GroundNormal = normal; TimeSinceGrounded = 0f; } else { GroundNormal = Vector3.Up; TimeSinceUngrounded = 0f; }
+		IsOnGround = grounded;
+	}
 
 	// ---- Look and camera ----
 	public bool UseInputControls = true;
@@ -224,6 +232,10 @@ public partial class PlayerController : CharacterBody3D
 		Jumped?.Invoke();
 	}
 
+	/// <summary> The right stick's round dead zone, and how much faster a held full tilt turns. </summary>
+	public const float StickDeadzone = 0.12f, StickBoost = 1.8f;
+	float fullTilt;
+
 	public override void _Process( double delta )
 	{
 		var dt = (float)delta;
@@ -233,21 +245,38 @@ public partial class PlayerController : CharacterBody3D
 		if ( UseLookControls && !IsRemote )
 		{
 			var e = EyeAngles;
-			e.Yaw -= lookDelta.X * LookSensitivity;
-			e.Pitch += lookDelta.Y * LookSensitivity;
-			// The right stick: a curve so small tilts are fine and a full tilt turns fast, slowed along with the mouse when aiming.
-			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down" );
-			// Aim assist (controller only): the stick slows near an enemy and the aim is drawn toward it.
+			// The right stick: a round dead zone (rescaled, so just past it is the slowest turn), a curve so small tilts
+			// are fine, and a turn boost: held at full tilt a moment, it turns up to `StickBoost` faster (for turning round).
+			var stick = Input.GetVector( "look_left", "look_right", "look_up", "look_down", StickDeadzone );
+			if ( stick.Length() > 0.95f ) fullTilt += dt; else fullTilt = 0f;
+			var boost = 1f + (StickBoost - 1f) * MathX.Clamp( (fullTilt - 0.18f) / 0.3f, 0f, 1f );
+			var held = GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current;
+			var aiming = held?.AimAmount ?? 0f;
+			// Gyro (a pad with motion sensors): the pad's own turn, always or only on the sights (the setting).
+			var gyro = Controls.IsController && GameSettings.GyroMode != 0 && (GameSettings.GyroMode == 1 || aiming > 0.1f) ? Controls.GyroRate( dt ) : Vector2.Zero;
+			// With a pad, mouse-style look (a Steam Controller's trackpad or gyro through Steam Input) is aiming too.
+			var mouseLook = lookDelta.LengthSquared() > 0.01f;
+			// Aim assist (controller only): looking slows near an enemy and the aim is drawn toward it and follows it.
 			var assist = AimAssist.None;
-			if ( Controls.IsController && GetNodeOrNull<WeaponInventory>( "WeaponInventory" )?.Current is { } held )
-				assist = AimAssist.Evaluate( this, e, dt, stick != Vector2.Zero, Input.IsActionPressed( "attack1" ), held.AimAmount );
+			if ( Controls.IsController && held is not null )
+				assist = AimAssist.Evaluate( this, e, dt, stick != Vector2.Zero || gyro != Vector2.Zero || mouseLook, Input.IsActionPressed( "attack1" ), aiming );
+			var mouseScale = Controls.IsController ? assist.Slow : 1f;
+			e.Yaw -= lookDelta.X * LookSensitivity * mouseScale;
+			e.Pitch += lookDelta.Y * LookSensitivity * mouseScale;
+			var zoomScale = GameSettings.LookSensitivity > 0f ? LookSensitivity / GameSettings.LookSensitivity : 1f;
 			if ( stick != Vector2.Zero )
 			{
-				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.8f );
-				var zoomScale = GameSettings.LookSensitivity > 0f ? LookSensitivity / GameSettings.LookSensitivity : 1f;
-				var speed = 210f * GameSettings.StickSensitivity * zoomScale * assist.Slow;   // degrees a second at full tilt
-				e.Yaw -= shaped.X * speed * dt;
-				e.Pitch += shaped.Y * speed * dt;
+				var shaped = stick.Normalized() * MathF.Pow( stick.Length(), 1.6f );
+				var speed = 220f * GameSettings.StickSensitivity * zoomScale * assist.Slow;   // degrees a second at full tilt
+				e.Yaw -= shaped.X * speed * boost * dt;
+				e.Pitch += shaped.Y * speed * 0.8f * dt;   // up and down a little slower than across, as on consoles
+			}
+			if ( gyro != Vector2.Zero )
+			{
+				// One to one by default (the pad turns, the view turns), slowed a little near a target like the stick.
+				var k = GameSettings.GyroSensitivity * zoomScale * MathX.Lerp( 1f, assist.Slow, 0.6f ) * dt;
+				e.Yaw += gyro.X * k;
+				e.Pitch -= gyro.Y * k;
 			}
 			e.Yaw += assist.Pull.X;
 			e.Pitch += assist.Pull.Y;
@@ -274,6 +303,7 @@ public partial class PlayerController : CharacterBody3D
 		var dt = (float)delta;
 		if ( IsRemote ) return;   // its owner simulates it (NetPlayer places it)
 		if ( Scripted ) { Velocity = Vector3.Zero; IsOnGround = false; return; }
+		if ( MoveOverride is not null && MoveOverride( dt ) ) return;
 		// Anchor snapped: the float mode moves us (s&box MoveModeFloat outscores the walk mode).
 		if ( GetNodeOrNull<MoveModeFloat>( "MoveModeFloat" ) is { Active: true } floating )
 		{

@@ -73,6 +73,8 @@ public partial class GameHud : Control
 
 	public override void _Ready()
 	{
+		_ = Splats;   // the visor goo textures: loading them on the first close kill cost 35 ms mid-fight
+		AmmoPickup.Preload();
 		Build();
 		UiStyle.Changed += Rebuild;
 	}
@@ -110,7 +112,7 @@ public partial class GameHud : Control
 		AddChild( killBox );
 		kills = Big( killBox, S( 46 ), Theme.Number, HorizontalAlignment.Right );
 		killsCaption = UiStyle.Tag( killBox, S( 14 ), Theme.LightPanel ? Theme.Number : null, HorizontalAlignment.Right );
-		killsCaption.Text = "KILLS";
+		killsCaption.Show( "KILLS" );
 
 		points = Big( this, S( 40 ), UiStyle.Gold, HorizontalAlignment.Left );
 		points.SetAnchorsPreset( LayoutPreset.BottomLeft );
@@ -133,7 +135,7 @@ public partial class GameHud : Control
 		dive.AddChild( diveTop );
 		diveCount = Big( diveTop, S( 30 ), new Color( "d6fff7" ) );
 		diveHelp = UiStyle.Text( diveTop, 15, UiStyle.Readout, mono: true );
-		diveHelp.Text = "WASD tilt to glide   Ctrl tuck   Space spread out";
+		diveHelp.Show( DiveHelp );
 		var depthBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		depthBox.SetAnchorsPreset( LayoutPreset.CenterRight );
 		depthBox.OffsetRight = -60; depthBox.OffsetTop = -170; depthBox.GrowHorizontal = GrowDirection.Begin;
@@ -148,15 +150,18 @@ public partial class GameHud : Control
 		goBox.SetAnchorsPreset( LayoutPreset.FullRect );
 		gameOver.AddChild( goBox );
 		gameOverTitle = Big( goBox, S( 120 ), UiStyle.Red );
-		gameOverTitle.Text = "YOU DIED";
+		gameOverTitle.Show( "YOU DIED" );
 		gameOverDetail = UiStyle.Sub( goBox, S( 26 ), Colors.White );
 	}
 
+	static string DiveHelp => $"{Controls.Label( "move" )} tilt to glide   {Controls.Label( "duck" )} tuck   {Controls.Label( "jump" )} spread out";
+
 	public override void _Process( double delta )
 	{
+		if ( diveHelp is not null && DockHouse.Diving ) diveHelp.Show( DiveHelp );
 		var d = Director;
-		wave.Text = d is null ? "" : $"{(d.OpenWorld ? "DANGER" : "WAVE")} {d.Wave}";
-		status.Text = StatusText;
+		wave.Show( d is null ? "" : $"{(d.OpenWorld ? "DANGER" : "WAVE")} {d.Wave}" );
+		status.Show( StatusText );
 
 		var age = d is null ? 999f : MathF.Min( d.TimeSinceWaveStarted, d.TimeSinceWaveCleared );
 		var isStart = d is not null && d.TimeSinceWaveStarted < d.TimeSinceWaveCleared;
@@ -169,50 +174,54 @@ public partial class GameHud : Control
 		banner.Scale = Vector2.One * scale;
 		if ( d is not null )
 		{
-			bannerBig.Text = d.OpenWorld ? (isStart ? $"DANGER {d.Wave}" : "") : floatStart ? "SUIT MALFUNCTION" : isStart ? $"WAVE {d.Wave}" : d.MalfunctionJustEnded ? "SUIT BACK ONLINE" : "WAVE CLEARED";
-			bannerBig.AddThemeColorOverride( "font_color", floatStart ? new Color( "ffb020" ) : isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
-			bannerSmall.Text = d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
+			bannerBig.Show( d.OpenWorld ? (isStart ? $"DANGER {d.Wave}" : "") : floatStart ? "SUIT MALFUNCTION" : isStart ? $"WAVE {d.Wave}" : d.MalfunctionJustEnded ? "SUIT BACK ONLINE" : "WAVE CLEARED" );
+			bannerBig.FontColour( floatStart ? new Color( "ffb020" ) : isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
+			bannerSmall.Show( d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
 				: floatStart ? $"BALLAST ERROR: the suit cannot grip the ground. Jump to rise, crouch to sink"
-				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC-51 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath";
+				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC-51 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath" );
 		}
 
 		var k = d?.Kills ?? 0;
 		if ( k != lastKills ) { lastKills = k; timeSinceKillCount = 0f; }
-		kills.Text = k.ToString();
+		kills.Show( k.ToString() );
 		var pop = 1f + MathX.Clamp( 1f - timeSinceKillCount / 0.25f, 0f, 1f ) * 0.5f;
 		kills.PivotOffset = kills.Size * 0.5f;
 		kills.Scale = Vector2.One * pop;
 
-		points.Text = (player?.Points ?? 0).ToString();
-		points.AddThemeColorOverride( "font_color", (player?.TimeSinceDenied ?? 999f) < 0.4f ? UiStyle.Red : UiStyle.Gold );
+		points.Show( (player?.Points ?? 0).ToString() );
+		points.FontColour( (player?.TimeSinceDenied ?? 999f) < 0.4f ? UiStyle.Red : UiStyle.Gold );
 		var gainAge = player is null ? 999f : (float)player.TimeSinceGain;
 		gain.Modulate = new Color( 1, 1, 1, MathX.Clamp( 1f - (gainAge - 0.5f) / 0.4f, 0f, 1f ) );
-		gain.Text = $"+{player?.LastGain ?? 0}";
+		gain.Show( $"+{player?.LastGain ?? 0}" );
 		gain.OffsetTop = gain.OffsetBottom = PointsBottom - S( 44 ) - MathF.Min( gainAge, 0.9f ) * 30f * Sc;
 
 		var afflictions = player?.Afflictions;
 		var venom = afflictions?.Venomed ?? false;
 		var burning = (afflictions?.BurnLeft ?? 0f) > 0f;
 		var slowed = (afflictions?.SlowLeft ?? 0f) > 0f;
-		healthCaption.Text = "HEALTH" + (venom ? "   VENOM" : "") + (burning ? "   BURNING" : "") + (slowed ? "   SLOWED" : "");
+		healthCaption.Show( "HEALTH" + (venom ? "   VENOM" : "") + (burning ? "   BURNING" : "") + (slowed ? "   SLOWED" : "") );
 		var percent = MathF.Round( (player?.Health?.Fraction ?? 0f) * 100f );
-		healthCaption.AddThemeColorOverride( "font_color", venom ? new Color( "6dff4a" ) : burning ? new Color( "ff8a3a" ) : percent <= 30 ? new Color( "ff3b3b" ) : Colors.White );
+		healthCaption.FontColour( venom ? new Color( "6dff4a" ) : burning ? new Color( "ff8a3a" ) : percent <= 30 ? new Color( "ff3b3b" ) : Colors.White );
 		lagHealth = percent > lagHealth ? percent : MathX.Lerp( lagHealth, percent, (float)delta * 3f );
 
 		Position = new Vector2( VisorOverlay.Jitter, 0f );   // a big hit knocks the visor readouts sideways
 		dive.Visible = DockHouse.Diving;
 		if ( DockHouse.Diving )
 		{
-			diveCount.Text = $"BLOOBERS CRUSHED  {DockHouse.DiveCrushed}";
-			depthNum.Text = $"{DockHouse.DiveDepth:0} m";
-			depthSpeed.Text = $"{DockHouse.DiveVelocity.Length() / U.PerMetre * 3.6f:0} km/h";
+			diveCount.Show( $"BLOOBERS CRUSHED  {DockHouse.DiveCrushed}" );
+			depthNum.Show( $"{DockHouse.DiveDepth:0} m" );
+			depthSpeed.Show( $"{DockHouse.DiveVelocity.Length() / U.PerMetre * 3.6f:0} km/h" );
 		}
 		gameOver.Visible = d?.State == WaveState.GameOver;
 		// Dead: nothing on screen but the body and the You Died screen (issues #34 and #40).
 		var gone = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;
-		SelfModulate = gone;
-		foreach ( var child in GetChildren().OfType<CanvasItem>() ) if ( child != gameOver ) child.Modulate = gone;
-		if ( d is not null ) gameOverDetail.Text = $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress {Controls.Label( "jump" ).ToUpperInvariant()} to try again";
+		if ( gone != lastGone )
+		{
+			lastGone = gone;
+			SelfModulate = gone;
+			foreach ( var child in GetChildren().OfType<CanvasItem>() ) if ( child != gameOver ) child.Modulate = gone;
+		}
+		if ( d is not null ) gameOverDetail.Show( $"{(d.OpenWorld ? "Reached danger" : "Survived to wave")} {d.Wave} with {d.Kills} kills\nPress {Controls.Label( "jump" ).ToUpperInvariant()} to try again" );
 		UpdateGooPhysics( (float)delta );
 		QueueRedraw();
 	}
@@ -220,6 +229,9 @@ public partial class GameHud : Control
 	// ---- Goo on the lens: it lags behind how you move and look, then sticks ----
 
 	readonly Dictionary<float, (Vector2 Offset, Vector2 Velocity)> gooMotion = new();
+	readonly HashSet<float> gooAlive = new();
+	readonly List<float> gooGone = new();
+	Color lastGone = new( -1, -1, -1, -1 );
 	Angles lastEye;
 	bool hasLastEye;
 
@@ -243,7 +255,8 @@ public partial class GameHud : Control
 		var scale = Size.Y / 1080f;
 		var center = Size * 0.5f;
 
-		var alive = new HashSet<float>();
+		var alive = gooAlive;
+		alive.Clear();
 		foreach ( var drip in afflictions.Drips )
 		{
 			var key = Key( drip );
@@ -260,7 +273,9 @@ public partial class GameHud : Control
 			offset = offset.LimitLength( 220f * scale );
 			gooMotion[key] = (offset, vel);
 		}
-		foreach ( var key in gooMotion.Keys.Where( k => !alive.Contains( k ) ).ToList() ) gooMotion.Remove( key );
+		gooGone.Clear();
+		foreach ( var key in gooMotion.Keys ) if ( !alive.Contains( key ) ) gooGone.Add( key );
+		foreach ( var key in gooGone ) gooMotion.Remove( key );
 	}
 
 

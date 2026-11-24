@@ -2,8 +2,8 @@ using Godot;
 
 /// <summary>
 /// The deep sea angler (user's request; the wreck site and Atlantis, from the second stage): a tall, round, blue and
-/// green scaled fish (about 30% of the scales yellow) with purple spots, a jutting underbite full of huge needle teeth, two bulging compound eyes made
-/// of hex facets like a fly's, and on a long stalk off its brow a whole lantern glowing green. It swims slowly, the
+/// green scaled fish (about 30% of the scales yellow) with purple spots, a jutting underbite full of huge needle teeth, two big black almond alien eyes on
+/// glowing green rims, and on a long stalk off its brow a whole lantern glowing green. It swims slowly, the
 /// lantern bobbing ahead of it. Attacks: it swings the lantern at you on its stalk (a wind-up, then a whip), and up
 /// close it opens its jaw wide and lunges in to chomp; from further off its jaw gapes and it shoots a barbed claw on a line
 /// (up to 8 m) that pierces the player and slowly reels them in for a bite. Built in code (SmoothKit lofts, Sculpt shapes), metres, facing
@@ -45,6 +45,11 @@ public partial class Angler : Creature
 	static readonly Color LanternGreen = new( 0.35f, 1f, 0.35f );
 	static readonly Color ToothColor = new( 0.96f, 0.93f, 0.8f );
 	static readonly Color GooColor = new( 0.35f, 1f, 0.5f );
+	static readonly StandardMaterial3D EyeBlack = new()
+	{
+		AlbedoColor = new Color( 0.01f, 0.01f, 0.015f ), Roughness = 0.06f, ClearcoatEnabled = true, Clearcoat = 1f, ClearcoatRoughness = 0.04f, Metallic = 0.2f,
+	};
+	static readonly StandardMaterial3D EyeRimGlow = Sculpt.Glow( new Color( 0.3f, 1f, 0.35f ), 2.5f );
 	public override GibRecipe Gibs => GibRecipes.Angler( GooColor, Blue, Green, ToothColor );
 
 	enum Act { Swim, Swing, Chomp, Hook }
@@ -90,6 +95,7 @@ public partial class Angler : Creature
 	protected override void Setup()
 	{
 		BeginSetup( 300f );
+		GoreSetup();
 		phase = Rng.Float( 0f, MathF.Tau );
 		floorY = Sculpt.FloorBelow( this, GlobalPosition );
 		sinceSwing = Rng.Float( 0f, SwingCooldown );
@@ -99,93 +105,89 @@ public partial class Angler : Creature
 	// ---- Looks ----
 
 	/// <summary>
-	/// Its skin: rows of rounded scales in blues and greens (like Poseidon's tail, in sea colours), a paler belly and big
-	/// purple spots scattered over it. UV.x round the body, UV.y nose to tail.
+	/// Its skin (redesigned on the user's ask): a deep sea hide, navy down the back to teal on the flanks and a pale glowing
+	/// belly, fine tone-on-tone scales, dark mottling like a real angler's, a few purple spots with glowing rims, yellow
+	/// freckles, alien veins of green light that pulse slowly, and a row of photophores down each flank. UV.x round the
+	/// body (0.5 the belly), UV.y nose to tail. `bruise` darkens and bloodies it as it is hurt; `flash` is the hit flash.
 	/// </summary>
 	static readonly Shader SkinShader = new()
 	{
 		Code = @"shader_type spatial;
-uniform vec3 c0 : source_color = vec3(0.06, 0.16, 0.42);
-uniform vec3 c1 : source_color = vec3(0.12, 0.36, 0.78);
-uniform vec3 c2 : source_color = vec3(0.08, 0.55, 0.6);
-uniform vec3 c3 : source_color = vec3(0.2, 0.7, 0.38);
-uniform vec3 c4 : source_color = vec3(0.95, 0.8, 0.12);   // yellow: about 30% of the scales
-uniform vec3 spot : source_color = vec3(0.62, 0.2, 0.95);
-uniform float rows = 44.0;
-uniform float around = 34.0;
+uniform vec3 navy : source_color = vec3(0.05, 0.12, 0.3);
+uniform vec3 teal : source_color = vec3(0.1, 0.52, 0.6);
+uniform vec3 belly_col : source_color = vec3(0.55, 0.85, 0.8);
+uniform vec3 spot : source_color = vec3(0.6, 0.2, 0.95);
+uniform vec3 freckle : source_color = vec3(0.95, 0.85, 0.2);
+uniform vec3 glow : source_color = vec3(0.35, 1.0, 0.5);
 uniform float flash = 0.0;
+uniform float bruise = 0.0;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
 void fragment() {
-	vec2 g = vec2(UV.x * around, UV.y * rows);
+	// UV.x wraps round the body: work in a seamless ring for the noise.
+	float ang = UV.x * 6.2832;
+	vec2 ring = vec2(cos(ang), sin(ang));
+	vec2 np = vec2(ring.x * 1.6 + ring.y * 0.7, UV.y * 4.0);
+	float belly = smoothstep(0.35, 1.0, cos(ang));
+	float back = smoothstep(0.1, 1.0, -cos(ang));
+	vec3 c = mix(teal, navy, back);
+	c = mix(c, belly_col, belly * 0.75);
+	// Mottling: dark blotches over the back and flanks.
+	float m = fbm(np * 2.2 + 3.0);
+	c *= mix(0.72, 1.1, smoothstep(0.3, 0.7, m));
+	// Fine scales, only shading (no colours of their own).
+	vec2 g = vec2(UV.x * 30.0, UV.y * 38.0);
 	float row = floor(g.y);
 	g.x += mod(row, 2.0) * 0.5;
-	vec2 cell = vec2(floor(g.x), row);
 	vec2 f = vec2(fract(g.x) - 0.5, fract(g.y));
 	float d = length(f * vec2(1.0, 0.85));
-	float h = hash(vec2(mod(cell.x, around), cell.y));
-	vec3 c = h < 0.3 ? c4 : h < 0.545 ? c1 : h < 0.72 ? c2 : h < 0.874 ? c3 : c0;
-	float edge = smoothstep(0.36, 0.5, d);
-	float inset = 1.0 - smoothstep(0.0, 0.03, abs(d - 0.24));
-	c = c * (1.0 - edge * 0.45 - inset * 0.25) + vec3((1.0 - smoothstep(0.0, 0.3, d)) * 0.12);
-	// The belly (round the bottom of the loft) is paler.
-	float belly = smoothstep(0.55, 1.0, cos(UV.x * 6.2832));
-	c = mix(c, c * 0.6 + vec3(0.3, 0.42, 0.5), belly * 0.55);
-	// Purple spots: a coarse grid, about half its cells holding a round spot, off centre.
-	vec2 sg = vec2(UV.x * 11.0, UV.y * 9.0);
+	c *= 1.0 - smoothstep(0.36, 0.5, d) * 0.28 * (1.0 - belly * 0.6);
+	c += vec3(0.06) * (1.0 - smoothstep(0.0, 0.3, length(f - vec2(0.0, 0.2)))) * (1.0 - belly);
+	// Yellow freckles, scattered.
+	vec2 fg = vec2(UV.x * 40.0, UV.y * 46.0);
+	float fh = hash(floor(fg));
+	float fr = (fh > 0.9 ? 1.0 : 0.0) * (1.0 - smoothstep(0.12, 0.22, length(fract(fg) - 0.5)));
+	c = mix(c, freckle, fr * (1.0 - belly) * 0.85);
+	// A few big purple spots with a glowing rim.
+	vec2 sg = vec2(UV.x * 8.0, UV.y * 7.0);
 	vec2 sc = floor(sg);
 	float sh = hash(sc + 7.0);
-	vec2 so = vec2(hash(sc + 1.3), hash(sc + 4.1)) * 0.5 + 0.25;
-	float sr = 0.14 + 0.16 * hash(sc + 9.7);
-	float s = (sh > 0.45) ? 1.0 - smoothstep(sr * 0.8, sr, length(fract(sg) - so)) : 0.0;
-	c = mix(c, spot, s * 0.9);
+	vec2 so = vec2(hash(sc + 1.3), hash(sc + 4.1)) * 0.4 + 0.3;
+	float sr = 0.12 + 0.1 * hash(sc + 9.7);
+	float sd = length(fract(sg) - so);
+	float s = sh > 0.62 ? 1.0 - smoothstep(sr * 0.75, sr, sd) : 0.0;
+	float srim = sh > 0.62 ? (1.0 - smoothstep(0.0, 0.02, abs(sd - sr))) : 0.0;
+	c = mix(c, spot * 0.6, s * 0.9 * (1.0 - belly));
+	// Alien veins: thin green lines of light that pulse slowly down the body.
+	float vn = fbm(np * 1.7 + vec2(0.0, TIME * 0.02));
+	float vein = 1.0 - smoothstep(0.0, 0.018, abs(vn - 0.5));
+	vein *= (1.0 - belly * 0.7) * (0.55 + 0.45 * sin(TIME * 1.8 - UV.y * 9.0));
+	// Photophores: a row of glowing dots down each flank (the lateral line).
+	float side = min(abs(UV.x - 0.25), abs(UV.x - 0.75));
+	float along = fract(UV.y * 14.0) - 0.5;
+	float dot_ = (1.0 - smoothstep(0.012, 0.02, length(vec2(side * 3.0, along / 14.0 * 3.0)))) * step(0.12, UV.y) * step(UV.y, 0.85);
+	// Hurt: darker, the hide bloodied in patches.
+	float blood = bruise * smoothstep(0.4, 0.7, fbm(np * 3.0 + 11.0));
+	c = mix(c, c * 0.5 + vec3(0.28, 0.02, 0.05), blood * 0.85);
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	ALBEDO = mix(c, vec3(2.2), flash);
-	ROUGHNESS = 0.32;
-	METALLIC = 0.15;
-	EMISSION = spot * s * 0.35 + c * rim * 0.35;
-}",
-	};
-
-	/// <summary>
-	/// A compound eye: a dome of hexagonal facets like a fly's, each its own glossy dark red with a green and purple
-	/// sheen that shifts with the view, dark seams between them.
-	/// </summary>
-	static readonly Shader EyeShader = new()
-	{
-		Code = @"shader_type spatial;
-uniform float facets = 30.0;
-uniform float flash = 0.0;
-float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
-void fragment() {
-	vec2 p = vec2(UV.x * facets * 2.0, UV.y * facets);
-	vec2 r = vec2(1.0, 1.732);
-	vec2 hr = r * 0.5;
-	vec2 a = mod(p, r) - hr;
-	vec2 b = mod(p - hr, r) - hr;
-	vec2 g = dot(a, a) < dot(b, b) ? a : b;
-	vec2 id = p - g;
-	float hd = max(dot(abs(g), normalize(vec2(1.0, 1.732))), abs(g.x));
-	float seam = smoothstep(0.4, 0.49, hd);
-	float h = hash(id);
-	float fres = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 2.0);
-	vec3 facet = mix(vec3(0.45, 0.04, 0.06), vec3(0.75, 0.12, 0.1), h);
-	vec3 sheen = mix(vec3(0.2, 1.0, 0.45), vec3(0.7, 0.3, 1.0), hash(id + 3.1));
-	vec3 c = mix(facet, sheen, fres * 0.7 + 0.15 * (1.0 - length(g) * 2.0));
-	c = mix(c, vec3(0.02), seam);
-	ALBEDO = mix(c, vec3(2.2), flash);
-	ROUGHNESS = mix(0.08, 0.6, seam);
-	METALLIC = 0.3;
-	SPECULAR = 0.9;
-	EMISSION = sheen * fres * 0.25 * (1.0 - seam) + facet * 0.15;
+	ALBEDO = mix(mix(c, glow, max(dot_, vein * 0.6)), vec3(2.2), flash);
+	ROUGHNESS = mix(0.38, 0.25, belly);
+	METALLIC = 0.1;
+	EMISSION = glow * (dot_ * 2.5 + vein * 0.9 + srim * 0.8) + belly_col * belly * 0.12 + teal * rim * 0.35;
 }",
 	};
 
 	void Build()
 	{
 		skin = new ShaderMaterial { Shader = SkinShader };
-		var mouth = Sculpt.Paint( new Color( 0.16f, 0.02f, 0.06f ), 0.6f );
-		var gum = Sculpt.Paint( new Color( 0.45f, 0.08f, 0.2f ), 0.4f );
-		var tooth = Sculpt.Paint( ToothColor, 0.25f );
+		var mouth = Sculpt.Paint( new Color( 0.3f, 0.03f, 0.08f ), 0.45f );
+		var throat = Sculpt.Paint( new Color( 0.06f, 0.0f, 0.02f ), 0.8f );
+		var gum = Sculpt.Paint( new Color( 0.62f, 0.12f, 0.24f ), 0.35f );
+		var tooth = Sculpt.Glow( ToothColor, 0.35f );   // a touch of glow so the teeth read in the dark
 		var metal = Sculpt.Paint( new Color( 0.1f, 0.11f, 0.13f ), 0.35f, 0.7f );
 		var fins = SmoothKit.FinMaterial( Teal, Purple, 0.78f, 0.35f );
 		body = new Node3D { Name = "Body", Scale = Vector3.One * ModelScale };
@@ -198,12 +200,29 @@ void fragment() {
 			(-1.18f, 0.05f, 0.08f, 0.12f), (-0.98f, 0.15f, 0.25f, 0.08f), (-0.62f, 0.36f, 0.56f, 0.03f), (-0.2f, 0.55f, 0.84f, 0f),
 			(0.2f, 0.62f, 0.92f, -0.02f), (0.5f, 0.6f, 0.84f, -0.08f), (0.72f, 0.5f, 0.64f, -0.15f), (0.86f, 0.33f, 0.38f, -0.24f), (0.92f, 0.12f, 0.14f, -0.3f),
 		}, 4 );
-		var hull = SmoothKit.Put( body, SmoothKit.Cached( "angler body", () => SmoothKit.Loft( rings, 0f, 1f, 32 ) ), skin, "Hull" );
+		hull = SmoothKit.Put( body, SmoothKit.Cached( "angler body", () => SmoothKit.Loft( rings, 0f, 1f, 32 ) ), skin, "Hull" );
 		hull.Basis = new Basis( Vector3.Right, -MathF.PI / 2f );
 
 		// The mouth: a dark maw across the front, gums along the upper lip, and the upper teeth hanging from it.
 		Sculpt.Blob( body, new Vector3( 0f, -0.3f, -0.66f ), new Vector3( 1.02f, 0.5f, 0.62f ), mouth, name: "Maw" );
+		Sculpt.Blob( body, new Vector3( 0f, -0.3f, -0.5f ), new Vector3( 0.7f, 0.36f, 0.4f ), throat, name: "Throat" );
 		Sculpt.Blob( body, new Vector3( 0f, -0.08f, -0.62f ), new Vector3( 1.06f, 0.14f, 0.6f ), gum, name: "Gum" );
+		// A thick upper lip over the tooth roots.
+		Sculpt.Blob( body, new Vector3( 0f, -0.02f, -0.66f ), new Vector3( 1.12f, 0.16f, 0.64f ), skin, name: "Lip" );
+		// Warts over the head, and a ridge of spines down the back.
+		var wart = new Random( 41 );
+		for ( var i = 0; i < 14; i++ )
+		{
+			var a = (float)wart.NextDouble() * 2.4f - 1.2f;
+			var along = (float)wart.NextDouble() * 0.55f - 0.65f;
+			Sculpt.Blob( body, new Vector3( MathF.Sin( a ) * 0.5f, 0.32f + MathF.Cos( a ) * 0.42f, along ), Vector3.One * (0.05f + 0.05f * (float)wart.NextDouble()), skin, name: "Wart" );
+		}
+		for ( var i = 0; i < 6; i++ )
+		{
+			var z = -0.35f + i * 0.17f;
+			var y = 0.92f - MathF.Pow( (z - 0.05f) * 1.4f, 2f ) * 0.9f;
+			Sculpt.Cone( body, new Vector3( 0f, y - 0.04f, z ), new Vector3( 0f, y + 0.2f - i * 0.015f, z + 0.1f ), 0.035f, tooth, 6, "Spine" );
+		}
 		var random = new Random( 17 );
 		for ( var i = 0; i <= 14; i++ )
 		{
@@ -211,32 +230,55 @@ void fragment() {
 			var root = new Vector3( 0.5f * s, -0.1f, -0.3f - 0.6f * (1f - s * s) );
 			var length = (i % 2 == 0 ? 0.4f : 0.22f) * (1.15f - 0.35f * MathF.Abs( s )) * (0.85f + 0.3f * (float)random.NextDouble());
 			var tip = root + new Vector3( s * 0.04f, -length, -0.05f );
-			Sculpt.Cone( body, root, tip, 0.03f + length * 0.08f, tooth, 6, "Tooth" );
+			fangs.Add( Sculpt.Cone( body, root, tip, 0.03f + length * 0.08f, tooth, 6, "Tooth" ) );
 		}
 
 		// The lower jaw: a jutting underbite on a hinge, its teeth standing up long and crooked.
 		jaw = Sculpt.Joint( body, Hinge, "Jaw" );
 		Sculpt.Blob( jaw, new Vector3( 0f, -0.2f, -0.6f ), new Vector3( 1.08f, 0.34f, 1.12f ), skin, name: "Chin" );
 		Sculpt.Blob( jaw, new Vector3( 0f, -0.12f, -0.6f ), new Vector3( 0.9f, 0.16f, 0.94f ), mouth, name: "Tongue" );
+		Sculpt.Blob( jaw, new Vector3( 0f, -0.07f, -0.62f ), new Vector3( 1.12f, 0.12f, 1.16f ), gum, name: "Lower Gum" );
+		// Barbels: glowing whiskers hanging off the chin, swaying as it swims.
+		for ( var i = 0; i < 5; i++ )
+		{
+			var s = i / 4f - 0.5f;
+			var at = new Vector3( s * 0.6f, -0.36f, -0.62f - 0.3f * (1f - 4f * s * s) );
+			var joint = Sculpt.Joint( jaw, at, "Barbel" );
+			var length = 0.1f + 0.08f * (1f - MathF.Abs( s ) * 2f);
+			// Short fleshy whiskers curling forward, each with a glowing bead.
+			var mid = new Vector3( s * 0.05f, -length * 0.7f, -0.02f );
+			var tip = new Vector3( s * 0.08f, -length, -length * 0.6f );
+			SmoothKit.Tube( joint, Vector3.Zero, mid, 0.03f, 0.022f, skin, "Barbel Piece" );
+			SmoothKit.Tube( joint, mid, tip, 0.022f, 0.014f, skin, "Barbel Piece" );
+			Sculpt.Blob( joint, tip, Vector3.One * 0.05f, Sculpt.Glow( LanternGreen, 3f ), name: "Barbel Tip" );
+			barbels.Add( joint );
+		}
 		for ( var i = 0; i <= 12; i++ )
 		{
 			var s = i / 6f - 1f;
 			var root = new Vector3( 0.48f * s, -0.06f, -0.2f - 0.82f * (1f - s * s) );
 			var length = (i % 2 == 0 ? 0.62f : 0.32f) * (1.2f - 0.4f * MathF.Abs( s )) * (0.8f + 0.4f * (float)random.NextDouble());
 			var tip = root + new Vector3( s * 0.06f + ((float)random.NextDouble() - 0.5f) * 0.06f, length, -0.09f - length * 0.25f );
-			Sculpt.Cone( jaw, root, tip, 0.034f + length * 0.08f, tooth, 6, "Fang" );
+			fangs.Add( Sculpt.Cone( jaw, root, tip, 0.034f + length * 0.08f, tooth, 6, "Fang" ) );
 		}
 
-		// The eyes: two bulging compound domes high on the head.
-		var eyeMaterial = new ShaderMaterial { Shader = EyeShader };
+		// The eyes: two bulging bulbs high on the head, each with a black almond alien eye.
 		foreach ( var x in new[] { -1f, 1f } )
 		{
-			var at = new Vector3( x * 0.36f, 0.44f, -0.5f );
-			Sculpt.Blob( body, at - new Vector3( x * 0.03f, 0.02f, -0.04f ), new Vector3( 0.42f, 0.4f, 0.42f ), skin, name: "Eye Socket" );
-			var eye = SmoothKit.Ball( body, at + new Vector3( x * 0.05f, 0.02f, -0.02f ), new Vector3( 0.4f, 0.38f, 0.4f ), eyeMaterial, new Basis( Vector3.Up, x * 0.6f ), "Compound Eye" );
+			var at = new Vector3( x * 0.3f, 0.42f, -0.58f );   // set into the head (they stood out on the sides)
+			// The alien eye the other enemies have (user's ask): a big glossy black almond slanted out at the top, on a
+			// thin glowing green rim, set in a skin bulb and looking out and forward.
+			var eye = new Node3D { Name = "Alien Eye", Position = at };
+			body.AddChild( eye );
+			var look = new Vector3( x * 0.75f, 0.12f, -0.65f ).Normalized();
+			eye.Basis = new Basis( new Quaternion( Vector3.Back, look ) ) * new Basis( Vector3.Back, -x * MathX.Rad( 38f ) );
+			SmoothKit.Ball( eye, new Vector3( 0f, 0f, -0.04f ), new Vector3( 0.36f, 0.48f, 0.3f ), skin, null, "Eye Bulb" );
+			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.13f ), new Vector3( 0.24f, 0.5f, 0.1f ), EyeRimGlow, name: "Eye Rim" );
+			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.145f ), new Vector3( 0.2f, 0.46f, 0.11f ), EyeBlack, name: "Eye" );
 			var part = CreaturePart.Create( this, x < 0f ? 2 : 3, x < 0f ? "Angler Eye L" : "Angler Eye R", 0.2f );
 			body.AddChild( part );
 			part.Position = eye.Position;
+			eyes.Add( eye );
 		}
 
 		// Fins: pectorals at the sides, two spiny fins on the back, a ventral pair and the tail fan.
@@ -268,7 +310,7 @@ void fragment() {
 		BuildHook( tooth );
 		lantern = BuildLantern( metal );
 		parent.AddChild( lantern );
-		var lanternPart = CreaturePart.Create( this, 4, "Angler Lantern", 0.24f );
+		lanternPart = CreaturePart.Create( this, 4, "Angler Lantern", 0.24f );
 		lantern.AddChild( lanternPart );
 		lanternPart.Position = new Vector3( 0f, -0.32f, 0f );
 
@@ -279,7 +321,7 @@ void fragment() {
 		var bodyPart = CreaturePart.Create( this, 1, "Angler Body", 0.66f );
 		body.AddChild( bodyPart );
 		bodyPart.Position = new Vector3( 0f, 0f, 0.4f );
-		var jawPart = CreaturePart.Create( this, 5, "Angler Jaw", 0.42f );
+		jawPart = CreaturePart.Create( this, 5, "Angler Jaw", 0.42f );
 		jaw.AddChild( jawPart );
 		jawPart.Position = new Vector3( 0f, -0.15f, -0.6f );
 	}
@@ -410,7 +452,7 @@ void fragment() {
 	// ---- Every frame ----
 
 	/// <summary> The lantern's glowing middle, in the world. </summary>
-	public Vector3 LanternAt => lantern is not null && IsInstanceValid( lantern ) ? lantern.GlobalTransform * new Vector3( 0f, -0.34f, 0f ) : GlobalPosition;
+	public Vector3 LanternAt => !lanternGone && lantern is not null && IsInstanceValid( lantern ) ? lantern.GlobalTransform * new Vector3( 0f, -0.34f, 0f ) : GlobalPosition;
 	/// <summary> The front of the mouth, in the world. </summary>
 	public Vector3 MouthAt => GlobalTransform * new Vector3( 0f, -0.3f, -1.05f );
 	/// <summary> Tests: how far the jaw is open (0 shut, 1 wide) and the lantern's swing (back below 0, struck above 0). </summary>
@@ -440,8 +482,12 @@ void fragment() {
 		tailFin.Rotation = new Vector3( 0f, MathF.Sin( t * 3.2f ) * 0.45f, 0f );
 		for ( var i = 0; i < pectorals.Count; i++ )
 			pectorals[i].Rotation = new Vector3( 0f, 0f, (i == 0 ? 1f : -1f) * MathF.Sin( t * 4.4f + i ) * 0.35f );
-		jaw.Rotation = new Vector3( -jawOpen * 0.75f, 0f, 0f );
+		if ( !jawGone ) jaw.Rotation = new Vector3( -jawOpen * 0.75f, 0f, 0f );
+		for ( var i = 0; i < barbels.Count; i++ )
+			if ( IsInstanceValid( barbels[i] ) ) barbels[i].Rotation = new Vector3( MathF.Sin( t * 2.1f + i * 0.9f ) * 0.25f + jawOpen * 0.6f, 0f, MathF.Sin( t * 1.6f + i ) * 0.15f );
+		GoreFrame( dt );
 
+		if ( lanternGone ) goto Posed;
 		// The stalk bends as one: a lazy sway, thrown back on the wind-up and whipped forward and down on the swing.
 		for ( var i = 1; i < stalk.Count; i++ )
 		{
@@ -455,6 +501,7 @@ void fragment() {
 		lantern.GlobalBasis = GlobalBasis.Orthonormalized() * new Basis( Vector3.Right, lanternTilt ) * Basis.FromScale( Vector3.One * 1.35f * ModelScale );
 		var flicker = 1f + 0.08f * MathF.Sin( t * 13f ) + 0.05f * MathF.Sin( t * 29f );
 		lanternLight.LightEnergy = 2.6f * flicker * (act == Act.Swing ? 1.4f : 1f);
+		Posed:
 
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
 		skin.SetShaderParameter( "flash", flash );
@@ -485,11 +532,11 @@ void fragment() {
 				var holdAt = !swingNext && sinceChomp > ChompCooldown ? ChompRange * 0.6f : SwingRange * 0.6f;
 				wish = distance > holdAt ? dir * Speed : -dir * Speed * 0.3f;
 				// The two attacks take turns when both are ready, so it never just bites.
-				var canChomp = distance < ChompRange && sinceChomp > ChompCooldown;
+				var canChomp = !jawGone && distance < ChompRange && sinceChomp > ChompCooldown;
 				// From further off it shoots its hook, if the way to the player is clear.
-				if ( distance > ChompRange + 0.8f && distance < HookRange - 0.3f && sinceHook > HookCooldown && prey.Controller is { Scripted: false }
+				if ( !jawGone && distance > ChompRange + 0.8f && distance < HookRange - 0.3f && sinceHook > HookCooldown && prey.Controller is { Scripted: false }
 					&& !Trace.Ray( this, MouthAt, chest, Layers.World ).Hit ) { Begin( Act.Hook ); canChomp = false; }
-				var canSwing = distance < SwingRange && sinceSwing > SwingCooldown;
+				var canSwing = !lanternGone && distance < SwingRange && sinceSwing > SwingCooldown;
 				if ( act != Act.Swim ) { }
 				else if ( canSwing && (!canChomp || lastChomped) ) Begin( Act.Swing );
 				else if ( canChomp ) Begin( Act.Chomp );
@@ -711,7 +758,7 @@ void fragment() {
 	public bool Reeling => line == Line.Reel && hooked is not null;
 	public Vector3 HookAt => hook?.GlobalPosition ?? GlobalPosition;
 
-	/// <summary> The compound eyes are the weak spots. </summary>
+	/// <summary> The eyes are the weak spots. </summary>
 	public override bool WeakSpot( int index ) => index is 2 or 3;
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
@@ -723,10 +770,10 @@ void fragment() {
 		var weak = index is 2 or 3;
 		var scale = weak ? EyeMultiplier : index == 4 ? LanternMultiplier : 1f;
 		var wasAlive = !IsDead;
+		if ( !Lethal( damage * scale ) ) HitGore( index, damage * scale, position, direction );   // a killing shot: the death covers it
 		health.OnDamage( new DamageInfo { Damage = damage * scale, Position = position, Origin = origin, Attacker = shooter } );
 		var killed = wasAlive && IsDead;
 		if ( wasAlive && shooter is not null ) shooter.RewardHit( killed, weak, scoreHit );
-		if ( !killed ) GibKit.Chips( Gibs, position, -direction, direction, 0.06f, 1 );
 	}
 
 	protected override void OnDied()
@@ -734,8 +781,7 @@ void fragment() {
 		RaiseKilled();
 		if ( lanternLight is not null ) lanternLight.Visible = false;
 		ReleaseHook();
-		gore?.GooBurst( GlobalPosition, lastShotDirection, GooColor, 26, 320f, 1.2f );
-		GibKit.Burst( Gibs, GlobalPosition, lastShotDirection, 0.26f, 12 );
+		FallApart( lastShotDirection );
 		QueueFree();
 	}
 }

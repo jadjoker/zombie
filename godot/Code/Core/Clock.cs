@@ -24,6 +24,7 @@ public partial class Clock : Node
 		AddChild( new Net() );        // online co-op (host or join); the same node path on every machine
 		GameSettings.Load();
 		GameSettings.Apply();
+		Sfx.PreloadAll();   // every sound loads in the background now, not on the frame it is first heard
 		// Tests on an exported build (which cannot take a scene path): -- --scene res://scenes/forest.tscn
 		var args = OS.GetCmdlineUserArgs();
 		var i = System.Array.IndexOf( args, "--scene" );
@@ -32,7 +33,12 @@ public partial class Clock : Node
 
 	double lastPhysics;
 
-	public override void _Process( double delta ) => Now += delta;
+	public override void _Process( double delta )
+	{
+		Now += delta;
+		Sfx.CollectLoaded();
+		Creature.RunLateDeaths();
+	}
 
 	public override void _PhysicsProcess( double delta )
 	{

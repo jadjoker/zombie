@@ -89,13 +89,13 @@ public partial class WeaponHud : Control
 	{
 		Modulate = PlayerSurvivor.LocalDead ? new Color( 1, 1, 1, 0 ) : Colors.White;   // no ammo counter on the death screen
 		var weapon = Weapon;
-		weaponName.Text = (weapon?.DisplayName ?? "").ToUpperInvariant() + Theme.WeaponSuffix;
-		mag.Text = (weapon?.Ammo ?? 0).ToString();
-		reserve.Text = Theme.ReserveSep + (weapon is { Vacuum: true } ? weapon.MagazineSize : weapon?.Reserve ?? 0) + (weapon is { HasMine: true } ? "  +MINE" : "") + (weapon is { Bubbles: true } && BubbleTrap.CountFor( player ) is > 0 and var held ? $"  {held} BUBBLED" : "") + (weapon is { Vacuum: true } && weapon.Ammo >= weapon.MagazineSize ? "  FULL" : "");   // the Gore Vac: the tank out of 100
-		if ( weapon is { Spear: true } ) { mag.Text = ""; reserve.Text = weapon.Blocking ? "SHIELD UP" : "SPEAR"; }
-		if ( weapon is { Flippers: true } ) { mag.Text = ""; reserve.Text = weapon.Combo > 1 ? $"COMBO x{weapon.Combo}" : "FLIPPERS"; }
+		weaponName.Show( (weapon?.DisplayName ?? "").ToUpperInvariant() + Theme.WeaponSuffix );
+		mag.Show( (weapon?.Ammo ?? 0).ToString() );
+		reserve.Show( Theme.ReserveSep + (weapon is { Vacuum: true } ? weapon.MagazineSize : weapon?.Reserve ?? 0) + (weapon is { HasMine: true } ? "  +MINE" : "") + (weapon is { Bubbles: true } && BubbleTrap.CountFor( player ) is > 0 and var held ? $"  {held} BUBBLED" : "") + (weapon is { Vacuum: true } && weapon.Ammo >= weapon.MagazineSize ? "  FULL" : "") );   // the Gore Vac: the tank out of 100
+		if ( weapon is { Spear: true } ) { mag.Text = ""; reserve.Show( weapon.Blocking ? "SHIELD UP" : "SPEAR" ); }
+		if ( weapon is { Flippers: true } ) { mag.Text = ""; reserve.Show( weapon.Combo > 1 ? $"COMBO x{weapon.Combo}" : "FLIPPERS" ); }
 		var low = weapon is not null && !weapon.Spear && !weapon.Flippers && !weapon.IsReloading && (weapon.Vacuum ? weapon.Ammo < PlayerWeapon.BallCost : weapon.Ammo <= weapon.MagazineSize / 4);
-		mag.AddThemeColorOverride( "font_color", low ? new Color( "ff6a3a" ) : Theme.PanelNumber );
+		mag.FontColour( low ? new Color( "ff6a3a" ) : Theme.PanelNumber );
 		// The Gore Vac: the tank's number pops each time a piece goes down.
 		var pop = weapon is { Vacuum: true } ? MathX.Clamp( 1f - (float)weapon.SinceGulp / 0.15f, 0f, 1f ) : 0f;
 		mag.PivotOffset = mag.Size * 0.5f;

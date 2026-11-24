@@ -91,9 +91,9 @@ public partial class HudOverlays : Control
 		promptKey = new Label { HorizontalAlignment = HorizontalAlignment.Center, MouseFilter = MouseFilterEnum.Ignore };
 		promptKey.AddThemeFontOverride( "font", UiStyle.Number );
 		promptKey.AddThemeFontSizeOverride( "font_size", S( 26 ) );
-		promptKey.AddThemeColorOverride( "font_color", UiStyle.KeyText );
+		promptKey.FontColour( UiStyle.KeyText );
 		keyCap.AddChild( promptKey );
-		promptKey.Text = "E";
+		promptKey.Show( "E" );
 		var textBox = new VBoxContainer { MouseFilter = MouseFilterEnum.Ignore };
 		textBox.AddThemeConstantOverride( "separation", -2 );
 		row.AddChild( textBox );
@@ -177,8 +177,8 @@ public partial class HudOverlays : Control
 		if ( line is not null && lineAge < 2.4f )
 		{
 			speech.Visible = true;
-			speech.Text = line;
-			speech.AddThemeColorOverride( "font_color", lineColour );
+			speech.Show( line );
+			speech.FontColour( lineColour );
 			speech.Modulate = new Color( 1, 1, 1, MathX.Clamp( (2.4f - lineAge) / 0.5f, 0f, 1f ) );
 			speech.PivotOffset = speech.Size * 0.5f;
 			speech.Scale = Vector2.One * (1f + MathX.Clamp( 1f - lineAge / 0.2f, 0f, 1f ) * 0.5f);
@@ -189,28 +189,28 @@ public partial class HudOverlays : Control
 		var use = player?.Controller?.GetNodeOrNull<PlayerUse>( "PlayerUse" );
 		var station = use?.Hovered;
 		prompt.Visible = station is not null || (use?.AtDivingBoard ?? false) || (use?.AtTeleporter ?? false);
-		promptKey.Text = Controls.Label( "use" );   // E on a keyboard, Y or Triangle on a pad
+		promptKey.Show( Controls.Label( "use" ) );   // E on a keyboard, Y or Triangle on a pad
 		if ( station is null && (use?.AtDivingBoard ?? false) )
 		{
-			promptTitle.Text = "Dive in";
-			promptDesc.Text = "Head down to the sea floor";
-			promptTitle.AddThemeColorOverride( "font_color", TitleColour );
+			promptTitle.Show( "Dive in" );
+			promptDesc.Show( "Head down to the sea floor" );
+			promptTitle.FontColour( TitleColour );
 		}
 		if ( station is null && (use?.AtTeleporter ?? false) )
 		{
-			promptTitle.Text = "Teleport";
-			promptDesc.Text = SeaTerrain.Area >= 2
+			promptTitle.Show( "Teleport" );
+			promptDesc.Show( SeaTerrain.Area >= 2
 				? $"To Atlantis, the third stage. Wave {WaveDirector.Current?.Wave + 1 ?? 21} starts there"
-				: "To the wreck site, the second stage. Wave 11 starts there";
-			promptTitle.AddThemeColorOverride( "font_color", new Color( 0.5f, 1f, 0.55f ) );
+				: "To the wreck site, the second stage. Wave 11 starts there" );
+			promptTitle.FontColour( new Color( 0.5f, 1f, 0.55f ) );
 		}
 		if ( station is not null )
 		{
 			var afford = !station.SoldOut && (player?.Points ?? 0) >= station.CurrentCost;
-			promptTitle.Text = $"{station.Title}  {(station.SoldOut ? "Sold out" : station.CurrentCost.ToString())}";
-			promptDesc.Text = station.Description;
-			promptTitle.AddThemeColorOverride( "font_color", afford ? TitleColour : new Color( "ff6a6a" ) );
-			if ( !station.SoldOut ) promptTitle.Text = $"{station.Title}   {station.CurrentCost}";
+			promptTitle.Show( $"{station.Title}  {(station.SoldOut ? "Sold out" : station.CurrentCost.ToString())}" );
+			promptDesc.Show( station.Description );
+			promptTitle.FontColour( afford ? TitleColour : new Color( "ff6a6a" ) );
+			if ( !station.SoldOut ) promptTitle.Show( $"{station.Title}   {station.CurrentCost}" );
 		}
 		QueueRedraw();
 	}

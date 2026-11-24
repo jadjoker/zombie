@@ -133,7 +133,12 @@ public abstract partial class Creature : Node3D, ICreature
 		Cleanup();
 	}
 
-	void RunSetup() => Setup();
+	void RunSetup()
+	{
+		Setup();
+		// Its pieces are built while it swims in (a frame at a time), not all at once on the frame it dies.
+		if ( Gibs is { } recipe ) GibKit.Prewarm( recipe );
+	}
 
 	/// <summary> Adds this to (or removes it from) its own kind's list. </summary>
 	protected abstract void Track( bool add );
@@ -155,10 +160,49 @@ public abstract partial class Creature : Node3D, ICreature
 		health = GetNodeOrNull<Health>( "Health" );
 		if ( health is null ) { health = new Health(); health.ResetTo( defaultHealth ); AddChild( health ); }
 		gore = GoreSystem.Get();
-		health.Died += () => { timeSinceDeath = 0f; OnDied(); };
+		health.Died += () =>
+		{
+			timeSinceDeath = 0f;
+			// Each death throws a lot of pieces (about 10 ms); a dozen in one blast used to make one 250 ms frame. Past
+			// DeathBudgetMs a frame, the falling apart waits for the next frame (Killed still goes now, for the wave).
+			var frame = Engine.GetProcessFrames();
+			if ( frame != deathFrame ) { deathFrame = frame; deathMs = 0; }
+			if ( deathMs >= DeathBudgetMs ) { RaiseKilled(); lateDeaths.Enqueue( this ); return; }
+			FallApart();
+		};
 	}
 
-	protected void RaiseKilled() => Killed?.Invoke( this );
+	/// <summary> How much of a frame deaths may take before the rest wait for the next (ms). </summary>
+	public const double DeathBudgetMs = 6.0;
+	static ulong deathFrame;
+	static double deathMs;
+	static readonly Queue<Creature> lateDeaths = new();
+
+	void FallApart()
+	{
+		var t0 = Time.GetTicksUsec();
+		using ( Perf.Time( "on died" ) ) OnDied();
+		deathMs += (Time.GetTicksUsec() - t0) / 1000.0;
+	}
+
+	/// <summary> Deaths that waited for a quieter frame (called each frame by Clock). </summary>
+	public static void RunLateDeaths()
+	{
+		if ( lateDeaths.Count == 0 ) return;
+		var frame = Engine.GetProcessFrames();
+		if ( frame != deathFrame ) { deathFrame = frame; deathMs = 0; }
+		while ( lateDeaths.Count > 0 && deathMs < DeathBudgetMs )
+		{
+			var c = lateDeaths.Dequeue();
+			if ( IsInstanceValid( c ) && c.IsInsideTree() ) c.FallApart();
+		}
+	}
+
+	/// <summary> Would this much damage (after the part's multiplier) kill it? A killing shot skips the hit's wound. </summary>
+	protected bool Lethal( float dealt ) => health is not null && !health.Invulnerable && !DevFlags.OneShot && dealt >= health.Current;
+
+	bool killedRaised;
+	protected void RaiseKilled() { if ( killedRaised ) return; killedRaised = true; Killed?.Invoke( this ); }
 
 	/// <summary> Remembers where the last shot came from (the death uses it to throw the pieces). </summary>
 	protected void NoteShot( Vector3 direction, Vector3 position, Vector3 origin )
@@ -197,6 +241,8 @@ public abstract partial class PartCreature : Creature
 		public float Hurt;
 		public TimeSince Flash = 99f;
 		public readonly List<(MeshInstance3D Renderer, Color Tint)> Renderers = new();
+		/// <summary> The colour last given to each renderer (same order): unchanged, it isn't sent again. </summary>
+		public readonly List<Color> Applied = new();
 		public Vector3 LastPosition;
 		public Vector3 Velocity;
 		public Basis Rest = Basis.Identity;
@@ -282,17 +328,30 @@ public abstract partial class PartCreature : Creature
 	protected virtual void Tinted( Part part, MeshInstance3D renderer, Color tint ) { }
 
 	/// <summary> Every frame: darkens hurt parts, flashes ones just hit, and tracks how fast each part is moving. </summary>
+	/// <summary> Re-tint every frame even when nothing changed (MC-51's eye glow writes over its tint). </summary>
+	protected virtual bool AlwaysTint => false;
+
 	protected void TintParts( float dt )
 	{
+		var ready = TintReady;
+		var always = AlwaysTint;
 		foreach ( var part in parts )
 		{
 			if ( part is null || part.Gone ) continue;
 			var flash = MathX.Clamp( 1f - part.Flash / 0.1f, 0f, 1f );
-			foreach ( var (renderer, tint) in part.Renderers )
+			var renderers = part.Renderers;
+			while ( part.Applied.Count < renderers.Count ) part.Applied.Add( new Color( -1f, -1f, -1f, -1f ) );
+			for ( var i = 0; i < renderers.Count && ready; i++ )
 			{
-				if ( !IsInstanceValid( renderer ) || !TintReady ) continue;
-				var color = tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f };
-				Shapes.Tint( renderer, color.Lerp( Colors.White * 3f, flash ) );
+				var (renderer, tint) = renderers[i];
+				if ( !IsInstanceValid( renderer ) ) continue;
+				var color = (tint.Lerp( tint * 0.5f, part.Hurt ) with { A = 1f }).Lerp( Colors.White * 3f, flash );
+				// A material change is costly (every renderer of every enemy, every frame): only when the colour moved.
+				if ( always || !color.IsEqualApprox( part.Applied[i] ) )
+				{
+					Shapes.Tint( renderer, color );
+					part.Applied[i] = color;
+				}
 				Tinted( part, renderer, tint );
 			}
 			var position = part.Go.GlobalPosition;
@@ -307,6 +366,7 @@ public abstract partial class PartCreature : Creature
 	/// </summary>
 	protected Node3D Detach( Part part, Vector3 push, float spin, float gibRadius, float gibHealth, float gibMass, bool squareUp = true )
 	{
+		using var perf = Perf.Time( "detach" );
 		var source = part.Go;
 		var piece = new Node3D { Name = $"{Kind} Piece" };
 		GetTree().CurrentScene.AddChild( piece );

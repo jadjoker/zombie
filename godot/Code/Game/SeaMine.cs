@@ -193,10 +193,22 @@ public partial class SeaMine : Node3D
 		}
 	}
 
+	float poseWait, poseDt;
+
 	public override void _Process( double delta )
 	{
 		if ( gone ) return;
-		Pose( (float)delta );
+		// The chain is up to 60-odd links: a far mine's slow sway is laid out a few times a second, not every frame.
+		poseDt += (float)delta;
+		poseWait -= (float)delta;
+		if ( poseWait <= 0f || rising < 1f )
+		{
+			var camera = GetViewport().GetCamera3D();
+			var far = camera is null ? 0f : camera.GlobalPosition.DistanceTo( GlobalPosition );
+			poseWait = far < 15f ? 0f : far < 40f ? 1f / 20f : 1f / 8f;
+			Pose( poseDt );
+			poseDt = 0f;
+		}
 		var centre = ball.GlobalPosition;
 		foreach ( var player in PlayerSurvivor.All )
 		{

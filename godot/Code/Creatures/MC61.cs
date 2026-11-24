@@ -1232,6 +1232,7 @@ public partial class MC61 : PartCreature, MC61Marker
 
 	// Nothing is tinted until he has finished appearing.
 	protected override bool TintReady => spawnDone;
+	protected override bool AlwaysTint => true;
 
 	protected override void Tinted( Part part, MeshInstance3D renderer, Color tint )
 	{
@@ -1240,6 +1241,7 @@ public partial class MC61 : PartCreature, MC61Marker
 		{
 			em.AlbedoColor = Colors.White;
 			em.Emission = new Color( 1f, 0.2f, 0.1f ) * eyeGlowNow * 1.2f;
+			Shapes.ForgetTint( renderer );   // written over: tint it again next frame
 		}
 	}
 

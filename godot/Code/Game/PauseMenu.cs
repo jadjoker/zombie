@@ -75,6 +75,17 @@ public partial class PauseMenu : CanvasLayer
 		vibration.Toggled += on => { GameSettings.Vibration = on; vibration.Text = on ? "Controller vibration: On" : "Controller vibration: Off"; if ( on ) Controls.Rumble( 0.5f ); };
 		column.AddChild( vibration );
 		column.AddChild( Slider( "Aim assist", 0f, 1f, 0.05f, () => GameSettings.AimAssist, v => GameSettings.AimAssist = v, v => v <= 0f ? "Off" : $"{v * 100f:0}%" ) );
+		// Gyro aiming (Steam Controller, DualSense, Switch Pro...): off, always, or only on the sights; its speed; a recalibration.
+		string GyroText() => $"Gyro aiming: {(GameSettings.GyroMode switch { 0 => "Off", 1 => "On", _ => "While aiming" })}{(Controls.HasGyro ? "" : "  (no gyro found)")}";
+		var gyroMode = new Button { Name = "Gyro", CustomMinimumSize = new Vector2( 0, 40 ), Text = GyroText() };
+		gyroMode.AddThemeFontSizeOverride( "font_size", 20 );
+		gyroMode.Pressed += () => { GameSettings.GyroMode = (GameSettings.GyroMode + 1) % 3; GameSettings.Save(); gyroMode.Text = GyroText(); };
+		column.AddChild( gyroMode );
+		column.AddChild( Slider( "Gyro sensitivity", GameSettings.MinGyro, GameSettings.MaxGyro, 0.1f, () => GameSettings.GyroSensitivity, v => GameSettings.GyroSensitivity = v, v => $"{v:0.0}x" ) );
+		var calibrate = new Button { Name = "Calibrate Gyro", CustomMinimumSize = new Vector2( 0, 40 ), Text = "Calibrate gyro (put the controller down first)" };
+		calibrate.AddThemeFontSizeOverride( "font_size", 20 );
+		calibrate.Pressed += () => { Controls.CalibrateGyro(); calibrate.Text = "Calibrating... keep it still"; GetTree().CreateTimer( 1.4, true, false, true ).Timeout += () => calibrate.Text = "Calibrate gyro (put the controller down first)"; };
+		column.AddChild( calibrate );
 		column.AddChild( Slider( "Music volume", 0f, 1f, 0.05f, () => GameSettings.MusicVolume, v => GameSettings.MusicVolume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Volume", 0f, 1f, 0.05f, () => GameSettings.Volume, v => GameSettings.Volume = v, v => $"{v * 100f:0}%" ) );
 		column.AddChild( Slider( "Field of view", GameSettings.MinFov, GameSettings.MaxFov, 1f, () => GameSettings.Fov, v => GameSettings.Fov = v, v => $"{v:0}" ) );

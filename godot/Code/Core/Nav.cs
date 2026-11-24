@@ -72,9 +72,33 @@ public sealed class NavAgent
 
 	public NavAgent( Node3D owner ) => this.owner = owner;
 
-	public void MoveTo( Vector3 target )
+	double pathAt = -1;
+	Vector3 pathGoal;
+	/// <summary> A path is planned again at most this often (seconds) while the goal stays put... </summary>
+	public const float RepathEvery = 0.3f;
+	/// <summary> ...or as soon as the goal has moved this far (metres). </summary>
+	public const float RepathMove = 1.5f;
+	/// <summary> Tests: paths planned. </summary>
+	public static int Planned;
+
+	/// <summary>
+	/// Heads for a spot. Called every frame by the creatures that chase: planning a path is costly (it was most of a
+	/// crab's frame), so the path is only planned again every `RepathEvery` or when the goal moved `RepathMove`;
+	/// meanwhile the last corner just follows the goal.
+	/// </summary>
+	public void MoveTo( Vector3 target, bool force = false )
 	{
 		goal = target;
+		var now = Clock.Now;
+		if ( !force && pathAt >= 0 && path.Length > 0 && now - pathAt < RepathEvery && target.DistanceSquaredTo( pathGoal ) < RepathMove * RepathMove )
+		{
+			path[^1] = target;
+			return;
+		}
+		// Spread the planning of a crowd over frames: each agent's next plan comes a little early or late.
+		pathAt = now - Rng.Float( 0f, RepathEvery * 0.3f );
+		pathGoal = target;
+		Planned++;
 		path = NavigationServer3D.MapGetPath( Nav.Map( owner ), owner.GlobalPosition, target, true );
 		index = 0;
 		if ( path.Length == 0 ) path = new[] { owner.GlobalPosition, target };
@@ -96,9 +120,36 @@ public sealed class NavAgent
 	/// <summary> Online: a puppet's legs walk at the host copy's speed. </summary>
 	public void SetPuppetVelocity( Vector3 velocity ) => Velocity = velocity;
 
+	/// <summary> How often (seconds) an agent is put back on the navmesh exactly. </summary>
+	public const float SnapEvery = 0.25f;
+	float snapIn = Rng.Float( 0f, SnapEvery );
+	float lift;
+	bool liftKnown;
+
+	/// <summary> The navmesh's height over the floor where the agent stands now (it stands on the mesh when it spawns). </summary>
+	void LearnLift()
+	{
+		if ( liftKnown ) return;
+		liftKnown = true;
+		if ( FloorUnder( owner.GlobalPosition ) is float f ) lift = MathX.Clamp( owner.GlobalPosition.Y - f, -0.2f, 0.6f );
+	}
+
+	float? FloorUnder( Vector3 at )
+	{
+		var floor = Trace.Ray( owner, at + Vector3.Up * 0.6f, at + Vector3.Down * 1.5f, Layers.World );
+		return floor.Hit ? floor.HitPosition.Y : null;
+	}
+
+	/// <summary>
+	/// Moved from outside (shoved, dragged by the Gore Vac): every frame while dragged, so the costly navmesh lookup is
+	/// left to the regular snap (Update) and the feet just follow the floor here.
+	/// </summary>
 	public void SetAgentPosition( Vector3 position )
 	{
-		owner.GlobalPosition = Nav.Closest( owner, position );
+		LearnLift();   // shoved before its first snap: it would drop by the mesh's height (and shots aimed at it miss)
+		if ( FloorUnder( position ) is float floorY ) position.Y = floorY + lift;
+		owner.GlobalPosition = position;
+		snapIn = MathF.Min( snapIn, 0.1f );   // back onto the mesh soon
 		if ( goal is { } g ) MoveTo( g );
 	}
 
@@ -123,7 +174,21 @@ public sealed class NavAgent
 		Velocity = Velocity.MoveToward( wanted, Acceleration * dt );
 		var next = owner.GlobalPosition + Velocity * dt;
 		// Stick to the navmesh (and so the ground).
-		var snapped = Nav.Closest( owner, next );
-		owner.GlobalPosition = snapped == Vector3.Zero && next.Length() > 1f ? next : snapped;
+		// Stick to the navmesh (and so the ground). The navmesh's closest point costs about half a millisecond on the
+		// big sea floor (it was most of every crab's and spider's frame), so it is only asked a few times a second;
+		// between, a short ray down keeps the feet on the floor while the path keeps it on the mesh.
+		snapIn -= dt;
+		if ( snapIn <= 0f || Velocity.LengthSquared() < 0.0001f && snapIn < SnapEvery * 0.5f )
+		{
+			snapIn = SnapEvery * Rng.Float( 0.8f, 1.2f );
+			var snapped = Nav.Closest( owner, next );
+			owner.GlobalPosition = snapped == Vector3.Zero && next.Length() > 1f ? next : snapped;
+			// The navmesh sits a little over the floor: keep that height between snaps, or the feet bob up and down.
+			if ( snapped != Vector3.Zero && FloorUnder( snapped ) is float f ) { lift = MathX.Clamp( snapped.Y - f, -0.2f, 0.6f ); liftKnown = true; }
+			return;
+		}
+		LearnLift();
+		if ( FloorUnder( next ) is float floorY ) next.Y = floorY + lift;
+		owner.GlobalPosition = next;
 	}
 }

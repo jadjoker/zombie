@@ -103,13 +103,6 @@ public static class AlienReef
 			centre.Y = SeaTerrain.HeightAt( centre ) + Range( 2.6f, 5.5f );
 			floaters.SpawnSchool( random, centre, random.Next( 3, 7 ) );
 		}
-		for ( var k = 0; k < 28; k++ )
-		{
-			var a = Range( 0f, MathF.Tau );
-			var r = k < 14 ? Range( ReefInner - 2f, ReefOuter + 2f ) : Range( ReefOuter + 6f, SeaTerrain.HalfSize - 16f );
-			var at = new Vector3( MathF.Cos( a ) * r, 0f, MathF.Sin( a ) * r );
-			floaters.SpawnFern( random, at, SeaTerrain.HeightAt( at ) );
-		}
 		// Plants right in front of the camera dither away, so a kelp stalk never fills the view.
 		foreach ( var plant in level.FindChildren( "*", "Node3D", true, false ).OfType<Node3D>()
 			.Where( n => n.GetParent() is { } par && Level.Kind( par ) == "Dressing" && (Level.Kind( n ).StartsWith( "Kelp" ) || Level.Kind( n ).StartsWith( "Coral" )) ) )

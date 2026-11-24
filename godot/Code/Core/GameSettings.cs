@@ -25,6 +25,11 @@ public static class GameSettings
 	public static bool Vibration = true;
 	/// <summary> How strong the controller's aim assist is, 0 (off) to 1. </summary>
 	public static float AimAssist = 0.7f;
+	/// <summary> Gyro aiming (a pad with motion sensors, e.g. a Steam Controller): 0 off, 1 always, 2 only while aiming. </summary>
+	public static int GyroMode = 1;
+	/// <summary> Gyro look speed: degrees turned per degree the pad turns. </summary>
+	public static float GyroSensitivity = 1.6f;
+	public const float MinGyro = 0.3f, MaxGyro = 5f;
 	public const float MinStick = 0.3f, MaxStick = 3f;
 	/// <summary> How far out from the body the gun is held in first person, in inches from the usual spot (issue #31). </summary>
 	public static float GunDistance;
@@ -72,6 +77,8 @@ public static class GameSettings
 		StickSensitivity = MathX.Clamp( (float)file.GetValue( "controller", "stick_sensitivity", 1f ), MinStick, MaxStick );
 		Vibration = (bool)file.GetValue( "controller", "vibration", true );
 		AimAssist = MathX.Clamp( (float)file.GetValue( "controller", "aim_assist", 0.7f ), 0f, 1f );
+		GyroMode = Math.Clamp( (int)file.GetValue( "controller", "gyro_mode", 1 ), 0, 2 );
+		GyroSensitivity = MathX.Clamp( (float)file.GetValue( "controller", "gyro_sensitivity", 1.6f ), MinGyro, MaxGyro );
 		GunDistance = MathX.Clamp( (float)file.GetValue( "video", "gun_distance", 0f ), MinGunDistance, MaxGunDistance );
 		GunHeight = MathX.Clamp( (float)file.GetValue( "video", "gun_height", 0f ), MinGunHeight, MaxGunHeight );
 		Rifle = RifleArgument() ?? (string)file.GetValue( "game", "rifle", Rifle );
@@ -94,6 +101,8 @@ public static class GameSettings
 		file.SetValue( "controller", "stick_sensitivity", StickSensitivity );
 		file.SetValue( "controller", "vibration", Vibration );
 		file.SetValue( "controller", "aim_assist", AimAssist );
+		file.SetValue( "controller", "gyro_mode", GyroMode );
+		file.SetValue( "controller", "gyro_sensitivity", GyroSensitivity );
 		file.SetValue( "video", "gun_distance", GunDistance );
 		file.SetValue( "video", "gun_height", GunHeight );
 		file.SetValue( "game", "rifle", Rifle );

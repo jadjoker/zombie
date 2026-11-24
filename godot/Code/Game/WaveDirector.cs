@@ -210,7 +210,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -224,6 +224,14 @@ public partial class WaveDirector : Node3D
 	public int MaxAnglers = 3;             // never more than this many anglers alive at once
 	public float AnglerBaseHealth = 370f;
 	public float AnglerHealthPerWave = 38f;
+
+	/// <summary> Fish swarms (user's ask: a regular enemy, not set about the map): a share of each wave from `FishFromWave`, at most `MaxFish` alive. One swarm is one enemy. </summary>
+	public bool SpawnFish = true;
+	public float FishChance = 0.12f;
+	public int FishFromWave = 2;
+	public int MaxFish = 3;
+	public float FishBaseHealth = 110f;
+	public float FishHealthPerWave = 14f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
 	public int DaveyWave = 20;
@@ -291,6 +299,13 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) a.GlobalBasis = Shapes.LookAt( toPlayer );
 			a.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return a;
+		},
+		[EnemyKind.FishSwarm] = ( d, at, health ) =>
+		{
+			var colour = SeaDressing.Bright[Rng.Int( 0, SeaDressing.Bright.Length - 1 )];
+			var f = FishSwarm.SpawnHunter( d.GetTree().CurrentScene, at + Vector3.Up * 2.2f, colour, Rng.Int( 12, 18 ), health );
+			f.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return f;
 		},
 		[EnemyKind.Seahorse] = ( d, at, health ) =>
 		{
@@ -598,6 +613,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
 			EnemyKind.Seahorse => SeahorseBaseHealth + SeahorseHealthPerWave * Wave,
 			EnemyKind.Mermaid => MermaidBaseHealth + MermaidHealthPerWave * (Wave - 1),
+			EnemyKind.FishSwarm => FishBaseHealth + FishHealthPerWave * (Wave - 1),
 			EnemyKind.Angler => AnglerBaseHealth + AnglerHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
@@ -721,6 +737,14 @@ public partial class WaveDirector : Node3D
 		return n;
 	}
 
+	int FishAlive()
+	{
+		var n = 0;
+		foreach ( var e in alive )
+			if ( e is FishSwarm f && IsInstanceValid( f ) && !f.IsDead ) n++;
+		return n;
+	}
+
 	bool TrySpawnEnemy()
 	{
 		var roll = Rng.Float();
@@ -737,6 +761,12 @@ public partial class WaveDirector : Node3D
 		{
 			if ( roll < AnglerChance ) return Spawn( EnemyKind.Angler );
 			roll = (roll - AnglerChance) / (1f - AnglerChance);
+		}
+		// Fish swarms: a share of every wave from FishFromWave, at most MaxFish alive.
+		if ( SpawnFish && Wave >= FishFromWave && has( EnemyKind.FishSwarm ) && FishAlive() < MaxFish )
+		{
+			if ( roll < FishChance ) return Spawn( EnemyKind.FishSwarm );
+			roll = (roll - FishChance) / (1f - FishChance);
 		}
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;

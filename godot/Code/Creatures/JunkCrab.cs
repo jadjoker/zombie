@@ -360,6 +360,7 @@ public partial class JunkCrab : PartCreature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "JunkCrab total" );
 		if ( health is null || rig is null ) return;
 		var dt = (float)delta;
 		if ( IsDead )
@@ -367,11 +368,11 @@ public partial class JunkCrab : PartCreature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( dt );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "JunkCrab think" ); Think( dt ); }
 		if ( diedLocally || !IsInstanceValid( rig ) ) return;
 		rig.GlobalTransform = new Transform3D( GlobalBasis.Orthonormalized().Scaled( Vector3.One * Size ), GlobalPosition );
 		if ( Has( Body ) ) CreatureGore.BleedTrail( parts[Body].Go.GlobalPosition, gooColor, health.Fraction, ref bleedTimer );
-		Animate( dt );
+		{ using var perfAnim = Perf.Time( "JunkCrab animate" ); Animate( dt ); }
 		TintParts( dt );
 		rig.Visible = true;
 	}
@@ -553,7 +554,7 @@ public partial class JunkCrab : PartCreature
 			GoneMask |= SubtreeMask( index );
 			CutLocal( index, direction );
 		}
-		else Hit( index, position, direction, Rng.Float() < 0.3f, hurt );
+		else if ( !Lethal( damage * multiplier ) ) Hit( index, position, direction, Rng.Float() < 0.3f, hurt );   // a killing shot: the death burst covers it
 
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * multiplier, Position = position, Origin = origin, Attacker = shooter } );

@@ -32,7 +32,7 @@ public partial class TeamHud : Control
 		DrawTags( camera );
 		Pings.Draw( this, camera );
 		if ( Spectate.Watching is { } watched && IsInstanceValid( watched ) )
-			Centered( $"WATCHING  {Net.PlayerName( watched.PeerId ).ToUpperInvariant()}   ·   click to switch", new Vector2( Size.X * 0.5f, Size.Y - 70f ), 20, UiStyle.Gold );
+			Centered( $"WATCHING  {Net.PlayerName( watched.PeerId ).ToUpperInvariant()}   ·   {Controls.Label( "attack1" )} to switch", new Vector2( Size.X * 0.5f, Size.Y - 70f ), 20, UiStyle.Gold );
 		if ( Input.IsActionPressed( "scoreboard" ) && !PauseMenu.IsOpen && !ClassPicker.IsOpen ) DrawBoard();
 	}
 

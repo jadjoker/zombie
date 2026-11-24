@@ -1,7 +1,8 @@
 # Publishes the Godot game to itch.io on every push to main (what Tools/godot/release.sh does on the Windows PC); pushes
 # to claude/** branches run the same build and tests without uploading:
-# builds, exports for Windows, smoke-tests a Linux export of the same commit (the headless wave flow: dive in,
-# enemies must come), then pushes the Windows build with butler. Players with the itch app update automatically.
+# builds, exports for Windows and Linux, runs the headless tests on the Linux export, then pushes both builds with
+# butler (channels "windows" and "linux"; the Linux one is for the Steam Deck / Steam Machine). Players with the itch
+# app update automatically.
 #
 # Needs the BUTLER_API_KEY repo secret (an itch.io API key: itch.io > Settings > API keys). Without it the build and
 # the test still run and the upload is skipped. The page is Tools/godot/itch_target.txt ("user/game"), unless the
@@ -67,6 +68,8 @@ jobs:
           fi
           cp Tools/PLAYTEST_README.txt ../build/windows/README.txt
           printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.exe"\n' > ../build/windows/.itch.toml
+          cp Tools/PLAYTEST_README.txt ../build/linux/README.txt
+          printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.x86_64"\n' > ../build/linux/.itch.toml
 
       - name: Tests (the dive and first waves, the teleporters, Atlantis, Poseidon, mermaids)
         run: |
@@ -123,7 +126,11 @@ jobs:
           [ -s butler.zip ] || { echo "could not download butler"; exit 1; }
           unzip -q butler.zip -d butler && chmod +x butler/butler
           ./butler/butler push build/windows "$target:windows" --userversion "$version"
+          # The Linux build, as tested above (the test logs live outside the folder), its launcher marked runnable.
+          chmod +x build/linux/RiskOfCopyright.x86_64
+          ./butler/butler push build/linux "$target:linux" --userversion "$version"
           ./butler/butler status "$target:windows"
+          ./butler/butler status "$target:linux"
 
       # Pictures of the newest boss and of Atlantis, rendered on a virtual screen (the tests above run without one), pushed to the
       # ci-screenshots branch so they can be looked at. Never blocks the release.

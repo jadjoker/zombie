@@ -38,13 +38,16 @@ public partial class AmmoPickup : Node3D
 
 	static PackedScene model;
 
+	/// <summary> Loads the box model ahead of the first drop (at level start), not mid-fight. </summary>
+	public static void Preload() => model ??= ResourceLoader.Exists( "res://assets/models/props/ammo_box.glb" ) ? GD.Load<PackedScene>( "res://assets/models/props/ammo_box.glb" ) : null;
+
 	public override void _Ready()
 	{
 		age = 0f;
 		baseY = GlobalPosition.Y;
 		box = new MeshInstance3D();   // spins; holds the Blender model (Tools/blender/ammo_box.py)
 		AddChild( box );
-		model ??= ResourceLoader.Exists( "res://assets/models/props/ammo_box.glb" ) ? GD.Load<PackedScene>( "res://assets/models/props/ammo_box.glb" ) : null;
+		Preload();
 		glow = new StandardMaterial3D { AlbedoColor = new Color( 1f, 0.72f, 0.18f ), EmissionEnabled = true, Emission = new Color( 1f, 0.7f, 0.15f ), EmissionEnergyMultiplier = 2.2f };
 		if ( model?.Instantiate() is Node3D can )
 		{

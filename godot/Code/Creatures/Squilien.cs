@@ -283,6 +283,7 @@ public partial class Squilien : Creature
 
 	public override void _Process( double delta )
 	{
+		using var perfAll = Perf.Time( "Squilien total" );
 		if ( health is null || bell is null ) return;
 		var dt = (float)delta;
 		if ( IsDead )
@@ -290,7 +291,7 @@ public partial class Squilien : Creature
 			if ( timeSinceDeath > 1f ) QueueFree();
 			return;
 		}
-		if ( !Frozen ) Think( dt );
+		if ( !Frozen ) { using var perfThink = Perf.Time( "Squilien think" ); Think( dt ); }
 		if ( diedLocally ) return;
 		UpdateBlink();
 		if ( !bell.Gone ) CreatureGore.BleedTrail( bell.Position + Vector3.Down * BellRadius * 0.4f * U.In, GooColor, health.Fraction, ref bleedTimer );
@@ -523,7 +524,7 @@ public partial class Squilien : Creature
 			hurt = 1f - MathX.Clamp( piece.Health / MathF.Max( 1f, TentacleHealth ), 0f, 1f );
 		}
 		if ( cut ) CutLocal( piece.Index, direction, quiet: false );
-		else Hit( piece, position, direction, Rng.Float() < ChipChance, hurt );
+		else if ( !Lethal( damage * (isBell ? BellMultiplier : TentacleMultiplier) ) ) Hit( piece, position, direction, Rng.Float() < ChipChance, hurt );   // a killing shot: the death burst covers it
 		var wasAlive = !IsDead;
 		health.OnDamage( new DamageInfo { Damage = damage * (isBell ? BellMultiplier : TentacleMultiplier), Position = position, Origin = origin, Attacker = shooter } );
 		var killed = wasAlive && IsDead;
@@ -588,6 +589,7 @@ public partial class Squilien : Creature
 
 	void Detach( Piece piece, Vector3 push )
 	{
+		using var perf = Perf.Time( "detach" );
 		Shapes.Tint( piece.Renderer, ColourOf( piece ).Lerp( ColourOf( piece ) * 0.45f, piece.Hurt ) with { A = 1f } );
 		var holder = new Node3D { Name = "Squilien Piece" };
 		GetTree().CurrentScene.AddChild( holder );

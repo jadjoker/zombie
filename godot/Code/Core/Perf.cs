@@ -24,5 +24,21 @@ public static class Perf
 	}
 
 	public static Scope Time( string label ) => Enabled ? new Scope( label ) : default;
+
+	static long markAt;
+	static string markLabel;
+	/// <summary> Charges the time since the last mark to that mark's label (rough sectioning of one long method). </summary>
+	public static void Mark( string label )
+	{
+		if ( !Enabled ) return;
+		var now = Stopwatch.GetTimestamp();
+		if ( markLabel is not null )
+		{
+			var ms = (now - markAt) * 1000.0 / Stopwatch.Frequency;
+			if ( ms < 500 ) Totals[markLabel] = Totals.TryGetValue( markLabel, out var t ) ? (t.Ms + ms, t.Calls + 1) : (ms, 1);
+		}
+		markLabel = label;
+		markAt = now;
+	}
 	public static void Clear() => Totals.Clear();
 }

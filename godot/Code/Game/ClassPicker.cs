@@ -48,7 +48,8 @@ public partial class ClassPicker : CanvasLayer
 		column.AddChild( row );
 		for ( var i = 0; i < RobotClass.All.Length; i++ ) row.AddChild( Card( RobotClass.All[i], i + 1 ) );
 
-		var hint = new Label { Text = $"Press 1 to {RobotClass.All.Length}, or click a robot", HorizontalAlignment = HorizontalAlignment.Center };
+		var hint = new Label { HorizontalAlignment = HorizontalAlignment.Center };
+		Live( hint, () => Controls.IsController ? $"Move to a robot and press {(Controls.IsPlayStation ? "Cross" : "A")} to pick it" : $"Press 1 to {RobotClass.All.Length}, or click a robot" );
 		hint.AddThemeColorOverride( "font_color", UiStyle.Readout with { A = 0.7f } );
 		hint.AddThemeFontOverride( "font", UiStyle.MonoWide );
 		column.AddChild( hint );
@@ -90,6 +91,7 @@ public partial class ClassPicker : CanvasLayer
 		netStatus.AddThemeColorOverride( "font_color", UiStyle.Readout );
 		row.AddChild( netStatus );
 		Net.StatusChanged += ShowNetStatus;
+		Controls.Changed += ButtonsChanged;
 		return row;
 	}
 
@@ -122,10 +124,10 @@ public partial class ClassPicker : CanvasLayer
 		column.AddChild( new HSeparator() );
 		Line( column, "WEAPONS", 16, UiStyle.Gold );
 		Line( column, robot.Weapons, 20, Colors.White );
-		Line( column, "MOUSE 4", 16, UiStyle.Gold );
-		Line( column, robot.Movement, 18, Colors.White );
-		Line( column, "MELEE", 16, UiStyle.Gold );
-		Line( column, robot.Melee, 20, Colors.White );
+		Live( Line( column, "", 16, UiStyle.Gold ), () => Controls.Prompts( "MOUSE 4" ) );
+		Live( Line( column, "", 18, Colors.White ), () => Controls.Prompts( robot.Movement ) );
+		Live( Line( column, "", 16, UiStyle.Gold ), () => $"MELEE ({Controls.Label( "melee" ).ToUpperInvariant()})" );
+		Live( Line( column, "", 20, Colors.White ), () => Controls.Prompts( robot.Melee ) );
 		if ( Grid ) Line( column, $"HEALTH  {robot.BaseHealth:0}", 16, UiStyle.Gold );
 		else
 		{
@@ -171,13 +173,19 @@ public partial class ClassPicker : CanvasLayer
 		}
 	}
 
-	void Line( Control parent, string text, int size, Color colour )
+	/// <summary> Labels whose words name buttons: set now and again whenever the device changes (keys, or a pad). </summary>
+	readonly List<(Label Label, Func<string> Text)> live = new();
+	void Live( Label label, Func<string> text ) { live.Add( (label, text) ); label.Text = text(); }
+	void ButtonsChanged( Scheme scheme ) { foreach ( var (label, text) in live ) if ( IsInstanceValid( label ) ) label.Text = text(); }
+
+	Label Line( Control parent, string text, int size, Color colour )
 	{
 		var label = new Label { Text = text, AutowrapMode = TextServer.AutowrapMode.WordSmart, CustomMinimumSize = new Vector2( CardWidth - 20, 0 ) };
 		label.AddThemeFontSizeOverride( "font_size", (int)(size * TextScale) );
 		label.AddThemeColorOverride( "font_color", colour );
 		parent.AddChild( label );
 		Row( label );
+		return label;
 	}
 
 	public void Choose( RobotClass robot )
@@ -215,6 +223,7 @@ public partial class ClassPicker : CanvasLayer
 	public override void _ExitTree()
 	{
 		Net.StatusChanged -= ShowNetStatus;
+		Controls.Changed -= ButtonsChanged;
 		if ( IsOpen ) { IsOpen = false; GetTree().Paused = false; }
 	}
 }

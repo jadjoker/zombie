@@ -344,79 +344,156 @@ public partial class AutoTest
 		var skills = PlayerSkills.Of( player );
 		var jet = player.GetNode<Jetpack>( "Jetpack" );
 
-		// ---- A ball off a crab; Multiball ----
+		// ---- The plunger pulls back on its own as the trigger is held ----
+		launcher.TestHoldPull = true;
+		await Wait( 0.7f );
+		var pulled = launcher.SpringPull;
+		if ( shots is not null ) await Shot( "pinball_pull" );
+		launcher.TestHoldPull = false;
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] pinballbot: the plunger pulled to {pulled:0.00}" );
+		Check( pulled > 0.9f, "holding the trigger did not pull the plunger back" );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+		await Wait( 0.5f );
+
+		// ---- A ball off a crab, kicked on to the next like off a pop bumper; Multiball ----
 		var crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
+		var second = Crab( a, a.Spot + a.Ahead * 8f + a.Side * 4f, 2000f );
+		var third = Crab( a, a.Spot + a.Ahead * 12f + a.Side * 0.5f, 2000f );   // clear of the station that stands off to one side
 		await Wait( 0.8f );
 		await Face( a, crab.GlobalPosition + Vector3.Up * 0.3f );
 		var hp = Hp( crab );
+		var hp2 = Hp( second ) + Hp( third );
 		launcher.TestLaunch( 1f );
-		if ( shots is not null ) { await Wait( 0.12f ); await Shot( "pinball_ball" ); }
-		await Wait( 1f );
-		GD.Print( $"[autotest] pinballbot: balls {PinballFx.Balls}, hits {PinballFx.BallHits}, fastest {PinballFx.FastestBall:0.0} m/s; the crab lost {hp - Hp( crab ):0}" );
-		Check( PinballFx.BallHits >= 1 && hp - Hp( crab ) > 25f && hp - Hp( crab ) < 260f, "the pinball did not hit the crab for a fair amount" );
+		if ( shots is not null ) { await Wait( 0.12f ); await Shot( "pinball_ball" ); await Wait( 0.18f ); await Shot( "pinball_bumper" ); }
+		await Wait( 1.2f );
+		GD.Print( $"[autotest] pinballbot: balls {PinballFx.Balls}, hits {PinballFx.BallHits}, longest chain {PinballFx.LongestChain}, fastest {PinballFx.FastestBall:0.0} m/s; the crab lost {hp - Hp( crab ):0}, the other two {hp2 - Hp( second ) - Hp( third ):0}" );
+		Check( PinballFx.BallHits >= 1 && hp - Hp( crab ) > 12f && hp - Hp( crab ) < 260f, "the pinball did not hit the crab for a fair amount" );
+		Check( PinballFx.LongestChain >= 4 && hp2 - Hp( second ) - Hp( third ) > 5f, "the pinball was not kicked on to another crab" );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+		Clear( a );
+		// A crowd walking in (the user's case: one shot into a pack should bounce round it many times).
+		DevFlags.FreezeEnemies = false;
+		var pack = new[] { (9f, 0f), (10.2f, 1.1f), (10.2f, -1.1f), (11.4f, 0.4f), (8.6f, -1.6f) }.Select( p => Crab( a, a.Spot + a.Ahead * p.Item1 + a.Side * p.Item2, 2000f ) ).ToList();
+		await Wait( 0.9f );
+		await Face( a, pack[0].GlobalPosition + Vector3.Up * 0.3f );
+		var longestBefore = PinballFx.LongestChain;
+		PinballFx.LongestChain = 0;
+		launcher.TestLaunch( 1f );
+		if ( shots is not null ) { await Wait( 0.5f ); await Shot( "pinball_pack" ); }
+		await Wait( 2.5f );
+		var packHurt = pack.Count( c => IsInstanceValid( c ) && Hp( c ) < 2000f );
+		GD.Print( $"[autotest] pinballbot: into a walking pack of 5: chain {PinballFx.LongestChain}, crabs hit {packHurt}" );
+		Check( PinballFx.LongestChain >= 8 && packHurt >= 4, "a ball into a pack didn't bounce round it" );
+		PinballFx.LongestChain = Math.Max( PinballFx.LongestChain, longestBefore );
+		DevFlags.FreezeEnemies = true;
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+		Clear( a );
+		crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
+		await Wait( 0.8f );
 		skills.Set( SkillId.Multiball, 2 );
 		await Wait( 2f );
-		AimAt( crab.GlobalPosition + Vector3.Up * 0.3f );
+		Stand( a );
+		await Face( a, crab.GlobalPosition + Vector3.Up * 0.3f );   // (the pack may have shoved the player about)
+		var splitsBefore = PinballFx.Splits;
 		launcher.TestLaunch( 1f );
 		await Wait( 0.8f );
+		PinballFx.Splits -= splitsBefore;
 		GD.Print( $"[autotest] pinballbot: Multiball split {PinballFx.Splits}" );
 		Check( PinballFx.Splits == 2, "Multiball did not split the ball in three" );
 		Clear( a );
 		foreach ( var b in BotBall.All.ToList() ) b.End();
 
-		// ---- The flippers: a whack, a ball slapped back out, Ramp ----
+		// ---- The flippers: a tip hit is PERFECT and launches a human pinball into the crab behind ----
 		inventory.Select( flippers, force: true );
 		await Wait( 0.5f );
-		var close = Crab( a, a.Spot + a.Ahead * 2.2f, 600f );
+		var close = Crab( a, a.Spot + a.Ahead * 2.6f, 600f );
+		var behind = Crab( a, a.Spot + a.Ahead * 6.5f, 600f );
 		await Wait( 0.8f );
 		await Face( a, close.GlobalPosition + Vector3.Up * 0.3f );
 		var closeAt = (close.GlobalPosition - player.GlobalPosition).Flat().Length();
 		hp = Hp( close );
+		var hpBehind = Hp( behind );
 		flippers.Flip( true );
-		if ( shots is not null ) { await Wait( 0.05f ); await Shot( "pinball_flip" ); }
+		if ( shots is not null ) { await Wait( 0.03f ); await Shot( "pinball_flip" ); }
+		var thrown = 0f;
+		for ( var i = 0; i < 12; i++ ) { await Wait( 0.05f ); if ( IsInstanceValid( close ) ) thrown = MathF.Max( thrown, (close.GlobalPosition - player.GlobalPosition).Flat().Length() ); }
+		GD.Print( $"[autotest] pinballbot: flips {PinballFx.Flips}, hits {PinballFx.FlipHits}, perfects {PinballFx.Perfects}, launched {PinballFx.Launched}, human pinball hits {PinballFx.HumanHitsDone}; the crab flew from {closeAt:0.0} m out to {thrown:0.0} m and lost {hp - Hp( close ):0}, the one behind lost {hpBehind - Hp( behind ):0}" );
+		Check( PinballFx.FlipHits == 1 && PinballFx.Perfects == 1 && PinballFx.Launched == 1 && thrown > closeAt + 1.5f && hp - Hp( close ) > 50f, "the flipper did not send the crab flying with a PERFECT tip hit" );
+		Check( PinballFx.HumanHitsDone >= 1 && hpBehind - Hp( behind ) > 20f, "the human pinball did not hit the crab behind" );
+		Clear( a );
 		await Wait( 0.3f );
-		var thrown = (close.GlobalPosition - player.GlobalPosition).Flat().Length();
-		GD.Print( $"[autotest] pinballbot: flips {PinballFx.Flips}, hits {PinballFx.FlipHits}; the crab went from {closeAt:0.0} m to {thrown:0.0} m and lost {hp - Hp( close ):0}" );
-		Check( PinballFx.FlipHits == 1 && thrown > closeAt + 1f && hp - Hp( close ) > 25f, "the flipper did not whack the crab away" );
+
+		// ---- A loose ball slapped out; a ball cradled on a held flipper, then a skill shot as it rolls off ----
 		var eye = player.Camera.GlobalPosition;
 		var slow = Pinball.Fire( launcher, player, eye + (-player.Camera.GlobalBasis.Z) * 1.2f, Vector3.Up * 0.5f, 40f );
 		flippers.Flip( false );
 		await Wait( 0.05f );
 		GD.Print( $"[autotest] pinballbot: balls flipped {PinballFx.BallsFlipped}, its speed {(IsInstanceValid( slow ) ? slow.Velocity.Length() : 0f):0.0} m/s" );
 		Check( PinballFx.BallsFlipped == 1, "the flipper did not slap the ball" );
+		await Wait( 0.4f );
+		flippers.TestHoldLeft = true;
+		flippers.Raise( true );
+		await Wait( 0.35f );
+		eye = player.Camera.GlobalPosition;
+		var caught = Pinball.Fire( launcher, player, eye + (-player.Camera.GlobalBasis.Z) * 2.5f + Vector3.Up * 0.3f, player.Camera.GlobalBasis.Z * 3f, 40f );
+		await Wait( 0.4f );
+		if ( shots is not null ) await Shot( "pinball_cradle" );
+		var cradled = IsInstanceValid( caught ) && caught.OnFlipper == 1;
+		flippers.TestHoldLeft = false;
+		flippers.Lower( true );
+		await Wait( 0.12f );
+		flippers.Raise( false );
+		flippers.Lower( false );
+		await Wait( 0.05f );
+		GD.Print( $"[autotest] pinballbot: cradles {PinballFx.Cradles} (held: {cradled}), skill shots {PinballFx.SkillShots}, its speed {(IsInstanceValid( caught ) ? caught.Velocity.Length() : 0f):0.0} m/s" );
+		Check( cradled && PinballFx.SkillShots == 1, "the held flipper did not cradle the ball for a skill shot" );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+
+		// ---- Ramp: the human pinball comes down in a crash ----
 		skills.Set( SkillId.Ramp, 2 );
 		await Wait( 0.5f );
-		var ramped = Crab( a, a.Spot + a.Ahead * 2.2f, 600f );
+		var ramped = Crab( a, a.Spot + a.Ahead * 2.6f, 600f );
 		await Wait( 0.8f );
 		await Face( a, ramped.GlobalPosition + Vector3.Up * 0.3f );
 		hp = Hp( ramped );
+		await Wait( 0.35f );
 		flippers.Flip( true );
-		await Wait( 1.2f );
+		await Wait( 2f );
 		GD.Print( $"[autotest] pinballbot: ramps {PinballFx.Ramps}; the crab lost {hp - Hp( ramped ):0}" );
-		Check( PinballFx.Ramps == 1 && hp - Hp( ramped ) > PinballFx.RampDamage( 2 ), "Ramp did not throw the crab up and drop it" );
+		Check( PinballFx.Ramps == 1 && hp - Hp( ramped ) > PinballFx.RampDamage( 2 ), "Ramp did not crash the human pinball down" );
 		Clear( a );
 
-		// ---- The roll bowls a line of crabs over; High Score ----
+		// ---- The roll: third person, a ball with its own momentum that bowls a line of crabs over (and kills a weak
+		// one at the end); High Score ----
 		skills.Set( SkillId.HighScore, 2 );
-		var line = new[] { 2.5f, 4.5f, 6.5f }.Select( d => Crab( a, a.Spot + a.Ahead * d, 600f ) ).ToList();
+		var line = new[] { 3f, 5.5f, 8f }.Select( d => Crab( a, a.Spot + a.Ahead * d, 600f ) ).ToList();
+		var weak = Crab( a, a.Spot + a.Ahead * 10.5f, 100f );
 		await Wait( 0.8f );
 		Stand( a );
+		await Face( a, a.Spot + a.Ahead * 10f + Vector3.Up * 0.5f );
 		await Wait( 0.1f );
 		var hps = line.Select( Hp ).ToList();
+		var bowledBefore = PinballFx.Bowled;
+		var start = player.GlobalPosition;
 		jet.TestRoll();
+		var wentThird = player.ThirdPerson;
 		var low = 0f;
-		for ( var i = 0; i < 30 && jet.Rolling; i++ )
+		var fastest = 0f;
+		for ( var i = 0; i < 40 && jet.Rolling; i++ )
 		{
-			// Roll on down the line (the test moves the player, as the keys would).
-			player.GlobalPosition = Nav.Closest( player, a.Spot + a.Ahead * (0.3f * i) ) + Vector3.Up * 0.1f;
 			low = MathF.Max( low, player.EyeDrop );
-			if ( i == 6 && shots is not null ) await Shot( "pinball_roll" );
+			fastest = MathF.Max( fastest, player.Velocity.Flat().Length() );
+			if ( i == 8 && shots is not null ) await Shot( "pinball_roll" );
 			await Wait( 0.05f );
 		}
+		var travelled = (player.GlobalPosition - start).Flat().Length();
 		if ( jet.Rolling ) jet.TestRoll();
-		await Wait( 0.2f );
-		GD.Print( $"[autotest] pinballbot: rolls {PinballFx.Rolls}, bowled {PinballFx.Bowled}, High Scores {PinballFx.HighScores}; the view dropped {low:0.00} m; crabs {string.Join( ", ", hps.Select( h => h.ToString( "0" ) ) )} -> {string.Join( ", ", line.Select( c => Hp( c ).ToString( "0" ) ) )}" );
-		Check( PinballFx.Bowled >= 3 && low > 0.5f, "the roll did not bowl the line of crabs over" );
+		await Wait( 0.3f );
+		GD.Print( $"[autotest] pinballbot: rolls {PinballFx.Rolls}, third person {wentThird} (after {player.ThirdPerson}), bowled {PinballFx.Bowled - bowledBefore}, High Scores {PinballFx.HighScores}; rolled {travelled:0.0} m at up to {fastest:0.0} m/s; the view dropped {low:0.00} m; crabs {string.Join( ", ", hps.Select( h => h.ToString( "0" ) ) )} -> {string.Join( ", ", line.Select( c => Hp( c ).ToString( "0" ) ) )}, the weak one {(IsInstanceValid( weak ) && !weak.IsDead ? "lived" : "died")}" );
+		Check( wentThird && !player.ThirdPerson, "the roll did not go to third person and back" );
+		Check( PinballFx.Bowled - bowledBefore >= 3 && travelled > 5f && low > 0.5f, "the roll did not bowl the line of crabs over" );
+		Check( !IsInstanceValid( weak ) || weak.IsDead, "the roll did not kill a weak crab" );
 		Check( PinballFx.HighScores == 1, "High Score did not go off after bowling three" );
 		Clear( a );
 		foreach ( var b in BotBall.All.ToList() ) b.End();

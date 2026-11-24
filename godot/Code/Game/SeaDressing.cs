@@ -13,7 +13,7 @@ public static class SeaDressing
 	static readonly Dictionary<string, PackedScene> models = new();
 	static readonly Dictionary<(string, int), StandardMaterial3D> paints = new();
 
-	static readonly Color[] Bright =
+	public static readonly Color[] Bright =
 	{
 		new( 1f, 0.42f, 0.55f ), new( 1f, 0.62f, 0.2f ), new( 0.6f, 0.9f, 0.3f ), new( 0.3f, 0.85f, 0.9f ), new( 0.72f, 0.5f, 1f ), new( 1f, 0.85f, 0.3f ),
 	};
@@ -168,17 +168,7 @@ public static class SeaDressing
 			}
 		} );
 
-		// ---- Fish overhead. ----
-		for ( var s = 0; s < 4; s++ )
-		{
-			var school = FishSchool.Create( Bright[(s * 2 + 1) % Bright.Length], 12 + random.Next( 8 ), random );
-			if ( school is null ) break;
-			root.AddChild( school );
-			school.Home = new Vector3( Range( -16f, 16f ), Range( 2.6f, 5.5f ), Range( -16f, 16f ) );
-			school.Radius = Range( 7f, 14f );
-			school.Speed = Range( 0.1f, 0.18f ) * (s % 2 == 0 ? 1f : -1f);
-			school.Phase = Range( 0f, MathF.Tau );
-		}
+		// Fish swarms are wave enemies now (`WaveDirector`, `EnemyKind.FishSwarm`), not set about the map.
 	}
 
 	/// <summary> A solid box on a prop, in the prop's own space (so it tilts and scales with it). </summary>
@@ -204,6 +194,28 @@ public partial class FishSchool : MultiMeshInstance3D
 	Vector3[] offsets;
 	float[] phases, sizes;
 	static Mesh fishMesh;
+
+	/// <summary> The fish model in a school's colours (null if the model is missing). </summary>
+	public static Mesh Painted( Color colour )
+	{
+		if ( fishMesh is null )
+		{
+			var path = "res://assets/models/sea/fish.glb";
+			if ( !ResourceLoader.Exists( path ) ) return null;
+			var scene = GD.Load<PackedScene>( path ).Instantiate<Node3D>();
+			fishMesh = scene.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>().FirstOrDefault()?.Mesh;
+			scene.QueueFree();
+			if ( fishMesh is null ) return null;
+		}
+		var mesh = (Mesh)fishMesh.Duplicate();
+		for ( var i = 0; i < mesh.GetSurfaceCount(); i++ )
+		{
+			var name = mesh.SurfaceGetMaterial( i )?.ResourceName ?? "";
+			var c = name switch { "Fish" => colour, "FishFin" => colour.Lightened( 0.45f ), _ => new Color( 0.03f, 0.03f, 0.04f ) };
+			mesh.SurfaceSetMaterial( i, new StandardMaterial3D { AlbedoColor = c, Roughness = 0.5f, RimEnabled = name != "FishEye", Rim = 0.4f, RimTint = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled } );
+		}
+		return mesh;
+	}
 
 	public static FishSchool Create( Color colour, int count, Random random )
 	{

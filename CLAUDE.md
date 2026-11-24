@@ -59,7 +59,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Controller support (issue #33): `Core/Controls.cs` adds a pad binding to every action at start, tracks the device last
   used (a pad, or keys and mouse) and switches between them, names buttons for the prompts (`Controls.Label`, Xbox or
   PlayStation style) and rumbles (`Controls.Rumble`, also driven by `CameraJuice.Shake`). Right-stick look is in
-  `PlayerController._Process`. Aim assist is `Player/AimAssist.cs` (pad only: slows the stick near an enemy and pulls toward it; pause menu slider). The dev menu works by pad (focus outline, bumpers change tab, right stick scrolls, B closes, right trigger places an enemy). Tests: `--pad` and `--padmenus` (inject pad events; headless works).
+  `PlayerController._Process`. Aim assist is `Player/AimAssist.cs` (pad only: slows the stick near an enemy and pulls toward it; pause menu slider). Reworked: whole enemies with bubbles sized to them, a sticky target, tracking while you or it move, a pull, a snap onto the sights; the stick has a round dead zone and a turn boost. Gyro aiming (`Controls.GyroRate`: Godot's joypad motion sensors, drift learned while the pad is still; pause menu: Gyro aiming Off/On/While aiming, Gyro sensitivity, Calibrate gyro). A Steam Controller's trackpad and gyro arrive as mouse moves and clicks: with a pad plugged in those don't switch the game to keys and mouse (it was showing "E" and turning aim assist off), and mouse-style look gets the assist too. The dev menu works by pad (focus outline, bumpers change tab, right stick scrolls, B closes, right trigger places an enemy). Tests: `--pad` and `--padmenus` (inject pad events; headless works).
 - The dock radio (issue #42): `Core/Radio.cs` (autoloaded through `Clock`) shuffles the songs in `godot/assets/music`
   (drop more .mp3 or .ogg files in and they join), on its own `Music` bus with the pause menu's Music volume slider; the
   dock builds the radio model (`Tools/blender/dock_props.py`, `DOCK_ONLY=radio`) on the hut table and starts it. Test: `--radio`.
@@ -285,9 +285,21 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Plunger-Bot (175, "Plunger"; `PlungerBot.cs`, `PlungerFx`): plungers stick (`StuckPlunger`) and pop off at
   `PopAt` with a SHLORP, right click yanks them back; the Flush Bomb toilet (`FlushBomb`) whirlpools enemies in and
   geysers them up; mouse 4 slings you off a plunger on a bungee (`Sling`) into a belly flop. Pinball-Bot (150,
-  "Pinball"; `PinballBot.cs`, `PinballFx`): hold to pull the launcher's spring, a `Pinball` speeds up off each enemy;
-  the Flipper Arms (left and right click each flip one) whack enemies away and slap balls back out harder; mouse 4
-  rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`GooModels`, `PlungerModels`,
+  "Pinball"; `PinballBot.cs`, `PinballFx`; the deep pass): hold to pull the launcher's plunger; a `Pinball` hitting
+  an enemy is a pop bumper hit (`BotBall.BounceOffEnemy`): a `BumpPause` beat, a `BumperFlash`, the user's hit sounds
+  (`pinball_hit_1..6`, cut from their recordings), a `PinballPopup` (x2, JACKPOT!), and a kick out at `BumperKick`+
+  aimed most of the way (`ChainAim`) at the next enemy (`PinballFx.NextTarget`, `AimPoint`), flattened along the floor.
+  The Flipper Arms are real flippers (user's choice): a click raises that flipper (the flip), holding keeps it up;
+  flips launch light enemies as `HumanPinball`s that bounce off other enemies; a hit out at the tip (`SweetFrom`) is
+  PERFECT; a held flipper cradles your balls (`Pinball.Catch`, on the view model's flipper tip) and a flip as one rolls
+  off after letting go is a SKILL SHOT. Skills: Rebound (more chain hits), Sweet Spot, Launch Pad (human pinballs),
+  Ball Return, Ramp (human pinballs crash down). Models: `Tools/blender/pinball_guns.py` (gun space, exported without
+  the Y-up turn) to `pinball_launcher.glb` and `pinball_flippers.glb`, posed by `PinballModels.PoseLauncher` and
+  `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck); the plunger at the back pulls on its
+  own as the trigger is held (a hand pulling it was tried and dropped, user's choice). Mouse 4 is the roll
+  (`JetpackToys.RollStep` through `PlayerController.MoveOverride`): third person while it lasts, a glass pinball shell,
+  its own momentum (`JetpackToys.ShellRadius` 1.02 m so the tucked robot stays inside; steer, faster downhill, wall bounces, a hop on jump); enemies take `RollDamagePer` a m/s, light
+  ones fly off as `HumanPinball`s, heavy ones bounce it off. Guns built with `GunKit` (`GooModels`, `PlungerModels`,
   `PinballModels`); suits `GooTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
   Sounds `goo_shot`, `goo_stick`, `goo_pop`, `jelly_fire`, `jelly_boing`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.
@@ -326,6 +338,17 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Shark, Squilien, mermaid, and the bosses (`KrakenNet.cs`, `PoseidonNet.cs`, `DaveyNet.cs`). `--nettest` checks the
   hook, beam, slam, trident and cannons show on the joiner.
   Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
+- Fish swarms (`Creatures/FishSwarm.cs`, user's ask): a regular wave enemy (`EnemyKind.FishSwarm`, `WaveDirector.FishChance`
+  of each wave from `FishFromWave` 2, at most `MaxFish` 3 alive, health `FishBaseHealth` + `FishHealthPerWave`); none are
+  set about the map. One swarm is one creature (one health bar); its fish die as its health falls (`Thin`, the nearest
+  to the blow first). A wave swarm (`SpawnHunter`, `Hunter`) comes from a spawn point already on the nearest player,
+  circles the body at arm's length below the eyes and nips (`BiteDamage`, less as it thins), never gives up or comes
+  back. (`Spawn` still makes the old idle kind that loops a home and respawns.) Joiners get puppets (`NetCreatures`
+  "FishSwarm"). A dead fish is a ragdoll (`KillFish`: head, body and tail as gibs on cone-twist joints) and
+  `TearChance` of them come apart, spurting. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish`.
+- Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
+  hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
+  head now and then) as robot pieces with chrome joints, oil gushing from both ends.
 - Pickups: a dead creature drops one thing at most (`PerkPickup.MaybeDrop`: 30% ammo, then the 0.5% pirate chest, 4000
   points; `PlayerPerks.Drops`). The other old pickups are skills now (above), at per-point numbers in `PlayerPerks`:
   rifle reload -10% and fire rate +8% a point, explosive round `ThrownClip` (heat seeking), electric bullets
@@ -343,11 +366,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   lanterns, shrine candles and braziers, starfish, clams and pebbles on the avenues, bubble vents in the canals
   (`AtlantisVents`). Test: `--crab` (shots need a window); `--atlantis` checks standing on an arch and a porch roof.
 - The clutter pass (visual clarity): `AlienFloaters.cs` is glow bulbs, about 80 in drifting schools (teal, violet; 1 in
-  40 gold) plus star ferns on the sand, both hazards. A bulb a player comes within 3.5 m of swells and flashes for
+  40 gold), a hazard (the star ferns were removed, user's choice). A bulb a player comes within 3.5 m of swells and flashes for
   `PuffTime`, then bursts (20 to players within 3.2 m, once per school thanks to `BlastGrace`; 80 to enemies there); a
   shot bursts it at once (`GlowBulb`, an `IShootable` on the creature layer: 25 points, gold 150 and a pickup). They grow
-  back after 45 s. None inside the wreck (too tight to step back). A star fern shudders when a player is within 2.2 m,
-  then its spikes shoot out (12 damage) and it rests 3 s.
+  back after 45 s. None inside the wreck (too tight to step back).
   Scenery keeps off neon green (that is for enemies, weak points and pickups); `AlienReef.FadeNear` dithers plants away
   within 2 m of the camera. `SeaTerrain.Fit` grows kelp and coral in groves with open sand between and keeps the lanes
   from the spawn points clear. (A warm rim overlay on enemies was tried and removed: they keep their own look.) `Atmosphere.cs` (node "Backdrop"): light shafts
@@ -386,20 +408,30 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - The deep sea angler (`Creatures/Angler.cs`, `EnemyKind.Angler`): from the second stage on (`WaveDirector.AnglerChance` of
   each wave on the wreck site and in Atlantis, at most `MaxAnglers` (3) alive at once, base health 370). Tall round body (a `SmoothKit` loft) in
   blue and green scales, about 30% yellow, with purple spots (its own `SkinShader`, after Poseidon's tail), a jutting underbite of huge needle
-  teeth on a hinged `Jaw`, two compound fly eyes of hex facets (`EyeShader`; the weak spots), and a whole lantern glowing
+  teeth on a hinged `Jaw`, two black almond alien eyes on green rims like the other enemies' (the weak spots), and a whole lantern glowing
   green on a jointed stalk off its brow. Attacks: a lantern swing (wind-up, whip; `SwingRange`), a chomp (jaw wide,
   lunge, snap; `ChompRange`; the two take turns), and the hook (`HookThink`: the jaw gapes, a barbed bone claw on a line
   shoots up to `HookRange` 8 m, pierces the player, reels them in slowly with `Scripted` set, then bites; shooting off
   `HookBreak` of its health snaps the line). Dev menu: Enemies, Spawn an enemy, Angler. Test: `--angler` (shots need a window).
+  The angler pass: a deep sea hide (`SkinShader`, user's redesign: navy back to teal flanks and a pale belly, fine
+  tone-on-tone scales, dark mottling, purple spots with glowing rims, yellow freckles, slowly pulsing green alien veins,
+  photophores down each flank), lips, a red mouth, glowing teeth, warts, back spines, short glowing chin barbels, the
+  eyes set close into the head. Gore (`AnglerGore.cs`): every hit that
+  doesn't kill wounds and oozes (`Bleed`), the hide bloodies as it is hurt (the skin's `bruise`) and badly hurt it
+  bleeds as it swims; parts have their own health (`EyeShare`, `LanternShare`, `JawShare`, `FinShare`): an eye bursts,
+  the lantern is shot off its stalk (no more swings), the jaw is torn off (no bites or hooks), fins rip, and mouth hits
+  knock teeth out (every third, plus `ToothChance`); on death it comes apart (`FallApart`: jaw, lantern, fins, eyes,
+  tail and the oozing carcass as loose gibs, with a burst).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
-- Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, imports, builds, plays through `play_dev.bat`).
+- Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, builds, plays through `play_dev.bat`; it imports assets on every run, since a never-imported model shows up missing).
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
   Every push to `main` also publishes (a push to a `claude/**` branch is built and tested, not uploaded):
-  `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (needs the `BUTLER_API_KEY` repo secret; the
+  `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (channel
+  `windows`) and the tested Linux build (channel `linux`, for the Steam Machine) (needs the `BUTLER_API_KEY` repo secret; the
   page is `Tools/godot/itch_target.txt` unless the `ITCH_TARGET` repo variable is set).
 - Blender scripts for Godot assets write to `godot/assets` (`buy_station.py`, `dock_house.py`, `fps_rifle.py` with
   `RIFLE_OUT` set, and so on).
@@ -419,6 +451,21 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
   collision only while fast; all `Sway` plants are moved by one driver; `UiStyle.DrawFrame` and the HUD widgets reuse
   their style boxes; alien floaters far from the player update every other frame. Don't reintroduce per-frame
   allocations (LINQ `ToList`, new StyleBoxes, group queries) in hot paths.
+  The Godot perf pass (Nov 2026): `--perftypes` switches off each code type's per-frame work in turn (paired
+  before/after) in idle and in a fight; `--perfcreatures` times ten of each enemy (`Perf.Time` labels in their
+  `_Process`); `--perf` logs each hitch frame (its code labels, GC counts and render pipelines built; `--warmup` runs
+  the dock warm-up as in play). Kept on purpose: `NavAgent` asks the navmesh's closest point only every `SnapEvery`
+  (it cost ~0.5 ms a call) and keeps the feet on the floor by a ray (plus the navmesh's height) between, and plans paths
+  at most every `RepathEvery`; `Shapes.Tint` only touches a material when its colour changed; HUD labels go through
+  `LabelSet.Show`/`FontColour` (setting a label's text relays it out); far sea mines, swaying plants and alien floaters
+  update in turns; gib templates are shared between colour shades (`GibRecipe.Shape`, `GibKit.Recolour`), built
+  at most two a frame, prewarmed when each creature spawns and in batches on the dock; `ShaderWarmup` draws the
+  common effects once on the dock so their first-draw stalls happen there; `Sfx.PreloadAll` loads every sound on a
+  worker thread at start; the Gore Vac catches resting pieces a few a frame. Mass deaths: past `Creature.DeathBudgetMs` a frame the falling
+  apart waits for the next frame (`RunLateDeaths`, Killed still fires at once); a killing shot skips the hit's wound
+  (`Creature.Lethal`); goo spray rays run in the next physics tick; the goo decal textures and the visor splats are
+  loaded at level start and held (a texture no decal uses leaves the decal atlas, rebuilt when it comes back). `--perf`
+  kills the dozen inside the measurement and splits each hitch into process, deferred calls, frame end, draw, physics.
 
 ## Rules
 - The user often plays in the editor while agents work. Before saving code, editing the scene, or play_start,

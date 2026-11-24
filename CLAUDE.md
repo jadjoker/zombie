@@ -427,6 +427,19 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   the lantern is shot off its stalk (no more swings), the jaw is torn off (no bites or hooks), fins rip, and mouth hits
   knock teeth out (every third, plus `ToothChance`); on death it comes apart (`FallApart`: jaw, lantern, fins, eyes,
   tail and the oozing carcass as loose gibs, with a burst).
+- The sting ray (`Creatures/Stingray.cs`, `StingrayLook.cs`, `StingrayGore.cs`, `EnemyKind.Stingray`, user's design): from the second
+  stage (`WaveDirector.StingrayChance` of each wave on the wreck site and in Atlantis, at most `MaxStingrays` (4) alive, the angler's
+  health). One flat disc mesh built in code; its top draws the sea bed's own sand texture at its world position (camouflage), with a
+  slightly darker rim and dim alien spots (sneaky, not invisible); a pale belly with glowing gill slits and a smiling mouth; the
+  classic alien eyes on its head; a whip tail with a glowing barb. The wings move in the vertex shader (`DiscShader`: a wave nose to
+  tail while gliding, strokes to climb, a droop to dive, a bank). It glides low (`CruiseHeight`), comes round behind the player and
+  freezes flat while watched from afar (`Watched`). Zap (`ZapRange`): it rears up charging and zaps, stunning the player
+  `StunTime` (0.6 s) through `Electrocuted` (holds `PlayerController.Scripted`, bolts over the robot and the view; online the host's
+  hold carries over). Dive (`DiveMin`..`DiveMax`): it flaps up `DiveHeight`, aims, then nose dives spinning in a whirlpool cone,
+  taking `DiveDamageScale` (half) damage (also `AreaDamageScale`), and pulls out over the sand. The ground (user's ask): its height
+  keeps clear of the highest ground under its nose, wing tips, tail and the spot ahead (rays plus `Sculpt.GroundAt`, the higher),
+  it tilts to the slope and is never let under `MinClear`; walls are felt with a sphere. Sounds `ray_zap`, `ray_charge`. Dev menu:
+  Enemies, Spawn an enemy, Sting ray. Test: `--stingray` (checks the lowest clearance over the hills; shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

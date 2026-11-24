@@ -436,6 +436,13 @@ def build():
     s["jelly_fire"] = reverb(jfire, room=0.25, wet=0.2)
     jb = tone(0.4, 320, 160) * (1 + 0.7 * np.sin(2 * np.pi * 22 * t(0.4))) * env(int(SR * 0.4), 0.002, 0.3)
     s["jelly_boing"] = reverb(mix((jb * 0.7, 0, 1.0), (squelch(0.15, 300, 1200, 0.5), 0, 0.5)), room=0.25, wet=0.2)
+    # The sting ray (kept last, so the sounds above don't change when these are rerun): a crackling electric zap and
+    # the buzzing charge before it.
+    crackle = spectral(noise(0.5), lo=1800, hi=9000) * (rng.uniform(0, 1, int(SR * 0.5)) > 0.82) * env(int(SR * 0.5), 0.001, 0.3)
+    s["ray_zap"] = reverb(mix((zap(0.45, 900, 220, 0.9), 0, 0.8), (crackle, 0, 0.9), (thump(0.2, 160, 60, 0.08), 0, 0.6)), room=0.35, wet=0.25)
+    hum = zap(0.6, 70, 140, 0.7) * np.linspace(0.2, 1.0, int(SR * 0.6))
+    fizz = spectral(noise(0.6), lo=2500, hi=8000) * np.linspace(0.0, 1.0, int(SR * 0.6)) ** 2 * 0.35
+    s["ray_charge"] = reverb(mix((hum, 0, 1.0), (fizz, 0, 1.0)), room=0.3, wet=0.2)
     return s
 
 

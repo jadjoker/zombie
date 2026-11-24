@@ -210,7 +210,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -224,6 +224,13 @@ public partial class WaveDirector : Node3D
 	public int MaxAnglers = 3;             // never more than this many anglers alive at once
 	public float AnglerBaseHealth = 370f;
 	public float AnglerHealthPerWave = 38f;
+
+	/// <summary> Sting rays (user's design): from the second stage on (the wreck site and Atlantis), at most `MaxStingrays` alive. Health as the angler's. </summary>
+	public bool SpawnStingrays = true;
+	public float StingrayChance = 0.13f;
+	public int MaxStingrays = 4;
+	public float StingrayBaseHealth = 370f;
+	public float StingrayHealthPerWave = 38f;
 
 	/// <summary> Fish swarms (user's ask: a regular enemy, not set about the map): a share of each wave from `FishFromWave`, at most `MaxFish` alive. One swarm is one enemy. </summary>
 	public bool SpawnFish = true;
@@ -299,6 +306,14 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) a.GlobalBasis = Shapes.LookAt( toPlayer );
 			a.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return a;
+		},
+		[EnemyKind.Stingray] = ( d, at, health ) =>
+		{
+			var r = Stingray.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 0.5f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
+			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return r;
 		},
 		[EnemyKind.FishSwarm] = ( d, at, health ) =>
 		{
@@ -615,6 +630,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Mermaid => MermaidBaseHealth + MermaidHealthPerWave * (Wave - 1),
 			EnemyKind.FishSwarm => FishBaseHealth + FishHealthPerWave * (Wave - 1),
 			EnemyKind.Angler => AnglerBaseHealth + AnglerHealthPerWave * (Wave - 1),
+			EnemyKind.Stingray => StingrayBaseHealth + StingrayHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
@@ -737,6 +753,14 @@ public partial class WaveDirector : Node3D
 		return n;
 	}
 
+	int StingraysAlive()
+	{
+		var n = 0;
+		foreach ( var e in alive )
+			if ( e is Stingray r && IsInstanceValid( r ) && !r.IsDead ) n++;
+		return n;
+	}
+
 	int FishAlive()
 	{
 		var n = 0;
@@ -761,6 +785,12 @@ public partial class WaveDirector : Node3D
 		{
 			if ( roll < AnglerChance ) return Spawn( EnemyKind.Angler );
 			roll = (roll - AnglerChance) / (1f - AnglerChance);
+		}
+		// Sting rays: the wreck site and Atlantis, at most MaxStingrays alive.
+		if ( SpawnStingrays && SeaTerrain.Area >= 2 && has( EnemyKind.Stingray ) && StingraysAlive() < MaxStingrays )
+		{
+			if ( roll < StingrayChance ) return Spawn( EnemyKind.Stingray );
+			roll = (roll - StingrayChance) / (1f - StingrayChance);
 		}
 		// Fish swarms: a share of every wave from FishFromWave, at most MaxFish alive.
 		if ( SpawnFish && Wave >= FishFromWave && has( EnemyKind.FishSwarm ) && FishAlive() < MaxFish )

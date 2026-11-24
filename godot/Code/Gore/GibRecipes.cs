@@ -307,6 +307,39 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> The sting ray: a sand camouflaged hide over a pale belly, cartilage, torn wing scraps and its glowing barb. </summary>
+	public static GibRecipe Stingray( Color goo, Color sand, Color belly ) => Get( "stingray", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.4f,
+			Outer = GibKit.Paint( sand, 0.8f ),
+			Inner = GibKit.Paint( Meat( goo ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( belly, 0.45f ),
+			Bone = GibKit.Paint( Cartilage, 0.4f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.35f ), 0.3f, wet: true ),
+		};
+		var barb = GibKit.Paint( new Color( 0.3f, 1f, 0.45f ), 0.3f, glow: 2f );
+		// A scrap of wing: sandy on top, pale underneath.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			GibKit.Instance( p, GibKit.Shard( random, s * 1.5f, s * 1.1f, s * 0.12f, s * 0.05f ), r.Outer, r.Layer, "Wing" );
+		} );
+		// The barb: a serrated glowing spine on a scrap of tail.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Limb( p, Vector3.Zero, new Vector3( 0f, 0f, s * 1.2f ), s * 0.1f, s * 0.06f, r.Outer, "Tail" );
+			Sculpt.Cone( p, new Vector3( 0f, s * 0.06f, s * 0.2f ), new Vector3( 0f, s * 0.2f, s * 0.9f ), s * 0.08f, barb, 5, "Barb" );
+		} );
+		// Cartilage: a pale ray of gristle with meat on it.
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Limb( p, Vector3.Zero, new Vector3( R( random, -0.2f, 0.2f ) * s, 0f, s * 1.3f ), s * 0.08f, s * 0.05f, r.Bone, "Gristle" );
+			GibKit.Instance( p, GibKit.Lump( random, new Vector3( s * 0.4f, s * 0.2f, s * 0.5f ), 0.25f, 0, false ), r.Inner, r.Inner, "Meat" );
+		} );
+		return r;
+	} );
+
 	/// <summary> The deep sea angler: blue and green scaled hide, long needle teeth, torn fins, bits of its compound eyes. </summary>
 	public static GibRecipe Angler( Color goo, Color blue, Color green, Color tooth ) => Get( "angler", () =>
 	{

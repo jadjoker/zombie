@@ -684,6 +684,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Davey (ghost pirate)", WaveDirector.EnemyKind.Davey ),
 		new( "Mermaid", WaveDirector.EnemyKind.Mermaid ),
 		new( "Angler (deep sea)", WaveDirector.EnemyKind.Angler ),
+		new( "Sting ray", WaveDirector.EnemyKind.Stingray ),
 		new( "Fish swarm", WaveDirector.EnemyKind.FishSwarm ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };

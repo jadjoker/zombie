@@ -204,14 +204,14 @@ public partial class Jetpack : Node
 		var released = controller.In.JustReleased( "surge" ) || (!testSurge && testHold > 0f && timeSinceChargeStart > testHold);
 		testSurge = false;
 		var robot = controller.Robot;
-		if ( robot.Blink || robot.Grapple || robot.Burrow || robot.Pulse || robot.Sling || robot.Roll )
+		if ( robot.Blink || robot.Grapple || robot.Burrow || robot.Splat || robot.Sling || robot.Roll )
 		{
 			Charging = false;
 			testHold = 0f;
 			if ( pressed && robot.Blink ) TryBlink();
 			else if ( pressed && robot.Grapple ) TryGrapple();
 			else if ( pressed && robot.Burrow ) ToggleBurrow();
-			else if ( pressed && robot.Pulse ) TryPulse();
+			else if ( pressed && robot.Splat ) TrySplat();
 			else if ( pressed && robot.Sling ) TrySling();
 			else if ( pressed && robot.Roll ) ToggleRoll();
 			return;

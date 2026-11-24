@@ -23,14 +23,14 @@ public sealed class RobotClass
 	public bool Grapple;
 	/// <summary> Mouse 4 digs you into the sand and erupts (Coral-Bot, `JetpackMoves.cs`). </summary>
 	public bool Burrow;
-	/// <summary> Mouse 4 throws enemies back with a magnetic pulse (Magnet-Bot, `JetpackToys.cs`). </summary>
-	public bool Pulse;
+	/// <summary> Mouse 4 bounces you up as a blob of jelly to splat down on enemies (Goo-Bot, `JetpackGoo.cs`). </summary>
+	public bool Splat;
 	/// <summary> Mouse 4 flings you off a plunger on a bungee (Plunger-Bot). </summary>
 	public bool Sling;
 	/// <summary> Mouse 4 curls you into a ball that bowls enemies over (Pinball-Bot). </summary>
 	public bool Roll;
 	/// <summary> Mouse 4 is a tap move of its own, not the charged surge. </summary>
-	public bool OwnMove => Blink || Grapple || Burrow || Pulse || Sling || Roll;
+	public bool OwnMove => Blink || Grapple || Burrow || Splat || Sling || Roll;
 	public Func<PlayerWeapon[]> Kit;
 
 	public static readonly RobotClass RamBot = new()
@@ -74,12 +74,12 @@ public sealed class RobotClass
 		Kit = () => new[] { PlayerWeapon.SpineGun( 1 ), PlayerWeapon.ReefSeeds( 2 ) },
 	};
 
-	public static readonly RobotClass MagnetBot = new()
+	public static readonly RobotClass GooBot = new()
 	{
-		Id = "magnetbot", Name = "Magnet-Bot", Tagline = "Opposites attract. Violently.",
-		Weapons = "Scrap Cannon, Polarity Gun", Movement = "Repulsor pulse: tap mouse 4 to throw every enemy near you back",
-		Tint = new Color( 1f, 0.3f, 0.28f ), BaseHealth = 175f, Paint = "Magnet", Pulse = true,
-		Kit = () => new[] { PlayerWeapon.ScrapCannon( 1 ), PlayerWeapon.PolarityGun( 2 ) },
+		Id = "goobot", Name = "Goo-Bot", Tagline = "Stick around. Then pop.",
+		Weapons = "Goo Gun, Jelly Cannon", Movement = "Splat jump: tap mouse 4 to bounce up as a blob and splat down, gluing the enemies near you",
+		Tint = new Color( 0.7f, 0.3f, 1f ), BaseHealth = 175f, Paint = "Goo", Splat = true,
+		Kit = () => new[] { PlayerWeapon.GooGun( 1 ), PlayerWeapon.JellyCannon( 2 ) },
 	};
 
 	public static readonly RobotClass PlungerBot = new()
@@ -98,9 +98,9 @@ public sealed class RobotClass
 		Kit = () => new[] { PlayerWeapon.PinballLauncher( 1 ), PlayerWeapon.FlipperArms( 2 ) },
 	};
 
-	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot, HookBot, CoralBot, MagnetBot, PlungerBot, PinballBot };
+	public static readonly RobotClass[] All = { RamBot, VacBot, TridentBot, HookBot, CoralBot, GooBot, PlungerBot, PinballBot };
 
-	public static RobotClass Find( string id ) => All.FirstOrDefault( c => string.Equals( c.Id, id, StringComparison.OrdinalIgnoreCase ) || string.Equals( c.Name, id, StringComparison.OrdinalIgnoreCase ) ) ?? RamBot;
+	public static RobotClass Find( string id ) => string.Equals( id, "magnetbot", StringComparison.OrdinalIgnoreCase ) ? GooBot : All.FirstOrDefault( c => string.Equals( c.Id, id, StringComparison.OrdinalIgnoreCase ) || string.Equals( c.Name, id, StringComparison.OrdinalIgnoreCase ) ) ?? RamBot;
 
 	/// <summary> The robot being played. </summary>
 	public static RobotClass Current => Find( GameSettings.RobotClass );

@@ -1,9 +1,9 @@
 using Godot;
 
 /// <summary>
-/// --magnetbot, --plungerbot and --pinballbot: the three physics robots. Magnet-Bot: a scrap ball hits and gathers
-/// gore, the recall gives a ball back, opposite tags smash two crabs together (Magnetar), the pulse throws a crab off
-/// (Pole Reversal). Plunger-Bot: plungers stick and pop at three, the yank drags a crab in, the toilet's whirlpool pulls
+/// --goobot, --plungerbot and --pinballbot: the three physics robots. Goo-Bot: goo blobs stack on a crab (each
+/// harder), a blob restarts the clock, the ball pops and splashes, a 6th blob pops it at once (Big Ball Energy), the
+/// jelly springs from crab to crab (Mother Jelly, Volatile), the splat jump glues a crab (Gooquake). Plunger-Bot: plungers stick and pop at three, the yank drags a crab in, the toilet's whirlpool pulls
 /// and its geyser throws (Clogged), the sling flings you and Cannonball lands on a crab. Pinball-Bot: a ball bounces
 /// off a crab (Multiball splits it), the flippers whack a crab and slap a ball back out (Ramp), the roll bowls a line
 /// of crabs over (High Score). Each prints its guns against crabs by wave. With --shots (a window) pictures.
@@ -53,104 +53,169 @@ public partial class AutoTest
 		GetTree().Quit();
 	}
 
-	// ---------------------------------------------------------------- Magnet-Bot
+	// ---------------------------------------------------------------- Goo-Bot
 
-	async Task MagnetBotTest()
+	static Vector3 CrabBody( Creature c ) => SkillFx.NearestPart( c, c.GlobalPosition + Vector3.Up * 0.9f );
+
+	async Task GooBotTest()
 	{
 		var inventory = player.GetNode<WeaponInventory>( "WeaponInventory" );
-		var a = await ToyArena( RobotClass.MagnetBot, "magnetbot_portrait" );
-		var scrap = inventory.Weapons.FirstOrDefault( w => w.Scrap );
-		var polarity = inventory.Weapons.FirstOrDefault( w => w.Polarity );
+		var a = await ToyArena( RobotClass.GooBot, "goobot_portrait" );
+		var goo = inventory.Weapons.FirstOrDefault( w => w.Goo );
+		var jelly = inventory.Weapons.FirstOrDefault( w => w.JellyGun );
 		var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
-		Check( scrap is not null && polarity is not null, "Magnet-Bot has no scrap cannon or polarity gun" );
-		Check( me.Health.MaxHealth == RobotClass.MagnetBot.BaseHealth, $"Magnet-Bot's health is {me.Health.MaxHealth}" );
-		if ( scrap is null || polarity is null ) { Done(); return; }
-		inventory.Select( scrap, force: true );
+		Check( goo is not null && jelly is not null, "Goo-Bot has no goo gun or jelly cannon" );
+		Check( me.Health.MaxHealth == RobotClass.GooBot.BaseHealth, $"Goo-Bot's health is {me.Health.MaxHealth}" );
+		if ( goo is null || jelly is null ) { Done(); return; }
+		Check( goo.Ammo == 60 && goo.MagazineSize == 60 && goo.Reserve == 240, $"the goo gun holds {goo.Ammo}/{goo.Reserve}, not 60/240" );
+		inventory.Select( goo, force: true );
 		await Wait( 0.4f );
 		var skills = PlayerSkills.Of( player );
 		var jet = player.GetNode<Jetpack>( "Jetpack" );
+		if ( shots is not null )
+		{
+			// The back: the goo tank.
+			player.ThirdPerson = true;
+			await Wait( 0.3f );
+			var body = player.GlobalPosition + Vector3.Up * 1.1f;
+			var face = new Angles( 0f, player.EyeAngles.Yaw, 0f ).Forward;
+			var eye = body - face * 2f + face.Cross( Vector3.Up ) * 0.8f + Vector3.Up * 0.4f;
+			var view = new Transform3D( Basis.LookingAt( (body - eye).Normalized(), Vector3.Up ), eye );
+			player.CameraOverride = _ => view;
+			await Wait( 0.3f );
+			await Shot( "goobot_back" );
+			player.CameraOverride = null;
+			player.ThirdPerson = false;
+			await Wait( 0.3f );
+		}
 
-		// ---- A full scrap ball, with gore gathered into it ----
-		var crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
+		// ---- Blobs stack on a crab, each harder than the last; another blob restarts the clock; the pop splashes ----
+		var crab = Crab( a, a.Spot + a.Ahead * 8f, 3000f );
+		var side = Crab( a, a.Spot + a.Ahead * 8f + a.Side * 1.8f, 3000f );
 		await Wait( 0.8f );
-		await Face( a, crab.GlobalPosition + Vector3.Up * 0.3f );
-		GibKit.Burst( MagnetFx.Gibs, player.Camera.GlobalPosition + a.Ahead * 1.6f, Vector3.Up, 0.06f, 8, 0.1f );
-		await Wait( 0.3f );
-		var hp = Hp( crab );
-		var ammo = scrap.Ammo;
-		scrap.TestScrap( 1.2f );
-		if ( shots is not null ) { await Wait( 0.15f ); await Shot( "magnet_scrapball" ); }
-		await Wait( 1.2f );
-		GD.Print( $"[autotest] magnetbot: balls {MagnetFx.Balls}, hits {MagnetFx.BallHits}, junk gathered {MagnetFx.Junk}; the crab lost {hp - Hp( crab ):0}" );
-		Check( MagnetFx.Balls == 1 && MagnetFx.BallHits >= 1, "the scrap ball did not hit the crab" );
-		Check( MagnetFx.Junk >= 1, "the scrap cannon gathered no gore" );
-		Check( hp - Hp( crab ) > 60f && hp - Hp( crab ) < 300f, $"a full scrap ball did {hp - Hp( crab ):0}, outside 40 to 260" );
-		// The recall brings a ball back.
-		AimAt( a.Spot + a.Ahead * 20f + Vector3.Up * 3f );
-		scrap.TestScrap( 0.1f );
-		await Wait( 0.35f );
-		var afterShot = scrap.Ammo;
-		scrap.Recall();
-		for ( var i = 0; i < 40 && BotBall.All.Count > 0; i++ ) await Wait( 0.05f );
-		GD.Print( $"[autotest] magnetbot: ammo {ammo} -> {afterShot} after two balls, {scrap.Ammo} after the recall" );
-		Check( MagnetFx.Recalls == 1 && scrap.Ammo > afterShot, "the recalled balls did not come back to the magazine" );
-		Clear( a );
+		await Face( a, CrabBody( crab ) );
+		var hits = new List<float>();
+		for ( var i = 0; i < 3; i++ )
+		{
+			var before = Hp( crab );
+			AimAt( CrabBody( crab ) );
+			await Wait( 0.05f );
+			AimAt( CrabBody( crab ) );
+			goo.TestGoo();
+			for ( var k = 0; k < 20 && GooFx.BlobHits <= i; k++ ) await Wait( 0.03f );
+			await Wait( 0.05f );
+			hits.Add( before - Hp( crab ) );
+		}
+		var ball = GooBall.Of( crab );
+		GD.Print( $"[autotest] goobot: blobs {GooFx.Blobs}, hits {GooFx.BlobHits}, ball {ball?.Blobs ?? 0}; damage {string.Join( ", ", hits.Select( h => h.ToString( "0" ) ) )}; ammo {goo.Ammo}" );
+		Check( GooFx.BlobHits == 3 && ball is { Blobs: 3 }, "three blobs did not build a 3 blob goo ball" );
+		Check( hits.Count == 3 && hits[1] > hits[0] && hits[2] > hits[1], "each blob on the ball did not hit harder than the last" );
+		Check( goo.Ammo == 30, $"three shots left {goo.Ammo} of 60 (10 a shot)" );
+		if ( shots is not null ) await Shot( "goo_ball3" );
+		await Wait( ball?.PopTime - 1f ?? 3f );
+		Check( GooFx.Pops == 0, "the ball popped before its time" );
+		AimAt( CrabBody( crab ) );
+		await Wait( 0.05f );
+		AimAt( CrabBody( crab ) );
+		goo.TestGoo();
+		for ( var k = 0; k < 20 && GooFx.BlobHits < 4; k++ ) await Wait( 0.03f );
+		var left = GooBall.Of( crab )?.Left ?? 0f;
+		Check( left > 3.5f, $"a 4th blob did not restart the clock ({left:0.0} s left)" );
+		var crabHp = Hp( crab );
+		var sideHp = Hp( side );
+		for ( var k = 0; k < 120 && GooFx.Pops == 0; k++ ) await Wait( 0.05f );
+		await Wait( 0.1f );
+		GD.Print( $"[autotest] goobot: pops {GooFx.Pops}; the crab lost {crabHp - Hp( crab ):0} to the pop, the one beside it {sideHp - Hp( side ):0}" );
+		Check( GooFx.Pops == 1, "the goo ball never popped" );
+		Check( crabHp - Hp( crab ) >= GooFx.PopPerBlob * 4f * 0.6f, "the pop did not hurt the crab by its 4 blobs" );
+		Check( sideHp - Hp( side ) > 0f, "the pop's splash missed the crab beside it" );
 
-		// ---- Polarity: opposite tags smash two crabs together; Magnetar ----
-		inventory.Select( polarity, force: true );
-		polarity.InfiniteAmmo = true;
-		skills.Set( SkillId.Magnetar, 2 );
+		// ---- The 6th blob pops it at once; Big Ball Energy rolls a boulder on ----
+		goo.InfiniteAmmo = true;
+		skills.Set( SkillId.BigBallEnergy, 1 );
+		var hitsBefore = GooFx.BlobHits;
+		for ( var i = 0; i < 6; i++ )
+		{
+			AimAt( CrabBody( crab ) );
+			await Wait( 0.05f );
+			AimAt( CrabBody( crab ) );
+			goo.TestGoo();
+			for ( var k = 0; k < 20 && GooFx.BlobHits <= hitsBefore + i; k++ ) await Wait( 0.03f );
+			GD.Print( $"[autotest] goobot: shot {i + 1} of 6, the ball has {GooBall.Of( crab )?.Blobs ?? 0}" );
+			if ( i == 4 && shots is not null ) await Shot( "goo_ball5" );
+		}
+		await Wait( 0.1f );
+		if ( shots is not null ) await Shot( "goo_bigpop" );
+		GD.Print( $"[autotest] goobot: big pops {GooFx.BigPops}, boulders {GooFx.Boulders}, most blobs {GooFx.MostBlobs}" );
+		Check( GooFx.BigPops == 1, "6 blobs did not pop the ball at once" );
+		Check( GooFx.Boulders == 1, "Big Ball Energy did not roll a boulder" );
+		await Wait( 1.5f );
+		skills.Set( SkillId.BigBallEnergy, 0 );
+		Clear( a );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+
+		// ---- The jelly springs from crab to crab, gooing each ----
+		inventory.Select( jelly, force: true );
+		jelly.InfiniteAmmo = true;
 		await Wait( 0.5f );
-		var red = Crab( a, a.Spot + a.Ahead * 8f + a.Side * 1.6f, 600f );
-		var blue = Crab( a, a.Spot + a.Ahead * 8f + a.Side * 4.6f, 600f );
-		var third = Crab( a, a.Spot + a.Ahead * 10f, 600f );
+		var line = new List<JunkCrab>();
+		for ( var i = 0; i < 4; i++ ) line.Add( Crab( a, a.Spot + a.Ahead * (7f + 2.8f * i) + a.Side * (i % 2 == 0 ? 0f : 1.5f), 2000f ) );
 		await Wait( 0.8f );
-		var gap = red.GlobalPosition.DistanceTo( blue.GlobalPosition );
-		await Face( a, red.GlobalPosition + Vector3.Up * 0.3f );
-		polarity.TestTag( +1 );
-		// The crab's antenna eyes can stand in the way (they don't take shots): try a few heights.
-		for ( var k = 0; k < 4 && MagnetFx.Tags < 2; k++ )
-		{
-			AimAt( blue.GlobalPosition + Vector3.Up * (0.15f + 0.1f * k) );
-			await Wait( 0.1f );
-			AimAt( blue.GlobalPosition + Vector3.Up * (0.15f + 0.1f * k) );
-			await Wait( 0.05f );
-			polarity.TestTag( -1 );
-		}
-		var thirdHp = Hp( third );
-		for ( var i = 0; i < 60 && MagnetFx.Smashes == 0; i++ )
-		{
-			await Wait( 0.05f );
-			if ( i == 8 && shots is not null ) await Shot( "magnet_tags" );
-		}
-		GD.Print( $"[autotest] magnetbot: tags {MagnetFx.Tags}, smashes {MagnetFx.Smashes}, magnetars {MagnetFx.Magnetars}; the crabs started {gap:0.0} m apart, health {Hp( red ):0} and {Hp( blue ):0}; the third {thirdHp:0} -> {Hp( third ):0}" );
-		Check( MagnetFx.Tags >= 2 && MagnetFx.Smashes == 1, "opposite tags did not smash the two crabs together" );
-		Check( Hp( red ) < 600f - MagnetFx.SmashDamage * 0.9f && Hp( blue ) < 600f - MagnetFx.SmashDamage * 0.9f, "the smash did not hurt both crabs" );
-		Check( MagnetFx.Magnetars == 1 && Hp( third ) < thirdHp, "Magnetar did not drag in and hurt the crab near the smash" );
+		await Face( a, line[0].GlobalPosition + Vector3.Up * 0.3f );
+		var lineHp = line.Select( Hp ).ToList();
+		jelly.TestJelly();
+		if ( shots is not null ) { await Wait( 0.35f ); await Shot( "jelly_hop" ); }
+		for ( var k = 0; k < 60 && GooFx.JellyHits < 4; k++ ) await Wait( 0.05f );
+		await Wait( 0.2f );
+		var gooed = line.Count( c => GooBall.Of( c ) is not null );
+		GD.Print( $"[autotest] goobot: jelly hits {GooFx.JellyHits}, hops {GooFx.JellyHops}, crabs gooed {gooed}; lost {string.Join( ", ", line.Select( ( c, i ) => (lineHp[i] - Hp( c )).ToString( "0" ) ) )}" );
+		Check( GooFx.JellyHits >= 3 && GooFx.JellyHops >= 2, "the jelly did not spring on from crab to crab" );
+		Check( gooed >= 3, "the jelly's hits did not put goo on the crabs" );
+		// Volatile and Mother Jelly.
+		skills.Set( SkillId.VolatileJelly, 1 );
+		skills.Set( SkillId.MotherJelly, 1 );
+		await Wait( 4.5f );
+		AimAt( line[0].GlobalPosition + Vector3.Up * 0.3f );
+		await Wait( 0.1f );
+		jelly.TestJelly();
+		for ( var k = 0; k < 80 && GooFx.Volatiles == 0; k++ ) await Wait( 0.05f );
+		GD.Print( $"[autotest] goobot: mothers {GooFx.Mothers}, volatiles {GooFx.Volatiles}" );
+		Check( GooFx.Mothers == 1, "Mother Jelly did not bring the jelly to life" );
+		Check( GooFx.Volatiles == 1, "Volatile did not blow up the jelly's last hit" );
 		Clear( a );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
 
-		// ---- The pulse; Pole Reversal ----
-		var near = Crab( a, a.Spot + a.Ahead * 2.5f, 300f );
+		// ---- The splat jump glues and goos a crab; Gooquake ----
+		var near = Crab( a, a.Spot + a.Ahead * 2.5f, 600f );
 		await Wait( 0.8f );
 		Stand( a );
 		await Wait( 0.1f );
-		var nearAt = (near.GlobalPosition - player.GlobalPosition).Flat().Length();
-		hp = Hp( near );
-		jet.TestPulse();
-		await Wait( 0.3f );
-		var pushed = (near.GlobalPosition - player.GlobalPosition).Flat().Length();
-		GD.Print( $"[autotest] magnetbot: pulses {MagnetFx.Pulses}; the crab went from {nearAt:0.0} m to {pushed:0.0} m and lost {hp - Hp( near ):0}" );
-		Check( MagnetFx.Pulses == 1 && pushed > nearAt + 1f && Hp( near ) < hp, "the pulse did not throw back and hurt the crab" );
-		skills.Set( SkillId.PoleReversal, 2 );
+		var hp = Hp( near );
+		var from = player.GlobalPosition;
+		jet.TestSplat();
+		await Wait( 0.35f );
+		if ( shots is not null ) await Shot( "splat_air" );
+		var took = 0f;
+		for ( var k = 0; k < 120 && GooFx.Splats == 0; k++ ) { await Wait( 0.03f ); took += 0.03f; }
+		GD.Print( $"[autotest] goobot: the splat jump took {took + 0.35f:0.0} s and landed {(player.GlobalPosition - from).Flat().Length():0.0} m from the start" );
+		await Wait( 0.05f );
+		if ( shots is not null ) await Shot( "splat_land" );
+		GD.Print( $"[autotest] goobot: splats {GooFx.Splats}; the crab lost {hp - Hp( near ):0}, glued {near.StunnedUntil > Clock.Now}, goo {GooBall.Of( near )?.Blobs ?? 0}" );
+		Check( GooFx.Splats == 1 && Hp( near ) < hp, "the splat did not land on and hurt the crab" );
+		Check( near.StunnedUntil > Clock.Now && GooBall.Of( near ) is not null, "the splat did not glue and goo the crab" );
+		skills.Set( SkillId.Gooquake, 2 );
 		await Wait( 1.5f );
+		Stand( a );
 		hp = Hp( near );
-		jet.TestPulse();
-		await Wait( 0.8f );
-		GD.Print( $"[autotest] magnetbot: Pole Reversal {MagnetFx.Reversals}; the crab lost {hp - Hp( near ):0}" );
-		Check( MagnetFx.Reversals == 1 && (hp - Hp( near ) > MagnetFx.ReversalDamage( 2 ) * 0.8f || !IsInstanceValid( near ) || near.IsDead), "Pole Reversal did not pull in and blast the crab" );
+		jet.TestSplat();
+		for ( var k = 0; k < 120 && GooFx.Splats == 1; k++ ) await Wait( 0.03f );
+		await Wait( 0.5f );
+		GD.Print( $"[autotest] goobot: quakes {GooFx.Quakes}; the crab lost {hp - Hp( near ):0}" );
+		Check( GooFx.Quakes == 1 && (hp - Hp( near ) > GooFx.QuakeDamage( 2 ) * 0.8f || !IsInstanceValid( near ) || near.IsDead), "Gooquake did not fling and hurt the crab" );
 		Clear( a );
-		BalanceLine( scrap );
-		BalanceLine( polarity );
+		BalanceLine( goo );
+		BalanceLine( jelly );
+		GD.Print( $"[autotest] balance: a full goo ball is {string.Join( " + ", Enumerable.Range( 1, 6 ).Select( b => goo.BlobDamage( b ).ToString( "0" ) ) )} = {Enumerable.Range( 1, 6 ).Sum( b => goo.BlobDamage( b ) ):0} from its blobs and {GooFx.PopPerBlob * 6:0} from the pop" );
 		Done();
 	}
 

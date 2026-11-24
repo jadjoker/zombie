@@ -426,6 +426,16 @@ def build():
     s["flush"] = reverb(gurgle, room=0.5, wet=0.3)
     s["pinball_ding"] = reverb(chime((1568, 2093), 0.03, 0.35, "tri"), room=0.3, wet=0.2)
     s["flipper"] = mix((thump(0.12, 220, 90, 0.04), 0, 1.0), (click(2600, 0.03, 0.01), 0, 0.8))
+    # Goo-Bot (kept last, so the sounds above don't change when these are rerun).
+    s["goo_shot"] = reverb(mix((blub(700, 180, 0.1), 0, 1.0), (squelch(0.18, 400, 1600, 0.6), 0.01, 0.7), (thump(0.1, 160, 80, 0.04), 0, 0.5)), room=0.2, wet=0.15)
+    s["goo_stick"] = mix((squelch(0.2, 250, 1100, 0.8), 0, 1.0), (blub(320, 140, 0.06), 0, 0.6))
+    pop = mix((thump(0.35, 120, 40, 0.15), 0, 1.0), (squelch(0.6, 200, 1500, 1.6), 0.0, 1.1),
+              *[(blub(rng.uniform(200, 500), rng.uniform(700, 1500), 0.06), 0.02 + i * 0.035, 0.4) for i in range(8)])
+    s["goo_pop"] = reverb(pop, room=0.5, wet=0.3)
+    jfire = mix((tone(0.3, 260, 120) * (1 + 0.5 * np.sin(2 * np.pi * 18 * t(0.3))) * env(int(SR * 0.3), 0.003, 0.22), 0, 0.8), (blub(500, 150, 0.12), 0, 1.0), (thump(0.15, 140, 60, 0.06), 0, 0.6))
+    s["jelly_fire"] = reverb(jfire, room=0.25, wet=0.2)
+    jb = tone(0.4, 320, 160) * (1 + 0.7 * np.sin(2 * np.pi * 22 * t(0.4))) * env(int(SR * 0.4), 0.002, 0.3)
+    s["jelly_boing"] = reverb(mix((jb * 0.7, 0, 1.0), (squelch(0.15, 300, 1200, 0.5), 0, 0.5)), room=0.25, wet=0.2)
     return s
 
 

@@ -1012,6 +1012,182 @@ def highscore():
     return img
 
 
+# ---- Goo-Bot ----
+GRAPE = (140, 35, 200, 255)
+MAG = (240, 70, 190, 255)
+PINKY = (255, 170, 235, 255)
+
+
+def goo(d, x, y, r, fill=GRAPE, drips=2):
+    """A wobbly blob of goo with a shine and drips hanging off it."""
+    pts = [(x + math.cos(a) * r * (1 + 0.08 * math.sin(a * 5)), y + math.sin(a) * r * (1 + 0.08 * math.sin(a * 5))) for a in [math.tau * i / 40 for i in range(40)]]
+    poly(d, pts, fill)
+    for k in range(drips):
+        dx = x - r * 0.5 + k * r * 0.8
+        line(d, [(dx, y + r * 0.6), (dx, y + r * (1.1 + 0.3 * k))], max(3, int(r * 0.25)), fill)
+        circle(d, dx, y + r * (1.1 + 0.3 * k), r * 0.18, fill=fill)
+    circle(d, x - r * 0.35, y - r * 0.35, r * 0.2, fill=PINKY)
+
+
+def thickgoo():
+    img, d = badge((150, 60, 220))
+    goo(d, 64, 58, 32)
+    plus(d, 96, 96, 10, 5)
+    return img
+
+
+def slowset():
+    img, d = badge((60, 180, 255))
+    goo(d, 52, 60, 24)
+    circle(d, 88, 76, 22, fill=None, outline=W, width=5)
+    line(d, [(88, 76), (88, 62)], 4)
+    line(d, [(88, 76), (98, 82)], 4)
+    return img
+
+
+def tarpit():
+    img, d = badge((90, 50, 150))
+    d.ellipse((p(16, 80), p(112, 110)), fill=GRAPE)
+    for x in (40, 64, 88):
+        line(d, [(x, 30), (x, 72)], 6)
+        arrow(d, x, 46, x, 70, 4, 9)
+    return img
+
+
+def splatter():
+    img, d = badge((240, 80, 190))
+    goo(d, 64, 64, 18, drips=0)
+    for i in range(7):
+        a = i * math.tau / 7
+        circle(d, 64 + math.cos(a) * 40, 64 + math.sin(a) * 40, 7 + (i % 3) * 2, fill=GRAPE)
+    return img
+
+
+def heavygoo():
+    img, d = badge((150, 160, 175))
+    goo(d, 64, 54, 30)
+    d.rectangle((p(30, 96), p(98, 106)), fill=DARK)
+    arrow(d, 64, 18, 64, 30, 5, 10)
+    return img
+
+
+def feedback():
+    img, d = badge((255, 200, 60))
+    goo(d, 46, 60, 20, drips=0)
+    arrow(d, 70, 44, 100, 44, 5, 10)
+    bullet(d, 100, 80, 34, 14, GRAPE)
+    return img
+
+
+def bigball():
+    img, d = badge((255, 120, 200))
+    goo(d, 70, 62, 36, drips=0)
+    for y in (40, 62, 84):
+        line(d, [(10, y), (28, y)], 4)
+    return img
+
+
+def jellyhop():
+    img, d = badge((240, 80, 190))
+    for x in (28, 64, 100):
+        circle(d, x, 96, 10, fill=DARK)
+    line(d, [(28, 86), (46, 50), (64, 86), (82, 50), (100, 86)], 4)
+    goo(d, 82, 44, 13, MAG, drips=0)
+    return img
+
+
+def longhop():
+    img, d = badge((60, 180, 255))
+    pts = [(18 + i * 4.6, 96 - math.sin(i / 20 * math.pi) * 64) for i in range(21)]
+    line(d, pts, 4)
+    goo(d, 18, 90, 11, MAG, drips=0)
+    goo(d, 110, 90, 11, MAG, drips=0)
+    return img
+
+
+def jiggle():
+    img, d = badge((255, 120, 200))
+    goo(d, 64, 66, 26, MAG, drips=0)
+    for sx in (-1, 1):
+        for k in range(2):
+            x = 64 + sx * (38 + k * 10)
+            line(d, [(x, 46), (x - sx * 6, 66), (x, 86)], 3)
+    return img
+
+
+def sticky():
+    img, d = badge((150, 60, 220))
+    d.ellipse((p(14, 74), p(114, 108)), fill=MAG)
+    for x in (44, 84):
+        line(d, [(x, 86), (x, 50)], 4, PINKY)
+    circle(d, 64, 46, 16, fill=DARK)
+    return img
+
+
+def fatjelly():
+    img, d = badge((255, 140, 50))
+    goo(d, 64, 62, 38, MAG, drips=0)
+    circle(d, 64, 62, 16, fill=GRAPE)
+    return img
+
+
+def volatile():
+    img, d = badge((230, 60, 50))
+    star(d, 64, 64, 46, 22, 10, (255, 220, 60, 255))
+    goo(d, 64, 64, 18, MAG, drips=0)
+    return img
+
+
+def motherjelly():
+    img, d = badge((255, 200, 60))
+    goo(d, 64, 58, 30, MAG, drips=0)
+    circle(d, 54, 54, 6, fill=DARK)
+    circle(d, 74, 54, 6, fill=DARK)
+    line(d, [(52, 72), (64, 78), (76, 72)], 4, DARK)
+    for x in (26, 102):
+        goo(d, x, 96, 9, MAG, drips=0)
+    return img
+
+
+def superbounce():
+    img, d = badge((60, 180, 255))
+    goo(d, 64, 40, 18, MAG, drips=0)
+    arrow(d, 64, 104, 64, 66, 6, 12)
+    d.ellipse((p(30, 100), p(98, 112)), fill=GRAPE)
+    return img
+
+
+def softlanding():
+    img, d = badge((255, 120, 200))
+    d.ellipse((p(18, 78), p(110, 108)), fill=GRAPE)
+    poly(d, [(64, 20), (92, 32), (88, 62), (64, 78), (40, 62), (36, 32)], W)
+    return img
+
+
+def gooshell():
+    img, d = badge((150, 60, 220))
+    poly(d, [(64, 16), (100, 30), (96, 74), (64, 108), (32, 74), (28, 30)], PINKY)
+    goo(d, 64, 56, 18, GRAPE)
+    return img
+
+
+def puddle():
+    img, d = badge((90, 50, 150))
+    d.ellipse((p(12, 62), p(116, 104)), fill=GRAPE)
+    d.ellipse((p(30, 70), p(70, 84)), fill=PINKY)
+    for x in (40, 80):
+        circle(d, x, 40, 6, fill=MAG)
+    return img
+
+
+def gooquake():
+    img, d = badge((240, 80, 190))
+    for r, w in ((50, 4), (36, 5), (22, 6)):
+        d.arc((p(64 - r, 80 - r * 0.45), p(64 + r, 80 + r * 0.45)), 0, 360, fill=W, width=w * S_)
+    goo(d, 64, 40, 16, GRAPE, drips=0)
+    return img
+
+
 ICONS = {
     "deepmag": deepmag, "headhunter": headhunter, "overclock": overclock, "wideload": wideload, "pointblank": pointblank,
     "shellshuffle": shellshuffle, "kickback": kickback, "dragon": dragon, "limbripper": limbripper, "fullchoke": fullchoke,
@@ -1032,6 +1208,10 @@ ICONS = {
     "polereversal": polereversal, "plunger": plunger, "shlorp": shlorp, "nightmare": nightmare, "flush": flush,
     "geyser": geyser, "clogged": clogged, "cannonball": cannonball, "spring": spring, "bumper": bumper,
     "jackpot": jackpot, "multiball": multiball, "flipper": flipper, "combo": combo, "ramp": ramp, "highscore": highscore,
+    "thickgoo": thickgoo, "slowset": slowset, "tarpit": tarpit, "splatter": splatter, "heavygoo": heavygoo, "feedback": feedback,
+    "bigball": bigball, "jellyhop": jellyhop, "longhop": longhop, "jiggle": jiggle, "sticky": sticky, "fatjelly": fatjelly,
+    "volatile": volatile, "motherjelly": motherjelly, "superbounce": superbounce, "softlanding": softlanding, "gooshell": gooshell,
+    "puddle": puddle, "gooquake": gooquake,
 }
 
 if __name__ == "__main__":

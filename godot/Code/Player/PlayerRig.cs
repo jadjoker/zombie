@@ -303,8 +303,8 @@ public partial class PlayerRig : Node
 		["Hook"] = new[] { new Color( 0.08f, 0.12f, 0.22f ), new Color( 0.95f, 0.50f, 0.16f ), new Color( 0.86f, 0.73f, 0.46f ), new Color( 0.80f, 0.64f, 0.30f ) },
 		// The Coral-Bot: coral pink suit, bleached sand frame, orange shoulders, teal metal.
 		["Coral"] = new[] { new Color( 0.92f, 0.86f, 0.74f ), new Color( 1f, 0.45f, 0.50f ), new Color( 1f, 0.68f, 0.20f ), new Color( 0.18f, 0.58f, 0.58f ) },
-		// The Magnet-Bot: a horseshoe magnet's red with silver poles, a dark steel frame, blue field lines.
-		["Magnet"] = new[] { new Color( 0.15f, 0.16f, 0.20f ), new Color( 0.85f, 0.13f, 0.13f ), new Color( 0.86f, 0.88f, 0.92f ), new Color( 0.25f, 0.5f, 0.95f ) },
+		// The Goo-Bot: glossy grape purple running with magenta goo drips, a dark plum frame, hot pink shoulders, chrome.
+		["Goo"] = new[] { new Color( 0.14f, 0.07f, 0.2f ), new Color( 0.5f, 0.14f, 0.74f ), new Color( 1f, 0.32f, 0.72f ), new Color( 0.84f, 0.84f, 0.9f ) },
 		// The Plunger-Bot: white bathroom tiles, a wooden handle frame, red rubber shoulders, chrome.
 		["Plunger"] = new[] { new Color( 0.62f, 0.42f, 0.22f ), new Color( 0.95f, 0.95f, 0.92f ), new Color( 0.78f, 0.10f, 0.12f ), new Color( 0.82f, 0.84f, 0.88f ) },
 		// The Pinball-Bot: a purple playfield, a dark cabinet frame, neon yellow shoulders, chrome.
@@ -396,34 +396,6 @@ public partial class PlayerRig : Node
 				if ( best < size2 ) c = pale;
 				if ( best < size2 * 0.75f ) c = orange;
 				if ( best < size2 * 0.28f ) c = mouth;
-				image.SetPixel( x, y, c );
-			}
-		image.GenerateMipmaps();
-		return ImageTexture.CreateFromImage( image );
-	}
-
-	/// <summary>
-	/// The Magnet-Bot's suit: bands of horseshoe red with silver pole caps, crossed by thin blue field lines that arc
-	/// from pole to pole (sine curves, so the tile wraps).
-	/// </summary>
-	public static ImageTexture MagnetTexture( Color red, Color silver, Color field )
-	{
-		const int size = 256;
-		var image = Image.CreateEmpty( size, size, false, Image.Format.Rgba8 );
-		for ( var y = 0; y < size; y++ )
-			for ( var x = 0; x < size; x++ )
-			{
-				var u = x / (float)size;
-				var v = y / (float)size;
-				var band = (v * 2f) % 1f;
-				var c = band < 0.72f ? red : silver;
-				if ( band >= 0.72f && band < 0.75f ) c = red.Darkened( 0.5f );
-				if ( band < 0.72f )
-					for ( var k = 0; k < 3; k++ )
-					{
-						var line = 0.12f + 0.2f * k + 0.08f * MathF.Sin( u * MathF.Tau * 2f + k );
-						if ( MathF.Abs( band - line ) < 0.012f ) c = field;
-					}
 				image.SetPixel( x, y, c );
 			}
 		image.GenerateMipmaps();
@@ -528,7 +500,7 @@ public partial class PlayerRig : Node
 		var camo = Camo.TryGetValue( appliedSkin, out var camoColours ) ? CamoTexture( paint[1], camoColours[0], camoColours[1] )
 			: appliedSkin == "Hook" ? BuoyTexture( paint[1], new Color( 0.96f, 0.94f, 0.88f ), paint[0] )
 			: appliedSkin == "Coral" ? PolypTexture( paint[1], new Color( 1f, 0.62f, 0.25f ), new Color( 0.98f, 0.9f, 0.82f ) )
-			: appliedSkin == "Magnet" ? MagnetTexture( paint[1], paint[2], new Color( 0.3f, 0.6f, 1f ) )
+			: appliedSkin == "Goo" ? GooTexture( paint[1], new Color( 0.92f, 0.3f, 0.78f ), new Color( 1f, 0.75f, 0.95f ) )
 			: appliedSkin == "Plunger" ? TileTexture( paint[1], new Color( 0.55f, 0.75f, 0.85f ), new Color( 0.45f, 0.78f, 0.95f ) )
 			: appliedSkin == "Pinball" ? PlayfieldTexture( paint[1], new Color( 1f, 0.86f, 0.12f ), new Color( 1f, 0.3f, 0.85f ), new Color( 0.2f, 0.9f, 1f ) ) : null;
 		// About three tiles of camo from head to foot, whatever units the model's meshes are in.
@@ -557,7 +529,7 @@ public partial class PlayerRig : Node
 					m.Uv1Triplanar = true;
 					m.Uv1WorldTriplanar = false;
 					m.Uv1Scale = Vector3.One * 3f / MathF.Max( 0.01f, extent );
-					m.Metallic = appliedSkin is "Hook" or "Coral" or "Plunger" or "Pinball" ? 0.05f : 0.25f;   // the stripes and polyps read brighter less metallic
+					m.Metallic = appliedSkin is "Hook" or "Coral" or "Plunger" or "Pinball" or "Goo" ? 0.05f : 0.25f;   // the stripes and polyps read brighter less metallic
 				}
 				if ( slot == "frame" && frameCamo )
 				{
@@ -570,6 +542,7 @@ public partial class PlayerRig : Node
 				mesh.SetSurfaceOverrideMaterial( i, m );
 			}
 		}
+		GooGear( appliedSkin == "Goo" );
 	}
 
 	/// <summary> The character frame: feet and facing, tilted for the slide, swimming and the surge (the s&box driver moves). </summary>
@@ -672,6 +645,7 @@ public partial class PlayerRig : Node
 			pos = pelvis - rot * (Vector3.Up * hips);
 		}
 		MoveFrame( dt, yawRot, feet, hips, ref rot, ref pos );
+		SloshGoo( dt );
 		EmoteFrame( dt, yawRot, feet, hips, ref rot, ref pos );
 		rigRoot.GlobalTransform = new Transform3D( rot, pos );
 	}

@@ -2,15 +2,14 @@ using Godot;
 
 /// <summary>
 /// Third person poses for the robots' mouse 4 moves that had none: Coral-Bot's burrow (face down in the sand, digging,
-/// then a spinning eruption with the arms up), Hook-Bot's grapple (the free hand reaching along the line), Magnet-Bot's
-/// pulse (arms flung wide; Pole Reversal hauls in first), Plunger-Bot's sling (superman along the flight, then a
-/// starfish belly flop) and Pinball-Bot's roll (tucked into a ball that rolls along the ground). The frame moves in
+/// then a spinning eruption with the arms up), Hook-Bot's grapple (the free hand reaching along the line), Plunger-Bot's
+/// sling and Goo-Bot's splat jump (superman along the flight, then a starfish belly flop) and Pinball-Bot's roll (tucked into a ball that rolls along the ground). The frame moves in
 /// `MoveFrame`; the spine, head, arms and legs blend toward each move's pose in s&box character space.
 /// </summary>
 public partial class PlayerRig
 {
-	float burrowBlend, rollBlend, slingBlend, reverseBlend, zipBlend, rollAngle, rollHeading;
-	float eruptKick, pulseKick, flopKick;
+	float burrowBlend, rollBlend, slingBlend, zipBlend, rollAngle, rollHeading;
+	float eruptKick, flopKick;
 	Basis flopYaw = Basis.Identity;
 	Vector3 lastFeet;
 
@@ -30,7 +29,7 @@ public partial class PlayerRig
 	static float Ease( float t ) { t = MathX.Clamp( t, 0f, 1f ); return t * t * (3f - 2f * t); }
 
 	/// <summary> Hides the gun while a move needs both hands (or there is nothing to hold it in). </summary>
-	bool MoveHidesGun => burrowBlend > 0.3f || rollBlend > 0.3f || eruptKick > 0.3f || pulseKick > 0.25f || reverseBlend > 0.3f || flopKick > 0.3f;
+	bool MoveHidesGun => burrowBlend > 0.3f || rollBlend > 0.3f || eruptKick > 0.3f || flopKick > 0.3f;
 
 	void MoveBlends( float dt )
 	{
@@ -38,11 +37,9 @@ public partial class PlayerRig
 		var alive = survivor?.IsAlive ?? true;
 		burrowBlend = MathX.Approach( burrowBlend, jet.Burrowed && alive ? 1f : 0f, dt * (jet.Burrowed ? 6f : 5f) );
 		rollBlend = MathX.Approach( rollBlend, jet.Rolling && alive ? 1f : 0f, dt * (jet.Rolling ? 8f : 5f) );
-		slingBlend = MathX.Approach( slingBlend, jet.Slinging && !controller.IsOnGround && alive ? 1f : 0f, dt * 7f );
-		reverseBlend = MathX.Approach( reverseBlend, jet.Reversing ? 1f : 0f, dt * 8f );
+		slingBlend = MathX.Approach( slingBlend, (jet.Slinging || jet.Splatting) && !controller.IsOnGround && alive ? 1f : 0f, dt * 7f );
 		zipBlend = MathX.Approach( zipBlend, jet.Zipping ? 1f : 0f, dt * 12f );
 		eruptKick = Kick( jet.EruptedAt, 0.8f );
-		pulseKick = Kick( jet.PulsedAt, 0.55f, 0.04f );
 		flopKick = Kick( jet.FloppedAt, 0.75f, 0.03f );
 	}
 
@@ -112,10 +109,10 @@ public partial class PlayerRig
 		else flopYaw = Basis.Identity;
 	}
 
-	/// <summary> The spine for the moves: chest out for the pulse, hunched for the reversal and the roll. </summary>
+	/// <summary> The spine for the moves: hunched for the roll, back for the eruption. </summary>
 	Basis MoveSpine( Basis spineRot )
 	{
-		var pitch = -16f * pulseKick + 14f * reverseBlend + 45f * Ease( rollBlend ) - 12f * eruptKick;
+		var pitch = 45f * Ease( rollBlend ) - 12f * eruptKick;
 		return MathF.Abs( pitch ) < 0.01f ? spineRot : SAng( pitch, 0f, 0f ) * spineRot;
 	}
 
@@ -141,10 +138,6 @@ public partial class PlayerRig
 		}
 		// The eruption: both arms thrown up in a V.
 		To( new Vector3( 0.1f, side * 0.45f, 1f ), 0.95f, new Vector3( -0.5f, side, 0f ), eruptKick );
-		// Pole Reversal: reaching out ahead, fists hauling in.
-		if ( reverseBlend > 0.001f ) To( new Vector3( 1f, side * 0.3f, 0.1f ), 0.7f + 0.2f * MathF.Sin( now * 18f ), new Vector3( 0f, side, -1f ), reverseBlend );
-		// The pulse: arms flung out wide, palms out.
-		To( new Vector3( 0.35f, side, 0.2f ), 0.95f, new Vector3( -1f, 0f, -0.5f ), pulseKick );
 		// The grapple: the free hand reaching along the line.
 		if ( s == "L" && zipBlend > 0.001f && jet is not null ) To( CharDir( jet.SurgeDirection ), 0.95f, new Vector3( 0f, side, -1f ), zipBlend );
 		// The sling: one fist punched out ahead like a flying hero (the other keeps the gun).
@@ -172,8 +165,6 @@ public partial class PlayerRig
 			To( hip + new Vector3( -2f + 4f * MathF.Sin( now * 10f + side * 1.5f ), side * 2f, -length * 0.93f ), new Vector3( 30f, 0f, 0f ), Ease( burrowBlend ) );
 		// The eruption: legs straight and together.
 		To( hip + new Vector3( 0f, -side * 1f, -length * 0.97f ), new Vector3( 30f, 0f, 0f ), eruptKick );
-		// The pulse: a wide braced stance.
-		To( hip + new Vector3( 0f, side * 0.4f, -0.9f ).Normalized() * length * 0.95f, new Vector3( 30f, side * 10f, 0f ), pulseKick );
 		// The grapple: trailing straight behind along the line.
 		To( hip + new Vector3( -3f, side * 1.2f, -length * 0.97f ), new Vector3( 30f, 0f, 0f ), zipBlend );
 		// The sling: straight back, a little flutter.

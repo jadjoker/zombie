@@ -1,27 +1,21 @@
 using Godot;
 
 /// <summary>
-/// The Magnet-Bot's, Plunger-Bot's and Pinball-Bot's mouse 4 moves. The Repulsor Pulse throws every enemy near you
-/// back (and the loose gore with them); Pole Reversal first drags them in for a beat. The plunger slingshot plants a
+/// The Plunger-Bot's and Pinball-Bot's mouse 4 moves (the Goo-Bot's splat jump is in JetpackGoo.cs). The plunger slingshot plants a
 /// plunger at your feet and flings you off it on a bungee along your aim; landing is a belly flop (Cannonball makes it
 /// a shockwave). The roll curls you into a ball: fast and low, bowling over the enemies you run into (High Score ends
 /// a big enough strike in a blast and a spray of pinballs).
 /// </summary>
 public partial class Jetpack
 {
-	// Pulse
-	double reversalAt = -1;
-	public double ArmourUntil { get; private set; } = -99;
 	// Sling
 	bool slinging;
 	double slungAt = -99;
 	Node3D slingPlunger;
 	MeshInstance3D slingCord;
 	public bool Slinging => slinging;
-	/// <summary> For the third person rig: when the last pulse went off and the last belly flop landed, and whether Pole Reversal is pulling. </summary>
-	public double PulsedAt { get; private set; } = -99;
+	/// <summary> For the third person rig: when the last belly flop (or Goo-Bot splat) landed. </summary>
 	public double FloppedAt { get; private set; } = -99;
-	public bool Reversing => reversalAt > 0;
 	// Roll
 	public bool Rolling { get; private set; }
 	float rollLeft;
@@ -29,79 +23,8 @@ public partial class Jetpack
 	public int BowledThisRoll => bowled.Count;
 
 	/// <summary> Testing aids: the moves as if mouse 4 were tapped. </summary>
-	public void TestPulse() => TryPulse();
 	public void TestSling() => TrySling();
 	public void TestRoll() => ToggleRoll();
-
-	// ---- Magnet-Bot: the Repulsor Pulse ----
-
-	void TryPulse()
-	{
-		if ( Surging || reversalAt > 0 ) return;
-		var cost = MagnetFx.PulseCost * (1f - MagnetFx.CapacitorPer * Skill( SkillId.Capacitor ));
-		if ( Power < cost ) { TimeSinceRefused = 0f; return; }
-		Power -= cost;
-		timeSinceThrust = 0f;
-		MagnetFx.Pulses++;
-		var rev = Skill( SkillId.PoleReversal );
-		if ( rev > 0 )
-		{
-			// Pole Reversal: the field pulls first, then the pulse goes off.
-			reversalAt = Clock.Now + MagnetFx.ReversalPull;
-			Sfx.Play( "magnet_hum", controller.GlobalPosition, 0.8f, 0.6f );
-			Shockwave.Spawn( GetTree().CurrentScene, controller.GlobalPosition + Vector3.Up, PulseRadius * 1.6f, MagnetFx.Red );
-			return;
-		}
-		Pulse( false );
-	}
-
-	float PulseRadius => MagnetFx.PulseRadius * (1f + MagnetFx.OverchargePer * Skill( SkillId.Overcharge ));
-
-	void Pulse( bool reversed )
-	{
-		var at = controller.GlobalPosition + Vector3.Up * 0.8f;
-		var over = 1f + MagnetFx.OverchargePer * Skill( SkillId.Overcharge );
-		var radius = PulseRadius;
-		PulsedAt = Clock.Now;
-		var rev = Skill( SkillId.PoleReversal );
-		var damage = MagnetFx.PulseDamage * over + (reversed ? MagnetFx.ReversalDamage( rev ) : 0f);
-		if ( reversed ) MagnetFx.Reversals++;
-		foreach ( var c in Creature.Everyone.ToList() )
-		{
-			if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead ) continue;
-			var d = c.GlobalPosition.DistanceTo( controller.GlobalPosition );
-			if ( d > radius ) continue;
-			SkillFx.HitPart( c, damage * (1f - 0.35f * d / radius), at, controller );
-			SkillFx.Shove( c, (c.GlobalPosition - controller.GlobalPosition).Flat().SafeNormal() * MagnetFx.PulseShove * (1f - 0.5f * d / radius) + Vector3.Up * 0.4f );
-			if ( !c.IsDead ) c.Stun( 0.35f );
-		}
-		// The loose gore is thrown back too.
-		if ( GoreSystem.Get( controller ) is { } gore )
-			foreach ( var gib in gore.Gibs )
-			{
-				if ( !IsInstanceValid( gib ) ) continue;
-				var to = gib.GlobalPosition - at;
-				if ( to.Length() > radius * 1.5f ) continue;
-				gib.ApplyCentralImpulse( (to.SafeNormal() + Vector3.Up * 0.4f) * 6f * gib.Mass );
-			}
-		var armour = Skill( SkillId.ScrapArmour );
-		if ( armour > 0 && PlayerPerks.Of( controller ) is { } perks ) { perks.Guard = MagnetFx.ArmourPer * armour; perks.GuardUntil = Clock.Now + MagnetFx.ArmourTime; ArmourUntil = perks.GuardUntil; }
-		var dis = Skill( SkillId.Discharge );
-		if ( dis > 0 )
-			foreach ( var c in Creature.Everyone.Where( c => IsInstanceValid( c ) && c.IsEnemy && !c.IsDead && c.GlobalPosition.DistanceTo( at ) < MagnetFx.DischargeReach ).OrderBy( c => c.GlobalPosition.DistanceTo( at ) ).Take( dis ).ToList() )
-			{
-				MagnetFx.Discharges++;
-				var to = SkillFx.NearestPart( c, at );
-				SkillFx.Zap( at, to );
-				PlayerPerks.Hurt( c, MagnetFx.DischargeDamage( dis ), to, at, controller );
-			}
-		Shockwave.Spawn( GetTree().CurrentScene, at, radius, reversed ? MagnetFx.Red : MagnetFx.Blue );
-		Sfx.Play( "magnet_clang", at, 0.9f, 0.6f );
-		Sfx.Play( "surge", at, 0.6f, 1.4f );
-		Juice?.Shake( 0.35f );
-		Juice?.KickFov( 6f );
-		Controls.Rumble( 0.4f );
-	}
 
 	// ---- Plunger-Bot: the slingshot ----
 
@@ -221,23 +144,10 @@ public partial class Jetpack
 		Juice?.Shake( 0.5f );
 	}
 
-	/// <summary> Each frame: the reversal's delay, the sling's cord and landing, the roll's bowling and timer. </summary>
+	/// <summary> Each frame: the splat jump, the sling's cord and landing, the roll's bowling and timer. </summary>
 	void ToySkills( float dt )
 	{
-		if ( reversalAt > 0 )
-		{
-			// Pole Reversal's pull, then the pulse.
-			var radius = PulseRadius * 1.6f;
-			foreach ( var c in Creature.Everyone )
-			{
-				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead || !c.Pullable ) continue;
-				var to = (controller.GlobalPosition - c.GlobalPosition).Flat();
-				var d = to.Length();
-				if ( d > radius || d < 1.2f ) continue;
-				c.Pull( to / d * MathF.Min( d - 1.2f, 9f * dt ) );
-			}
-			if ( Clock.Now >= reversalAt ) { reversalAt = -1; Pulse( true ); }
-		}
+		GooSkills( dt );
 		if ( slinging )
 		{
 			if ( slingCord is not null && slingPlunger is not null && IsInstanceValid( slingPlunger ) )

@@ -314,11 +314,11 @@ public partial class PlayerWeapon : Node
 			return;
 		}
 
-		if ( Scrap || Polarity || Pinball || Flippers )
+		if ( Goo || JellyGun || Pinball || Flippers )
 		{
-			// The Magnet-Bot's and Pinball-Bot's guns work their own triggers (MagnetBot.cs, PinballBot.cs).
+			// The Goo-Bot's and Pinball-Bot's guns work their own triggers (GooBot.cs, PinballBot.cs).
 			var free = !(DevFlags.Placing || melee || LocalBlocked);
-			if ( Scrap || Polarity ) UpdateMagnet( dt, free );
+			if ( Goo || JellyGun ) UpdateGoo( dt, free );
 			else if ( Pinball ) UpdatePinball( dt, free );
 			else UpdateFlippers( dt, free );
 			ShowLoaded();
@@ -465,7 +465,7 @@ public partial class PlayerWeapon : Node
 	void ShowLoaded()
 	{
 		if ( Bubbles && ViewModel is not null ) { ShowBubbleLoaded(); return; }
-		if ( !(Projectile || Grabber || Lure || Plunger || Toilet || Scrap || Pinball) || ViewModel is null ) return;
+		if ( !(Projectile || Grabber || Lure || Plunger || Toilet || JellyGun || Pinball) || ViewModel is null ) return;
 		if ( loaded is null || !IsInstanceValid( loaded ) ) loaded = ViewModel.FindChild( "Loaded", true, false ) as Node3D;
 		if ( loaded is not null ) loaded.Visible = Grabber ? Held is null && BeamTarget is null : Ammo > 0 && TimeSinceShot > 0.35f;
 	}

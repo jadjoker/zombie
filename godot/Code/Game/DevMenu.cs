@@ -928,7 +928,7 @@ public static class CharacterSkins
 		"Gold" => new Color( 1f, 0.9f, 0.4f ),
 		"Hook" => new Color( 0.55f, 1f, 0.45f ),   // the lantern's green
 		"Coral" => new Color( 1f, 0.35f, 0.75f ),  // the polyps' pink
-		"Magnet" => new Color( 0.35f, 0.65f, 1f ), // the field's blue
+		"Goo" => new Color( 1f, 0.45f, 0.9f ),     // the goo's pink
 		"Plunger" => new Color( 1f, 0.85f, 0.2f ), // a rubber duck's yellow
 		"Pinball" => new Color( 1f, 0.3f, 0.85f ), // neon pink
 		_ => new Color( 0.3f, 1f, 0.9f ),

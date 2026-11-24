@@ -2,8 +2,8 @@ using Godot;
 
 /// <summary>
 /// --moveposes: the third person poses for the robots' mouse 4 moves. Coral-Bot's burrow sinks the body into the
-/// sand and the eruption throws the arms up; Hook-Bot's grapple reaches along the line; Magnet-Bot's pulse flings the
-/// arms wide; Plunger-Bot's sling flies head first and lands in a flat belly flop; Pinball-Bot's roll tucks into a low
+/// sand and the eruption throws the arms up; Hook-Bot's grapple reaches along the line; Goo-Bot's splat jump lands in a
+/// starfish; Plunger-Bot's sling flies head first and lands in a flat belly flop; Pinball-Bot's roll tucks into a low
 /// ball that turns as it goes. With --shots (a window) a side view of each.
 /// </summary>
 public partial class AutoTest
@@ -79,14 +79,19 @@ public partial class AutoTest
 		Clear( a );
 		await Wait( 1f );
 
-		// ---- Magnet-Bot: the pulse flings the arms wide ----
-		a = await PoseArena( RobotClass.MagnetBot );
-		jet.TestPulse();
-		await Wait( 0.1f );
+		// ---- Goo-Bot: the splat jump flies superman and lands in the starfish splat ----
+		a = await PoseArena( RobotClass.GooBot );
+		var splats = GooFx.Splats;
+		jet.TestSplat();
+		await Wait( 0.3f );
+		await SideShot( "pose_splat" );
+		for ( var i = 0; i < 100 && GooFx.Splats == splats; i++ ) await Wait( 0.02f );
+		await Wait( 0.12f );
 		var spread = Rig.BoneAt( "hand_L" ).DistanceTo( Rig.BoneAt( "hand_R" ) );
-		await SideShot( "pose_pulse" );
-		GD.Print( $"[autotest] moveposes: pulse hands {spread:0.00} m apart" );
-		Check( spread > 1f, "the pulse did not fling the arms wide" );
+		await SideShot( "pose_splat_land" );
+		GD.Print( $"[autotest] moveposes: splat landed {GooFx.Splats - splats}, hands {spread:0.00} m apart" );
+		Check( GooFx.Splats > splats, "the splat jump never landed" );
+		Check( spread > 1f, "the splat did not spread the arms like a starfish" );
 		await Wait( 1f );
 
 		// ---- Plunger-Bot: superman on the bungee, then the belly flop ----

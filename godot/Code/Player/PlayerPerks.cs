@@ -56,7 +56,7 @@ public partial class PlayerPerks : Node
 	/// <summary> A short burst of speed (m/s) until then: Hook-Bot's Momentum after a zip, Coral-Bot's burrow. </summary>
 	public double BoostUntil;
 	public float Boost;
-	/// <summary> A share of each hit turned away until `GuardUntil` (Magnet-Bot's Scrap Armour). </summary>
+	/// <summary> A share of each hit turned away until `GuardUntil` (Goo-Bot's Soft Landing). </summary>
 	public double GuardUntil;
 	public float Guard;
 	public const float BlastDamage = 500f, BlastRadius = 8f;
@@ -200,6 +200,12 @@ public partial class PlayerPerks : Node
 				&& damage.Position.DistanceTo( decoy.GlobalPosition + Vector3.Up * 1f ) < damage.Position.DistanceTo( controller.GlobalPosition + Vector3.Up * 1f ) ) { decoy.Struck(); return 0f; }
 		}
 		if ( damage.Attacker is not PlayerAfflictions && Clock.Now < GuardUntil ) damage.Damage *= 1f - Guard;
+		// Gooey Shell (Goo-Bot): an enemy that hits you may come away with a blob of goo.
+		if ( damage.Attacker is Creature { IsEnemy: true, IsDead: false } hitter && Skills.Rank( controller, SkillId.GooeyShell ) is var shell && shell > 0 && Rng.Float() < GooFx.ShellPer * shell )
+		{
+			GooFx.Shells++;
+			GooBall.Add( hitter, SkillFx.NearestPart( hitter, controller.GlobalPosition + Vector3.Up ), controller, GooBall.GunOf( controller ) );
+		}
 		// Calcify (Coral-Bot): standing still hardens the shell.
 		if ( damage.Attacker is not PlayerAfflictions && Skills.Rank( controller, SkillId.Calcify ) is var calcify && calcify > 0
 			&& controller.GetNodeOrNull<Jetpack>( "Jetpack" ) is { StillFor: >= CoralFx.CalcifyAfter } )

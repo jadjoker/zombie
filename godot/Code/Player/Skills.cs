@@ -33,12 +33,12 @@ public enum SkillId
 	ToughPolyps, QuickSeed, Barrage, HealingReef, SpikedWalls, Anemone, LivingReef,
 	// Coral-Bot: core
 	ShellPlating, DeepDig, Upheaval, Sandstorm, Calcify, Regrowth, GreatBarrier,
-	// Magnet-Bot: Scrap Cannon
-	HeavyMetal, QuickGather, Bouncer, Shrapnel, WreckingBall, JunkMagnet, Katamari,
-	// Magnet-Bot: Polarity Gun
-	StrongField, LongCharge, HardSmash, StaticCling, ArcWeld, SpreadCharge, Magnetar,
-	// Magnet-Bot: core
-	IronPlating, Maglev, Overcharge, Capacitor, ScrapArmour, Discharge, PoleReversal,
+	// Goo-Bot: Goo Gun
+	ThickGoo, SlowSet, TarPit, Splatter, HeavyGoo, Feedback, BigBallEnergy,
+	// Goo-Bot: Jelly Cannon
+	ExtraHop, LongHop, Jiggle, StickySplit, FatJelly, VolatileJelly, MotherJelly,
+	// Goo-Bot: core
+	GelArmour, Slick, SuperBounce, SoftLanding, GooeyShell, Puddle, Gooquake,
 	// Plunger-Bot: Plunger Launcher
 	ExtraSuction, RapidPlunge, PlungerPouch, Clingy, Shlorp, TugOfWar, PlumbersNightmare,
 	// Plunger-Bot: Flush Bomb
@@ -91,7 +91,7 @@ public static class Skills
 		new[] { "Gross Domestic Product", "Bath Time", "Reverse Thrust" },
 		new[] { "Catch of the Day", "Bright Ideas", "Old Salt" },
 		new[] { "Prickly", "Gardener", "Bedrock" },
-		new[] { "Scrapyard", "Opposites Attract", "Field Theory" },
+		new[] { "Gunk", "Wobble", "Goo Body" },
 		new[] { "Suction Cup", "Royal Flush", "Bungee Jumper" },
 		new[] { "Silver Ball", "Flippin' Out", "Tilt" },
 	};
@@ -102,18 +102,18 @@ public static class Skills
 		new[] { "Gore Vac", "Bubble Cannon", "Blink, survival" },
 		new[] { "Grab Reel", "Lantern Lure", "Grapple, survival" },
 		new[] { "Spine Gun", "Reef Seeds", "Burrow, survival" },
-		new[] { "Scrap Cannon", "Polarity Gun", "Pulse, survival" },
+		new[] { "Goo Gun", "Jelly Cannon", "Splat jump, survival" },
 		new[] { "Plunger Launcher", "Flush Bomb", "Slingshot, survival" },
 		new[] { "Pinball Launcher", "Flipper Arms", "Roll, survival" },
 	};
 
 	static int RobotIndex( string robot ) => robot == RobotClass.TridentBot.Id ? 1 : robot == RobotClass.VacBot.Id ? 2
-		: robot == RobotClass.HookBot.Id ? 3 : robot == RobotClass.CoralBot.Id ? 4 : robot == RobotClass.MagnetBot.Id ? 5
+		: robot == RobotClass.HookBot.Id ? 3 : robot == RobotClass.CoralBot.Id ? 4 : robot == RobotClass.GooBot.Id ? 5
 		: robot == RobotClass.PlungerBot.Id ? 6 : robot == RobotClass.PinballBot.Id ? 7 : 0;
 
 	/// <summary> The skills that add max health (bought: more health at once). </summary>
 	public static bool AddsHealth( SkillId id ) => id is SkillId.ThickPlating or SkillId.ThickLine or SkillId.ShellPlating
-		or SkillId.IronPlating or SkillId.RubberPlating or SkillId.ChromePlating;
+		or SkillId.GelArmour or SkillId.RubberPlating or SkillId.ChromePlating;
 	public static string TreeName( string robot, int tree ) => TreeNames[RobotIndex( robot )][tree];
 	public static string TreeKitName( string robot, int tree ) => TreeKit[RobotIndex( robot )][tree];
 
@@ -135,7 +135,7 @@ public static class Skills
 		var vac = RobotClass.VacBot.Id;
 		var hook = RobotClass.HookBot.Id;
 		var coral = RobotClass.CoralBot.Id;
-		var mag = RobotClass.MagnetBot.Id;
+		var goo = RobotClass.GooBot.Id;
 		var plu = RobotClass.PlungerBot.Id;
 		var pin = RobotClass.PinballBot.Id;
 		var Magenta = new Color( 1f, 0.3f, 0.85f );
@@ -260,30 +260,30 @@ public static class Skills
 			S( SkillId.Calcify, coral, 2, 2, "Calcify", "calcify", new Color( 0.92f, 0.9f, 0.84f ), n => $"Standing still for {CoralFx.CalcifyAfter:0} s: take {Pct( CoralFx.CalcifyPer * n )} less damage" ),
 			S( SkillId.Regrowth, coral, 2, 2, "Regrowth", "heal", Green, n => $"Erupting heals {CoralFx.RegrowthPer * n:0}" ),
 			S( SkillId.GreatBarrier, coral, 2, 3, "Great Barrier", "barrier", Pink, n => $"An eruption throws up a ring of coral walls for {CoralFx.BarrierTime( n ):0} s and spears enemies inside it for {CoralFx.BarrierDamage( n ):0}", max: 3 ),
-			// ---- Magnet-Bot: Scrap Cannon ----
-			S( SkillId.HeavyMetal, mag, 0, 0, "Heavy Metal", "heavymetal", Steel, n => $"+{Pct( MagnetFx.HeavyMetalPer * n )} scrap ball damage" ),
-			S( SkillId.QuickGather, mag, 0, 0, "Quick Gather", "quickcharge", Sky, n => $"-{Pct( MagnetFx.QuickGatherPer * n )} time to gather a full ball" ),
-			S( SkillId.Bouncer, mag, 0, 1, "Bouncer", "bouncy", Orange, n => $"+{n} bounce{(n == 1 ? "" : "s")} off the world" ),
-			S( SkillId.Shrapnel, mag, 0, 1, "Shrapnel", "shrapnel", Red, n => $"A spent ball bursts into {2 + n} shards at enemies within {MagnetFx.ShrapnelReach:0} m, {Pct( MagnetFx.ShrapnelPer * n )} of its damage each" ),
-			S( SkillId.WreckingBall, mag, 0, 2, "Wrecking Ball", "wreckingball", Steel, n => $"+{Pct( MagnetFx.WreckingPer * n )} ball size (bigger knock back)" ),
-			S( SkillId.JunkMagnet, mag, 0, 2, "Junk Magnet", "junkmagnet", Red, n => $"Each piece of gore gathered adds {Pct( MagnetFx.JunkPer + MagnetFx.JunkMagnetPer * n )} to the ball (from {Pct( MagnetFx.JunkPer )})" ),
-			S( SkillId.Katamari, mag, 0, 3, "Katamari", "katamari", Gold, n => $"Light enemies the ball hits stick to it, up to {MagnetFx.KatamariHolds( n )}: each adds 25% damage, and they take half of it when it stops", max: 3 ),
-			// ---- Magnet-Bot: Polarity Gun ----
-			S( SkillId.StrongField, mag, 1, 0, "Strong Field", "suction", Blue, n => $"+{Pct( MagnetFx.StrongFieldPer * n )} pull between tags" ),
-			S( SkillId.LongCharge, mag, 1, 0, "Long Charge", "lasting", Sky, n => $"Tags last {MagnetFx.LongChargePer * n:0} s longer" ),
-			S( SkillId.HardSmash, mag, 1, 1, "Hard Smash", "smash", Red, n => $"+{Pct( MagnetFx.HardSmashPer * n )} smash damage" ),
-			S( SkillId.StaticCling, mag, 1, 1, "Static Cling", "electric", Violet, n => $"Tagged enemies take {MagnetFx.ClingPer * n:0} a second" ),
-			S( SkillId.ArcWeld, mag, 1, 2, "Arc Weld", "arcweld", Gold, n => $"A smash shocks {n} enem{(n == 1 ? "y" : "ies")} near it for {MagnetFx.ArcWeldDamage( n ):0}" ),
-			S( SkillId.SpreadCharge, mag, 1, 2, "Spread Charge", "chain", Teal, n => $"{Pct( MagnetFx.SpreadPer * n )} chance a tag jumps to the nearest untagged enemy too" ),
-			S( SkillId.Magnetar, mag, 1, 3, "Magnetar", "magnetar", Ink, n => $"A smash drags every enemy within {MagnetFx.MagnetarReach( n ):0} m into it for {MagnetFx.MagnetarDamage( n ):0}", max: 3 ),
-			// ---- Magnet-Bot: core ----
-			S( SkillId.IronPlating, mag, 2, 0, "Iron Plating", "plating", Steel, n => $"+{SkillFx.PlatingPer * n:0} max health" ),
-			S( SkillId.Maglev, mag, 2, 0, "Maglev", "move", Green, n => $"+{PlayerPerks.MoveSpeedPerStack * n:0.0} m/s and +{Pct( PlayerPerks.StaminaPerStack * n )} stamina", perk: PerkKind.Move ),
-			S( SkillId.Overcharge, mag, 2, 1, "Overcharge", "upheaval", Orange, n => $"+{Pct( MagnetFx.OverchargePer * n )} pulse damage and reach" ),
-			S( SkillId.Capacitor, mag, 2, 1, "Capacitor", "jets", Sky, n => $"-{Pct( MagnetFx.CapacitorPer * n )} pulse cost" ),
-			S( SkillId.ScrapArmour, mag, 2, 2, "Scrap Armour", "scraparmour", Steel, n => $"Take {Pct( MagnetFx.ArmourPer * n )} less damage for {MagnetFx.ArmourTime:0} s after a pulse" ),
-			S( SkillId.Discharge, mag, 2, 2, "Discharge", "electric", Violet, n => $"A pulse shocks the {n} nearest enem{(n == 1 ? "y" : "ies")} within {MagnetFx.DischargeReach:0} m for {MagnetFx.DischargeDamage( n ):0}" ),
-			S( SkillId.PoleReversal, mag, 2, 3, "Pole Reversal", "polereversal", Red, n => $"The pulse drags enemies in for a beat first, then blasts them for {MagnetFx.ReversalDamage( n ):0} more", max: 3 ),
+			// ---- Goo-Bot: Goo Gun ----
+			S( SkillId.ThickGoo, goo, 0, 0, "Thick Goo", "thickgoo", Violet, n => $"+{Pct( GooFx.ThickPer * n )} goo blob damage" ),
+			S( SkillId.SlowSet, goo, 0, 0, "Slow Set", "slowset", Sky, n => $"Goo balls wait {GooFx.SlowSetPer * n:0.0} s longer to pop (more time to stack them)" ),
+			S( SkillId.TarPit, goo, 0, 1, "Tar Pit", "tarpit", Ink, n => $"Each blob slows its enemy {Pct( GooFx.SlowPerBlob + GooFx.TarPitPer * n )} (from {Pct( GooFx.SlowPerBlob )}, at most {Pct( GooFx.MaxSlow )})" ),
+			S( SkillId.Splatter, goo, 0, 1, "Splatter", "splatter", Magenta, n => $"A pop throws a blob onto the {n} nearest enem{(n == 1 ? "y" : "ies")} near it" ),
+			S( SkillId.HeavyGoo, goo, 0, 2, "Heavy Goo", "heavygoo", Steel, n => $"+{Pct( GooFx.HeavyPer * n )} pop damage and size" ),
+			S( SkillId.Feedback, goo, 0, 2, "Feedback", "feedback", Gold, n => $"Each blob in a pop has a {Pct( GooFx.FeedbackPer * n )} chance to put a shot back in the magazine" ),
+			S( SkillId.BigBallEnergy, goo, 0, 3, "Big Ball Energy", "bigball", Pink, n => $"A full ball (6 blobs) breaks off as a goo boulder that rolls through enemies for {GooFx.BoulderDamage( n ):0} each, gooing them, for {GooFx.BoulderTime( n ):0.0} s", max: 3 ),
+			// ---- Goo-Bot: Jelly Cannon ----
+			S( SkillId.ExtraHop, goo, 1, 0, "Extra Hop", "jellyhop", Magenta, n => $"The jelly springs on to {n} more enem{(n == 1 ? "y" : "ies")} ({GooFx.Hops + n} hops)" ),
+			S( SkillId.LongHop, goo, 1, 0, "Long Hop", "longhop", Sky, n => $"+{GooFx.LongHopPer * n:0.0} m hop reach (from {GooFx.HopReach:0} m)" ),
+			S( SkillId.Jiggle, goo, 1, 1, "Jiggle", "jiggle", Pink, n => $"A jelly hit stuns for {GooFx.JigglePer * n:0.00} s" ),
+			S( SkillId.StickySplit, goo, 1, 1, "Sticky Split", "sticky", Violet, n => $"Each enemy the jelly hits is left in a sticky puddle ({Pct( GooFx.StickySlow + 0.05f * n )} slower, {GooFx.StickyTime:0} s)" ),
+			S( SkillId.FatJelly, goo, 1, 2, "Fat Jelly", "fatjelly", Orange, n => $"The jelly keeps {Pct( MathF.Min( 1f, GooFx.HopKeep + GooFx.FatPer * n ) )} of its size and damage each hop (from {Pct( GooFx.HopKeep )})" ),
+			S( SkillId.VolatileJelly, goo, 1, 2, "Volatile", "volatile", Red, n => $"The jelly's last hit blows up for {GooFx.VolatileDamage( n ):0} within {GooFx.VolatileRadius:0} m" ),
+			S( SkillId.MotherJelly, goo, 1, 3, "Mother Jelly", "motherjelly", Gold, n => $"Out of hops, the jelly comes alive and hunts on: {GooFx.MotherHops( n )} more hops at twice the reach", max: 3 ),
+			// ---- Goo-Bot: core ----
+			S( SkillId.GelArmour, goo, 2, 0, "Gel Armour", "plating", Steel, n => $"+{SkillFx.PlatingPer * n:0} max health" ),
+			S( SkillId.Slick, goo, 2, 0, "Slick", "move", Green, n => $"+{PlayerPerks.MoveSpeedPerStack * n:0.0} m/s and +{Pct( PlayerPerks.StaminaPerStack * n )} stamina", perk: PerkKind.Move ),
+			S( SkillId.SuperBounce, goo, 2, 1, "Super Bounce", "superbounce", Sky, n => $"+{Pct( GooFx.BouncePer * n )} splat jump height, splat reach and damage" ),
+			S( SkillId.SoftLanding, goo, 2, 1, "Soft Landing", "softlanding", Pink, n => $"Take {Pct( GooFx.SoftPer * n )} less damage for {GooFx.SoftTime:0} s after a splat" ),
+			S( SkillId.GooeyShell, goo, 2, 2, "Gooey Shell", "gooshell", Violet, n => $"{Pct( GooFx.ShellPer * n )} chance an enemy that hits you gets a blob of goo" ),
+			S( SkillId.Puddle, goo, 2, 2, "Puddle", "puddle", Ink, n => $"The splat leaves a sticky puddle for {GooFx.PuddleTime( n ):0} s: {Pct( GooFx.PuddleSlow + GooFx.PuddleSlowPer * n )} slower, {GooFx.PuddleDps * n:0} a second" ),
+			S( SkillId.Gooquake, goo, 2, 3, "Gooquake", "gooquake", Magenta, n => $"A beat after the splat a jelly ripple runs through the floor, flinging enemies within {GooFx.QuakeReach( n ):0} m up for {GooFx.QuakeDamage( n ):0}", max: 3 ),
 			// ---- Plunger-Bot: Plunger Launcher ----
 			S( SkillId.ExtraSuction, plu, 0, 0, "Extra Suction", "plunger", Red, n => $"+{Pct( PlungerFx.SuctionPer * n )} plunger damage" ),
 			S( SkillId.RapidPlunge, plu, 0, 0, "Rapid Plunge", "firerate", Orange, n => $"+{Pct( PlungerFx.RapidPer * n )} fire rate" ),

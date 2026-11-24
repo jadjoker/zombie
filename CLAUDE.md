@@ -236,7 +236,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - Skill trees (user's design, replacing the pickup drops): `Player/Skills.cs` (`SkillId`, `SkillDef`, `Skills.All`, the
   per-player `PlayerSkills` node: ranks, `Tokens`, `Earned`). Each robot has three trees (primary, secondary, core), each
   three rows of two skills and a capstone; a skill takes 5 points (3 for the capstones, Biden Blast, Trident Swarm,
-  Clusterfunk), and `Skills.UnlockPoints` (3) in a row open the next. Clearing a wave gives a token
+  Clusterfunk, Big Ball Energy, Mother Jelly, Gooquake), and `Skills.UnlockPoints` (3) in a row open the next. Clearing a wave gives a token
   (`WaveDirector`, up to `Skills.MaxTokens` 50 a run); a new run clears them; no refunds (user's choice). Pausing opens
   the trees (`Game/SkillTreePage.cs`; click or A buys a point); the arrow on the right (or a bumper) goes to the menu
   page. Skills that were pickups (`SkillDef.Perk`) feed `PlayerPerks.Count`, so their code stays in PlayerPerks; the
@@ -269,25 +269,32 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   of each). Their suits have their own patterns (`PlayerRig.BuoyTexture`: Hook-Bot's slanted orange and white life
   buoy bands with navy rope lines; `PolypTexture`: Coral-Bot's pink with orange polyp cups) and eye glow (lantern green,
   polyp pink; `CharacterSkins.GlowOf`).
-- Magnet-Bot, Plunger-Bot and Pinball-Bot (robots 6 to 8, the physics robots; three skill trees each). Balls that
+- Goo-Bot, Plunger-Bot and Pinball-Bot (robots 6 to 8, the physics robots; three skill trees each). Balls that
   bounce share `Weapons/BotBall.cs` (a sphere trace a step, bounces off the world, bumpers off enemies, rolls, `Strike`
-  lands a hit like a shot). Magnet-Bot (175 health, `Paint` "Magnet"; `Weapons/MagnetBot.cs`, `MagnetFx`): the Scrap
-  Cannon (hold to gather gore into a `ScrapBall`, more junk hits harder; right click recalls the balls, each caught one
-  back in the magazine), the Polarity Gun (left click tags red, right click blue: `MagnetTag` drags opposites together
-  until they smash, likes push apart); mouse 4 is the Repulsor Pulse (`RobotClass.Pulse`, `Player/JetpackToys.cs`).
+  lands a hit like a shot). Goo-Bot (replaced Magnet-Bot, user's design; 175 health, `Paint` "Goo": grape purple with
+  magenta drips and bubbles, `PlayerRigGoo.cs`: `GooTexture`, a glass goo tank on its back and a goo drop antenna on bone
+  attachments; `Weapons/GooBot.cs`, `GooFx`; the old "magnetbot" id loads it): the Goo Gun (60/240, 10 a shot, so 6
+  shots; blobs home gently and stick, building a `GooBall` on the enemy: lumps on its nearest parts that swell, jiggle,
+  drip and slow it; each blob on a ball hits 10 harder (`BlobDamage`), up to 6; it pops `PopTime` (4 s) after its last
+  blob, every blob restarting the clock, at once on the 6th or if the enemy dies, for `PopPerBlob` a blob in
+  `PopRadius`), the Jelly Cannon (a `Jelly` that squashes on an enemy and arcs to the nearest one it hasn't hit, `Hops`
+  times, smaller each hop; each hit is a blob on that enemy's ball); mouse 4 is the splat jump (`RobotClass.Splat`,
+  `Player/JetpackGoo.cs`: bounce up, slam down the way you look at the top, the splat glues and goos the enemies near).
+  `GooPuddle` is the puddles (sticky ones slow), `GooBoulder` the Big Ball Energy boulder. The goo look is one shader
+  (`GooFx.Goo`, `Jelly`: cel-shaded, translucent, dark core, bright rim, bubbles, per-instance `wobble` and `glow`).
   Plunger-Bot (175, "Plunger"; `PlungerBot.cs`, `PlungerFx`): plungers stick (`StuckPlunger`) and pop off at
   `PopAt` with a SHLORP, right click yanks them back; the Flush Bomb toilet (`FlushBomb`) whirlpools enemies in and
   geysers them up; mouse 4 slings you off a plunger on a bungee (`Sling`) into a belly flop. Pinball-Bot (150,
   "Pinball"; `PinballBot.cs`, `PinballFx`): hold to pull the launcher's spring, a `Pinball` speeds up off each enemy;
   the Flipper Arms (left and right click each flip one) whack enemies away and slap balls back out harder; mouse 4
-  rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
-  `PinballModels`); suits `MagnetTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
+  rolls you into a ball that bowls enemies over (`Roll`). Guns built with `GunKit` (`GooModels`, `PlungerModels`,
+  `PinballModels`); suits `GooTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
-  Sounds `magnet_hum`, `magnet_clang`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.
-  Tests: `--magnetbot`, `--plungerbot`, `--pinballbot`.
+  Sounds `goo_shot`, `goo_stick`, `goo_pop`, `jelly_fire`, `jelly_boing`, `plunger_pop`, `plunger_shlorp`, `boing`, `flush`, `pinball_ding`, `flipper`.
+  Tests: `--goobot`, `--plungerbot`, `--pinballbot`.
 - Third person poses for the mouse 4 moves (`Player/PlayerRigMoves.cs`, hooked into `PlayerRig.PlaceFrame` and `Pose`):
   the burrow lies face down in the sand digging, the eruption spins out with the arms up, the grapple reaches along
-  the line, the pulse flings the arms wide (Pole Reversal hauls in first), the sling flies superman and lands in a
+  the line, the sling and the splat jump fly superman and lands in a
   starfish belly flop, the roll tucks into a ball that rolls along the ground. The Pinball-Bot's third person guns
   flip and squash like the ones in view (`PinballParts`). Test: `--moveposes` (shots need a window; it slows time).
 - Online co-op (`Code/Net`, up to 4, ENet on UDP `Net.DefaultPort` 24565): host or join on the robot picker (`ClassPicker.OnlineRow`), or

@@ -69,6 +69,7 @@ public static class AreaTwo
 		}, ArrivalFlat, p => SeaTerrain.HeightAt( p ) );
 		Nav.Bake( level );
 		SeaMine.Lay( level );
+		EelBed.Lay( level );
 
 		// The arrival pad, and the player on it looking at the wreck.
 		var arrive = ArrivalFlat with { Y = SeaTerrain.HeightAt( ArrivalFlat ) };

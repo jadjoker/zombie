@@ -307,6 +307,28 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> The garden eel: cream skin with black spots, red meat, and a spotted scrap of its body. </summary>
+	public static GibRecipe GardenEel( Color goo, Color cream, Color spots ) => Get( "garden eel", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.35f,
+			Outer = GibKit.Paint( cream, 0.5f ),
+			Inner = GibKit.Paint( Meat( goo ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( cream.Lerp( Colors.White, 0.3f ), 0.45f ),
+			Bone = GibKit.Paint( Bone, 0.4f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.35f ), 0.3f, wet: true ),
+		};
+		var black = GibKit.Paint( spots, 0.5f );
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Limb( p, Vector3.Zero, new Vector3( 0f, 0f, s * 1.4f ), s * 0.28f, s * 0.26f, r.Outer, "Eel Scrap" );
+			for ( var k = 0; k < 4; k++ )
+				Sculpt.Blob( p, new Vector3( R( random, -0.2f, 0.2f ) * s, s * 0.25f, R( random, 0.1f, 1.3f ) * s ), Vector3.One * s * 0.1f, black, null, "Spot" );
+		} );
+		return r;
+	} );
+
 	/// <summary> The sting ray: a sand camouflaged hide over a pale belly, cartilage, torn wing scraps and its glowing barb. </summary>
 	public static GibRecipe Stingray( Color goo, Color sand, Color belly ) => Get( "stingray", () =>
 	{

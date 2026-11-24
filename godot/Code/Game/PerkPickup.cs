@@ -28,7 +28,7 @@ public partial class PerkPickup : Node3D
 	/// <summary> A creature died: maybe one thing drops (an ammo box, or one of the pickups; never two). </summary>
 	public static void MaybeDrop( Node3D at )
 	{
-		if ( at is null || !GodotObject.IsInstanceValid( at ) || at is HomingMissile ) return;
+		if ( at is null || !GodotObject.IsInstanceValid( at ) || at is HomingMissile or GardenEel ) return;   // scenery: they grow back
 		var roll = Rng.Float();
 		if ( roll < AmmoPickup.DropChance ) { AmmoPickup.Drop( at ); return; }
 		roll -= AmmoPickup.DropChance;

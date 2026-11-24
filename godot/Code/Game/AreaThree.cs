@@ -104,6 +104,7 @@ public static class AreaThree
 		Nav.Bake( level );
 		Atlantis.AddGlobeCollider();
 		SeaMine.Lay( level );
+		EelBed.Lay( level );
 
 		// The arrival pad, and the player on it looking up the avenue at the temple.
 		var pad2 = new Teleporter { Name = "Arrival Pad", Arrival = true };

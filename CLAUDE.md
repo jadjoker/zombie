@@ -453,6 +453,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   draws the cues, bombs and rings from the synced state (`KingFrame`); only the host's do damage. The dive pulls out by the pose's
   own ground need and `KeepOut` lifts the body after posing, so no part goes into the ground. Dev menu: Enemies, Spawn an enemy,
   King Raymond IV; Enemies, Kraken (the boss attacks); World, Waves, King Raymond wave. Test: `--kingray` (shots need a window).
+- Garden eels (`Creatures/GardenEel.cs`, `GardenEelLook.cs`, user's design after spotted garden eels): scenery, not the round
+  (never in the wave's `alive` list, no pickups). `EelBed.Lay` (from `AreaTwo.Go` and `AreaThree.Go`, host and offline only)
+  puts 4 to 6 beds of 2 to 4 eels packed 0.45 to 0.75 m apart on open sand (Atlantis: the dry canals); a bed grows a new eel
+  in a dead one's hole after 45 to 75 s. Hidden in the sand (`IsEnemy` false: no bar, no aim assist) until a player comes within
+  `WakeRange`; then it digs out (a hole appears), stands swaying with its head on them, and nips anyone within `Reach`
+  (`BiteDamage` 4); a shot sends it ducking into its hole. One skinned spotted tube (`SpotShader`) on a chain built hanging
+  down and turned upright; angry head (yellow eyes, slanted brows, a frown, an underbite of teeth on a jaw). Dev menu:
+  Enemies, Garden eels. Test: `--eels` (shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

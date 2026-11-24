@@ -434,6 +434,20 @@ public partial class DevMenu : CanvasLayer
 			Action( "Despawn allies", DespawnAllies );
 		}
 
+		if ( Sec( "Enemies", "Garden eels", "garden eel eels bed scenery holes bite" ) )
+		{
+			Section( "Garden eels" );
+			Action( "A bed of eels ahead", () =>
+			{
+				if ( Controller is not { } c || c.GetTree().CurrentScene is not Node3D level ) return;
+				var at = c.GlobalPosition + new Angles( 0f, c.EyeAngles.Yaw, 0f ).Forward * 4f;
+				var g = Sculpt.GroundAt( at );
+				EelBed.Make( level, at with { Y = g == float.MinValue ? Sculpt.FloorBelow( c, at + Vector3.Up, 10f ) : g }, Rng.Int( EelBed.EelsMin, EelBed.EelsMax ) );
+			} );
+			Action( "Lay this area's beds again", () => { if ( Controller?.GetTree().CurrentScene is Node3D level ) EelBed.Lay( level ); } );
+			Info( $"{EelBed.All.Count} beds, {GardenEel.All.Count} eels (from the wreck site on)" );
+		}
+
 		if ( Sec( "Enemies", "Enemy debug", "freeze enemies one-shot kills show hitboxes" ) )
 		{
 			Section( "Enemy debug" );

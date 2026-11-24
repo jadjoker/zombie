@@ -24,6 +24,8 @@ public partial class Stingray : Creature
 	public float ZapCooldown = 3.6f;
 	public const float ZapWindup = 0.55f;
 	public const float StunTime = 0.6f;     // user's number
+	public float StunSeconds = StunTime;    // the king's is longer
+	public float ZapBolts = 3f;             // bolts to the chest
 	public float DiveMin = 4.5f, DiveMax = 12f;
 	public float DiveHeight = 6.5f;         // how high over the player's floor it climbs
 	public float DiveSpeed = 13f;
@@ -31,15 +33,25 @@ public partial class Stingray : Creature
 	public float DiveCooldown = 8.5f;
 	public float DiveHitRadius = 1.25f;
 	public const float ClimbTime = 1.8f, AimTime = 0.45f;
+	public float ClimbSeconds = ClimbTime;
+	public float DiveShove = 6f;
 	public const float DiveDamageScale = 0.5f;   // user's ask: half damage while nose diving
 	public float EyeMultiplier = 2.2f;
+	/// <summary> How much bigger than a sting ray it is (King Raymond IV is a few times bigger). </summary>
+	public float Size = 1f;
+	/// <summary> King Raymond IV: a boss with three more attacks (<see cref="StingrayKing"/>). </summary>
+	protected bool King;
+	/// <summary> The lowest its middle may go over the ground. </summary>
+	float Clear => MinClear * Size;
 
 	/// <summary> Tests: zaps and dives that landed, lowest clearance over the ground seen, the deepest dive. </summary>
 	public static int ZapHits, DiveHits, Dives;
 	public static float LowestClearance = 99f;
+	public static string LowestWhen = "";
 	public static bool TrackClearance;   // tests: measure it every frame (five rays a frame)
 
-	enum Act { Prowl, Zap, Climb, Aim, Dive, Recover }
+	// The king's own acts come after the sting ray's (sent online by number).
+	enum Act { Prowl, Zap, Climb, Aim, Dive, Recover, BombClimb, BombMark, BombRun, Burrow, Buried, Erupt, ShockRise, ShockSlam }
 	Act act = Act.Prowl;
 	TimeSince sinceAct = 99f, sinceZap = 99f, sinceDive = 99f, sinceHit = 99f, sinceGround = 99f, sincePuff;
 	bool struck, watched;
@@ -69,7 +81,8 @@ public partial class Stingray : Creature
 		SampleGround();
 		// Spawned in the air or the sand: settle onto the ground at once.
 		var y = MathF.Max( GlobalPosition.Y, groundMax + CruiseHeight );
-		GlobalPosition = GlobalPosition with { Y = MathF.Min( y, groundMax + CruiseHeight + 1.5f ) };
+		GlobalPosition = GlobalPosition with { Y = MathF.Min( y, groundMax + CruiseHeight + 1.5f * Size ) };
+		if ( King ) KingSetup();
 	}
 
 	/// <summary> Whether it is nose diving (half damage). </summary>
@@ -152,8 +165,35 @@ public partial class Stingray : Creature
 		SampleGround();
 		if ( !IsDead && !Frozen ) Think( dt );
 		Pose( dt );
+		KeepOut();
+		if ( King ) KingFrame( dt );
 		GoreFrame( dt );
-		if ( TrackClearance && !IsDead && !Puppet ) LowestClearance = MathF.Min( LowestClearance, Clearance );
+		if ( TrackClearance && !IsDead && !Puppet && !Underground && Clearance is var clear && clear < LowestClearance ) { LowestClearance = clear; LowestWhen = $"{act} at {(float)sinceAct:0.00} s"; }
+	}
+
+	/// <summary>
+	/// After posing: the pose (a pitch or roll spring, the dive's turn coming back) can swing a wing tip or the tail lower
+	/// than the height was worked out for, so look again with the new pose and lift it clear.
+	/// </summary>
+	void KeepOut()
+	{
+		if ( IsDead || Puppet || Underground || body is null ) return;
+		SampleGround();
+		var lift = groundMax + Clear - GlobalPosition.Y;
+		if ( lift <= 0f ) return;
+		GlobalPosition += Vector3.Up * lift;
+		body.GlobalPosition += Vector3.Up * lift;
+		ySpeed = MathF.Max( ySpeed, 0f );
+	}
+
+	/// <summary> Its nose leads the dive: the player is hit within <see cref="DiveHitRadius"/> of the line from its middle to its nose. </summary>
+	float DiveReach( Vector3 chest )
+	{
+		var p = GlobalPosition;
+		var nose = p + diveDir * HalfLength * ModelScale;
+		var seg = nose - p;
+		var t = MathX.Clamp( (chest - p).Dot( seg ) / MathF.Max( seg.LengthSquared(), 1e-4f ), 0f, 1f );
+		return chest.DistanceTo( p + seg * t );
 	}
 
 	void Think( float dt )
@@ -176,26 +216,26 @@ public partial class Stingray : Creature
 				case Act.Prowl:
 				{
 					// Sneaking: from afar it comes round behind the player, and freezes flat while they look at it.
-					watched = dist > 4f && IsWatched( prey, pos );
+					watched = !King && dist > 4f && IsWatched( prey, pos );
 					var target = feet;
-					if ( dist > 6f ) target = feet - ViewForward( prey ).Flat().SafeNormal() * 3f;
+					if ( dist > MathF.Max( 6f, ZapRange + 3f ) ) target = feet - ViewForward( prey ).Flat().SafeNormal() * ZapRange * 1.15f;
 					var to = (target - pos).Flat();
 					var way = to.SafeNormal();
 					var speed = watched ? Speed * 0.3f : Speed;
 					wish = dist > ZapRange * 0.75f ? way * speed : -dir * 0.6f;
-					Face( dist > 3f ? way : dir, 2.4f, dt );
+					Face( dist > ZapRange * 1.15f ? way : dir, 2.4f / MathF.Sqrt( Size ), dt );
 					var free = prey.Controller is { Scripted: false };
+					if ( King ) { KingChoose( prey, dist, free ); break; }
 					if ( free && dist < ZapRange && sinceZap > ZapCooldown && MathF.Abs( chest.Y - pos.Y ) < 2.6f ) Begin( Act.Zap );
-					else if ( dist > DiveMin && dist < DiveMax && sinceDive > DiveCooldown && !watched
-						&& !Trace.Ray( this, pos + Vector3.Up * 0.3f, pos + Vector3.Up * (DiveHeight + 1f), Layers.World ).Hit ) Begin( Act.Climb );
+					else if ( dist > DiveMin && dist < DiveMax && sinceDive > DiveCooldown && !watched && SkyClear( pos, DiveHeight + 1f ) ) Begin( Act.Climb );
 					break;
 				}
 				case Act.Zap:
 				{
 					// It rises at the player's chest and rears, charging; then the zap.
 					Face( dir, 5f, dt );
-					wantY = MathF.Max( wantY, chest.Y - 0.45f );
-					wish = dist > 1.6f ? dir * 2.4f : -dir * 0.8f;
+					wantY = MathF.Max( wantY, chest.Y - 0.45f * Size );
+					wish = dist > ZapRange * 0.6f ? dir * 2.4f : -dir * 0.8f;
 					if ( !struck && a >= ZapWindup ) { struck = true; Zap( prey, chest ); }
 					if ( a > ZapWindup + 0.6f ) Begin( Act.Recover );
 					break;
@@ -206,10 +246,10 @@ public partial class Stingray : Creature
 					Face( dir, 3f, dt );
 					var floor = Ground( feet, false );
 					wantY = MathF.Max( floor, groundMax ) + DiveHeight;
-					wish = dist < 4.5f ? -dir * 2.6f : dist > 7f ? dir * 2.6f : Vector3.Zero;
+					wish = dist < DiveMin ? -dir * 2.6f : dist > DiveMin + 2.5f * Size ? dir * 2.6f : Vector3.Zero;
 					var high = pos.Y > wantY - 0.5f;
-					var roof = Trace.Ray( this, pos, pos + Vector3.Up * 1.2f, Layers.World ).Hit;
-					if ( (high && a > 0.7f) || a > ClimbTime || roof ) Begin( Act.Aim );
+					var roof = Trace.Ray( this, pos, pos + Vector3.Up * 1.2f * Size, Layers.World ).Hit;
+					if ( (high && a > 0.7f) || a > ClimbSeconds || roof ) Begin( Act.Aim );
 					break;
 				}
 				case Act.Aim:
@@ -232,11 +272,12 @@ public partial class Stingray : Creature
 						if ( angle > 0.001f ) diveDir = diveDir.Slerp( want, MathF.Min( 1f, 1.1f * dt / angle ) ).Normalized();
 					}
 					velocity = diveDir * DiveSpeed;
-					if ( !struck && pos.DistanceTo( chest ) < DiveHitRadius ) { struck = true; DiveHit( prey, chest ); }
+					if ( !struck && DiveReach( chest ) < DiveHitRadius ) { struck = true; DiveHit( prey, chest ); }
 					var next = pos + velocity * dt;
-					var wall = Trace.Sphere( this, 0.3f, pos, next + diveDir * 0.4f, Layers.World );
+					var wall = Trace.Sphere( this, 0.3f * Size, pos, next + diveDir * 0.4f * Size, Layers.World );
 					var floorNext = Ground( next, true );
-					if ( next.Y < floorNext + 0.75f || wall.Hit || a > 1.8f ) { PullOut( floorNext ); break; }
+					// Out before any of it (the nose, a wing tip as it spins: groundMax is worked out from its pose) reaches the ground.
+					if ( next.Y < MathF.Max( floorNext + 0.75f * Size, groundMax + Clear ) || wall.Hit || a > 1.8f ) { PullOut( floorNext ); break; }
 					GlobalPosition = Sculpt.InBounds( next );
 					return;
 				}
@@ -247,6 +288,10 @@ public partial class Stingray : Creature
 					if ( a > 1f ) End();
 					break;
 				}
+				default:
+					// The king's own attacks; true when it placed itself this frame.
+					if ( KingThink( prey, feet, chest, dist, dir, a, dt, ref wish, ref wantY ) ) return;
+					break;
 			}
 		}
 
@@ -256,43 +301,48 @@ public partial class Stingray : Creature
 	/// <summary> Moves it: across on its velocity (walls slid along), up and down on a spring to the height it wants, never into the ground. </summary>
 	void Move( Vector3 wish, float wantY, float dt )
 	{
-		var rate = act == Act.Recover ? 1.2f : act == Act.Climb ? 2.5f : 3f;
+		var rate = act == Act.Recover ? 1.2f : act is Act.Climb or Act.BombClimb ? 2.5f : 3f;
 		var flatV = velocity.Flat().Lerp( wish.Flat(), 1f - MathF.Exp( -rate * dt ) );
 		// Keep clear of other rays and of the player's body (except in its attacks).
 		var p = GlobalPosition;
-		foreach ( var other in All )
+		void KeepOff( Stingray other )
 		{
-			if ( other == this || other.IsDead ) continue;
+			if ( other == this || other.IsDead ) return;
 			var away = (p - other.GlobalPosition).Flat();
 			var d = away.Length();
-			if ( d < 2.4f && d > 0.01f ) flatV += away / d * (2.4f - d) * 3f * dt;
+			var room = 1.2f * (Size + other.Size);
+			if ( d < room && d > 0.01f ) flatV += away / d * (room - d) * 3f * dt;
 		}
+		foreach ( var other in All ) KeepOff( other );
+		foreach ( var other in KingRaymond.All ) KeepOff( other );
 		// Walls ahead: feel with a small sphere at body height and slide along (the floor itself is the height's job).
 		if ( flatV.LengthSquared() > 0.01f )
 		{
-			var from = p + Vector3.Up * 0.12f;
-			var hit = Trace.Sphere( this, 0.28f, from, from + flatV.SafeNormal() * 1.1f, Layers.World );
+			var from = p + Vector3.Up * 0.12f * Size;
+			var hit = Trace.Sphere( this, 0.28f * Size, from, from + flatV.SafeNormal() * 1.1f * Size, Layers.World );
 			if ( hit.Hit && MathF.Abs( hit.Normal.Y ) < 0.6f ) flatV = flatV.Slide( hit.Normal.Flat().SafeNormal() );
 		}
 		velocity = new Vector3( flatV.X, 0f, flatV.Z );
 		var next = p + velocity * dt;
 		// Up and down: a soft spring to the height it wants.
-		var k = act == Act.Climb ? 2.2f : act == Act.Zap ? 3.4f : 2.4f;
+		var climbing = act is Act.Climb or Act.BombClimb;
+		var k = climbing ? 2.2f : act is Act.Zap or Act.ShockRise ? 3.4f : 2.4f;
+		var scale = MathF.Sqrt( Size );
 		ySpeed = MathX.Lerp( ySpeed, (wantY - p.Y) * k, 1f - MathF.Exp( -6f * dt ) );
-		ySpeed = MathX.Clamp( ySpeed, -4f, act == Act.Climb ? 5.5f : 3f );
+		ySpeed = MathX.Clamp( ySpeed, -4f * scale, (climbing ? 5.5f : 3f) * scale );
 		next.Y = p.Y + ySpeed * dt;
 		// Never into the ground.
 		var floor = MathF.Max( groundMax, Ground( next, false ) );
-		if ( next.Y < floor + MinClear ) { next.Y = floor + MinClear; ySpeed = MathF.Max( ySpeed, 0f ); }
+		if ( next.Y < floor + Clear ) { next.Y = floor + Clear; ySpeed = MathF.Max( ySpeed, 0f ); }
 		GlobalPosition = Sculpt.InBounds( next );
 		// Gliding low and fast it stirs up a little sand.
-		if ( act == Act.Prowl && !watched && sincePuff > 0.18f && velocity.Length() > 1.5f && next.Y - floor < CruiseHeight + 0.15f )
+		if ( act == Act.Prowl && !watched && sincePuff > 0.18f && velocity.Length() > 1.5f && next.Y - floor < CruiseHeight + 0.15f * Size )
 		{
 			sincePuff = 0f;
 			var side = Rng.Float() < 0.5f ? -1f : 1f;
 			var at = body.GlobalTransform * new Vector3( side * HalfSpan * 0.8f, -0.05f, 0.25f );
 			at.Y = floor + 0.05f;
-			GpuFx.SandPuff( at, (Vector3.Up * 0.3f + Rng.InSphere( 0.3f ).Flat()) * 0.6f, new Color( 0.62f, 0.58f, 0.5f, 0.55f ), Rng.Float( 3f, 6f ), Rng.Float( 0.6f, 1.1f ) );
+			GpuFx.SandPuff( at, (Vector3.Up * 0.3f + Rng.InSphere( 0.3f ).Flat()) * 0.6f * Size, new Color( 0.62f, 0.58f, 0.5f, 0.55f ), Rng.Float( 3f, 6f ) * Size, Rng.Float( 0.6f, 1.1f ) );
 		}
 	}
 
@@ -301,16 +351,17 @@ public partial class Stingray : Creature
 	{
 		Begin( Act.Recover );
 		var p = GlobalPosition;
-		p.Y = MathF.Max( MathF.Max( p.Y, floor + MinClear + 0.1f ), groundMax + MinClear );
+		p.Y = MathF.Max( MathF.Max( p.Y, floor + Clear + 0.1f * Size ), groundMax + Clear );
 		GlobalPosition = Sculpt.InBounds( p );
 		velocity = diveDir.Flat().SafeNormal() * DiveSpeed * 0.35f;
 		ySpeed = 0f;
-		for ( var i = 0; i < 14; i++ )
+		for ( var i = 0; i < 14 * Size; i++ )
 		{
 			var dir = (Rng.OnSphere().Flat() + Vector3.Up * 0.5f).SafeNormal();
-			GpuFx.SandPuff( p with { Y = floor + 0.08f }, dir * Rng.Float( 0.6f, 1.8f ), new Color( 0.62f, 0.58f, 0.5f, 0.7f ), Rng.Float( 5f, 10f ), Rng.Float( 0.7f, 1.3f ) );
+			GpuFx.SandPuff( p with { Y = floor + 0.08f } + Rng.InSphere( 0.5f * (Size - 1f) ).Flat(), dir * Rng.Float( 0.6f, 1.8f ) * Size, new Color( 0.62f, 0.58f, 0.5f, 0.7f ), Rng.Float( 5f, 10f ) * Size, Rng.Float( 0.7f, 1.3f ) );
 		}
-		Sfx.Play( "land", p, 0.8f, 0.7f );
+		Sfx.Play( "land", p, 0.8f, 0.7f / MathF.Sqrt( Size ) );
+		if ( King ) DiveShock( p with { Y = floor } );
 	}
 
 	static Vector3 ViewForward( PlayerSurvivor p ) => p.Controller is { } c ? new Angles( c.EyeAngles.Pitch, c.EyeAngles.Yaw, 0f ).Forward : Vector3.Forward;
@@ -334,12 +385,12 @@ public partial class Stingray : Creature
 		Sfx.Play( "ray_zap", head, 1f, Rng.Float( 0.9f, 1.05f ) );
 		// Crackles off the wing tips either way.
 		foreach ( var x in new[] { -1f, 1f } )
-			RayBolt.Arc( scene, body.GlobalTransform * new Vector3( x * HalfSpan * 0.9f, 0f, 0.15f ), head + Rng.InSphere( 0.3f ), 0.14f, 0.8f, light: false );
+			RayBolt.Arc( scene, body.GlobalTransform * new Vector3( x * HalfSpan * 0.9f, 0f, 0.15f ), head + Rng.InSphere( 0.3f * Size ), 0.14f, 0.8f * MathF.Sqrt( Size ), light: false );
 		if ( !near ) return;
-		for ( var i = 0; i < 3; i++ ) RayBolt.Arc( scene, head, chest + Rng.InSphere( 0.25f ), 0.16f, 1f, light: i == 0 );
+		for ( var i = 0; i < ZapBolts; i++ ) RayBolt.Arc( scene, head, chest + Rng.InSphere( 0.25f ), 0.16f, Size > 1f ? 1.6f : 1f, light: i == 0 );
 		ZapHits++;
 		if ( prey.Health is { } h ) h.OnDamage( new DamageInfo { Damage = ZapDamage, Attacker = this, Position = chest, Origin = head } );
-		if ( prey.Controller is { } c ) Electrocuted.Apply( c, StunTime, hold: true );
+		if ( prey.Controller is { } c ) Electrocuted.Apply( c, StunSeconds, hold: true );
 	}
 
 	void DiveHit( PlayerSurvivor prey, Vector3 chest )
@@ -348,7 +399,7 @@ public partial class Stingray : Creature
 		if ( prey.Health is { } h ) h.OnDamage( new DamageInfo { Damage = DiveDamage, Attacker = this, Position = chest, Origin = GlobalPosition } );
 		if ( prey.Controller is { } c )
 		{
-			if ( !c.Scripted ) c.Velocity += diveDir.Flat().SafeNormal() * 6f + Vector3.Up * 2f;
+			if ( !c.Scripted ) { c.Jump( Vector3.Up * DiveShove / 3f ); c.Velocity += diveDir.Flat().SafeNormal() * DiveShove; }
 			c.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.8f );
 		}
 		Sfx.Play( "crab_snap", chest, 1f, 0.6f );
@@ -362,10 +413,11 @@ public partial class Stingray : Creature
 		struck = false;
 		switch ( next )
 		{
-			case Act.Zap: sinceZap = 0f; Sfx.Play( "ray_charge", GlobalPosition, 0.9f, Rng.Float( 0.95f, 1.1f ) ); break;
-			case Act.Climb: sinceDive = 0f; Sfx.Play( "swim", GlobalPosition, 0.8f, 0.7f ); break;
-			case Act.Aim: Sfx.Play( "whirlpool", GlobalPosition, 0.7f, 1.4f ); break;
-			case Act.Dive: Dives++; Sfx.Play( "dive_whoosh", GlobalPosition, 1f, 1.2f ); break;
+			case Act.Zap: sinceZap = 0f; Sfx.Play( "ray_charge", GlobalPosition, 0.9f, Rng.Float( 0.95f, 1.1f ) / MathF.Sqrt( Size ) ); if ( King ) Say( "ROYAL ZAP!" ); break;
+			case Act.Climb: sinceDive = 0f; Sfx.Play( "swim", GlobalPosition, 0.8f, 0.7f ); if ( King ) Say( "ROYAL DIVE!" ); break;
+			case Act.Aim: Sfx.Play( "whirlpool", GlobalPosition, 0.7f, 1.4f / MathF.Sqrt( Size ) ); break;
+			case Act.Dive: Dives++; Sfx.Play( "dive_whoosh", GlobalPosition, 1f, 1.2f / MathF.Sqrt( Size ) ); break;
+			default: KingBegin( next ); break;
 		}
 	}
 
@@ -375,7 +427,10 @@ public partial class Stingray : Creature
 	public void ForceZap() { sinceZap = 99f; Begin( Act.Zap ); }
 	public void ForceDive() { sinceDive = 99f; Begin( Act.Climb ); }
 	/// <summary> Tests: back to gliding, its attacks just used. </summary>
-	public void Calm() { End(); sinceDive = 0f; sinceZap = 0f; }
+	public void Calm() { End(); sinceDive = 0f; sinceZap = 0f; KingCalm(); }
+
+	/// <summary> Nothing over it this high (room to climb). </summary>
+	bool SkyClear( Vector3 at, float height ) => !Trace.Ray( this, at + Vector3.Up * 0.3f * Size, at + Vector3.Up * height, Layers.World ).Hit;
 	public string ActName => act.ToString();
 
 	// ---- Online: a joiner's copy draws the host's attacks ----
@@ -384,6 +439,7 @@ public partial class Stingray : Creature
 	{
 		s.Add( (int)act ); s.Add( (float)sinceAct ); s.Add( struck ? 1f : 0f );
 		s.Add( diveDir.X ); s.Add( diveDir.Y ); s.Add( diveDir.Z );
+		if ( King ) KingWrite( s );
 	}
 
 	public override void NetRead( ReadOnlySpan<float> s )
@@ -397,6 +453,7 @@ public partial class Stingray : Creature
 		if ( act == Act.Zap && nowStruck && !struck ) PuppetZap();
 		struck = nowStruck;
 		diveDir = new Vector3( s[3], s[4], s[5] );
+		if ( King && s.Length > 6 ) KingRead( s[6..] );
 	}
 
 	/// <summary> A joiner's copy: the host's zap went off. Bolts to whoever is close, and on this player's own robot the crackle (the host holds it). </summary>
@@ -409,8 +466,8 @@ public partial class Stingray : Creature
 			if ( !p.IsAlive || p.Controller is not { } c ) continue;
 			var chest = c.GlobalPosition + Vector3.Up * 1.1f;
 			if ( head.DistanceTo( chest ) > ZapReach + 0.5f ) continue;
-			RayBolt.Arc( GetTree().CurrentScene, head, chest, 0.16f );
-			if ( !c.IsRemote ) Electrocuted.Apply( c, StunTime, hold: false );
+			RayBolt.Arc( GetTree().CurrentScene, head, chest, 0.16f, Size > 1f ? 1.6f : 1f );
+			if ( !c.IsRemote ) Electrocuted.Apply( c, StunSeconds, hold: false );
 		}
 	}
 
@@ -439,6 +496,7 @@ public partial class Stingray : Creature
 		RaiseKilled();
 		if ( zapLight is not null ) zapLight.Visible = false;
 		if ( vortex is not null ) vortex.Visible = false;
+		if ( King ) KingDied();
 		FallApart( lastShotDirection );
 		QueueFree();
 	}

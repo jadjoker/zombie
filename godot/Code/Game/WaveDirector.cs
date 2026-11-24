@@ -210,7 +210,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -239,6 +239,11 @@ public partial class WaveDirector : Node3D
 	public int MaxFish = 3;
 	public float FishBaseHealth = 110f;
 	public float FishHealthPerWave = 14f;
+
+	/// <summary> The boss wave King Raymond IV (the sting ray king, user's design) takes from MC61: the middle of the wreck site. </summary>
+	public int KingRaymondWave = 15;
+	/// <summary> Between MC-51 on that wave (5000) and Davey (11000). </summary>
+	public float KingRaymondHealth = 8000f;
 
 	/// <summary> The boss wave Davey (the alien ghost pirate) takes from MC61: the last on the wreck site. </summary>
 	public int DaveyWave = 20;
@@ -310,6 +315,14 @@ public partial class WaveDirector : Node3D
 		[EnemyKind.Stingray] = ( d, at, health ) =>
 		{
 			var r = Stingray.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 0.5f, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
+			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return r;
+		},
+		[EnemyKind.KingRaymond] = ( d, at, health ) =>
+		{
+			var r = KingRaymond.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.2f, health );
 			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
 			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
 			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
@@ -387,6 +400,9 @@ public partial class WaveDirector : Node3D
 
 	public int NextBossWave => BossEvery > 0 ? (Wave / BossEvery + 1) * BossEvery : 0;
 
+	/// <summary> Who comes on this boss wave: King Raymond IV on 15, Davey on 20, Poseidon on 30, MC-51 on the rest. </summary>
+	public EnemyKind BossKind => Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : Wave == KingRaymondWave ? EnemyKind.KingRaymond : EnemyKind.Boss;
+
 	public float DangerProgress => DangerBy == DangerSource.Time
 		? (SurvivalSeconds % MathF.Max( 1f, SecondsPerLevel )) / MathF.Max( 1f, SecondsPerLevel )
 		: MathX.Clamp( ((FarthestDistance % MathF.Max( 1f, DistancePerLevel )) / MathF.Max( 1f, DistancePerLevel ) + ((CellsExplored - 1) % Math.Max( 1, CellsPerLevel )) / (float)Math.Max( 1, CellsPerLevel )) * 0.5f, 0f, 1f );
@@ -443,8 +459,8 @@ public partial class WaveDirector : Node3D
 		if ( bossPending )
 		{
 			if ( !SpawnBossWaves ) bossPending = false;
-			// Wave 20 is Davey's and wave 30 Poseidon's instead of MC61's.
-			else if ( !SpawningPaused && Spawn( Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : EnemyKind.Boss ) ) bossPending = false;
+			// Wave 15 is King Raymond's, wave 20 Davey's and wave 30 Poseidon's instead of MC61's.
+			else if ( !SpawningPaused && Spawn( BossKind ) ) bossPending = false;
 		}
 
 		if ( krakenPending && !SpawningPaused && !DaveyJones.InLocker )
@@ -633,6 +649,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Stingray => StingrayBaseHealth + StingrayHealthPerWave * (Wave - 1),
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
+			EnemyKind.KingRaymond => KingRaymondHealth,
 			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
 			_ => 100f,
 		};
@@ -757,7 +774,7 @@ public partial class WaveDirector : Node3D
 	{
 		var n = 0;
 		foreach ( var e in alive )
-			if ( e is Stingray r && IsInstanceValid( r ) && !r.IsDead ) n++;
+			if ( e is Stingray r and not KingRaymond && IsInstanceValid( r ) && !r.IsDead ) n++;
 		return n;
 	}
 

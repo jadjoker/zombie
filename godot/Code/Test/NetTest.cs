@@ -324,28 +324,37 @@ public partial class AutoTest
 			GD.Print( $"[autotest] net: host Davey cannons {DaveyCannon.All.Count}" );
 			await Wait( 2f );
 			if ( IsInstanceValid( davey ) ) davey.QueueFree();
+			// King Raymond IV's shock rings.
+			var king = KingRaymond.Spawn( scene, at + new Vector3( 10f, 1f, 0f ), 8000f );
+			await Wait( 2f );
+			king.ForceAttack( "Shock rings" );
+			await Wait( 4f );
+			GD.Print( $"[autotest] net: host King Raymond rings sent {Stingray.RingsSent}" );
+			if ( IsInstanceValid( king ) ) king.QueueFree();
 			DevFlags.FreezeEnemies = true;
 			await Wait( 1f );
 		}
 		else
 		{
 			player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
-			bool hook = false, beam = false, slam = false, cannons = false;
+			bool hook = false, beam = false, slam = false, cannons = false, rings = false;
 			var tridents = Poseidon.PuppetTridents;
-			for ( var t = 0f; t < 70f && !(hook && beam && slam && cannons && Poseidon.PuppetTridents > tridents); t += 0.05f )
+			for ( var t = 0f; t < 90f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents); t += 0.05f )
 			{
 				await Wait( 0.05f );
 				hook |= Angler.All.Any( a => a.Puppet && a.HookShown );
 				beam |= MC61.All.Any( m => m.Puppet && m.BeamShown );
 				slam |= Kraken.All.Any( k => k.Puppet && k.Attacking is Kraken.Attack.Raise or Kraken.Attack.Slam );
 				cannons |= DaveyCannon.All.Count > 0;
+				rings |= ShockRing.All.Count > 0 && KingRaymond.All.Any( k => k.Puppet );
 			}
-			GD.Print( $"[autotest] net: shown here: angler hook {hook}, MC-51 beam {beam}, Kraken slam {slam}, Poseidon tridents {Poseidon.PuppetTridents - tridents}, Davey cannons {cannons}" );
+			GD.Print( $"[autotest] net: shown here: angler hook {hook}, MC-51 beam {beam}, Kraken slam {slam}, Poseidon tridents {Poseidon.PuppetTridents - tridents}, Davey cannons {cannons}, King Raymond rings {rings}" );
 			Check( hook, "the host's angler hook never showed on the joiner" );
 			Check( beam, "the host's MC-51 beam never showed on the joiner" );
 			Check( slam, "the host's Kraken slam never showed on the joiner" );
 			Check( Poseidon.PuppetTridents > tridents, "the host's Poseidon trident never showed on the joiner" );
 			Check( cannons, "the host's Davey cannons never showed on the joiner" );
+			Check( rings, "the host's King Raymond shock rings never showed on the joiner" );
 		}
 	}
 

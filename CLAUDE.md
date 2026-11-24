@@ -440,6 +440,19 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   keeps clear of the highest ground under its nose, wing tips, tail and the spot ahead (rays plus `Sculpt.GroundAt`, the higher),
   it tilts to the slope and is never let under `MinClear`; walls are felt with a sphere. Sounds `ray_zap`, `ray_charge`. Dev menu:
   Enemies, Spawn an enemy, Sting ray. Test: `--stingray` (checks the lowest clearance over the hills; shots need a window).
+- King Raymond IV (`Creatures/StingrayKing.cs`, `KingRaymond : Stingray`, `EnemyKind.KingRaymond`, user's design): the wave 15 boss
+  (`WaveDirector.KingRaymondWave`, takes MC-51's place; `BossKind` picks each boss wave's boss; health `KingRaymondHealth` 8000), the
+  sting ray at `KingSize` (3) times with a jewelled gold crown like Poseidon's (part 7, rings when shot, comes off on death). The
+  sting ray's code takes `Size` (heights, reaches, walls) and `King`; the king's acts follow the ray's in `Act`. Five attacks, his
+  move names on the HUD in gold (`Line`) and "KING RAYMOND" with a carved "IV" on the boss bar (`HudOverlays.RomanNumeral`): the zap
+  (stuns `StunSeconds` 1 s), the nose dive (half damage, a shockwave where it lands, `DiveShock`), the carpet bomb (climbs
+  `BombHeight`, marks on the sand follow the player then lock `BombLockBefore` before the run, like the Kraken's strike lines; a
+  `RayBomb` per mark), the sand ambush (`Burrow`, `Buried`: only the crown and eyes over the sand, a glowing spot `EruptCue` before
+  he bursts up and launches the player with `PlayerController.Jump`), and the shock rings (warning rings, then `RingCount`
+  `ShockRing`s across the ground; a player in the air clears them). Cues and rings follow the ground (`GroundRing`). Every copy
+  draws the cues, bombs and rings from the synced state (`KingFrame`); only the host's do damage. The dive pulls out by the pose's
+  own ground need and `KeepOut` lifts the body after posing, so no part goes into the ground. Dev menu: Enemies, Spawn an enemy,
+  King Raymond IV; Enemies, Kraken (the boss attacks); World, Waves, King Raymond wave. Test: `--kingray` (shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

@@ -29,11 +29,13 @@ public partial class AutoTest
 		Stingray.TrackClearance = true;
 		var ray = Stingray.Spawn( GetTree().CurrentScene, open + ahead * 5f + Vector3.Up * 2f, 2000f );
 		ray.GlobalBasis = Shapes.LookAt( -ahead );
-		await Wait( 2.2f );
+		await Wait( 0.1f );
+		ray.Calm();   // gliding, not part way into an attack (a zap rears it up)
+		await Wait( 2.1f );
 		DevFlags.FreezeEnemies = true;
 		await Wait( 0.3f );
 		var settled = ray.GlobalPosition.Y - ray.GroundUnder;
-		GD.Print( $"[autotest] stingray: settled {settled:0.00} m over the ground" );
+		GD.Print( $"[autotest] stingray: settled {settled:0.00} m over the ground ({ray.ActName}, clearance {ray.Clearance:0.00} m)" );
 		Check( settled > 0.2f && settled < 0.7f, $"the sting ray did not settle low over the ground ({settled:0.00} m)" );
 
 		if ( shots is not null )

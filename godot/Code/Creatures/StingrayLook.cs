@@ -13,7 +13,8 @@ public partial class Stingray
 	public const float HalfLength = 0.62f;   // nose to the back of the disc, half of it
 	public const float HalfSpan = 0.95f;     // wing tip to the middle
 	public const float Sweep = 0.2f;         // how far back the wing tips are swept
-	public const float ModelScale = 1.15f;   // the whole ray is drawn this much bigger
+	public const float BaseScale = 1.15f;    // the whole ray is drawn this much bigger
+	public float ModelScale => BaseScale * Size;
 
 	static readonly Color GooColor = new( 0.3f, 0.95f, 0.72f );
 	static readonly Color AlienGreen = new( 0.3f, 1f, 0.45f );
@@ -334,9 +335,10 @@ void fragment() {
 		Part( 5, "Stingray Wing L", new Vector3( -0.55f, 0f, 0.12f ), 0.3f );
 		Part( 6, "Stingray Wing R", new Vector3( 0.55f, 0f, 0.12f ), 0.3f );
 
-		zapLight = new OmniLight3D { Name = "Zap Light", LightColor = new Color( 0.45f, 1f, 0.9f ), LightEnergy = 0f, OmniRange = 4.5f, ShadowEnabled = false, Visible = false };
+		zapLight = new OmniLight3D { Name = "Zap Light", LightColor = new Color( 0.45f, 1f, 0.9f ), LightEnergy = 0f, OmniRange = 4.5f * Size, ShadowEnabled = false, Visible = false };
 		body.AddChild( zapLight );
 		BuildVortex();
+		if ( King ) BuildCrown();
 	}
 
 	/// <summary> The whirlpool round it as it dives: a cone of spiralling light trailing behind it (top level, aimed each frame). </summary>
@@ -347,7 +349,7 @@ void fragment() {
 		{
 			Name = "Dive Whirlpool",
 			TopLevel = true,
-			Mesh = new CylinderMesh { TopRadius = 0.18f, BottomRadius = 1.35f, Height = 3f, RadialSegments = 24, Rings = 6, CapTop = false, CapBottom = false },
+			Mesh = new CylinderMesh { TopRadius = 0.18f * Size, BottomRadius = 1.35f * Size, Height = 3f * Size, RadialSegments = 24, Rings = 6, CapTop = false, CapBottom = false },
 			MaterialOverride = vortexPaint,
 			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
 			Visible = false,
@@ -437,6 +439,57 @@ void fragment() {
 			case Act.Recover:
 				undulate = 1.6f;
 				break;
+			// The king's own.
+			case Act.BombClimb:
+				pitchWant = 0.5f;
+				strokeAmp = 1f;
+				strokeRate = 2f;
+				undulate = 0.4f;
+				alert = 0.8f;
+				break;
+			case Act.BombMark:
+				strokeAmp = 0.45f;
+				strokeRate = 1.6f;
+				undulate = 0.6f;
+				alert = 1f;
+				break;
+			case Act.BombRun:
+				pitchWant = -0.08f;
+				undulate = 1.5f;
+				alert = 1f;
+				chargeWant = 0.3f;
+				break;
+			case Act.Burrow:
+				undulate = 2.2f;   // wriggling down into the sand
+				break;
+			case Act.Buried:
+				undulate = 0.15f;
+				alert = 0.35f;
+				break;
+			case Act.Erupt when a < EruptCue:
+				undulate = 0.15f;
+				alert = 0.7f;
+				break;
+			case Act.Erupt:
+				var burst = 1f - SmoothKit.Ease( MathX.Clamp( (a - EruptCue) / 0.9f, 0f, 1f ) );
+				pitchWant = groundPitch * (1f - burst) + 0.9f * burst;
+				strokeAmp = burst;
+				strokeRate = 3.4f;
+				chargeWant = burst;
+				alert = 1f;
+				break;
+			case Act.ShockRise:
+				chargeWant = 0.35f + 0.65f * MathX.Clamp( a / ShockRiseTime, 0f, 1f );
+				strokeAmp = 0.6f;
+				strokeRate = 2.6f;
+				undulate = 0.5f;
+				alert = 1f;
+				break;
+			case Act.ShockSlam:
+				chargeWant = MathX.Clamp( 1f - a / ShockSlamTime, 0f, 1f );
+				undulate = 0.3f;
+				alert = 1f;
+				break;
 		}
 		SmoothKit.Spring( ref pitch, ref pitchVel, MathX.Clamp( pitchWant, -0.6f, 1f ), act == Act.Zap ? 2.2f : 1.2f, 0.8f, dt );
 		SmoothKit.Spring( ref roll, ref rollVel, MathX.Clamp( rollWant, -0.6f, 0.6f ), 1.1f, 0.8f, dt );
@@ -502,7 +555,7 @@ void fragment() {
 			vortexPaint.SetShaderParameter( "spin", (float)Clock.Now * 3.2f );
 			var back = -diveDir.Normalized();
 			// The cylinder's +Y (its narrow end) points back along the path; the wide end rings the ray.
-			vortex.GlobalTransform = new Transform3D( new Basis( new Quaternion( Vector3.Up, back ) ), GlobalPosition + back * 1.35f );
+			vortex.GlobalTransform = new Transform3D( new Basis( new Quaternion( Vector3.Up, back ) ), GlobalPosition + back * 1.35f * Size );
 		}
 	}
 

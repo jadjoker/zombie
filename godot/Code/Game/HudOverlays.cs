@@ -162,7 +162,7 @@ public partial class HudOverlays : Control
 
 		var b = Boss;
 		boss.Visible = b is not null;
-		// The boss's line or move name: MC-51's in pink, Davey's in green.
+		// The boss's line or move name: MC-51's in pink, Davey's in green, King Raymond's in gold.
 		string line = null;
 		var lineAge = 99f;
 		var lineColour = new Color( "ff7ae3" );
@@ -173,6 +173,13 @@ public partial class HudOverlays : Control
 				line = dj.Line;
 				lineAge = dj.TimeSinceLine;
 				lineColour = new Color( "5cff6e" );
+			}
+		foreach ( var king in KingRaymond.All )
+			if ( IsInstanceValid( king ) && !string.IsNullOrEmpty( king.Line ) && king.TimeSinceLine < lineAge )
+			{
+				line = king.Line;
+				lineAge = king.TimeSinceLine;
+				lineColour = KingGold;
 			}
 		if ( line is not null && lineAge < 2.4f )
 		{
@@ -292,6 +299,8 @@ public partial class HudOverlays : Control
 		// Boss health bars: a suit frame across the top with TARGET and the name, the percentage, and a row of pills.
 		var b = Boss;
 		if ( b is not null ) BossBar( 0f, "MC-51", b.HealthFraction, UiStyle.Pink, UiStyle.PinkTop );
+		else if ( KingRaymond.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } king )
+			BossBar( 0f, "KING RAYMOND", king.Health.Fraction, KingGold, new Color( "fff1b8" ), numeral: "IV" );
 		else if ( DaveyJones.All.FirstOrDefault( g => !g.IsDead ) is { Health: not null } davey )
 			BossBar( 0f, "DAVEY PHONE HOME", davey.HealthFraction, new Color( "5cff6e" ), new Color( "d4ffd0" ) );
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
@@ -361,17 +370,40 @@ public partial class HudOverlays : Control
 	}
 
 	/// <summary> A boss bar across the top: the theme's word and the name, the percentage, a bar (and a thinner second one, the Kraken's dome). </summary>
-	void BossBar( float down, string name, float fraction, Color fill, Color top, float second = -1f )
+	void BossBar( float down, string name, float fraction, Color fill, Color top, float second = -1f, string numeral = null )
 	{
 		var width = MathF.Min( Size.X * 0.4f * Sc, 760f * Sc );
 		var rect = new Rect2( (Size.X - width) * 0.5f, (136f + down) * Sc, width, (second >= 0f ? 70f : 58f) * Sc );
 		UiStyle.DrawFrame( this, rect, 1f, fill, Sc );
 		var text = Theme.LightPanel ? Theme.PanelReadout : top;
-		UiStyle.DrawTag( this, rect.Position + new Vector2( 18f, 24f ) * Sc, $"{Theme.BossWord}{name}", S( 15 ), text, onPanel: true );
+		var title = $"{Theme.BossWord}{name}";
+		var at = rect.Position + new Vector2( 18f, 24f ) * Sc;
+		UiStyle.DrawTag( this, at, title, S( 15 ), text, onPanel: true );
+		if ( numeral is not null ) RomanNumeral( at + new Vector2( UiStyle.TagWidth( title + " ", S( 15 ) ), 0f ), numeral, S( 15 ), fill );
 		UiStyle.DrawTag( this, rect.Position + new Vector2( 0f, 24f * Sc ), $"{MathF.Ceiling( fraction * 100f ):0}%", S( 15 ), text, HorizontalAlignment.Right, width - 18f * Sc, true, onPanel: true );
 		UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 34f ) * Sc, new Vector2( width - 36f * Sc, 12f * Sc ) ), 24, fraction, fill, top, 1f, -1f, 3f );
 		if ( second >= 0f )
 			UiStyle.DrawPills( this, new Rect2( rect.Position + new Vector2( 18f, 52f ) * Sc, new Vector2( width - 36f * Sc, 6f * Sc ) ), 24, second, new Color( "bfeaff" ), Colors.White, 1f, -1f, 3f );
+	}
+
+	static readonly Color KingGold = new( "ffc935" );
+
+	/// <summary>
+	/// A Roman numeral as carved on a monument (King Raymond's "IV"): gold capitals in the display font with a bar
+	/// along the top and the bottom.
+	/// </summary>
+	void RomanNumeral( Vector2 baseline, string numeral, int size, Color gold )
+	{
+		var font = UiStyle.Display;
+		var big = (int)(size * 1.25f);
+		var w = font.GetStringSize( numeral, HorizontalAlignment.Left, -1f, big ).X;
+		var ascent = font.GetAscent( big ) * 0.72f;
+		var pad = size * 0.18f;
+		DrawString( font, baseline + new Vector2( 1.5f, 1.5f ), numeral, HorizontalAlignment.Left, -1f, big, new Color( 0f, 0f, 0f, 0.6f ) );
+		DrawString( font, baseline, numeral, HorizontalAlignment.Left, -1f, big, gold );
+		var thick = MathF.Max( 1.5f, size * 0.12f );
+		DrawRect( new Rect2( baseline + new Vector2( -pad, -ascent - pad - thick ), new Vector2( w + pad * 2f, thick ) ), gold );
+		DrawRect( new Rect2( baseline + new Vector2( -pad, pad * 0.6f ), new Vector2( w + pad * 2f, thick ) ), gold );
 	}
 
 	/// <summary> A soft ink blot: solid to 45% of its corner distance, gone by 72% (the s&box radial gradient). </summary>

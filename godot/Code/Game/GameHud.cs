@@ -178,7 +178,7 @@ public partial class GameHud : Control
 			bannerBig.FontColour( floatStart ? new Color( "ffb020" ) : isStart ? new Color( "ff4a3a" ) : new Color( "c8ff7a" ) );
 			bannerSmall.Show( d.OpenWorld ? (d.DangerBy == WaveDirector.DangerSource.Time ? "The longer you stay, the worse it gets" : "The ground ahead is getting worse")
 				: floatStart ? $"BALLAST ERROR: the suit cannot grip the ground. Jump to rise, crouch to sink"
-				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? "MC-51 has entered the arena" : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath" );
+				: isStart ? (d.KrakenWave ? "The sea bed is shaking. THE KRAKEN is coming up" : d.BossWave ? BossArrives( d.BossKind ) : "They're coming") : d.MalfunctionJustEnded ? "Ballast restored. Boots gripping again" : "Catch your breath" );
 		}
 
 		var k = d?.Kills ?? 0;
@@ -643,4 +643,13 @@ public partial class GameHud : Control
 		DrawStyleBox( box, r );
 		DrawString( UiStyle.Display, new Vector2( r.Position.X, r.End.Y - 4f * Sc ), "™", HorizontalAlignment.Center, size.X, S( 16 ), new Color( "e53b3b" ) );
 	}
+
+	/// <summary> The boss wave's line under its banner: who is coming. </summary>
+	static string BossArrives( WaveDirector.EnemyKind kind ) => kind switch
+	{
+		WaveDirector.EnemyKind.KingRaymond => "KING RAYMOND IV glides in. Bow down",
+		WaveDirector.EnemyKind.Davey => "DAVEY JONES has come for your soul",
+		WaveDirector.EnemyKind.Poseidon => "POSEIDON rises to defend his city",
+		_ => "MC-51 has entered the arena",
+	};
 }

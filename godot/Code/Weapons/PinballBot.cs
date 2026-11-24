@@ -40,7 +40,7 @@ public static class PinballFx
 	public static readonly Color Chrome = new( 0.88f, 0.9f, 0.95f ), Neon = new( 1f, 0.3f, 0.85f ), Yellow = new( 1f, 0.86f, 0.15f ), Purple = new( 0.36f, 0.14f, 0.72f ), Cyan = new( 0.3f, 0.95f, 1f );
 
 	/// <summary> Tests: how often each thing happened. </summary>
-	public static int Balls, BallHits, Chains, LongestChain, Splits, Flips, FlipHits, Perfects, BallsFlipped, Cradles, SkillShots, Launched, HumanHitsDone, Ramps, Rolls, Bowled, HighScores;
+	public static int Assisted, Balls, BallHits, Chains, LongestChain, Splits, Flips, FlipHits, Perfects, BallsFlipped, Cradles, SkillShots, Launched, HumanHitsDone, Ramps, Rolls, Bowled, HighScores;
 	public static float FastestBall;
 
 	/// <summary> The next enemy a ball (or a flung enemy) could go on to: in front of `dir` within `range`, not `skip`. </summary>
@@ -147,6 +147,11 @@ public partial class PlayerWeapon
 		var speed = MathX.Lerp( PinballFx.MinSpeed, PinballFx.MaxSpeed, pull ) * (1f + PinballFx.SpringPer * Skill( SkillId.SuperSpring ));
 		var aim = Aim;
 		var from = controller.SeenFromOutside ? controller.EyeTransform.Origin + aim * 0.7f : Eye + aim * 0.6f - controller.Camera.GlobalBasis.Y * 0.12f;
+		// Aim assist, the Gore Vac's (user's ask): with no enemy right under the crosshair, one close beside its line is aimed at.
+		var eye = controller.Camera?.GlobalPosition ?? Eye;
+		var ray = Trace.Ray( controller, eye, eye + aim * 80f, Layers.World | Layers.Creature, new Godot.Collections.Array<Rid> { controller.GetRid() } );
+		var reach = ray.Hit ? ray.HitPosition.DistanceTo( eye ) + 1f : 80f;
+		if ( Shootables.Find( ray.Node )?.ShotOwner is not Creature && GoreBall.NearestToLine( eye, aim, reach, 1.4f ) is { } assisted ) { aim = (assisted - from).SafeNormal(); PinballFx.Assisted++; }
 		global::Pinball.Fire( this, controller, from, aim * speed, CurrentDamage * (1f + PinballFx.HeavySteelPer * Skill( SkillId.HeavySteel )) );
 		Sfx.Play2D( "boing", 0.4f, 1.6f, Sfx.GunBus );
 		Sfx.Play2D( "flipper", 0.5f, 0.8f + 0.3f * pull, Sfx.GunBus );
@@ -394,6 +399,7 @@ public partial class Pinball : BotBall
 	protected override void Step( float dt )
 	{
 		Chase( dt );
+		Seek( dt );
 		// The streak: from the ball back along where it came from.
 		var speed = Cradled || holdFor > 0f ? 0f : Velocity.Length();
 		var length = MathX.Clamp( speed * 0.035f, 0f, 1.6f );
@@ -433,6 +439,47 @@ public partial class Pinball : BotBall
 		Velocity = Velocity.Lerp( want, MathF.Min( 1f, dt * 30f ) ).Normalized() * speed;
 	}
 
+	/// <summary>
+	/// Its first flight homes gently like a Gore Vac ball (`GoreBall`'s turn, cone and range): onto the enemy nearest its
+	/// heading, until the first enemy hit (after that the kicks and `Chase` steer it).
+	/// </summary>
+	void Seek( float dt )
+	{
+		if ( hitEnemy || chasing is not null || Cradled || holdFor > 0f || OnFlipper != 0 || Rolling ) return;
+		if ( (sinceSeek += dt) > 0.1f )
+		{
+			sinceSeek = 0f;
+			seeking = null;
+			var heading = Velocity.SafeNormal();
+			var best = float.MaxValue;
+			foreach ( var c in Creature.Everyone )
+			{
+				if ( !IsInstanceValid( c ) || !c.IsEnemy || c.IsDead ) continue;
+				var to = PinballFx.AimPoint( c ) - GlobalPosition;
+				var d = to.Length();
+				if ( d > SeekRange || d < 0.01f ) continue;
+				var along = heading.Dot( to / d );
+				if ( along < SeekCone ) continue;
+				var score = d * (2f - along);
+				if ( score < best ) { best = score; seeking = c; }
+			}
+		}
+		if ( seeking is null || !IsInstanceValid( seeking ) || seeking.IsDead ) return;
+		var speed = Velocity.Length();
+		var dir = Velocity / MathF.Max( speed, 0.01f );
+		// Already going to hit it: leave the line alone (steering into its middle bounces the ball straight back and ends the chain).
+		var off = PinballFx.AimPoint( seeking ) - GlobalPosition;
+		if ( (off - dir * off.Dot( dir )).Length() < SeekHitWidth ) return;
+		var want = off.SafeNormal();
+		var angle = dir.AngleTo( want );
+		Velocity = dir.Slerp( want, MathF.Min( 1f, SeekTurn * dt / MathF.Max( angle, 0.001f ) ) ).Normalized() * speed;
+	}
+
+	const float SeekTurn = 3.5f, SeekCone = 0.9f, SeekRange = 40f, SeekHitWidth = 0.3f;
+	bool hitEnemy;
+	float sinceSeek = 1f;
+	Creature seeking;
+
 	/// <summary> A held flipper caught it (1 left, 2 right). </summary>
 	public void Catch( int flipper )
 	{
@@ -470,6 +517,7 @@ public partial class Pinball : BotBall
 
 	protected override Vector3 BounceOffEnemy( Creature c, Vector3 normal, Vector3 at, Vector3 velocity )
 	{
+		hitEnemy = true;
 		var speed = velocity.Length();
 		// A pop bumper kicks it away from itself, whatever angle it came in at.
 		var dir = (velocity.Bounce( normal ).SafeNormal() * 0.55f + normal * 0.45f).SafeNormal();

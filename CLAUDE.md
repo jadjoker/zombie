@@ -278,7 +278,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Plunger-Bot (175, "Plunger"; `PlungerBot.cs`, `PlungerFx`): plungers stick (`StuckPlunger`) and pop off at
   `PopAt` with a SHLORP, right click yanks them back; the Flush Bomb toilet (`FlushBomb`) whirlpools enemies in and
   geysers them up; mouse 4 slings you off a plunger on a bungee (`Sling`) into a belly flop. Pinball-Bot (150,
-  "Pinball"; `PinballBot.cs`, `PinballFx`; the deep pass): hold to pull the launcher's plunger; a `Pinball` hitting
+  "Pinball"; `PinballBot.cs`, `PinballFx`; the deep pass): hold to pull the launcher's plunger (the shot has the Gore Vac's aim
+  assist: `GoreBall.NearestToLine` at launch, then `Pinball.Seek` homes gently until the first enemy hit, only when it would miss); a `Pinball` hitting
   an enemy is a pop bumper hit (`BotBall.BounceOffEnemy`): a `BumpPause` beat, a `BumperFlash`, the user's hit sounds
   (`pinball_hit_1..6`, cut from their recordings), a `PinballPopup` (x2, JACKPOT!), and a kick out at `BumperKick`+
   aimed most of the way (`ChainAim`) at the next enemy (`PinballFx.NextTarget`, `AimPoint`), flattened along the floor.

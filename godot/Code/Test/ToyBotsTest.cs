@@ -324,6 +324,19 @@ public partial class AutoTest
 		DevFlags.FreezeEnemies = true;
 		foreach ( var b in BotBall.All.ToList() ) b.End();
 		Clear( a );
+		// Aim assist (the Gore Vac's): a shot a little wide of a crab still finds it.
+		var wide = Crab( a, a.Spot + a.Ahead * 12f, 2000f );
+		await Wait( 0.8f );
+		Stand( a );
+		await Face( a, wide.GlobalPosition + Vector3.Up * 0.3f + a.Side * 1.1f );
+		var wideHp = Hp( wide );
+		var assistedBefore = PinballFx.Assisted;
+		launcher.TestLaunch( 1f );
+		await Wait( 1f );
+		GD.Print( $"[autotest] pinballbot: aimed 1.1 m wide of a crab: assisted {PinballFx.Assisted - assistedBefore}, the crab lost {wideHp - Hp( wide ):0}" );
+		Check( PinballFx.Assisted > assistedBefore && wideHp - Hp( wide ) > 5f, "a pinball aimed just wide of a crab did not home onto it" );
+		foreach ( var b in BotBall.All.ToList() ) b.End();
+		Clear( a );
 		crab = Crab( a, a.Spot + a.Ahead * 8f, 2000f );
 		await Wait( 0.8f );
 		skills.Set( SkillId.Multiball, 2 );

@@ -391,11 +391,18 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - The deep sea angler (`Creatures/Angler.cs`, `EnemyKind.Angler`): from the second stage on (`WaveDirector.AnglerChance` of
   each wave on the wreck site and in Atlantis, at most `MaxAnglers` (3) alive at once, base health 370). Tall round body (a `SmoothKit` loft) in
   blue and green scales, about 30% yellow, with purple spots (its own `SkinShader`, after Poseidon's tail), a jutting underbite of huge needle
-  teeth on a hinged `Jaw`, two compound fly eyes of hex facets (`EyeShader`; the weak spots), and a whole lantern glowing
+  teeth on a hinged `Jaw`, two black almond alien eyes on green rims like the other enemies' (the weak spots), and a whole lantern glowing
   green on a jointed stalk off its brow. Attacks: a lantern swing (wind-up, whip; `SwingRange`), a chomp (jaw wide,
   lunge, snap; `ChompRange`; the two take turns), and the hook (`HookThink`: the jaw gapes, a barbed bone claw on a line
   shoots up to `HookRange` 8 m, pierces the player, reels them in slowly with `Scripted` set, then bites; shooting off
   `HookBreak` of its health snaps the line). Dev menu: Enemies, Spawn an enemy, Angler. Test: `--angler` (shots need a window).
+  The angler pass: big rounded scales darker down the back, a row of glowing photophores down each flank, lips, a
+  red mouth, glowing teeth, warts, back spines, short glowing chin barbels. Gore (`AnglerGore.cs`): every hit that
+  doesn't kill wounds and oozes (`Bleed`), the hide bloodies as it is hurt (the skin's `bruise`) and badly hurt it
+  bleeds as it swims; parts have their own health (`EyeShare`, `LanternShare`, `JawShare`, `FinShare`): an eye bursts,
+  the lantern is shot off its stalk (no more swings), the jaw is torn off (no bites or hooks), fins rip, and mouth hits
+  knock teeth out (every third, plus `ToothChance`); on death it comes apart (`FallApart`: jaw, lantern, fins, eyes,
+  tail and the oozing carcass as loose gibs, with a burst).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

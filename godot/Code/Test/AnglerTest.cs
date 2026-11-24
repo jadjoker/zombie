@@ -140,9 +140,71 @@ public partial class AutoTest
 			Check( eyeLoss > bodyLoss * 1.5f, "the angler's eyes are not weak spots" );
 		}
 
-		// It dies cleanly.
+		// The gore: wounds that bleed, teeth knocked out, an eye burst, the lantern shot off, the jaw torn away.
+		var max = fish.Health.MaxHealth;
+		Transform3D? goreView = null;
+		async Task GoreShot( string name, Vector3 offset, Vector3? lookAt = null )
+		{
+			if ( shots is null ) return;
+			var centre = lookAt ?? fish.GlobalPosition + Vector3.Up * 0.2f;
+			var eye = centre + fish.GlobalBasis * offset;
+			goreView = new Transform3D( Shapes.LookAt( centre - eye ), eye );
+			player.CameraOverride = _ => goreView;
+			player.ThirdPerson = true;
+			foreach ( var n in GetTree().Root.FindChildren( "*", "", true, false ) ) if ( n is CanvasLayer cl ) cl.Visible = false;
+			await Wait( 0.12f );
+			await Shot( name );
+		}
+		void HitPart( int index, float share, Vector3 at )
+		{
+			fish.ReceiveShot( index, max * share, (at - player.Camera.GlobalPosition).Normalized(), at, player.Camera.GlobalPosition, player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ), true );
+			fish.Health.Heal( max );   // keep it alive for the next part
+		}
+		Vector3 Local( Vector3 p ) => fish.GlobalTransform * p;
+		var wounds = Angler.Wounds;
+		for ( var i = 0; i < 4; i++ ) HitPart( 1, 0.04f, Local( new Vector3( 0.55f - i * 0.3f, 0.1f + 0.1f * i, -0.1f + i * 0.2f ) ) );
+		for ( var i = 0; i < 6; i++ ) HitPart( 0, 0.03f, Local( new Vector3( 0.2f * (i % 3 - 1), -0.15f, -0.95f ) ) );
+		await Wait( 0.4f );
+		await GoreShot( "angler_wounds", new Vector3( 2.6f, 0.5f, -2.8f ) );
+		HitPart( 2, 0.1f, Local( new Vector3( -0.4f, 0.46f, -0.52f ) ) );
+		await Wait( 0.3f );
+		await GoreShot( "angler_eye_out", new Vector3( -1.6f, 0.5f, -2.2f ), Local( new Vector3( -0.4f, 0.4f, -0.5f ) ) );
+		for ( var i = 0; i < 3 && !fish.LanternGone; i++ ) HitPart( 4, 0.1f, fish.LanternAt );
+		await Wait( 0.5f );
+		await GoreShot( "angler_lantern_off", new Vector3( 3.2f, 1.2f, -2.6f ) );
+		for ( var i = 0; i < 6 && !fish.JawGone; i++ ) HitPart( 5, 0.08f, Local( new Vector3( 0f, -0.55f, -0.8f ) ) );
+		await Wait( 0.5f );
+		await GoreShot( "angler_jaw_off", new Vector3( 2.4f, 0.1f, -3f ) );
+		GD.Print( $"[autotest] angler: gore: wounds {Angler.Wounds - wounds}, teeth out {Angler.TeethOut}, eyes out {fish.EyesGone}, lantern off {fish.LanternGone}, jaw off {fish.JawGone}, fins off {Angler.FinsOff}" );
+		Check( Angler.Wounds - wounds >= 4, "hits on the angler left no wounds" );
+		Check( Angler.TeethOut >= 1, "hits on the angler's mouth knocked no teeth out" );
+		Check( fish.EyesGone == 1, "a hard hit on an eye did not burst it" );
+		Check( fish.LanternGone && fish.JawGone, "the angler's lantern or jaw did not come off" );
+		Check( !CreaturePart.All.Any( p => p.Creature == fish && p.Index is 4 or 5 ), "the angler's lantern or jaw can still be shot after coming off" );
+
+		// Badly hurt: the hide darkens and bloodies, and it bleeds as it goes.
+		fish.Health.OnDamage( new DamageInfo { Damage = max * 0.8f, Attacker = player } );
+		await Wait( 1.2f );
+		await GoreShot( "angler_bleeding", new Vector3( 3f, 0.4f, -1.8f ) );
+		// It dies cleanly, coming apart.
+		var piecesBefore = Angler.DeathPieces;
+		var deathAt = fish.GlobalPosition;
+		var deathBasis = fish.GlobalBasis;
 		fish.Health.OnDamage( new DamageInfo { Damage = 1_000_000f, Attacker = player } );
+		if ( shots is not null )
+		{
+			await Wait( 0.3f );
+			var eye = deathAt + Vector3.Up * 0.4f + deathBasis * new Vector3( 3.4f, 0.8f, -3.4f );
+			goreView = new Transform3D( Shapes.LookAt( deathAt - eye ), eye );
+			await Wait( 0.05f );
+			await Shot( "angler_death" );
+			await Wait( 1.2f );
+			await Shot( "angler_death_after" );
+			player.CameraOverride = null;
+		}
 		await Wait( 0.6f );
+		GD.Print( $"[autotest] angler: it came apart into {Angler.DeathPieces - piecesBefore} pieces" );
+		Check( Angler.DeathPieces - piecesBefore >= 4, "the angler did not come apart when it died" );
 		Check( !IsInstanceValid( fish ) || fish.IsDead, "the angler did not die" );
 		Check( Angler.All.Count == 0, $"{Angler.All.Count} anglers left after it died" );
 

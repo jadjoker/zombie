@@ -105,63 +105,79 @@ public partial class Angler : Creature
 	// ---- Looks ----
 
 	/// <summary>
-	/// Its skin: rows of rounded scales in blues and greens (like Poseidon's tail, in sea colours), a paler belly and big
-	/// purple spots scattered over it. UV.x round the body, UV.y nose to tail.
+	/// Its skin (redesigned on the user's ask): a deep sea hide, navy down the back to teal on the flanks and a pale glowing
+	/// belly, fine tone-on-tone scales, dark mottling like a real angler's, a few purple spots with glowing rims, yellow
+	/// freckles, alien veins of green light that pulse slowly, and a row of photophores down each flank. UV.x round the
+	/// body (0.5 the belly), UV.y nose to tail. `bruise` darkens and bloodies it as it is hurt; `flash` is the hit flash.
 	/// </summary>
 	static readonly Shader SkinShader = new()
 	{
 		Code = @"shader_type spatial;
-uniform vec3 c0 : source_color = vec3(0.06, 0.16, 0.42);
-uniform vec3 c1 : source_color = vec3(0.12, 0.36, 0.78);
-uniform vec3 c2 : source_color = vec3(0.08, 0.55, 0.6);
-uniform vec3 c3 : source_color = vec3(0.2, 0.7, 0.38);
-uniform vec3 c4 : source_color = vec3(0.95, 0.8, 0.12);   // yellow: about 30% of the scales
-uniform vec3 spot : source_color = vec3(0.62, 0.2, 0.95);
-uniform float rows = 26.0;
-uniform float around = 20.0;
-uniform float flash = 0.0;
-uniform float bruise = 0.0;   // 0 healthy, 1 near dead: darker and bloodier
+uniform vec3 navy : source_color = vec3(0.05, 0.12, 0.3);
+uniform vec3 teal : source_color = vec3(0.1, 0.52, 0.6);
+uniform vec3 belly_col : source_color = vec3(0.55, 0.85, 0.8);
+uniform vec3 spot : source_color = vec3(0.6, 0.2, 0.95);
+uniform vec3 freckle : source_color = vec3(0.95, 0.85, 0.2);
 uniform vec3 glow : source_color = vec3(0.35, 1.0, 0.5);
+uniform float flash = 0.0;
+uniform float bruise = 0.0;
 float hash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float noise(vec2 p) {
+	vec2 i = floor(p); vec2 f = fract(p); f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x), mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+float fbm(vec2 p) { float v = 0.0; float a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p *= 2.03; a *= 0.5; } return v; }
 void fragment() {
-	vec2 g = vec2(UV.x * around, UV.y * rows);
+	// UV.x wraps round the body: work in a seamless ring for the noise.
+	float ang = UV.x * 6.2832;
+	vec2 ring = vec2(cos(ang), sin(ang));
+	vec2 np = vec2(ring.x * 1.6 + ring.y * 0.7, UV.y * 4.0);
+	float belly = smoothstep(0.35, 1.0, cos(ang));
+	float back = smoothstep(0.1, 1.0, -cos(ang));
+	vec3 c = mix(teal, navy, back);
+	c = mix(c, belly_col, belly * 0.75);
+	// Mottling: dark blotches over the back and flanks.
+	float m = fbm(np * 2.2 + 3.0);
+	c *= mix(0.72, 1.1, smoothstep(0.3, 0.7, m));
+	// Fine scales, only shading (no colours of their own).
+	vec2 g = vec2(UV.x * 30.0, UV.y * 38.0);
 	float row = floor(g.y);
 	g.x += mod(row, 2.0) * 0.5;
-	vec2 cell = vec2(floor(g.x), row);
 	vec2 f = vec2(fract(g.x) - 0.5, fract(g.y));
 	float d = length(f * vec2(1.0, 0.85));
-	float h = hash(vec2(mod(cell.x, around), cell.y));
-	vec3 c = h < 0.3 ? mix(c4, c3, 0.25) : h < 0.545 ? c1 : h < 0.72 ? c2 : h < 0.874 ? c3 : c0;
-	// Darker down the back, so it reads as one fish and not a mosaic.
-	float back = smoothstep(0.2, 1.0, -cos(UV.x * 6.2832));
-	c = mix(c, c * 0.45 + c0 * 0.3, back * 0.6);
-	// Each scale: a rounded plate, lit at its top edge, its rim in shadow.
-	float edge = smoothstep(0.38, 0.5, d);
-	float lit = (1.0 - smoothstep(0.0, 0.32, length(f - vec2(0.0, 0.18)))) * 0.16;
-	c = c * (1.0 - edge * 0.55) + vec3(lit);
-	// The belly (round the bottom of the loft) is paler.
-	float belly = smoothstep(0.55, 1.0, cos(UV.x * 6.2832));
-	c = mix(c, c * 0.6 + vec3(0.3, 0.42, 0.5), belly * 0.55);
-	// Purple spots: a coarse grid, about half its cells holding a round spot, off centre.
-	vec2 sg = vec2(UV.x * 11.0, UV.y * 9.0);
+	c *= 1.0 - smoothstep(0.36, 0.5, d) * 0.28 * (1.0 - belly * 0.6);
+	c += vec3(0.06) * (1.0 - smoothstep(0.0, 0.3, length(f - vec2(0.0, 0.2)))) * (1.0 - belly);
+	// Yellow freckles, scattered.
+	vec2 fg = vec2(UV.x * 40.0, UV.y * 46.0);
+	float fh = hash(floor(fg));
+	float fr = (fh > 0.9 ? 1.0 : 0.0) * (1.0 - smoothstep(0.12, 0.22, length(fract(fg) - 0.5)));
+	c = mix(c, freckle, fr * (1.0 - belly) * 0.85);
+	// A few big purple spots with a glowing rim.
+	vec2 sg = vec2(UV.x * 8.0, UV.y * 7.0);
 	vec2 sc = floor(sg);
 	float sh = hash(sc + 7.0);
-	vec2 so = vec2(hash(sc + 1.3), hash(sc + 4.1)) * 0.5 + 0.25;
-	float sr = 0.14 + 0.16 * hash(sc + 9.7);
-	float s = (sh > 0.45) ? 1.0 - smoothstep(sr * 0.8, sr, length(fract(sg) - so)) : 0.0;
-	c = mix(c, spot, s * 0.9);
+	vec2 so = vec2(hash(sc + 1.3), hash(sc + 4.1)) * 0.4 + 0.3;
+	float sr = 0.12 + 0.1 * hash(sc + 9.7);
+	float sd = length(fract(sg) - so);
+	float s = sh > 0.62 ? 1.0 - smoothstep(sr * 0.75, sr, sd) : 0.0;
+	float srim = sh > 0.62 ? (1.0 - smoothstep(0.0, 0.02, abs(sd - sr))) : 0.0;
+	c = mix(c, spot * 0.6, s * 0.9 * (1.0 - belly));
+	// Alien veins: thin green lines of light that pulse slowly down the body.
+	float vn = fbm(np * 1.7 + vec2(0.0, TIME * 0.02));
+	float vein = 1.0 - smoothstep(0.0, 0.018, abs(vn - 0.5));
+	vein *= (1.0 - belly * 0.7) * (0.55 + 0.45 * sin(TIME * 1.8 - UV.y * 9.0));
 	// Photophores: a row of glowing dots down each flank (the lateral line).
 	float side = min(abs(UV.x - 0.25), abs(UV.x - 0.75));
 	float along = fract(UV.y * 14.0) - 0.5;
 	float dot_ = (1.0 - smoothstep(0.012, 0.02, length(vec2(side * 3.0, along / 14.0 * 3.0)))) * step(0.12, UV.y) * step(UV.y, 0.85);
-	// Hurt: darker, the scales bloodied in patches.
-	float blood = bruise * smoothstep(0.35, 0.75, hash(floor(vec2(UV.x * 9.0, UV.y * 7.0)) + 2.0));
-	c = mix(c, c * 0.55 + vec3(0.25, 0.02, 0.05), blood * 0.8);
+	// Hurt: darker, the hide bloodied in patches.
+	float blood = bruise * smoothstep(0.4, 0.7, fbm(np * 3.0 + 11.0));
+	c = mix(c, c * 0.5 + vec3(0.28, 0.02, 0.05), blood * 0.85);
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
-	ALBEDO = mix(mix(c, glow, dot_), vec3(2.2), flash);
-	ROUGHNESS = 0.32;
-	METALLIC = 0.15;
-	EMISSION = spot * s * 0.35 + c * rim * 0.35 + glow * dot_ * 2.5;
+	ALBEDO = mix(mix(c, glow, max(dot_, vein * 0.6)), vec3(2.2), flash);
+	ROUGHNESS = mix(0.38, 0.25, belly);
+	METALLIC = 0.1;
+	EMISSION = glow * (dot_ * 2.5 + vein * 0.9 + srim * 0.8) + belly_col * belly * 0.12 + teal * rim * 0.35;
 }",
 	};
 
@@ -249,17 +265,16 @@ void fragment() {
 		// The eyes: two bulging bulbs high on the head, each with a black almond alien eye.
 		foreach ( var x in new[] { -1f, 1f } )
 		{
-			var at = new Vector3( x * 0.36f, 0.44f, -0.5f );
-			Sculpt.Blob( body, at - new Vector3( x * 0.03f, 0.02f, -0.04f ), new Vector3( 0.42f, 0.4f, 0.42f ), skin, name: "Eye Socket" );
+			var at = new Vector3( x * 0.3f, 0.42f, -0.58f );   // set into the head (they stood out on the sides)
 			// The alien eye the other enemies have (user's ask): a big glossy black almond slanted out at the top, on a
 			// thin glowing green rim, set in a skin bulb and looking out and forward.
-			var eye = new Node3D { Name = "Alien Eye", Position = at + new Vector3( x * 0.05f, 0.02f, -0.02f ) };
+			var eye = new Node3D { Name = "Alien Eye", Position = at };
 			body.AddChild( eye );
 			var look = new Vector3( x * 0.75f, 0.12f, -0.65f ).Normalized();
 			eye.Basis = new Basis( new Quaternion( Vector3.Back, look ) ) * new Basis( Vector3.Back, -x * MathX.Rad( 38f ) );
-			SmoothKit.Ball( eye, Vector3.Zero, new Vector3( 0.4f, 0.52f, 0.4f ), skin, null, "Eye Bulb" );
-			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.155f ), new Vector3( 0.24f, 0.5f, 0.1f ), EyeRimGlow, name: "Eye Rim" );
-			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.17f ), new Vector3( 0.2f, 0.46f, 0.11f ), EyeBlack, name: "Eye" );
+			SmoothKit.Ball( eye, new Vector3( 0f, 0f, -0.04f ), new Vector3( 0.36f, 0.48f, 0.3f ), skin, null, "Eye Bulb" );
+			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.13f ), new Vector3( 0.24f, 0.5f, 0.1f ), EyeRimGlow, name: "Eye Rim" );
+			Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.145f ), new Vector3( 0.2f, 0.46f, 0.11f ), EyeBlack, name: "Eye" );
 			var part = CreaturePart.Create( this, x < 0f ? 2 : 3, x < 0f ? "Angler Eye L" : "Angler Eye R", 0.2f );
 			body.AddChild( part );
 			part.Position = eye.Position;

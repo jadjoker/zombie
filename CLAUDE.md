@@ -396,8 +396,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   lunge, snap; `ChompRange`; the two take turns), and the hook (`HookThink`: the jaw gapes, a barbed bone claw on a line
   shoots up to `HookRange` 8 m, pierces the player, reels them in slowly with `Scripted` set, then bites; shooting off
   `HookBreak` of its health snaps the line). Dev menu: Enemies, Spawn an enemy, Angler. Test: `--angler` (shots need a window).
-  The angler pass: big rounded scales darker down the back, a row of glowing photophores down each flank, lips, a
-  red mouth, glowing teeth, warts, back spines, short glowing chin barbels. Gore (`AnglerGore.cs`): every hit that
+  The angler pass: a deep sea hide (`SkinShader`, user's redesign: navy back to teal flanks and a pale belly, fine
+  tone-on-tone scales, dark mottling, purple spots with glowing rims, yellow freckles, slowly pulsing green alien veins,
+  photophores down each flank), lips, a red mouth, glowing teeth, warts, back spines, short glowing chin barbels, the
+  eyes set close into the head. Gore (`AnglerGore.cs`): every hit that
   doesn't kill wounds and oozes (`Bleed`), the hide bloodies as it is hurt (the skin's `bruise`) and badly hurt it
   bleeds as it swims; parts have their own health (`EyeShare`, `LanternShare`, `JawShare`, `FinShare`): an eye bursts,
   the lantern is shot off its stalk (no more swings), the jaw is torn off (no bites or hooks), fins rip, and mouth hits

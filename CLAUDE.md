@@ -335,7 +335,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   one creature (one health bar); its fish die as its health falls (`Thin`, the nearest to the blow first, floating off
   as bodies); a player within `AggroRange` (or a hit) sets it on them: it circles the body at arm's length below the
   eyes and nips (`BiteDamage`, less as it thins); back after `RespawnMin`-`Max`. The host makes them, joiners get
-  puppets (`NetCreatures` "FishSwarm"). Under tests only `--fish` makes them (its test).
+  puppets (`NetCreatures` "FishSwarm"). Under tests only `--fish` makes them (its test). A dead fish is a ragdoll
+  (`KillFish`: head, body and tail as gibs on cone-twist joints) and `TearChance` of them come apart, spurting.
 - Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
   hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
   head now and then) as robot pieces with chrome joints, oil gushing from both ends.

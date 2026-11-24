@@ -45,6 +45,24 @@ public partial class AutoTest
 		await Wait( 0.5f );
 		GD.Print( $"[autotest] fish: killed: {(IsInstanceValid( swarm ) ? "still here" : "gone")}, fish killed {FishSwarm.FishKilled}" );
 		Check( !IsInstanceValid( swarm ) && FishSwarm.FishKilled >= count, "the swarm did not die with all its fish" );
+		var bodies = GetTree().CurrentScene.FindChildren( "Fish *", "", true, false ).Count;
+		var joints = GetTree().CurrentScene.GetChildren().OfType<ConeTwistJoint3D>().Count();
+		GD.Print( $"[autotest] fish: the dead: {bodies} body pieces, {joints} joints holding them, {FishSwarm.FishTorn} torn apart" );
+		Check( bodies >= count * 3 && joints > 0 && FishSwarm.FishTorn > 0, "the dead fish are not ragdolls that come apart" );
+		if ( shots is not null )
+		{
+			var dead = GetTree().CurrentScene.FindChildren( "Fish Body", "", true, false ).OfType<Node3D>().FirstOrDefault();
+			if ( dead is not null )
+			{
+				var look = dead.GlobalPosition + new Vector3( 1.2f, 0.6f, 1.2f );
+				player.CameraOverride = _ => new Transform3D( Basis.LookingAt( (dead.GlobalPosition - look).Normalized(), Vector3.Up ), look );
+				await Wait( 0.2f );
+				await Shot( "fish_dead" );
+				await Wait( 1.5f );
+				await Shot( "fish_dead_later" );
+				player.CameraOverride = null;
+			}
+		}
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

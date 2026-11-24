@@ -18,13 +18,16 @@ public partial class FishSwarm : Creature
 	public Color Colour = new( 1f, 0.8f, 0.2f );
 	public int Count = 14;
 
-	/// <summary> Tests: fish killed, bites that landed, swarms set on a player. </summary>
-	public static int FishKilled, Bites, Aggros;
+	/// <summary> Tests: fish killed, bites that landed, swarms set on a player, dead fish torn apart. </summary>
+	public static int FishKilled, Bites, Aggros, FishTorn;
+	/// <summary> The share of dead fish that come apart (a head or a tail torn off). </summary>
+	public const float TearChance = 0.5f;
 	public static readonly List<FishSwarm> All = new();
 
 	MultiMeshInstance3D view;
 	Mesh mesh;
 	Vector3[] offsets, positions;
+	Basis[] bases;
 	float[] phases, sizes;
 	bool[] alive;
 	readonly List<CreaturePart> parts = new();
@@ -56,7 +59,7 @@ public partial class FishSwarm : Creature
 		health.Damaged += d => { Thin( d.Position ); Provoke( d.Attacker as PlayerSurvivor ?? (d.Attacker as PlayerController)?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) ); };
 		mesh = FishSchool.Painted( Colour );
 		var random = new Random( seed == 0 ? (int)(Phase * 1000f) : seed );
-		offsets = new Vector3[Count]; positions = new Vector3[Count]; phases = new float[Count]; sizes = new float[Count]; alive = new bool[Count];
+		offsets = new Vector3[Count]; positions = new Vector3[Count]; bases = new Basis[Count]; phases = new float[Count]; sizes = new float[Count]; alive = new bool[Count];
 		view = new MultiMeshInstance3D
 		{
 			Name = "Fish", TopLevel = true, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
@@ -169,6 +172,7 @@ public partial class FishSwarm : Creature
 			else at = centre + facing * (offsets[i] + bob);
 			var basis = fishFacing * wag * Basis.FromScale( Vector3.One * sizes[i] );
 			positions[i] = at;
+			bases[i] = basis;
 			view.Multimesh.SetInstanceTransform( i, new Transform3D( basis, at ) );
 			if ( i < parts.Count && IsInstanceValid( parts[i] ) ) parts[i].GlobalPosition = at;
 		}
@@ -190,24 +194,108 @@ public partial class FishSwarm : Creature
 				if ( d < bestD ) { bestD = d; best = i; }
 			}
 			if ( best < 0 ) break;
-			KillFish( best );
+			KillFish( best, at );
 		}
 	}
 
-	void KillFish( int i )
+	static readonly Color Blood = new( 0.85f, 0.2f, 0.25f );
+
+	/// <summary>
+	/// A fish dies: its body becomes a little ragdoll (head, body and tail, each a physics piece, joined so it bends and
+	/// flops), thrown away from the blow; about half come apart, the head or the tail torn off with goo spurting from
+	/// both torn ends.
+	/// </summary>
+	void KillFish( int i, Vector3 from )
 	{
 		alive[i] = false;
 		FishKilled++;
 		var at = positions[i];
 		if ( i < parts.Count && IsInstanceValid( parts[i] ) ) parts[i].QueueFree();
-		gore?.GooBurst( at, Vector3.Up, new Color( 0.85f, 0.2f, 0.25f ), 4, 120f, 0.5f );
-		// The body floats off belly up.
-		var body = new MeshInstance3D { Name = "Dead Fish", Mesh = mesh, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
-		GetTree().CurrentScene.AddChild( body );
-		body.GlobalTransform = new Transform3D( new Basis( Vector3.Forward, MathF.PI ) * Basis.FromScale( Vector3.One * sizes[i] ), at );
-		Gib.Attach( body, gore, 3f, 5f, 0.2f, Rng.InSphere( 1.5f ) + Vector3.Up, new Color( 0.85f, 0.2f, 0.25f ) );
-		if ( Rng.Float() < 0.5f ) GibKit.Chips( Gibs, at, Vector3.Up, Rng.OnSphere(), 0.05f, 1 );
+		gore?.GooBurst( at, Vector3.Up, Blood, 5, 140f, 0.5f );
 		Sfx.Play( "splat", at, 0.35f, Rng.Float( 1.4f, 1.8f ) );
+		if ( gore is null ) return;
+		var basis = bases[i] == default ? Basis.Identity : bases[i];
+		var size = mesh.GetAabb().Size * sizes[i];
+		var length = MathF.Max( size.Z, 0.1f );
+		var width = MathF.Max( size.X, 0.03f );
+		var height = MathF.Max( size.Y, 0.05f );
+		// The model's nose is +Z (the school turns it round to swim): pieces along that axis.
+		var along = (basis * Vector3.Back).Normalized();
+		var up = (basis * Vector3.Up).Normalized();
+		var push = ((at - from).SafeNormal() + Vector3.Up * 0.4f + Rng.InSphere( 0.4f )).SafeNormal() * Rng.Float( 1.5f, 3f );
+		var skin = new StandardMaterial3D { AlbedoColor = Colour, Roughness = 0.5f, RimEnabled = true, Rim = 0.4f, RimTint = 0.5f };
+		var fin = new StandardMaterial3D { AlbedoColor = Colour.Lightened( 0.45f ), Roughness = 0.5f, CullMode = BaseMaterial3D.CullModeEnum.Disabled };
+		var meat = new StandardMaterial3D { AlbedoColor = Blood.Darkened( 0.2f ), Roughness = 0.35f };
+		var eye = new StandardMaterial3D { AlbedoColor = new Color( 0.03f, 0.03f, 0.04f ), Roughness = 0.1f };
+		Node3D Piece( string name, Vector3 offset )
+		{
+			var n = new Node3D { Name = name };
+			GetTree().CurrentScene.AddChild( n );
+			n.GlobalTransform = new Transform3D( basis.Orthonormalized(), at + along * offset.Z + up * offset.Y );
+			return n;
+		}
+		MeshInstance3D Add( Node3D n, Mesh m, Material mat, Vector3 local, Vector3 scale )
+		{
+			var mi = new MeshInstance3D { Mesh = m, MaterialOverride = mat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off, Position = local, Scale = scale };
+			n.AddChild( mi );
+			return mi;
+		}
+		var ball = new SphereMesh { Radius = 0.5f, Height = 1f, RadialSegments = 12, Rings = 6 };
+		// Head: a rounded snout with two black eyes.
+		var head = Piece( "Fish Head", new Vector3( 0f, 0f, length * 0.32f ) );
+		Add( head, ball, skin, Vector3.Zero, new Vector3( width, height * 0.9f, length * 0.36f ) );
+		foreach ( var x in new[] { -1f, 1f } ) Add( head, ball, eye, new Vector3( x * width * 0.42f, height * 0.12f, length * 0.06f ), Vector3.One * height * 0.2f );
+		// Body: the fat middle with a fin on its back.
+		var body = Piece( "Fish Body", Vector3.Zero );
+		Add( body, ball, skin, Vector3.Zero, new Vector3( width * 1.05f, height, length * 0.42f ) );
+		Add( body, new PrismMesh { Size = Vector3.One }, fin, new Vector3( 0f, height * 0.55f, 0f ), new Vector3( 0.01f, height * 0.4f, length * 0.25f ) );
+		// Tail: tapering to the fan.
+		var tail = Piece( "Fish Tail", new Vector3( 0f, 0f, -length * 0.33f ) );
+		Add( tail, ball, skin, Vector3.Zero, new Vector3( width * 0.6f, height * 0.6f, length * 0.32f ) );
+		Add( tail, new PrismMesh { Size = Vector3.One }, fin, new Vector3( 0f, 0f, -length * 0.2f ), new Vector3( 0.01f, height * 0.9f, length * 0.22f ) ).Rotation = new Vector3( MathF.PI * 0.5f, 0f, 0f );
+		var radius = MathF.Max( 0.6f, width * 0.5f / U.In );
+		var gHead = Gib.Attach( head, gore, radius, 5f, 0.08f, push * 1.1f, Blood );
+		var gBody = Gib.Attach( body, gore, radius * 1.1f, 5f, 0.12f, push, Blood );
+		var gTail = Gib.Attach( tail, gore, radius * 0.8f, 5f, 0.06f, push * 0.9f, Blood );
+		// It comes apart: the head or the tail torn off, its stump and the torn end spurting.
+		var tear = Rng.Float() < TearChance ? (Rng.Float() < 0.5f ? 1 : 2) : 0;
+		if ( tear != 0 ) FishTorn++;
+		void Join( Gib a, Gib b, Vector3 atWorld, bool torn, Vector3 outward )
+		{
+			if ( torn )
+			{
+				foreach ( var (g, dir) in new[] { (a, outward), (b, -outward) } )
+				{
+					var jet = new GooJet { Color = Blood, Lifetime = 1.6f, Strength = 0.5f };
+					g.AddChild( jet );
+					jet.GlobalPosition = atWorld;
+					jet.LookAt( atWorld + dir, MathF.Abs( dir.Dot( Vector3.Up ) ) > 0.9f ? Vector3.Right : Vector3.Up );
+					var cap = new MeshInstance3D { Mesh = ball, MaterialOverride = meat, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
+					g.AddChild( cap );
+					cap.GlobalPosition = atWorld;
+					cap.Scale = new Vector3( width * 0.7f, height * 0.6f, width * 0.3f );
+				}
+				a.ApplyCentralImpulse( outward * 0.25f );
+				b.ApplyCentralImpulse( -outward * 0.25f );
+				gore.GooBurst( atWorld, outward, Blood, 6, 160f, 0.5f );
+				return;
+			}
+			var joint = new ConeTwistJoint3D();
+			GetTree().CurrentScene.AddChild( joint );
+			joint.GlobalTransform = new Transform3D( Shapes.LookAt( along ) * new Basis( Vector3.Up, MathF.PI * 0.5f ), atWorld );   // twist axis (X) down the fish
+			joint.SetParam( ConeTwistJoint3D.Param.SwingSpan, MathX.Rad( 50f ) );
+			joint.SetParam( ConeTwistJoint3D.Param.TwistSpan, MathX.Rad( 15f ) );
+			joint.NodeA = a.GetPath();
+			joint.NodeB = b.GetPath();
+			a.TreeExiting += () => { if ( IsInstanceValid( joint ) ) joint.QueueFree(); };
+			b.TreeExiting += () => { if ( IsInstanceValid( joint ) ) joint.QueueFree(); };
+			a.AddCollisionExceptionWith( b );
+		}
+		Join( gHead, gBody, at + along * length * 0.16f, tear == 1, along );
+		Join( gBody, gTail, at - along * length * 0.15f, tear == 2, -along );
+		// A last flop or two as it goes.
+		foreach ( var g in new[] { gHead, gBody, gTail } ) g.ApplyTorqueImpulse( Rng.InSphere( 0.004f ) );
+		CreatureGore.Twitch( body, Rng.Float( 1.5f, 3f ), 0.6f );
 	}
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )

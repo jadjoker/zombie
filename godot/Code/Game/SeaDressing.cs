@@ -13,7 +13,7 @@ public static class SeaDressing
 	static readonly Dictionary<string, PackedScene> models = new();
 	static readonly Dictionary<(string, int), StandardMaterial3D> paints = new();
 
-	static readonly Color[] Bright =
+	public static readonly Color[] Bright =
 	{
 		new( 1f, 0.42f, 0.55f ), new( 1f, 0.62f, 0.2f ), new( 0.6f, 0.9f, 0.3f ), new( 0.3f, 0.85f, 0.9f ), new( 0.72f, 0.5f, 1f ), new( 1f, 0.85f, 0.3f ),
 	};
@@ -168,21 +168,7 @@ public static class SeaDressing
 			}
 		} );
 
-		// ---- Fish overhead: swarms that go for a player who comes close (user's ask; `FishSwarm`). Online only the host
-		// makes them; the joiners get them as puppets. ----
-		for ( var s = 0; s < 4; s++ )
-		{
-			var colour = Bright[(s * 2 + 1) % Bright.Length];
-			var count = 12 + random.Next( 8 );
-			var home = new Vector3( Range( -16f, 16f ), Range( 2.6f, 5.5f ), Range( -16f, 16f ) );
-			var radius = Range( 7f, 14f );
-			var speed = Range( 0.1f, 0.18f ) * (s % 2 == 0 ? 1f : -1f);
-			var phase = Range( 0f, MathF.Tau );
-			var swarmSeed = random.Next();
-			if ( FishSchool.Painted( colour ) is null || (Net.Online && !Net.IsHost) ) continue;
-			if ( AutoTest.Requested && !OS.GetCmdlineUserArgs().Contains( "--fish" ) ) continue;   // other tests keep their sea to themselves
-			FishSwarm.Spawn( root, home, colour, count, radius, speed, phase, swarmSeed );
-		}
+		// Fish swarms are wave enemies now (`WaveDirector`, `EnemyKind.FishSwarm`), not set about the map.
 	}
 
 	/// <summary> A solid box on a prop, in the prop's own space (so it tilts and scales with it). </summary>

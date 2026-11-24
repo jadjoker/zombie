@@ -286,6 +286,9 @@ public partial class Jetpack
 	}
 
 	/// <summary> A see-through pinball round the curled-up robot, with neon bands, turning as it rolls. </summary>
+	/// <summary> The roll's glass ball: big enough that the tucked robot never pokes through in third person (0.78 did). </summary>
+	public const float ShellRadius = 1.02f;
+
 	void Shell( bool on )
 	{
 		if ( on && rollShell is null )
@@ -299,13 +302,13 @@ public partial class Jetpack
 			var inner = new ShaderMaterial { Shader = RollGlass };
 			inner.SetShaderParameter( "inside", 1f );
 			inner.SetMeta( "no_caustics", true );
-			var sphere = new SphereMesh { Radius = 0.78f, Height = 1.56f, RadialSegments = 64, Rings = 32 };
+			var sphere = new SphereMesh { Radius = ShellRadius, Height = ShellRadius * 2f, RadialSegments = 64, Rings = 32 };
 			rollShell.AddChild( new MeshInstance3D { Mesh = sphere, MaterialOverride = inner, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
 			rollShell.AddChild( new MeshInstance3D { Mesh = sphere, MaterialOverride = glass, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
 		}
 		if ( rollShell is null ) return;
 		rollShell.Visible = on;
-		rollShell.Position = Vector3.Up * 0.62f;
+		rollShell.Position = Vector3.Up * (ShellRadius - 0.16f);   // resting on the ground
 	}
 
 	static readonly Shader RollGlass = new()
@@ -338,7 +341,7 @@ void fragment() {
 		var flat = controller.Velocity.Flat();
 		if ( flat.LengthSquared() < 0.01f ) return;
 		var axis = Vector3.Up.Cross( flat ).Normalized();
-		rollShell.GlobalBasis = (new Basis( axis, flat.Length() * dt / 0.78f ) * rollShell.GlobalBasis).Orthonormalized();
+		rollShell.GlobalBasis = (new Basis( axis, flat.Length() * dt / ShellRadius ) * rollShell.GlobalBasis).Orthonormalized();
 	}
 
 	void ToggleRoll()

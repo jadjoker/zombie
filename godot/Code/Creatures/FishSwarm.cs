@@ -51,11 +51,22 @@ public partial class FishSwarm : Creature
 		return Place( s, parent, home, count * FishHealth );
 	}
 
+	/// <summary> A wave swarm (`WaveDirector`, `EnemyKind.FishSwarm`): comes in from a spawn point already hunting the nearest player, never gives up, never comes back. </summary>
+	public static FishSwarm SpawnHunter( Node parent, Vector3 at, Color colour, int count, float health )
+	{
+		var s = new FishSwarm { Name = "Fish Swarm", Home = at, Colour = colour, Count = count, Hunter = true, seed = Rng.Int( 1, 1 << 30 ), maxHp = health };
+		return Place( s, parent, at, health );
+	}
+
+	/// <summary> A wave enemy: hunts from the start, no leash, no respawn. </summary>
+	public bool Hunter;
+	float maxHp;
+
 	protected override void Track( bool add ) { if ( add ) All.Add( this ); else All.Remove( this ); }
 
 	protected override void Setup()
 	{
-		BeginSetup( Count * FishHealth );
+		BeginSetup( maxHp > 0f ? maxHp : Count * FishHealth );
 		health.Damaged += d => { Thin( d.Position ); Provoke( d.Attacker as PlayerSurvivor ?? (d.Attacker as PlayerController)?.GetNodeOrNull<PlayerSurvivor>( "PlayerSurvivor" ) ); };
 		mesh = FishSchool.Painted( Colour );
 		var random = new Random( seed == 0 ? (int)(Phase * 1000f) : seed );
@@ -97,6 +108,7 @@ public partial class FishSwarm : Creature
 
 	void Think( float dt )
 	{
+		if ( Hunter && !aggro ) Provoke( null );
 		if ( !aggro )
 		{
 			// The lazy loop round home; a player close by sets it on them.
@@ -107,7 +119,7 @@ public partial class FishSwarm : Creature
 		}
 		else
 		{
-			if ( prey is null || !IsInstanceValid( prey ) || !prey.IsAlive || (prey.WorldPosition.DistanceTo( Home ) > LeashRange && sinceHurt > 6f) )
+			if ( prey is null || !IsInstanceValid( prey ) || !prey.IsAlive || (!Hunter && prey.WorldPosition.DistanceTo( Home ) > LeashRange && sinceHurt > 6f) )
 			{
 				// Lost them: back to the loop (from where it is, easing home).
 				aggro = false;
@@ -315,7 +327,7 @@ public partial class FishSwarm : Creature
 		Thin( centre );
 		gore?.GooBurst( centre, Vector3.Up, new Color( 0.85f, 0.2f, 0.25f ), 10, 200f, 0.8f );
 		// Back later, at home (the host's copy brings a new puppet to the joiners).
-		if ( !Puppet && GetParent() is Node parent )
+		if ( !Puppet && !Hunter && GetParent() is Node parent )
 		{
 			var (home, colour, count, radius, speed, phase) = (Home, Colour, Count, Radius, LoopSpeed, Phase);
 			parent.GetTree().CreateTimer( Rng.Float( RespawnMin, RespawnMax ) ).Timeout += () =>

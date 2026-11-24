@@ -291,7 +291,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `PoseFlippers` (plunger, spring, ball count lights, flippers on the tilted deck); the plunger at the back pulls on its
   own as the trigger is held (a hand pulling it was tried and dropped, user's choice). Mouse 4 is the roll
   (`JetpackToys.RollStep` through `PlayerController.MoveOverride`): third person while it lasts, a glass pinball shell,
-  its own momentum (steer, faster downhill, wall bounces, a hop on jump); enemies take `RollDamagePer` a m/s, light
+  its own momentum (`JetpackToys.ShellRadius` 1.02 m so the tucked robot stays inside; steer, faster downhill, wall bounces, a hop on jump); enemies take `RollDamagePer` a m/s, light
   ones fly off as `HumanPinball`s, heavy ones bounce it off. Guns built with `GunKit` (`MagnetModels`, `PlungerModels`,
   `PinballModels`); suits `MagnetTexture`, `TileTexture`, `PlayfieldTexture`. Balance as for Hook and Coral: skill
   effects scale with `UpgradeScale`; each test prints hits to kill a crab by wave. The picker shows two rows of four.
@@ -331,12 +331,14 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Shark, Squilien, mermaid, and the bosses (`KrakenNet.cs`, `PoseidonNet.cs`, `DaveyNet.cs`). `--nettest` checks the
   hook, beam, slam, trident and cannons show on the joiner.
   Test: `--nettest` with one copy `--host` and one `--join 127.0.0.1 --class vacbot` (CI runs both).
-- Fish swarms (`Creatures/FishSwarm.cs`, user's ask): the sea dressing's four fish schools are enemies. One swarm is
-  one creature (one health bar); its fish die as its health falls (`Thin`, the nearest to the blow first, floating off
-  as bodies); a player within `AggroRange` (or a hit) sets it on them: it circles the body at arm's length below the
-  eyes and nips (`BiteDamage`, less as it thins); back after `RespawnMin`-`Max`. The host makes them, joiners get
-  puppets (`NetCreatures` "FishSwarm"). Under tests only `--fish` makes them (its test). A dead fish is a ragdoll
-  (`KillFish`: head, body and tail as gibs on cone-twist joints) and `TearChance` of them come apart, spurting.
+- Fish swarms (`Creatures/FishSwarm.cs`, user's ask): a regular wave enemy (`EnemyKind.FishSwarm`, `WaveDirector.FishChance`
+  of each wave from `FishFromWave` 2, at most `MaxFish` 3 alive, health `FishBaseHealth` + `FishHealthPerWave`); none are
+  set about the map. One swarm is one creature (one health bar); its fish die as its health falls (`Thin`, the nearest
+  to the blow first). A wave swarm (`SpawnHunter`, `Hunter`) comes from a spawn point already on the nearest player,
+  circles the body at arm's length below the eyes and nips (`BiteDamage`, less as it thins), never gives up or comes
+  back. (`Spawn` still makes the old idle kind that loops a home and respawns.) Joiners get puppets (`NetCreatures`
+  "FishSwarm"). A dead fish is a ragdoll (`KillFish`: head, body and tail as gibs on cone-twist joints) and
+  `TearChance` of them come apart, spurting. Dev menu: Enemies, Spawn an enemy, Fish swarm. Test: `--fish`.
 - Robot oil and dismemberment (`Player/RobotOil.cs`, `RobotRagdoll.BreakApart`): hits spray black oil and sparks, hard
   hits splatter oil on the visor, a badly hurt robot leaks oil and sparks; on death the ragdoll loses 2 to 4 limbs (the
   head now and then) as robot pieces with chrome joints, oil gushing from both ends.
@@ -418,7 +420,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).
 - Sea floor props come from `Tools/blender/sea_props.py` and are placed by `godot/Code/Game/SeaDressing.cs`
   (fixed seed). Dock wood textures: `python Tools/blender/wood_textures.py`.
-- Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, imports, builds, plays through `play_dev.bat`).
+- Desktop shortcut: run `Tools/godot/make_desktop_shortcut.bat` once; the shortcut runs `play_latest.bat` (pulls main, builds, plays through `play_dev.bat`; it imports assets on every run, since a never-imported model shows up missing).
 - Release: `bash Tools/godot/release.sh` builds, smoke-tests and pushes to itch.io (`jadjoker/risk-of-copyright:windows`).
   Every push to `main` also publishes (a push to a `claude/**` branch is built and tested, not uploaded):
   `.github/workflows/itch.yml` builds, exports, runs the headless tests and `butler push`es the Windows build (channel

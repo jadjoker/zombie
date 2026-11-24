@@ -35,12 +35,17 @@ function Update-FromGitHub {
 	if ($LASTEXITCODE -ne 0) { Write-Host "Update failed, running your current version." -ForegroundColor Yellow; return $true }
 	Write-Host "Updated: pulled $behind new commit(s)." -ForegroundColor Green
 	git log --oneline -n ([Math]::Min($behind, 5)) | ForEach-Object { Write-Host "  $_" }
-	Write-Host "Importing any new assets..."
-	& ($godot -replace '\.exe$', '_console.exe') --headless --path "$project" --import *> $null
 	return $true
 }
 
 Update-FromGitHub | Out-Null
+
+# Every run, not just after a pull: a model or sound that was never imported shows up missing in game.
+# Fast when nothing is new.
+Write-Host "Importing any new assets..."
+& ($godot -replace '\.exe$', '_console.exe') --headless --path "$project" --import *> $null
+Set-Location $root
+if (-not (git diff HEAD --ignore-cr-at-eol --name-only)) { git checkout -- . 2>$null }   # importing rewrites line endings only
 
 Write-Host "Building..."
 dotnet build "$project\RiskOfCopyright.csproj" -nologo -v q

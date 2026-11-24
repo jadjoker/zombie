@@ -14,7 +14,8 @@ public partial class AutoTest
 		foreach ( var c in Creature.Everyone.ToList() ) if ( c is SeaSpider ) c.QueueFree();
 		await WaitForNav();
 		await Wait( 0.5f );
-		Check( FishSwarm.All.Count >= 3, $"the sea has {FishSwarm.All.Count} fish swarms, not its schools" );
+		Check( FishSwarm.All.Count == 0, $"the sea starts with {FishSwarm.All.Count} fish swarms (they are wave enemies now)" );
+		Check( WaveDirector.Spawners.ContainsKey( WaveDirector.EnemyKind.FishSwarm ), "the wave director cannot spawn fish swarms" );
 		var me = player.GetNode<PlayerSurvivor>( "PlayerSurvivor" );
 		me.Health.ResetTo( 5000f );
 		var (spot, yaw) = OpenLane( 10f );
@@ -23,11 +24,12 @@ public partial class AutoTest
 		var ahead = new Angles( 0f, yaw, 0f ).Forward;
 		foreach ( var s in FishSwarm.All.ToList() ) s.QueueFree();
 		await Wait( 0.2f );
-		var swarm = FishSwarm.Spawn( GetTree().CurrentScene, spot + ahead * 9f + Vector3.Up * 2.5f, new Color( 1f, 0.75f, 0.2f ), 16, 1.5f, 0.15f, 0f, 7 );
+		// A wave swarm comes in from out past its aggro range and still finds the player.
+		var swarm = FishSwarm.SpawnHunter( GetTree().CurrentScene, spot + ahead * 20f + Vector3.Up * 2.5f, new Color( 1f, 0.75f, 0.2f ), 16, 16 * FishSwarm.FishHealth );
 		await Wait( 0.3f );
 		var count = swarm.Alive;
 		var health = me.Health.Current;
-		for ( var t = 0f; t < 6f && FishSwarm.Bites < 3; t += 0.1f ) { player.GlobalPosition = spot + Vector3.Up * 0.1f; await Wait( 0.1f ); }
+		for ( var t = 0f; t < 10f && FishSwarm.Bites < 3; t += 0.1f ) { player.GlobalPosition = spot + Vector3.Up * 0.1f; await Wait( 0.1f ); }
 		if ( shots is not null ) { player.ThirdPerson = true; await Wait( 0.3f ); await Shot( "fish_swarm_attack" ); player.ThirdPerson = false; LookAt( player.GlobalPosition + ahead * 1.3f + Vector3.Up * 0.8f ); await Wait( 0.2f ); await Shot( "fish_swarm_attack_fp" ); }
 		GD.Print( $"[autotest] fish: a swarm of {count} on the player: aggro {swarm.Aggro}, bites {FishSwarm.Bites}, health {health:0} -> {me.Health.Current:0}" );
 		Check( swarm.Aggro && FishSwarm.Bites > 0 && me.Health.Current < health, "a swarm near the player did not go for them" );

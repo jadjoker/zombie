@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// The hermit crab's shells (user's list): a toilet bowl, a diving helmet, a garbage can, a recycling bin, a tea cup,
-/// a disco ball and a milk carton, built in code. The toilet, can, bin, cup and carton are worn upside down over the crab
+/// a disco ball, a milk carton and a classic spiral sea shell, built in code. The toilet, can, bin, cup and carton are worn upside down over the crab
 /// (`SB.UpsideDown`), so it looks like it lives in them rather than carrying them. Each is cut into thick pieces with jagged edges (tiles of
 /// its surfaces, plus its lid, handles and such), so it can crumble a piece at a time and fall apart like the Kraken's
 /// dome. Built once per kind and shared (each crab gets its own materials, so its flashes are its own). Metres in the
@@ -10,8 +10,8 @@ using Godot;
 /// </summary>
 public partial class HermitCrab
 {
-	public enum ShellKind { Toilet, DivingHelmet, GarbageCan, RecyclingBin, TeaCup, DiscoBall, MilkCarton }
-	public const int ShellCount = 7;
+	public enum ShellKind { Toilet, DivingHelmet, GarbageCan, RecyclingBin, TeaCup, DiscoBall, MilkCarton, Spiral }
+	public const int ShellCount = 8;
 	/// <summary> The shells are drawn this much bigger than they are built (they have to read on a crab this size). </summary>
 	public const float ShellScale = 1.8f;
 
@@ -56,13 +56,16 @@ public partial class HermitCrab
 			ShellKind.RecyclingBin => new( GibKind.Shell, "hit_world", 0.8f, new Color( 0.3f, 0.5f, 0.95f ) ),
 			ShellKind.TeaCup => new( GibKind.Glass, "glass_break", 1.35f, new Color( 0.6f, 0.35f, 0.15f ) ),
 			ShellKind.DiscoBall => new( GibKind.Glass, "glass_break", 1.15f, new Color( 0.85f, 0.85f, 1f ) ),
+			ShellKind.Spiral => new( GibKind.Shell, "glass_break", 1.3f, new Color( 0.95f, 0.8f, 0.7f ) ),
 			_ => new( GibKind.Flesh, "splash", 1.1f, new Color( 0.98f, 0.98f, 0.96f ) ),
 		};
 		spins = Shell == ShellKind.DiscoBall;
 		if ( !templates.TryGetValue( Shell, out var t ) ) templates[Shell] = t = MakeTemplate( Shell );
 		shellRoot = new Node3D { Name = $"Shell {Shell}" };
 		shell.Go.AddChild( shellRoot );
-		shellRoot.Basis = t.Tilt.Scaled( Vector3.One * ShellScale );
+		// Each sits at its own slight angle, leant back and a little to one side, like a shell a crab dragged on.
+		var lean = new Basis( Vector3.Back, MathX.Rad( Rng.Float( -7f, 7f ) ) ) * new Basis( Vector3.Right, MathX.Rad( Rng.Float( 6f, 13f ) ) ) * t.Tilt;
+		shellRoot.Basis = lean.Scaled( Vector3.One * ShellScale );
 		var mats = t.Mats.Select( m => m.Make() ).ToList();
 		var lo = Vector3.One * float.MaxValue;
 		var hi = Vector3.One * float.MinValue;
@@ -92,7 +95,7 @@ public partial class HermitCrab
 		var capsule = new CapsuleShape3D { Radius = radius, Height = MathF.Max( length, radius * 2f + 0.01f ) };
 		capsule.Radius *= ShellScale;
 		capsule.Height *= ShellScale;
-		shell.Go.AddChild( new CollisionShape3D { Name = "Shell Hit", Shape = capsule, Transform = new Transform3D( t.Tilt * new Basis( new Quaternion( Vector3.Up, along ) ), t.Tilt * shellMiddle * ShellScale ) } );
+		shell.Go.AddChild( new CollisionShape3D { Name = "Shell Hit", Shape = capsule, Transform = new Transform3D( lean * new Basis( new Quaternion( Vector3.Up, along ) ), lean * shellMiddle * ShellScale ) } );
 	}
 
 	public override void _Process( double delta )
@@ -259,7 +262,10 @@ public partial class HermitCrab
 		/// Turns everything built so far upside down (about the front to back axis, so the front stays the front) and sets it
 		/// back down with its old lowest point `sink` (shell metres) lower than before, so the open end goes down over the crab.
 		/// </summary>
-		public void UpsideDown( float sink )
+		public void UpsideDown( float sink ) => Settle( sink, true );
+
+		/// <summary> Sets what was built down with its lowest point at `0.02 - sink` (and turned over first if `flip`). </summary>
+		public void Settle( float sink, bool flip = false )
 		{
 			var lo = float.MaxValue;
 			var hi = float.MinValue;
@@ -270,8 +276,8 @@ public partial class HermitCrab
 				lo = MathF.Min( lo, f.At.Y + box.Position.Y );
 				hi = MathF.Max( hi, f.At.Y + box.End.Y );
 			}
-			var turn = new Basis( Vector3.Back, MathF.PI );
-			var lift = Vector3.Up * (hi + lo - sink);
+			var turn = flip ? new Basis( Vector3.Back, MathF.PI ) : Basis.Identity;
+			var lift = Vector3.Up * (flip ? hi + 0.02f - sink : 0.02f - sink - lo);
 			foreach ( var f in T.Frags )
 			{
 				f.At = turn * f.At + lift;
@@ -328,6 +334,7 @@ public partial class HermitCrab
 			case ShellKind.RecyclingBin: RecyclingBin( b ); break;
 			case ShellKind.TeaCup: TeaCup( b ); break;
 			case ShellKind.DiscoBall: DiscoBall( b ); break;
+			case ShellKind.Spiral: Spiral( b ); break;
 			default: MilkCarton( b ); break;
 		}
 		return b.T;
@@ -356,17 +363,17 @@ public partial class HermitCrab
 		b.Patch( ( u, v ) => { var a = u * MathF.Tau; return new Vector3( MathF.Cos( a ) * 0.1f * v * 0.82f, 0.02f, MathF.Sin( a ) * 0.1f * v * 1.08f - 0.03f ); }, 3, 1, ( u, v ) => white * 0.93f, ( u, v ) => white * 0.85f, porcelain, 0.028f, wrapU: true, core: ( u, v ) => new Vector3( 0f, 0.15f, -0.03f ) );
 		var tank = b.Mat( Plain( white, 0.18f ), colour: white );
 		// The tank, level with the bowl so it stays tucked against it once turned over, closed on both ends.
-		const float ty = 0.25f;
-		b.Solid( new BoxMesh { Size = new Vector3( 0.34f, 0.3f, 0.02f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty, 0.27f ) ), tank, 0.18f );
-		b.Solid( new BoxMesh { Size = new Vector3( 0.34f, 0.3f, 0.02f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty, 0.39f ) ), tank, 0.18f );
-		b.Solid( new BoxMesh { Size = new Vector3( 0.02f, 0.3f, 0.12f ) }, new Transform3D( Basis.Identity, new Vector3( -0.17f, ty, 0.33f ) ), tank, 0.16f );
-		b.Solid( new BoxMesh { Size = new Vector3( 0.02f, 0.3f, 0.12f ) }, new Transform3D( Basis.Identity, new Vector3( 0.17f, ty, 0.33f ) ), tank, 0.16f );
-		b.Solid( new BoxMesh { Size = new Vector3( 0.37f, 0.03f, 0.16f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty + 0.165f, 0.33f ) ), tank, 0.19f );
-		b.Solid( new BoxMesh { Size = new Vector3( 0.34f, 0.02f, 0.14f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty - 0.15f, 0.33f ) ), tank, 0.18f );
+		const float ty = 0.25f, th = 0.22f;
+		b.Solid( new BoxMesh { Size = new Vector3( 0.32f, th, 0.02f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty, 0.24f ) ), tank, 0.16f );
+		b.Solid( new BoxMesh { Size = new Vector3( 0.32f, th, 0.02f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty, 0.34f ) ), tank, 0.16f );
+		b.Solid( new BoxMesh { Size = new Vector3( 0.02f, th, 0.1f ) }, new Transform3D( Basis.Identity, new Vector3( -0.16f, ty, 0.29f ) ), tank, 0.14f );
+		b.Solid( new BoxMesh { Size = new Vector3( 0.02f, th, 0.1f ) }, new Transform3D( Basis.Identity, new Vector3( 0.16f, ty, 0.29f ) ), tank, 0.14f );
+		b.Solid( new BoxMesh { Size = new Vector3( 0.35f, 0.03f, 0.14f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty + th * 0.5f + 0.005f, 0.29f ) ), tank, 0.17f );
+		b.Solid( new BoxMesh { Size = new Vector3( 0.32f, 0.02f, 0.12f ) }, new Transform3D( Basis.Identity, new Vector3( 0f, ty - th * 0.5f, 0.29f ) ), tank, 0.16f );
 		var chrome = b.Mat( Plain( new Color( 0.85f, 0.87f, 0.9f ), 0.12f, 0.9f ), colour: new Color( 0.85f, 0.87f, 0.9f ) );
-		b.Extra( new CylinderMesh { TopRadius = 0.012f, BottomRadius = 0.012f, Height = 0.08f, RadialSegments = 8, Rings = 1 }, Turn( new Vector3( -0.11f, ty + 0.1f, 0.25f ), Vector3.Right ), chrome );
-		b.Extra( new SphereMesh { Radius = 0.02f, Height = 0.04f }, new Transform3D( Basis.Identity, new Vector3( -0.15f, ty + 0.1f, 0.25f ) ), chrome );
-		b.UpsideDown( 0.12f );
+		b.Extra( new CylinderMesh { TopRadius = 0.012f, BottomRadius = 0.012f, Height = 0.08f, RadialSegments = 8, Rings = 1 }, Turn( new Vector3( -0.11f, ty + 0.05f, 0.22f ), Vector3.Right ), chrome );
+		b.Extra( new SphereMesh { Radius = 0.02f, Height = 0.04f }, new Transform3D( Basis.Identity, new Vector3( -0.15f, ty + 0.05f, 0.22f ) ), chrome );
+		b.UpsideDown( 0.03f );
 	}
 
 	/// <summary> An old brass diving helmet: the dome, a copper breastplate with bolts, portholes with glass and the front one's grill, an air valve. </summary>
@@ -417,7 +424,7 @@ public partial class HermitCrab
 		var handle = b.Mat( Plain( grey * 0.95f, 0.4f, 0.3f ), colour: grey * 0.95f );
 		foreach ( var x in new[] { -1f, 1f } )
 			b.Extra( new CylinderMesh { TopRadius = 0.01f, BottomRadius = 0.01f, Height = 0.12f, RadialSegments = 6, Rings = 1 }, new Transform3D( new Basis( Vector3.Right, MathF.PI * 0.5f ), new Vector3( x * 0.24f, 0.42f, 0f ) ), handle );
-		b.UpsideDown( 0.15f );
+		b.UpsideDown( 0.03f );
 	}
 
 	/// <summary> A blue recycling bin worn upside down, the white chasing arrows on the front. </summary>
@@ -442,7 +449,7 @@ public partial class HermitCrab
 			b.Extra( new CylinderMesh { TopRadius = 0.011f, BottomRadius = 0.011f, Height = p0.DistanceTo( p1 ) * 0.8f, RadialSegments = 6, Rings = 1 }, Turn( p0.Lerp( p1, 0.4f ), along ), white );
 			b.Extra( new CylinderMesh { TopRadius = 0f, BottomRadius = 0.026f, Height = 0.04f, RadialSegments = 3, Rings = 1 }, Turn( p1 - along * 0.015f, along ), white );
 		}
-		b.UpsideDown( 0.15f );
+		b.UpsideDown( 0.03f );
 	}
 
 	/// <summary> An empty china tea cup worn upside down: gold rim, pink band and flowers, the handle out the side, its foot on top. </summary>
@@ -480,7 +487,7 @@ public partial class HermitCrab
 				b.Extra( new SphereMesh { Radius = 0.014f, Height = 0.028f, RadialSegments = 8, Rings = 4 }, new Transform3D( turn * Basis.FromScale( new Vector3( 1f, 0.3f, 1f ) ), at + off ), petal );
 			}
 		}
-		b.UpsideDown( 0.08f );
+		b.UpsideDown( 0.02f );
 	}
 
 	/// <summary> A spinning disco ball of little square mirrors (some tinted blue or pink) on a dark core, its loop on top. </summary>
@@ -513,7 +520,7 @@ public partial class HermitCrab
 	static void MilkCarton( SB b )
 	{
 		var card = b.Mat( Coloured( 0.7f ) );
-		const float hx = 0.14f, hz = 0.14f, y0 = 0.02f, h = 0.4f, flap = 0.09f;
+		const float hx = 0.17f, hz = 0.17f, y0 = 0.02f, h = 0.4f, flap = 0.065f;
 		var white = new Color( 0.97f, 0.97f, 0.95f );
 		var blue = new Color( 0.16f, 0.42f, 0.86f );
 		var middle = new Vector3( 0f, y0 + h * 0.5f, 0f );
@@ -534,13 +541,54 @@ public partial class HermitCrab
 			(new Vector3( -hx, top, -hz ), new Vector3( 0f, 0f, 2f * hz ), Vector3.Left ),
 			(new Vector3( hx, top, -hz ), new Vector3( 0f, 0f, 2f * hz ), Vector3.Right ) } )
 		{
-			var V = (Vector3.Up * 0.45f + n).Normalized() * flap;
+			var V = (Vector3.Up * 0.15f + n).Normalized() * flap;
 			b.Patch( ( u, v ) => o + U * u + V * v, 1, 1, ( u, v ) => white, ( u, v ) => inside, card, 0.014f, jag: 0.4f, core: ( u, v ) => middle );
 		}
 		// The writing, built turned over so it reads the right way up once the carton is.
 		var ink = b.Mat( Plain( white, 0.5f ), colour: white );
 		b.Extra( new TextMesh { Text = "MILK", FontSize = 64, PixelSize = 0.0021f, Depth = 0.004f }, new Transform3D( new Basis( Vector3.Back, MathF.PI ) * new Basis( Vector3.Up, MathF.PI ), new Vector3( 0f, y0 + h * 0.64f, -hz - 0.012f ) ), ink );
 		b.Extra( new TextMesh { Text = "MOO", FontSize = 48, PixelSize = 0.0021f, Depth = 0.004f }, new Transform3D( new Basis( Vector3.Right, MathF.PI ) * new Basis( Vector3.Up, MathF.PI * 0.5f ), new Vector3( hx + 0.012f, y0 + h * 0.64f, 0f ) ), ink );
-		b.UpsideDown( 0.12f );
+		b.UpsideDown( 0.03f );
+	}
+
+	/// <summary>
+	/// The classic hermit crab shell: a whelk coiled up into a spire, cream with brown bands and flame streaks, a pearly
+	/// pink mouth facing forward over the crab, a thick lip round it.
+	/// </summary>
+	static void Spiral( SB b )
+	{
+		var shell = b.Mat( Coloured( 0.3f, 0f, 0.6f ) );
+		const float turns = 3.2f, k = 0.15f, r0 = 0.17f, rise = 0.36f;
+		var end = turns * MathF.Tau;
+		float Rad( float t ) => r0 * MathF.Exp( -k * t );
+		// The coil's middle: round the spire's axis (Y), climbing as it tightens. t = 0 is the mouth.
+		Vector3 Mid( float t ) => new( Rad( t ) * 0.95f * MathF.Cos( t ) - r0 * 0.95f, rise * (1f - MathF.Exp( -k * t )), Rad( t ) * 0.95f * MathF.Sin( t ) );
+		Vector3 Tube( float u, float v )
+		{
+			var t = u * end;
+			var c = Mid( t );
+			var outward = new Vector3( MathF.Cos( t ), 0f, MathF.Sin( t ) );
+			var f = v * MathF.Tau;
+			// A little flattened against the turn inside it, so the whorls nest.
+			return c + (outward * MathF.Cos( f ) * (MathF.Cos( f ) < 0f ? 0.8f : 1f) + Vector3.Up * MathF.Sin( f ) * 0.95f) * Rad( t );
+		}
+		var cream = new Color( 0.96f, 0.88f, 0.74f );
+		var brown = new Color( 0.55f, 0.3f, 0.16f );
+		var tan = new Color( 0.82f, 0.6f, 0.4f );
+		Color Outer( float u, float v )
+		{
+			var t = u * end;
+			var band = MathF.Abs( MathF.Sin( v * MathF.Tau * 2f + 0.6f ) ) > 0.86f ? 1f : 0f;
+			var flame = MathF.Max( 0f, MathF.Sin( t * 3.1f + MathF.Sin( v * 9f ) * 0.8f ) );
+			var c = cream.Lerp( tan, flame * 0.6f ).Lerp( brown, band * 0.85f );
+			return u > 0.85f ? c.Lerp( brown, (u - 0.85f) * 4f ) : c;
+		}
+		var pearl = new Color( 1f, 0.78f, 0.76f );
+		b.Patch( Tube, 12, 4, Outer, ( u, v ) => pearl.Lerp( Colors.White, 0.2f * MathF.Sin( v * MathF.Tau * 3f ) ), shell, 0.022f, wrapV: true, core: ( u, v ) => Mid( u * end ) );
+		// The lip round the mouth.
+		var lip = b.Mat( Plain( pearl, 0.25f ), colour: pearl );
+		var mouth = Mid( 0f );
+		b.Extra( new TorusMesh { InnerRadius = r0 * 0.93f, OuterRadius = r0 * 1.1f, Rings = 24, RingSegments = 8 }, new Transform3D( new Basis( Vector3.Right, MathF.PI * 0.5f ) * Basis.FromScale( new Vector3( 1f, 1f, 0.95f ) ), mouth ), lip );
+		b.Settle( 0.02f );
 	}
 }

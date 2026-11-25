@@ -469,10 +469,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   enemies (`PlayerPerks.HurtCreatures`, `PlayerPerks.Hurt`), so shooting it early by other enemies turns it on them. Hit spheres
   sit on `body` (scaled evenly; the wobble is on `look`, Jolt refuses uneven scale). Test: `--puffer` (shots need a window).
 - The hermit crab squatter (`Creatures/HermitCrab.cs`, `HermitShells.cs`, `EnemyKind.HermitCrab`, user's pick): `HermitShare`
-  of the crabs from `HermitFromWave` (2), a `JunkCrab` (its `BuildArmour`, `Exposed`, `PanicUntil` hooks) living in one of seven
+  of the crabs from `HermitFromWave` (2), a `JunkCrab` (its `BuildArmour`, `Exposed`, `PanicUntil` hooks) living in one of eight
   shells built in code (`ShellKind`: toilet, diving helmet, garbage can, recycling bin, tea cup, disco ball (spins),
-  milk carton; the croissant was dropped, user's choice; the toilet, can, bin, empty cup and opened carton are worn upside
-  down over the crab, `SB.UpsideDown`), drawn `ShellScale` (1.8) up, each cut into thick tiles with jagged edges (`SB.Patch`) plus lids and handles,
+  milk carton, a classic spiral whelk (`Spiral`, in place of the croissant, user's choice); the toilet, can, bin, empty cup
+  and opened carton are worn upside down over the crab (`SB.UpsideDown`), rims kept above the legs so nothing clips, and
+  each crab's shell leans back and to a side a little), drawn `ShellScale` (1.8) up, each cut into thick tiles with jagged edges (`SB.Patch`) plus lids and handles,
   one template per kind. Shots on the shell (part 1) pass `ShellPass` through and knock off the pieces nearest the hit as its
   health falls (`Crumble`); a shot over a hole goes through to the crab; at none the rest falls apart (`ShellFallsApart`) and the
   naked crab (pink tail, soft) panics, then comes back `NakedSpeed` faster. Pieces are gibs of their stuff (porcelain sinks, the

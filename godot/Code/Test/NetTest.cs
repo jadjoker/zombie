@@ -42,7 +42,8 @@ public partial class AutoTest
 		else
 		{
 			Check( other.Robot == RobotClass.RamBot, $"the host is Ram-Bot but shows as {other.Robot.Name}" );
-			await Wait( 1f );
+			// Long enough that the host has noted where this robot starts (it waits 1 s after seeing it) before it moves.
+			await Wait( 3f );
 			var (spot, _) = OpenLane( 8f );
 			player.GlobalPosition = spot + Vector3.Up * 0.1f;
 			player.Velocity = Vector3.Zero;
@@ -93,6 +94,9 @@ public partial class AutoTest
 			// An enemy at the joiner's robot: its bites land on the joiner's machine.
 			DevFlags.FreezeEnemies = false;
 			foreach ( var c in crabs ) if ( IsInstanceValid( c ) && !c.IsDead ) c.QueueFree();
+			// This robot steps well away first: both robots stood on one spot and the crab went for the nearer, this one.
+			player.GlobalPosition = Nav.Closest( player, other.GlobalPosition + Vector3.Back * 14f ) + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
 			var biter = WaveDirector.Current.SpawnAt( WaveDirector.EnemyKind.Crab, Nav.Closest( player, other.GlobalPosition + Vector3.Right * 1.2f ) + Vector3.Up * 0.3f, other.GlobalPosition ) as Creature;
 			GD.Print( $"[autotest] net: a crab ({biter?.NetId}) put by the joiner's robot to bite it" );
 			await Wait( 10f );

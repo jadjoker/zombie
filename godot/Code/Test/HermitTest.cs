@@ -45,6 +45,8 @@ public partial class AutoTest
 		GD.Print( $"[autotest] hermit: shells {string.Join( ", ", counts )}" );
 		Check( crabs.All( c => c.ShellOn && c.PieceCount >= 12 ), "a hermit crab's shell did not build in pieces" );
 		Check( crabs.Select( c => c.Shell ).Distinct().Count() == HermitCrab.ShellCount, "not every shell was built" );
+		var disco = crabs.First( c => c.Shell == HermitCrab.ShellKind.DiscoBall );
+		Check( disco.DiscoGoing, "the disco ball shell's sparkles and spots are not going" );
 
 		if ( shots is not null )
 		{

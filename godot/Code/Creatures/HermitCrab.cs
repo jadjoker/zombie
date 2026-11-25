@@ -95,6 +95,7 @@ public partial class HermitCrab : JunkCrab
 	void ShellFallsApart( Vector3 direction )
 	{
 		ShellsOff++;
+		EndDisco();
 		var centre = ShellCentre;
 		foreach ( var f in frags.Where( f => !f.Gone ).ToList() )
 			KnockOff( f, (f.Node.GlobalPosition - centre).SafeNormal() * Rng.Float( 2f, 3.5f ) + direction * 1.2f + Vector3.Up * Rng.Float( 1.5f, 2.5f ) );

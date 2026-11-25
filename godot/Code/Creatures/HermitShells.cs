@@ -80,6 +80,7 @@ public partial class HermitCrab
 				node.AddChild( mi );
 				f.Meshes.Add( mi );
 				if ( t.Mats[p.Mat].Tint ) shell.Renderers.Add( (mi, t.Mats[p.Mat].Colour) );
+				else if ( spins ) glints.Add( mi );
 			}
 			frags.Add( f );
 			lo = lo.Min( ft.At - Vector3.One * ft.Reach );
@@ -96,12 +97,13 @@ public partial class HermitCrab
 		capsule.Radius *= ShellScale;
 		capsule.Height *= ShellScale;
 		shell.Go.AddChild( new CollisionShape3D { Name = "Shell Hit", Shape = capsule, Transform = new Transform3D( lean * new Basis( new Quaternion( Vector3.Up, along ) ), lean * shellMiddle * ShellScale ) } );
+		if ( spins ) BuildDisco( shell );
 	}
 
 	public override void _Process( double delta )
 	{
 		base._Process( delta );
-		if ( spins && shellRoot is not null && IsInstanceValid( shellRoot ) ) shellRoot.RotateY( (float)delta * 0.9f );
+		if ( spins ) Disco( (float)delta );
 	}
 
 	// ---- The builder ----

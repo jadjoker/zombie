@@ -264,6 +264,27 @@ public partial class HermitCrab
 		/// </summary>
 		public void UpsideDown( float sink ) => Settle( sink, true );
 
+		/// <summary> Turns everything built so far about the origin, then centres it over the crab (X and Z). </summary>
+		public void Rotate( Basis turn )
+		{
+			foreach ( var f in T.Frags )
+			{
+				f.At = turn * f.At;
+				foreach ( var p in f.Pieces ) p.Local = new Transform3D( turn * p.Local.Basis, turn * p.Local.Origin );
+			}
+			var lo = Vector3.One * float.MaxValue;
+			var hi = Vector3.One * float.MinValue;
+			foreach ( var f in T.Frags )
+			foreach ( var p in f.Pieces )
+			{
+				var box = p.Local * p.Mesh.GetAabb();
+				lo = lo.Min( f.At + box.Position );
+				hi = hi.Max( f.At + box.End );
+			}
+			var shift = new Vector3( -(lo.X + hi.X) * 0.5f, 0f, -(lo.Z + hi.Z) * 0.5f );
+			foreach ( var f in T.Frags ) f.At += shift;
+		}
+
 		/// <summary> Sets what was built down with its lowest point at `0.02 - sink` (and turned over first if `flip`). </summary>
 		public void Settle( float sink, bool flip = false )
 		{
@@ -552,8 +573,9 @@ public partial class HermitCrab
 	}
 
 	/// <summary>
-	/// The classic hermit crab shell: a whelk coiled up into a spire, cream with brown bands and flame streaks, a pearly
-	/// pink mouth facing forward over the crab, a thick lip round it.
+	/// The classic hermit crab shell: a whelk coiled up into a spire, cream with brown bands and flame streaks, a thick lip
+	/// round its pearly pink mouth. Built with the mouth facing forward, then turned so the mouth faces down onto the crab's
+	/// back (worn like the others), the coil rising over it and the spire trailing back.
 	/// </summary>
 	static void Spiral( SB b )
 	{
@@ -589,6 +611,7 @@ public partial class HermitCrab
 		var lip = b.Mat( Plain( pearl, 0.25f ), colour: pearl );
 		var mouth = Mid( 0f );
 		b.Extra( new TorusMesh { InnerRadius = r0 * 0.93f, OuterRadius = r0 * 1.1f, Rings = 24, RingSegments = 8 }, new Transform3D( new Basis( Vector3.Right, MathF.PI * 0.5f ) * Basis.FromScale( new Vector3( 1f, 1f, 0.95f ) ), mouth ), lip );
-		b.Settle( 0.02f );
+		b.Rotate( new Basis( Vector3.Up, MathF.PI ) * new Basis( Vector3.Right, -MathF.PI * 0.5f ) );
+		b.Settle( 0.03f );
 	}
 }

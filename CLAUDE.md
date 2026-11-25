@@ -471,7 +471,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - The hermit crab squatter (`Creatures/HermitCrab.cs`, `HermitShells.cs`, `EnemyKind.HermitCrab`, user's pick): `HermitShare`
   of the crabs from `HermitFromWave` (2), a `JunkCrab` (its `BuildArmour`, `Exposed`, `PanicUntil` hooks) living in one of eight
   shells built in code (`ShellKind`: toilet, diving helmet, garbage can, recycling bin, tea cup, disco ball (spins),
-  milk carton, a classic spiral whelk (`Spiral`, in place of the croissant, user's choice); the toilet, can, bin, empty cup
+  milk carton, a classic spiral whelk (`Spiral`, in place of the croissant, user's choice; turned by `SB.Rotate` so its mouth faces down onto the crab's back); the toilet, can, bin, empty cup
   and opened carton are worn upside down over the crab (`SB.UpsideDown`), rims kept above the legs so nothing clips, and
   each crab's shell leans back and to a side a little), drawn `ShellScale` (1.8) up, each cut into thick tiles with jagged edges (`SB.Patch`) plus lids and handles,
   one template per kind. Shots on the shell (part 1) pass `ShellPass` through and knock off the pieces nearest the hit as its

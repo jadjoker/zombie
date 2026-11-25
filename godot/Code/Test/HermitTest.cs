@@ -1,7 +1,7 @@
 using Godot;
 
 /// <summary>
-/// The hermit crab squatter (--hermit): every one of the eight shells builds, cut into pieces; shots at the shell take
+/// The hermit crab squatter (--hermit): every one of the seven shells builds, cut into pieces; shots at the shell take
 /// little off the crab and knock pieces off a few at a time near where they land, shots through a hole reach the crab,
 /// and when the shell's health is gone what is left falls apart and the naked crab panics, then comes back faster and
 /// soft. With --shots (a window): each shell close up, a shell part crumbled, the shell falling apart.
@@ -33,10 +33,10 @@ public partial class AutoTest
 		var crabs = new List<HermitCrab>();
 		for ( var k = 0; k < HermitCrab.ShellCount; k++ )
 		{
-			var at = Nav.Closest( player, open + ahead * 5f + side * (k - 3.5f) * 2.8f );
+			var at = Nav.Closest( player, open + ahead * 5f + side * (k - (HermitCrab.ShellCount - 1) * 0.5f) * 2.8f );
 			var c = HermitCrab.Spawn( GetTree().CurrentScene, at, 200f );
 			c.Shell = (HermitCrab.ShellKind)k;
-			c.Hue = k / 8f;
+			c.Hue = k / (float)HermitCrab.ShellCount;
 			c.GlobalBasis = Shapes.LookAt( -ahead );
 			crabs.Add( c );
 		}

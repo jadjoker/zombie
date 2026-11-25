@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// The hermit crab squatter (user's pick): a junk crab living in a piece of rubbish it found on the sea bed, one of
-/// eight shells (<see cref="ShellKind"/>). The shell takes most of what hits it and crumbles as it is shot: each hit
+/// seven shells (<see cref="ShellKind"/>). The shell takes most of what hits it and crumbles as it is shot: each hit
 /// knocks off the pieces nearest where it landed, and shots go through the holes it leaves. When the shell's health
 /// runs out what is left of it falls apart, and the naked crab (a soft pink tail, the weak spot now) panics: it runs
 /// for a moment, then comes back faster and snapping quicker. Crab health; the shell has <see cref="ShellShare"/> of it.
@@ -111,7 +111,7 @@ public partial class HermitCrab : JunkCrab
 		Sfx.Play( "creature_attack", GlobalPosition, 0.7f, 1.9f );
 	}
 
-	/// <summary> One piece comes off as a loose physics piece of its own stuff (porcelain and metal sink, a croissant floats). </summary>
+	/// <summary> One piece comes off as a loose physics piece of its own stuff (porcelain and metal sink, a carton floats). </summary>
 	void KnockOff( Frag f, Vector3 velocity )
 	{
 		if ( f.Gone || !IsInstanceValid( f.Node ) ) return;

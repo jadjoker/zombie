@@ -37,7 +37,7 @@ public partial class Health : Node
 		// Online: another player's robot is hurt on its owner's machine, not here (its health comes over the network).
 		if ( GetParent() is PlayerController { IsRemote: true } remote ) { NetHits.PlayerHurt( remote, damage ); return; }
 		// Online: the host's creatures take every hit there and send it; a joiner's copy only takes what was sent.
-		if ( GetParent() is Creature creature && NetCreatures.InterceptHealth( creature, damage ) ) return;
+		if ( GetParent() is Creature creature && NetCreatures.InterceptHealth( creature, ref damage ) ) return;
 		if ( DockHouse.Diving && GetParent() is PlayerController or PlayerSurvivor ) return;   // can't be hurt on the way down
 		if ( DevFlags.OneShot && GetParent() is not PlayerController ) damage.Damage = MathF.Max( damage.Damage, Current );
 		if ( Absorb is not null ) { damage.Damage = Absorb( damage ); if ( damage.Damage <= 0f ) return; }

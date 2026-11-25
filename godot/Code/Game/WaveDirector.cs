@@ -210,7 +210,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab, Cleaner }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -247,6 +247,21 @@ public partial class WaveDirector : Node3D
 	public int MaxPuffers = 4;
 	public float PufferBaseHealth = 60f;
 	public float PufferHealthPerWave = 8f;
+
+	/// <summary>
+	/// Cleaner wrasses (user's design): healers, a share of each wave from `CleanerFromWave` (6), at most `MaxCleaners` (2)
+	/// alive. Weak (two or three rifle shots); their patients' shield is `CleanerShield`, growing with the wave.
+	/// </summary>
+	public bool SpawnCleaners = true;
+	public float CleanerChance = 0.08f;
+	public int CleanerFromWave = 6;
+	public int MaxCleaners = 2;
+	public float CleanerBaseHealth = 50f;
+	public float CleanerHealthPerWave = 6f;
+	public float CleanerShieldBase = 100f;
+	public float CleanerShieldPerWave = 15f;
+	/// <summary> The shield a wrasse gives this wave: 100 on its first wave, more each wave after. </summary>
+	public float CleanerShield => CleanerShieldBase + CleanerShieldPerWave * Math.Max( 0, Wave - CleanerFromWave );
 
 	/// <summary> Hermit crab squatters (user's pick): this share of the crabs, from `HermitFromWave`, wear a shell of junk. Crab health. </summary>
 	public bool SpawnHermits = true;
@@ -346,6 +361,13 @@ public partial class WaveDirector : Node3D
 			var f = PufferBomber.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.6f, health );
 			f.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return f;
+		},
+		[EnemyKind.Cleaner] = ( d, at, health ) =>
+		{
+			var w = CleanerWrasse.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.5f, health );
+			w.ShieldMax = d.CleanerShield;
+			w.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return w;
 		},
 		[EnemyKind.HermitCrab] = ( d, at, health ) =>
 		{
@@ -668,6 +690,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
 			EnemyKind.Crab or EnemyKind.HermitCrab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
 			EnemyKind.Puffer => PufferBaseHealth + PufferHealthPerWave * (Wave - 1),
+			EnemyKind.Cleaner => CleanerBaseHealth + CleanerHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
 			EnemyKind.RockyShark => SharkBaseHealth + SharkHealthPerWave * (Wave - 1),
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
@@ -815,6 +838,14 @@ public partial class WaveDirector : Node3D
 		return n;
 	}
 
+	int CleanersAlive()
+	{
+		var n = 0;
+		foreach ( var e in alive )
+			if ( e is CleanerWrasse w && IsInstanceValid( w ) && !w.IsDead ) n++;
+		return n;
+	}
+
 	int FishAlive()
 	{
 		var n = 0;
@@ -857,6 +888,12 @@ public partial class WaveDirector : Node3D
 		{
 			if ( roll < PufferChance ) return Spawn( EnemyKind.Puffer );
 			roll = (roll - PufferChance) / (1f - PufferChance);
+		}
+		// Cleaner wrasses: a share of every wave from CleanerFromWave, at most MaxCleaners alive.
+		if ( SpawnCleaners && Wave >= CleanerFromWave && has( EnemyKind.Cleaner ) && CleanersAlive() < MaxCleaners )
+		{
+			if ( roll < CleanerChance ) return Spawn( EnemyKind.Cleaner );
+			roll = (roll - CleanerChance) / (1f - CleanerChance);
 		}
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;

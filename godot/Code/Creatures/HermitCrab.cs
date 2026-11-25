@@ -60,7 +60,7 @@ public partial class HermitCrab : JunkCrab
 			base.ReceiveShot( Body, damage, direction, position, origin, shooter, scoreHit );
 			return;
 		}
-		if ( NetCreatures.Intercept( this, index, damage, direction, position, origin, shooter, scoreHit ) ) return;
+		if ( NetCreatures.Intercept( this, index, ref damage, direction, position, origin, shooter, scoreHit ) ) return;
 		if ( IsDead ) return;
 		NoteShot( direction, position, origin );
 		var part = parts[Barrel];

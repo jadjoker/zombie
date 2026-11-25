@@ -20,7 +20,7 @@ public static class NetCreatures
 	public const float SnapshotRate = 15f;
 	/// <summary> Tests: hits the host sent that another player's robot landed. </summary>
 	public static int RemoteShots;
-	const int SnapshotHead = 10;   // id, x, y, z, qx, qy, qz, qw, health, then how many attack state floats follow
+	const int SnapshotHead = 11;   // id, x, y, z, qx, qy, qz, qw, health, shield, then how many attack state floats follow
 	static readonly List<float> extra = new();
 
 	public static Creature Find( int id ) => byId.TryGetValue( id, out var c ) && GodotObject.IsInstanceValid( c ) ? c : null;
@@ -57,6 +57,7 @@ public static class NetCreatures
 		HermitCrab x => ("HermitCrab", new[] { x.Hue, x.Size, (float)x.Shell }),
 		JunkCrab x => ("JunkCrab", new[] { x.Hue, x.Size }),
 		PufferBomber => ("PufferBomber", Array.Empty<float>()),
+		CleanerWrasse => ("CleanerWrasse", Array.Empty<float>()),
 		MimicOctopus x => ("MimicOctopus", new[] { (float)x.Look, x.DisguiseHeight }),
 		Bloober x => ("Bloober", new[] { x.Hue, 0f }),
 		Squilien x => ("Squilien", new[] { x.Hue, 0f }),
@@ -86,6 +87,7 @@ public static class NetCreatures
 		{
 			"HermitCrab" => Set( HermitCrab.Spawn( scene, position, maxHealth ), x => { x.Hue = L( 0, -1f ); x.Size = L( 1, 1f ); x.Shell = (HermitCrab.ShellKind)(int)L( 2 ); } ),
 			"PufferBomber" => PufferBomber.Spawn( scene, position, maxHealth ),
+			"CleanerWrasse" => CleanerWrasse.Spawn( scene, position, maxHealth ),
 			"MimicOctopus" => Set( MimicOctopus.Spawn( scene, position, maxHealth ), x => { x.Look = (MimicOctopus.Disguise)(int)L( 0 ); x.DisguiseHeight = L( 1, 1.8f ); } ),
 			"JunkCrab" => Set( JunkCrab.Spawn( scene, position, maxHealth ), x => { x.Hue = L( 0, -1f ); x.Size = L( 1, 1f ); } ),
 			"Bloober" => Set( Bloober.Spawn( scene, position, maxHealth ), x => x.Hue = L( 0, -1f ) ),
@@ -131,15 +133,16 @@ public static class NetCreatures
 	/// The first line of every creature's ReceiveShot. Host: tells the joiners about the hit, then takes it. Joiner:
 	/// a puppet only takes hits the host sent (true means: skip it).
 	/// </summary>
-	public static bool Intercept( Creature c, int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
+	public static bool Intercept( Creature c, int index, ref float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
-		if ( !Net.Online ) return false;
+		if ( !Net.Online ) return Shielded( c, ref damage, position );
 		if ( Net.IsHost )
 		{
-			if ( c.NetId == 0 ) return false;
+			if ( c.NetId == 0 ) return Shielded( c, ref damage, position );
 			// Another player's shots count as their own machine saw them land (sent as requests): the copy of their
 			// robot here, aiming from a few frames ago, would miss what they hit.
 			if ( shooter?.Controller is { IsRemote: true } && !requested ) return true;
+			if ( Shielded( c, ref damage, position ) ) return true;   // the shield took it all: nothing to send
 			inShot = c;
 			inShotFrame = Engine.GetProcessFrames();
 			var peer = shooter?.Controller?.NetPeer ?? 0;
@@ -147,7 +150,8 @@ public static class NetCreatures
 			Net.Instance?.SendShot( c.NetId, index, damage, direction, position, origin, peer, scoreHit );
 			return false;
 		}
-		if ( !c.Puppet || Applying ) return false;
+		if ( !c.Puppet ) return Shielded( c, ref damage, position );
+		if ( Applying ) return false;
 		// This player's own shot on the host's creature: the host takes it (and sends it back to everyone).
 		if ( shooter?.Controller is { IsRemote: false } && c.NetId > 0 ) Net.Instance?.SendShotRequest( c.NetId, index, damage, direction, position, origin, scoreHit );
 		return true;
@@ -157,21 +161,34 @@ public static class NetCreatures
 	/// Health.OnDamage on a creature (blasts, shocks, bleeding: anything that skips ReceiveShot). Host: sends it unless
 	/// it is the inside of a shot already sent. Joiner: a puppet only takes what the host sent (true: skip it).
 	/// </summary>
-	public static bool InterceptHealth( Creature c, DamageInfo damage )
+	public static bool InterceptHealth( Creature c, ref DamageInfo damage )
 	{
-		if ( !Net.Online ) return false;
+		if ( !Net.Online ) return Shielded( c, ref damage.Damage, damage.Position );
 		if ( Net.IsHost )
 		{
-			if ( c.NetId == 0 ) return false;
+			if ( c.NetId == 0 ) return Shielded( c, ref damage.Damage, damage.Position );
 			if ( inShot == c && inShotFrame == Engine.GetProcessFrames() ) { inShot = null; return false; }
 			if ( ControllerOf( damage.Attacker ) is { IsRemote: true } && !requested ) return true;   // its owner sends it
+			if ( Shielded( c, ref damage.Damage, damage.Position ) ) return true;
 			var peer = damage.Attacker is PlayerSurvivor s ? s.Controller?.NetPeer ?? 0 : damage.Attacker is PlayerController pc ? pc.NetPeer : 0;
 			Net.Instance?.SendHealthHit( c.NetId, damage.Damage, damage.Position, damage.Origin, peer );
 			return false;
 		}
-		if ( !c.Puppet || Applying ) return false;
+		if ( !c.Puppet ) return Shielded( c, ref damage.Damage, damage.Position );
+		if ( Applying ) return false;
 		if ( ControllerOf( damage.Attacker ) is { IsRemote: false } && c.NetId > 0 ) Net.Instance?.SendHealthRequest( c.NetId, damage.Damage, damage.Position, damage.Origin );
 		return true;
+	}
+
+	/// <summary>
+	/// A cleaner wrasse's shield takes the hit first, where the creature is run (the host, or offline); a joiner's copy
+	/// only shows the host's shield. True: it took all of it.
+	/// </summary>
+	static bool Shielded( Creature c, ref float damage, Vector3 at )
+	{
+		if ( c.Puppet || c.Ward is not { } w || !GodotObject.IsInstanceValid( w ) ) return false;
+		damage = w.Soak( damage, at );
+		return damage <= 0f;
 	}
 
 	static PlayerController ControllerOf( Node attacker ) => attacker switch
@@ -234,6 +251,7 @@ public static class NetCreatures
 			list.Add( id ); list.Add( p.X ); list.Add( p.Y ); list.Add( p.Z );
 			list.Add( q.X ); list.Add( q.Y ); list.Add( q.Z ); list.Add( q.W );
 			list.Add( c.Health is { } h ? (h.IsDead ? 0f : MathF.Max( 0.01f, h.Current )) : -1f );
+			list.Add( c.Ward is { } w && GodotObject.IsInstanceValid( w ) ? w.Fraction : 0f );
 			extra.Clear();
 			if ( !c.IsDead ) c.NetWrite( extra );
 			list.Add( extra.Count );
@@ -248,13 +266,14 @@ public static class NetCreatures
 		if ( data is null ) return;
 		for ( var i = 0; i + SnapshotHead <= data.Length; )
 		{
-			var count = (int)data[i + 9];
+			var count = (int)data[i + 10];
 			var next = i + SnapshotHead + count;
 			if ( next > data.Length ) return;
 			if ( Find( (int)data[i] ) is { } c && c.Puppet )
 			{
 				c.SetPuppetTarget( new Vector3( data[i + 1], data[i + 2], data[i + 3] ), new Quaternion( data[i + 4], data[i + 5], data[i + 6], data[i + 7] ).Normalized() );
 				c.SetNetHealth( data[i + 8] );
+				if ( !c.IsDead ) CleanerWard.FromHost( c, data[i + 9] );
 				if ( count > 0 && !c.IsDead ) c.NetRead( new ReadOnlySpan<float>( data, i + SnapshotHead, count ) );
 			}
 			i = next;

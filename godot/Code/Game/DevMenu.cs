@@ -720,6 +720,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Fish swarm", WaveDirector.EnemyKind.FishSwarm ),
 		new( "Puffer bomber", WaveDirector.EnemyKind.Puffer ),
 		new( "Hermit crab (random shell)", WaveDirector.EnemyKind.HermitCrab ),
+		new( "Cleaner wrasse (healer)", WaveDirector.EnemyKind.Cleaner ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
 	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };

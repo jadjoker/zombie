@@ -375,6 +375,27 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> The cleaner wrasse: blue and pale striped hide, pale meat, and scraps of its black-striped fins. </summary>
+	public static GibRecipe Cleaner( Color goo, Color blue, Color pale ) => Get( "cleaner", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.4f,
+			Outer = GibKit.Paint( blue, 0.45f ),
+			Inner = GibKit.Paint( Meat( goo ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( pale, 0.45f ),
+			Bone = GibKit.Paint( Bone, 0.4f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.35f ), 0.3f, wet: true ),
+		};
+		var stripe = GibKit.Paint( new Color( 0.03f, 0.03f, 0.05f ), 0.5f );
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Blob( p, Vector3.Zero, new Vector3( s * 1.3f, s * 0.22f, s * 0.8f ), r.Outer, null, "Striped Hide" );
+			Sculpt.Blob( p, new Vector3( 0f, s * 0.06f, 0f ), new Vector3( s * 1.2f, s * 0.12f, s * 0.22f ), stripe, null, "Stripe" );
+		} );
+		return r;
+	} );
+
 	/// <summary> The sting ray: a sand camouflaged hide over a pale belly, cartilage, torn wing scraps and its glowing barb. </summary>
 	public static GibRecipe Stingray( Color goo, Color sand, Color belly ) => Get( "stingray", () =>
 	{

@@ -1041,7 +1041,7 @@ public partial class SeaSpider : PartCreature
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
-		if ( NetCreatures.Intercept( this, index, damage, direction, position, origin, shooter, scoreHit ) ) return;   // online: the host takes the hit and sends it
+		if ( NetCreatures.Intercept( this, index, ref damage, direction, position, origin, shooter, scoreHit ) ) return;   // online: the host takes the hit and sends it
 		if ( IsDead || IsAlly ) return;
 		if ( index < 0 || index >= parts.Length || !Has( index ) ) index = Body;
 		NoteShot( direction, position, origin );

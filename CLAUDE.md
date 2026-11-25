@@ -478,6 +478,19 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   health falls (`Crumble`); a shot over a hole goes through to the crab; at none the rest falls apart (`ShellFallsApart`) and the
   naked crab (pink tail, soft) panics, then comes back `NakedSpeed` faster. Pieces are gibs of their stuff (porcelain sinks, the
   carton floats). Online: `Shell` is sent. Test: `--hermit` (shots need a window).
+- The cleaner wrasse (`Creatures/CleanerWrasse.cs`, `CleanerLook.cs`, `CleanerWard.cs`, `EnemyKind.Cleaner`, user's design): a healer
+  from `WaveDirector.CleanerFromWave` (6), `CleanerChance` of each wave, at most `MaxCleaners` (2), weak (50 + 6 a wave). A 0.7 m
+  bluestreak-style fish (pale front, electric blue back, a black stripe widening to the tail with a glowing edge, small classic
+  alien eyes). It picks a patient (big and hurt first, one wrasse each, `Treats`: no bosses, wrasses, missiles, fish swarms or
+  scenery), hides behind it from the nearest player and links with a green beam (bubbles along it): the patient heals
+  `HealShare` (7%, user's pick) of its full health a second and wears a `CleanerWard`, a see-through teal bubble with faint
+  hexagons fitted round its meshes, that fills to `ShieldMax` (`WaveDirector.CleanerShield`: 100 on wave 6, +15 a wave) in
+  `FillTime` (2 s, user's pick), ripples when hit, shatters at nothing, regrows `RecoverTime` after breaking and stays `Linger`
+  after the link drops. Every shot and health hit on a creature goes through it first (`NetCreatures.Intercept` and
+  `InterceptHealth` take the damage by ref and call `Shielded`, on the host or offline; snapshots carry each creature's shield
+  for joiners, `CleanerWard.FromHost`). The enemy bars show it as a teal bar. Aimed at for `AimReact` (0.5 s) or shot, it darts
+  aside within `LinkRange` (8 m), drops the link, then comes back; at most once every `DartEvery`. Dev menu: Enemies, Spawn an
+  enemy, Cleaner wrasse. Test: `--cleaner` (shots need a window).
 - The mimic octopus (`Creatures/MimicOctopus.cs`, `MimicLook.cs`, user's pick): scenery like the garden eels (never in the
   round). Each sea mine (`SeaMine.PlaceRandom`, respawns too) and glow bulb (`AlienFloaters.AddBulb`) laid is a mimic
   `MimicOctopus.Chance` (0.2%) of the time, host and offline only, disguised with the mine's own ball and chain

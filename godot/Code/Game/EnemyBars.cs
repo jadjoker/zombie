@@ -16,6 +16,8 @@ public partial class EnemyBars : Control
 	static readonly Color BarBack = new( 0f, 0f, 0f, 0.6f );
 	static readonly Color BarFill = new( 0.92f, 0.12f, 0.1f );
 	static readonly Color BarLag = new( 1f, 0.75f, 0.7f, 0.85f );
+	static readonly Color ShieldFill = new( 0.25f, 0.95f, 0.8f );
+	static readonly Color ShieldTop = new( 0.75f, 1f, 0.95f );
 	static readonly Color DamageColour = new( 1f, 0.86f, 0.3f );
 
 	sealed class Bar
@@ -183,7 +185,15 @@ public partial class EnemyBars : Control
 			var max = MathF.Max( 1f, bar.Health.MaxHealth );
 			UiStyle.DrawPills( this, rect, 1, MathX.Clamp( bar.Health.Current / max, 0f, 1f ), BarFill, UiStyle.RedTop, 1f, MathX.Clamp( bar.Lag / max, 0f, 1f ) );
 			var size = (int)MathF.Round( MathX.Clamp( 15f * scale, 10f, 16f ) );
-			BigText( $"{MathF.Ceiling( bar.Health.Current )}", new Vector2( at.X, rect.Position.Y - 3f ), size, Colors.White );
+			var textAt = rect.Position.Y - 3f;
+			// A cleaner wrasse's shield: a teal bar over the red one.
+			if ( bar.Creature.Ward is { Up: true } ward && IsInstanceValid( ward ) )
+			{
+				var shield = new Rect2( rect.Position.X, rect.Position.Y - height * 0.8f - 2f, width, height * 0.8f );
+				UiStyle.DrawPills( this, shield, 1, ward.Fraction, ShieldFill, ShieldTop );
+				textAt = shield.Position.Y - 3f;
+			}
+			BigText( $"{MathF.Ceiling( bar.Health.Current )}", new Vector2( at.X, textAt ), size, Colors.White );
 		}
 
 		foreach ( var n in numbers )

@@ -420,7 +420,7 @@ public partial class FishSwarm : Creature
 
 	public override void ReceiveShot( int index, float damage, Vector3 direction, Vector3 position, Vector3 origin, PlayerSurvivor shooter, bool scoreHit )
 	{
-		if ( NetCreatures.Intercept( this, index, damage, direction, position, origin, shooter, scoreHit ) ) return;
+		if ( NetCreatures.Intercept( this, index, ref damage, direction, position, origin, shooter, scoreHit ) ) return;
 		if ( IsDead ) return;
 		NoteShot( direction, position, origin );
 		var wasAlive = !IsDead;

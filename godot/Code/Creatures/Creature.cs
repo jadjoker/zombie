@@ -42,6 +42,8 @@ public abstract partial class Creature : Node3D, ICreature
 	/// <summary> Stuns it for a while (never shortens one; bosses, too heavy to pull, shrug it off). </summary>
 	public void Stun( float seconds ) { if ( Pullable ) StunnedUntil = Math.Max( StunnedUntil, Clock.Now + seconds ); }
 	public event Action<Creature> Killed;
+	/// <summary> A cleaner wrasse's shield round it (soaks hits first; see NetCreatures.Intercept). </summary>
+	public CleanerWard Ward;
 
 	// ---- Online (NetCreatures) ----
 	/// <summary> Its number online (0 offline, or not shared). </summary>

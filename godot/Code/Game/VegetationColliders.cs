@@ -8,6 +8,9 @@ using Godot;
 /// - kelp: an upright cylinder round the stem (the leaves stay soft, so they don't snag you),
 /// - branching coral, tube sponges, reef rocks and cliffs: the mesh split into a few convex pieces that follow its
 ///   shape (worked out once per model; its own triangles if that fails),
+/// - reef rocks and cliffs: the same pieces, each joined to the middle of the rock (a wedge from its patch of skin to
+///   the middle), so the rock is solid all the way through (playtest: the pieces only lined the skin, shrunk apart, and
+///   players and enemies fell through the gaps on top into the hollow inside and got stuck),
 /// - brain coral and boulders: a convex hull of the mesh.
 /// The bodies are on their own layer (Layers.Plant): the player's body and the navmesh see them, nothing else does.
 /// Pebbles stay soft. Props close to an enemy spawn point stay soft too, so nothing spawns stuck inside one.
@@ -19,6 +22,8 @@ public static class VegetationColliders
 	const float SpawnClearance = 3f;
 	/// <summary> Meta on a prop: its collider's body. </summary>
 	public const string SolidMeta = "solid";
+	/// <summary> Meta on a rock's collider body (cliffs and reef rocks): swimmers are kept out of these (Sculpt.InBounds). </summary>
+	public const string RockMeta = "rock";
 
 	/// <summary> Takes away a prop's collider (the prop was blasted away or hidden). </summary>
 	public static void RemoveSolid( Node prop )
@@ -31,7 +36,7 @@ public static class VegetationColliders
 	static readonly Dictionary<Mesh, Vector3[]> hullPoints = new();
 	static readonly Dictionary<Mesh, Vector3[][]> pieces = new();
 
-	enum Kind { None, Stem, Pieces, Hull }
+	enum Kind { None, Stem, Pieces, Rock, Hull }
 
 	static Kind KindOf( Node3D prop )
 	{
@@ -40,7 +45,7 @@ public static class VegetationColliders
 		if ( kind.StartsWith( "Kelp" ) ) return Kind.Stem;
 		if ( model.Contains( "coral_branch" ) || model.Contains( "sponge" ) ) return Kind.Pieces;
 		// Reef rocks and cliffs are lumpy and overhang: one hull would fill their hollows with an invisible wall.
-		if ( kind.StartsWith( "Reef" ) || kind.StartsWith( "Cliff" ) ) return Kind.Pieces;
+		if ( kind.StartsWith( "Reef" ) || kind.StartsWith( "Cliff" ) ) return Kind.Rock;
 		// Other coral (fans, tables): one hull filled the gaps under and between; pieces follow the shape.
 		if ( kind.StartsWith( "Coral" ) ) return Kind.Pieces;
 		if ( kind.StartsWith( "Boulder" ) ) return Kind.Hull;
@@ -63,6 +68,7 @@ public static class VegetationColliders
 			// Beside the prop, at its origin, unrotated: the shape is already in world orientation and size.
 			var body = new StaticBody3D { Name = $"{prop.Name} Solid", CollisionLayer = Layers.Plant, CollisionMask = 0 };
 			body.SetMeta( "kind", "Solid" );
+			if ( kind == Kind.Rock ) body.SetMeta( RockMeta, true );
 			prop.GetParent().AddChild( body );
 			body.GlobalTransform = new Transform3D( Basis.Identity, prop.GlobalPosition );
 			foreach ( var (shape, offset) in shapes ) body.AddChild( new CollisionShape3D { Shape = shape, Position = offset } );
@@ -104,7 +110,7 @@ public static class VegetationColliders
 		var shapes = new List<(Shape3D, Vector3)>();
 		foreach ( var (mesh, toBody) in Meshes( prop ) )
 		{
-			var parts = kind == Kind.Pieces ? Pieces( mesh ) : new[] { Hull( mesh ) };
+			var parts = kind switch { Kind.Pieces => Pieces( mesh ), Kind.Rock => Wedges( mesh ), _ => new[] { Hull( mesh ) } };
 			foreach ( var part in parts )
 			{
 				if ( part.Length == 0 ) continue;
@@ -112,7 +118,7 @@ public static class VegetationColliders
 				for ( var i = 0; i < part.Length; i++ ) points[i] = toBody * part[i];
 				// Pulled in toward its own middle (hulls only): the solid sits just inside what you see, so nothing
 				// stops you short of a plant (playtest: invisible walls).
-				if ( !(kind == Kind.Pieces && triangleMeshes.Contains( mesh )) )
+				if ( kind != Kind.Rock && !(kind == Kind.Pieces && triangleMeshes.Contains( mesh )) )
 				{
 					var middle = Vector3.Zero;
 					foreach ( var q in points ) middle += q;
@@ -166,6 +172,25 @@ public static class VegetationColliders
 		}
 		pieces[mesh] = p;
 		return p;
+	}
+
+	static readonly Dictionary<Mesh, Vector3[][]> wedges = new();
+
+	/// <summary>
+	/// A rock's pieces, each with the middle of the rock added: a wedge from its patch of skin to the middle. Side by side
+	/// they fill the rock with no gaps (neighbouring patches share their edges), so nothing gets inside it. A rock whose
+	/// split gave nothing is one hull.
+	/// </summary>
+	static Vector3[][] Wedges( Mesh mesh )
+	{
+		if ( wedges.TryGetValue( mesh, out var w ) ) return w;
+		var middle = mesh.GetAabb().GetCenter();
+		var split = Pieces( mesh );
+		w = triangleMeshes.Contains( mesh )
+			? new[] { Hull( mesh ) }
+			: split.Select( points => points.Append( middle ).ToArray() ).ToArray();
+		wedges[mesh] = w;
+		return w;
 	}
 
 	/// <summary> The points of a simplified convex hull round the mesh, in its own space; worked out once per mesh. </summary>

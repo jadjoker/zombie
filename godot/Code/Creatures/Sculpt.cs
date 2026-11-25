@@ -87,6 +87,9 @@ public static class Sculpt
 	/// <summary>
 	/// Keeps a point where enemies may go: inside Atlantis's globe in area 3, inside the map's rim elsewhere.
 	/// </summary>
+	/// <summary> How far inside the map's edge enemies stay (m). </summary>
+	public const float EdgeClear = 32f;
+
 	public static Vector3 InBounds( Vector3 p )
 	{
 		if ( SeaTerrain.Area == 3 )
@@ -98,9 +101,38 @@ public static class Sculpt
 		}
 		if ( SeaTerrain.Active )
 		{
-			var limit = SeaTerrain.HalfSize - 16f;
-			return new Vector3( Math.Clamp( p.X, -limit, limit ), p.Y, Math.Clamp( p.Z, -limit, limit ) );
+			// Short of the rim cliffs (they reach in to about 82 m): at 96 m swimmers chasing a player along the rim
+			// ended up inside the rock wall (playtest).
+			var limit = SeaTerrain.HalfSize - EdgeClear;
+			return OutOfRock( new Vector3( Math.Clamp( p.X, -limit, limit ), p.Y, Math.Clamp( p.Z, -limit, limit ) ) );
 		}
 		return p;
+	}
+
+	static readonly PhysicsPointQueryParameters3D rockQuery = new() { CollisionMask = Layers.Plant, CollideWithBodies = true, CollideWithAreas = false };
+
+	/// <summary>
+	/// Swimmers don't collide with rocks (they are on the plant layer, for the player and the navmesh): one that has
+	/// swum into a cliff or reef rock is lifted out over its top, so it glides over instead of hiding inside (playtest).
+	/// </summary>
+	public static Vector3 OutOfRock( Vector3 p )
+	{
+		if ( (Engine.GetMainLoop() as SceneTree)?.Root?.FindWorld3D()?.DirectSpaceState is not { } space ) return p;
+		if ( InRock( space, p ) is not { } rock ) return p;
+		// Up in half metres until clear of that rock (they are at most about 30 m tall).
+		for ( var up = 0.5f; up < 40f; up += 0.5f )
+		{
+			var q = p + Vector3.Up * up;
+			if ( InRock( space, q ) != rock ) return q + Vector3.Up * 0.3f;
+		}
+		return p;
+	}
+
+	static GodotObject InRock( PhysicsDirectSpaceState3D space, Vector3 p )
+	{
+		rockQuery.Position = p;
+		foreach ( var hit in space.IntersectPoint( rockQuery, 4 ) )
+			if ( hit["collider"].AsGodotObject() is Node body && body.HasMeta( VegetationColliders.RockMeta ) ) return body;
+		return null;
 	}
 }

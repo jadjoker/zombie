@@ -89,7 +89,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   wave 11. Teleporting fades to black behind `LoadingScreen` (a drawn postcard of the dock, the destination, a tip). A game over there reloads the level. Dev menu: World, Waves, Clear wave 10. Test: `--teleport` (shots
   need a window).
 - Playtest batch (wreck site and combat): `VegetationColliders.cs` makes kelp (a stem cylinder), coral, boulders, reef and
-  cliffs solid from their own meshes after placement (before the navmesh); `SeaTerrain.Fit` moves most of the basin's
+  cliffs solid from their own meshes after placement (before the navmesh); cliffs and reef rocks are solid all the way
+  through (`Wedges`: each skin piece joined to the rock's middle; they used to be hollow shells with gaps on top that
+  players and enemies fell into) and tagged `RockMeta`. Swimmers don't collide with rocks: `Sculpt.InBounds` keeps them
+  `EdgeClear` (32 m) inside the map edge, short of the rim cliffs, and lifts one that is inside a rock out over its top
+  (`Sculpt.OutOfRock`). Test: `--rocks`; `SeaTerrain.Fit` moves most of the basin's
   plants out over the hills; star ferns sit near the sand. Severed pieces (`Gib`) float up under water. `EnemyBars.cs`
   draws the red health bars and the stacking damage numbers. The trident shooter (slot 3, `TridentModel.cs`,
   `TridentBolt.cs`) is the Blaster's rig with its gun stripped and a built-in-code gun on the gun bone; its station and

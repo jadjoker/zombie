@@ -7,8 +7,8 @@ using Godot;
 /// </summary>
 public partial class HermitCrab
 {
-	/// <summary> The disco ball's turn, radians a second. </summary>
-	const float DiscoSpin = 2.2f;
+	/// <summary> The disco ball's turn, radians a second: one full turn every 6 s (user's pick). </summary>
+	const float DiscoSpin = MathF.Tau / 6f;
 	const int DiscoSpots = 9;
 
 	static readonly Color[] DiscoColours =

@@ -94,6 +94,12 @@ public partial class SeaMine : Node3D
 	{
 		if ( level is null || !IsInstanceValid( level ) || RandomSpot( level ) is not { } spot ) return null;
 		var height = random.NextDouble() < HighShare ? R( HighMin, HighMax ) : R( LowMin, LowMax );
+		// Now and then it is no mine at all (the host's and offline only: joiners get the host's octopus).
+		if ( !Net.IsClient && MimicOctopus.Roll() )
+		{
+			MimicOctopus.Disguised( level, spot, MimicOctopus.Disguise.Mine, MathF.Min( height, LowMax ) );
+			return null;
+		}
 		var mine = new SeaMine { Name = "Sea Mine", anchor = spot, height = height };
 		mine.phases = new Vector3( R( 0f, 6f ), R( 0f, 6f ), R( 0f, 6f ) );
 		mine.rates = new Vector3( R( 0.25f, 0.5f ), R( 0.3f, 0.6f ), R( 0.2f, 0.45f ) );
@@ -119,16 +125,24 @@ public partial class SeaMine : Node3D
 	/// <summary> 0 to 1 while a fresh mine rises out of the sand on its chain (1: fully up). </summary>
 	float rising = 1f;
 
-	public override void _Ready()
-	{
-		var steel = Sculpt.Paint( new Color( 0.26f, 0.52f, 0.56f ), 0.5f, 0.35f );
-		var dark = Sculpt.Paint( new Color( 0.13f, 0.27f, 0.32f ), 0.55f, 0.4f );
-		var peg = Sculpt.Paint( new Color( 0.42f, 0.66f, 0.66f ), 0.45f, 0.35f );
-		var glow = Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 2.2f );
-		var warn = Sculpt.Glow( new Color( 0.66f, 0.22f, 1f ), 2f );
+	static StandardMaterial3D steel, dark, peg, glow, warn;
+	static readonly TorusMesh LinkMesh = new() { InnerRadius = 0.05f, OuterRadius = 0.09f, Rings = 10, RingSegments = 5 };
 
-		ball = new Node3D { Name = "Ball" };
-		AddChild( ball );
+	static void Paints()
+	{
+		steel ??= Sculpt.Paint( new Color( 0.26f, 0.52f, 0.56f ), 0.5f, 0.35f );
+		dark ??= Sculpt.Paint( new Color( 0.13f, 0.27f, 0.32f ), 0.55f, 0.4f );
+		peg ??= Sculpt.Paint( new Color( 0.42f, 0.66f, 0.66f ), 0.45f, 0.35f );
+		glow ??= Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 2.2f );
+		warn ??= Sculpt.Glow( new Color( 0.66f, 0.22f, 1f ), 2f );
+	}
+
+	/// <summary> The mine's ball: the riveted steel ball, its seam and its pegs, glowing (also the mimic octopus's disguise). </summary>
+	public static Node3D MakeBall( Node3D parent )
+	{
+		Paints();
+		var ball = new Node3D { Name = "Ball" };
+		parent.AddChild( ball );
 		Sculpt.Blob( ball, Vector3.Zero, Vector3.One * Radius * 2f, steel );
 		// The riveted seam round its middle.
 		Sculpt.Limb( ball, new Vector3( 0f, -0.03f, 0f ), new Vector3( 0f, 0.03f, 0f ), Radius * 1.02f, Radius * 1.02f, dark, "Seam" );
@@ -152,6 +166,43 @@ public partial class SeaMine : Node3D
 		}
 		Sculpt.Limb( ball, Vector3.Down * (Radius - 0.02f), Vector3.Down * (Radius + 0.1f), 0.1f, 0.07f, dark, "Chain Eye" );
 		ball.AddChild( new OmniLight3D { LightColor = new Color( 0.4f, 1f, 0.5f ), LightEnergy = 0.7f, OmniRange = 3.5f, ShadowEnabled = false } );
+		return ball;
+	}
+
+	/// <summary> The anchor ring and the chain's links (laid out by <see cref="LayChain"/>). </summary>
+	public static List<Node3D> MakeChain( Node3D parent, float height )
+	{
+		Paints();
+		Sculpt.Limb( parent, Vector3.Zero, Vector3.Up * 0.12f, 0.28f, 0.2f, dark, "Anchor" );
+		var links = new List<Node3D>();
+		var count = Math.Max( 3, (int)(height / 0.15f) );
+		for ( var i = 0; i < count; i++ )
+		{
+			var link = new MeshInstance3D { Name = "Link", Mesh = LinkMesh, MaterialOverride = dark, Scale = new Vector3( 0.75f, 1f, 1.25f ) };
+			parent.AddChild( link );
+			links.Add( link );
+		}
+		return links;
+	}
+
+	/// <summary> The chain hangs in a slight curve from the floor (the parent's origin) to `top`. </summary>
+	public static void LayChain( List<Node3D> links, Vector3 top )
+	{
+		top.Y = MathF.Max( top.Y, 0.12f );
+		for ( var i = 0; i < links.Count; i++ )
+		{
+			var u = (i + 0.5f) / links.Count;
+			var at = new Vector3( top.X * u * u, MathX.Lerp( 0.1f, top.Y, u ), top.Z * u * u );
+			var next = new Vector3( top.X * (u + 0.05f) * (u + 0.05f), MathX.Lerp( 0.1f, top.Y, u + 0.05f ), top.Z * (u + 0.05f) * (u + 0.05f) );
+			var along = (next - at).SafeNormal();
+			var turn = Shapes.LookAt( along == Vector3.Zero ? Vector3.Up : along ) * new Basis( Vector3.Forward, i % 2 == 0 ? 0f : MathF.PI * 0.5f );
+			links[i].Transform = new Transform3D( turn.Scaled( new Vector3( 0.75f, 1f, 1.25f ) ), at );
+		}
+	}
+
+	public override void _Ready()
+	{
+		ball = MakeBall( this );
 
 		// What bullets hit: they ring off it.
 		var shell = new SeaMineShell { Name = "Shell", CollisionLayer = Layers.Creature, CollisionMask = 0 };
@@ -159,15 +210,7 @@ public partial class SeaMine : Node3D
 		ball.AddChild( shell );
 
 		// The chain: links from the anchor ring on the floor up to the ball, laid out again each frame.
-		Sculpt.Limb( this, Vector3.Zero, Vector3.Up * 0.12f, 0.28f, 0.2f, dark, "Anchor" );
-		var linkMesh = new TorusMesh { InnerRadius = 0.05f, OuterRadius = 0.09f, Rings = 10, RingSegments = 5 };
-		var count = Math.Max( 3, (int)(height / 0.15f) );
-		for ( var i = 0; i < count; i++ )
-		{
-			var link = new MeshInstance3D { Name = "Link", Mesh = linkMesh, MaterialOverride = dark, Scale = new Vector3( 0.75f, 1f, 1.25f ) };
-			AddChild( link );
-			links.Add( link );
-		}
+		links.AddRange( MakeChain( this, height ) );
 		Pose( 0f );
 	}
 
@@ -180,17 +223,7 @@ public partial class SeaMine : Node3D
 		ball.Position = Vector3.Up * up + offset * rising;
 		ball.Rotation = new Vector3( offset.Z * 0.25f, time * 0.08f, -offset.X * 0.25f );
 		// The chain hangs in a slight curve from the floor to the ball's underside.
-		var top = ball.Position + Vector3.Down * (Radius + 0.08f);
-		top.Y = MathF.Max( top.Y, 0.12f );
-		for ( var i = 0; i < links.Count; i++ )
-		{
-			var u = (i + 0.5f) / links.Count;
-			var at = new Vector3( top.X * u * u, MathX.Lerp( 0.1f, top.Y, u ), top.Z * u * u );
-			var next = new Vector3( top.X * (u + 0.05f) * (u + 0.05f), MathX.Lerp( 0.1f, top.Y, u + 0.05f ), top.Z * (u + 0.05f) * (u + 0.05f) );
-			var along = (next - at).SafeNormal();
-			var turn = Shapes.LookAt( along == Vector3.Zero ? Vector3.Up : along ) * new Basis( Vector3.Forward, i % 2 == 0 ? 0f : MathF.PI * 0.5f );
-			links[i].Transform = new Transform3D( turn.Scaled( new Vector3( 0.75f, 1f, 1.25f ) ), at );
-		}
+		LayChain( links, ball.Position + Vector3.Down * (Radius + 0.08f) );
 	}
 
 	float poseWait, poseDt;

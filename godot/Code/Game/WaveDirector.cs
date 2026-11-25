@@ -210,7 +210,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -239,6 +239,19 @@ public partial class WaveDirector : Node3D
 	public int MaxFish = 3;
 	public float FishBaseHealth = 110f;
 	public float FishHealthPerWave = 14f;
+
+	/// <summary> Puffer bombers (user's pick): a share of each wave from `PufferFromWave`, anywhere, at most `MaxPuffers` alive. Weak on purpose: shoot them early. </summary>
+	public bool SpawnPuffers = true;
+	public float PufferChance = 0.1f;
+	public int PufferFromWave = 3;
+	public int MaxPuffers = 4;
+	public float PufferBaseHealth = 60f;
+	public float PufferHealthPerWave = 8f;
+
+	/// <summary> Hermit crab squatters (user's pick): this share of the crabs, from `HermitFromWave`, wear a shell of junk. Crab health. </summary>
+	public bool SpawnHermits = true;
+	public float HermitShare = 0.3f;
+	public int HermitFromWave = 2;
 
 	/// <summary> The boss wave King Raymond IV (the sting ray king, user's design) takes from MC61: the middle of the wreck site. </summary>
 	public int KingRaymondWave = 15;
@@ -327,6 +340,21 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
 			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return r;
+		},
+		[EnemyKind.Puffer] = ( d, at, health ) =>
+		{
+			var f = PufferBomber.Spawn( d.GetTree().CurrentScene, at + Vector3.Up * 1.6f, health );
+			f.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return f;
+		},
+		[EnemyKind.HermitCrab] = ( d, at, health ) =>
+		{
+			var c = HermitCrab.Spawn( d.GetTree().CurrentScene, at, health );
+			c.Hue = Rng.Float();
+			c.Size = Rng.Float( 0.95f, 1.15f );
+			c.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
+			c.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return c;
 		},
 		[EnemyKind.FishSwarm] = ( d, at, health ) =>
 		{
@@ -638,7 +666,8 @@ public partial class WaveDirector : Node3D
 		{
 			EnemyKind.Bloober => BlooberBaseHealth + BlooberHealthPerWave * (Wave - 1),
 			EnemyKind.Squilien => SquilienBaseHealth + SquilienHealthPerWave * (Wave - 1),
-			EnemyKind.Crab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
+			EnemyKind.Crab or EnemyKind.HermitCrab => CrabBaseHealth + CrabHealthPerWave * (Wave - 1),
+			EnemyKind.Puffer => PufferBaseHealth + PufferHealthPerWave * (Wave - 1),
 			EnemyKind.Spider => SpiderBaseHealth + SpiderHealthPerWave * (Wave - 1),
 			EnemyKind.RockyShark => SharkBaseHealth + SharkHealthPerWave * (Wave - 1),
 			EnemyKind.Kraken => KrakenBaseHealth * KrakenScale,
@@ -778,6 +807,14 @@ public partial class WaveDirector : Node3D
 		return n;
 	}
 
+	int PuffersAlive()
+	{
+		var n = 0;
+		foreach ( var e in alive )
+			if ( e is PufferBomber p && IsInstanceValid( p ) && !p.IsDead ) n++;
+		return n;
+	}
+
 	int FishAlive()
 	{
 		var n = 0;
@@ -815,6 +852,12 @@ public partial class WaveDirector : Node3D
 			if ( roll < FishChance ) return Spawn( EnemyKind.FishSwarm );
 			roll = (roll - FishChance) / (1f - FishChance);
 		}
+		// Puffer bombers: a share of every wave from PufferFromWave, at most MaxPuffers alive.
+		if ( SpawnPuffers && Wave >= PufferFromWave && has( EnemyKind.Puffer ) && PuffersAlive() < MaxPuffers )
+		{
+			if ( roll < PufferChance ) return Spawn( EnemyKind.Puffer );
+			roll = (roll - PufferChance) / (1f - PufferChance);
+		}
 		var squilien = SpawnSquiliens && has( EnemyKind.Squilien ) && Wave >= SquilienFromWave ? SquilienChance : 0f;
 		var bloober = SpawnBloobers && has( EnemyKind.Bloober ) && Wave >= BlooberFromWave ? BlooberChance : 0f;
 		var shark = SpawnSharks && has( EnemyKind.RockyShark ) && Wave >= SharkFromWave ? SharkChance : 0f;
@@ -845,7 +888,8 @@ public partial class WaveDirector : Node3D
 		if ( roll < squilien ) return Spawn( EnemyKind.Squilien );
 		if ( roll < squilien + bloober ) return Spawn( EnemyKind.Bloober );
 		if ( roll < squilien + bloober + shark ) return Spawn( EnemyKind.RockyShark );
-		if ( roll < squilien + bloober + shark + crab ) return Spawn( EnemyKind.Crab );
+		if ( roll < squilien + bloober + shark + crab )
+			return Spawn( SpawnHermits && Wave >= HermitFromWave && has( EnemyKind.HermitCrab ) && Rng.Float() < HermitShare ? EnemyKind.HermitCrab : EnemyKind.Crab );
 		if ( roll < squilien + bloober + shark + crab + spider ) return Spawn( EnemyKind.Spider );
 		return SpawnZombies && Spawn( EnemyKind.Zombie );
 	}

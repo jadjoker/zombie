@@ -90,6 +90,14 @@ public partial class AlienFloaters : Node3D
 	void AddBulb( Random random, School school, Vector3 offset )
 	{
 		float R( float a, float b ) => a + (float)random.NextDouble() * (b - a);
+		// Now and then it is no bulb at all (the host's and offline only: joiners get the host's octopus).
+		if ( !Net.IsClient && MimicOctopus.Roll() && GetTree()?.CurrentScene is Node3D level )
+		{
+			var at = school.Home + offset;
+			var floor = Sculpt.FloorBelow( this, at, 30f );
+			MimicOctopus.Disguised( level, at with { Y = floor }, MimicOctopus.Disguise.Bulb, MathX.Clamp( at.Y - floor, 1f, 3f ) );
+			return;
+		}
 		var node = new Node3D { Name = "Floater" };
 		AddChild( node );
 		node.GlobalPosition = school.Home + offset;

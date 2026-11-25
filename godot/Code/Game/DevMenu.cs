@@ -448,6 +448,20 @@ public partial class DevMenu : CanvasLayer
 			Info( $"{EelBed.All.Count} beds, {GardenEel.All.Count} eels (from the wreck site on)" );
 		}
 
+		if ( Sec( "Enemies", "Mimic octopus", "mimic octopus disguise mine bulb grab tentacle cut melee" ) )
+		{
+			Section( "Mimic octopus" );
+			void Mimic( MimicOctopus.Disguise look )
+			{
+				if ( Controller is not { } c || c.GetTree().CurrentScene is not Node3D level ) return;
+				var at = c.GlobalPosition + new Angles( 0f, c.EyeAngles.Yaw, 0f ).Forward * 7f;
+				MimicOctopus.Disguised( level, at with { Y = Sculpt.FloorBelow( c, at + Vector3.Up * 2f, 10f ) }, look, look == MimicOctopus.Disguise.Mine ? 2f : 1.4f );
+			}
+			Action( "Hiding as a sea mine, ahead", () => Mimic( MimicOctopus.Disguise.Mine ) );
+			Action( "Hiding as a glow bulb, ahead", () => Mimic( MimicOctopus.Disguise.Bulb ) );
+			Info( $"{MimicOctopus.All.Count} about; each mine or bulb laid is one {MimicOctopus.Chance:0.0%} of the time" );
+		}
+
 		if ( Sec( "Enemies", "Enemy debug", "freeze enemies one-shot kills show hitboxes" ) )
 		{
 			Section( "Enemy debug" );
@@ -704,6 +718,8 @@ public partial class DevMenu : CanvasLayer
 		new( "Sting ray", WaveDirector.EnemyKind.Stingray ),
 		new( "King Raymond IV (sting ray boss)", WaveDirector.EnemyKind.KingRaymond ),
 		new( "Fish swarm", WaveDirector.EnemyKind.FishSwarm ),
+		new( "Puffer bomber", WaveDirector.EnemyKind.Puffer ),
+		new( "Hermit crab (random shell)", WaveDirector.EnemyKind.HermitCrab ),
 	};
 	static readonly float[] TimeScales = { 0f, 0.1f, 0.25f, 0.5f, 1f };
 	static readonly float[] Fovs = { 0f, 50f, 75f, 90f, 110f };

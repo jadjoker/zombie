@@ -443,6 +443,15 @@ def build():
     hum = zap(0.6, 70, 140, 0.7) * np.linspace(0.2, 1.0, int(SR * 0.6))
     fizz = spectral(noise(0.6), lo=2500, hi=8000) * np.linspace(0.0, 1.0, int(SR * 0.6)) ** 2 * 0.35
     s["ray_charge"] = reverb(mix((hum, 0, 1.0), (fizz, 0, 1.0)), room=0.3, wet=0.2)
+    # The puffer bomber, the mimic octopus and the hermit crab (kept last, as above): the fuse's tick, the burst of
+    # spines, a wet tentacle grab, a tentacle chopped off, and a shell cracking.
+    s["puffer_tick"] = mix((tone(0.07, 1900, 1700, "tri") * env(int(SR * 0.07), 0.001, 0.05), 0, 0.8), (click(4200, 0.02, 0.008), 0, 0.5))
+    spines = mix(*[(whoosh(0.25, rng.uniform(2500, 4000), rng.uniform(600, 1200), 0.3, 0.4), rng.uniform(0, 0.04), 0.4) for _ in range(5)])
+    s["puffer_burst"] = reverb(mix((thump(0.4, 140, 40, 0.2), 0, 1.0), (squelch(0.35, 300, 1600, 1.2), 0, 0.9), (blub(250, 900, 0.1), 0, 0.6), (spines, 0.01, 0.8)), room=0.45, wet=0.3)
+    s["octo_grab"] = reverb(mix((squelch(0.32, 200, 1300, 1.3), 0, 1.0), (thump(0.15, 120, 60, 0.06), 0, 0.7), (blub(180, 600, 0.09), 0.05, 0.6)), room=0.3, wet=0.2)
+    s["octo_cut"] = reverb(mix((squelch(0.4, 350, 2200, 1.5), 0, 1.0), (click(2800, 0.03, 0.01), 0, 0.6), (blub(400, 1400, 0.08), 0.04, 0.6)), room=0.3, wet=0.2)
+    crack = spectral(noise(0.3), lo=1500, hi=7000) * (rng.uniform(0, 1, int(SR * 0.3)) > 0.7) * env(int(SR * 0.3), 0.001, 0.12)
+    s["shell_crack"] = reverb(mix((crack, 0, 1.0), (click(3200, 0.04, 0.02), 0, 0.8), (thump(0.12, 300, 120, 0.04), 0, 0.5)), room=0.3, wet=0.2)
     return s
 
 

@@ -461,6 +461,30 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   (`BiteDamage` 4); a shot sends it ducking into its hole. The hole (`ShowHole`) is laid on the ground in the floor's own sand (`Stingray.Sand`, `SeaTerrain.ShadeAt`; Atlantis `CanalSand`) and fades out at its edge. One skinned spotted tube (`SpotShader`), its skin green, purple or orange (`Skins`, `Tint`, sent to joiners) on a chain built hanging
   down and turned upright; angry head (yellow eyes, slanted brows, a frown, an underbite of teeth on a jaw). Dev menu:
   Enemies, Garden eels. Test: `--eels` (shots need a window).
+- The puffer bomber (`Creatures/PufferBomber.cs`, `PufferLook.cs`, `EnemyKind.Puffer`, user's pick): a wave enemy from
+  `WaveDirector.PufferFromWave` (3), `PufferChance` of each wave, at most `MaxPuffers` (4), weak on purpose (60 + 8 a wave). A
+  spotted pufferfish with the classic alien eyes; within `ArmRange` it lights its fuse (`FuseTime` 1.6 s: swells to `Swell`,
+  spines stand up, its skin goes hot red flashing on each `puffer_tick`, a red ring on the sand at `WarnRadius` = `SpineRange`)
+  and creeps on, then bursts (`Burst`, also however it dies): a blast and a ring of `PufferSpine`s that hurt players and other
+  enemies (`PlayerPerks.HurtCreatures`, `PlayerPerks.Hurt`), so shooting it early by other enemies turns it on them. Hit spheres
+  sit on `body` (scaled evenly; the wobble is on `look`, Jolt refuses uneven scale). Test: `--puffer` (shots need a window).
+- The hermit crab squatter (`Creatures/HermitCrab.cs`, `HermitShells.cs`, `EnemyKind.HermitCrab`, user's pick): `HermitShare`
+  of the crabs from `HermitFromWave` (2), a `JunkCrab` (its `BuildArmour`, `Exposed`, `PanicUntil` hooks) living in one of eight
+  shells built in code (`ShellKind`: toilet, diving helmet, garbage can, recycling bin, croissant, tea cup, disco ball (spins),
+  milk carton), drawn `ShellScale` (1.8) up, each cut into thick tiles with jagged edges (`SB.Patch`) plus lids and handles,
+  one template per kind. Shots on the shell (part 1) pass `ShellPass` through and knock off the pieces nearest the hit as its
+  health falls (`Crumble`); a shot over a hole goes through to the crab; at none the rest falls apart (`ShellFallsApart`) and the
+  naked crab (pink tail, soft) panics, then comes back `NakedSpeed` faster. Pieces are gibs of their stuff (porcelain sinks, the
+  croissant floats). Online: `Shell` is sent. Test: `--hermit` (shots need a window).
+- The mimic octopus (`Creatures/MimicOctopus.cs`, `MimicLook.cs`, user's pick): scenery like the garden eels (never in the
+  round). Each sea mine (`SeaMine.PlaceRandom`, respawns too) and glow bulb (`AlienFloaters.AddBulb`) laid is a mimic
+  `MimicOctopus.Chance` (0.2%) of the time, host and offline only, disguised with the mine's own ball and chain
+  (`SeaMine.MakeBall`, `MakeChain`, `LayChain`) or a bulb. Within `RevealRange` (or shot) it gives itself away (colours run
+  over it), drops to the sand, crawls after the nearest player and lashes an arm out (`Lash`) to grab them: held
+  (`Scripted`), drawn in, squeezed and bitten; the HUD says CUT THE TENTACLE OFF! (`HudOverlays`, `HoldingLocal`). Any melee
+  strike by the held player cuts the arm off (`PlayerMelee.Swung`, raised for the axe, the spear and anything striking through
+  `PlayerMelee`), frees them and takes `CutShare` of its health; shooting the arm (part 2, `LashHealth`) does too. Eight arms
+  (skinned chains with suckers). Dev menu: Enemies, Mimic octopus. Test: `--mimic` (shots need a window).
 - The Squilien swims like a jellyfish (user's reference video): each stroke the bell squeezes narrow and tall, then
   relaxes wide and flat on an underdamped spring (the jelly wobble), and the tentacles trail and sway slowly instead of
   whipping (`Squilien.PoseBody`). Test: `--jelly` (with `--shots` in a window, a side-on frame every 0.1 s).

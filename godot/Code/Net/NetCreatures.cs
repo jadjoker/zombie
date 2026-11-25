@@ -54,7 +54,10 @@ public static class NetCreatures
 	/// <summary> What a joiner needs to build a copy: kind, place, facing, health, and its look. </summary>
 	public static (string Kind, float[] Look) Describe( Creature c ) => c switch
 	{
+		HermitCrab x => ("HermitCrab", new[] { x.Hue, x.Size, (float)x.Shell }),
 		JunkCrab x => ("JunkCrab", new[] { x.Hue, x.Size }),
+		PufferBomber => ("PufferBomber", Array.Empty<float>()),
+		MimicOctopus x => ("MimicOctopus", new[] { (float)x.Look, x.DisguiseHeight }),
 		Bloober x => ("Bloober", new[] { x.Hue, 0f }),
 		Squilien x => ("Squilien", new[] { x.Hue, 0f }),
 		RockyShark x => ("RockyShark", new[] { x.Hue, x.Size }),
@@ -81,6 +84,9 @@ public static class NetCreatures
 		float L( int i, float fallback = 0f ) => look is not null && i < look.Length ? look[i] : fallback;
 		Creature c = kind switch
 		{
+			"HermitCrab" => Set( HermitCrab.Spawn( scene, position, maxHealth ), x => { x.Hue = L( 0, -1f ); x.Size = L( 1, 1f ); x.Shell = (HermitCrab.ShellKind)(int)L( 2 ); } ),
+			"PufferBomber" => PufferBomber.Spawn( scene, position, maxHealth ),
+			"MimicOctopus" => Set( MimicOctopus.Spawn( scene, position, maxHealth ), x => { x.Look = (MimicOctopus.Disguise)(int)L( 0 ); x.DisguiseHeight = L( 1, 1.8f ); } ),
 			"JunkCrab" => Set( JunkCrab.Spawn( scene, position, maxHealth ), x => { x.Hue = L( 0, -1f ); x.Size = L( 1, 1f ); } ),
 			"Bloober" => Set( Bloober.Spawn( scene, position, maxHealth ), x => x.Hue = L( 0, -1f ) ),
 			"Squilien" => Set( Squilien.Spawn( scene, position, maxHealth ), x => x.Hue = L( 0, -1f ) ),

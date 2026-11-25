@@ -79,8 +79,15 @@ public partial class PlayerMelee : Node
 
 	PlayerWeapon strikeWeapon;
 
+	/// <summary>
+	/// Every melee strike, by any robot's melee weapon (the axe swing, the spear's thrust, anything added later that
+	/// strikes through here): the mimic octopus's grabbed player cuts the tentacle holding them with it.
+	/// </summary>
+	public static event Action<PlayerController> Swung;
+
 	void Strike()
 	{
+		Swung?.Invoke( controller );
 		var camera = controller.Camera;
 		var start = camera.GlobalPosition;
 		var basis = camera.GlobalBasis;

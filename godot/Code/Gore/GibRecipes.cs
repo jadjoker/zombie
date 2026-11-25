@@ -329,6 +329,52 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> The mimic octopus: mottled skin over pale flesh, and pieces of arm with suckers on. </summary>
+	public static GibRecipe Octopus( Color goo, Color skin, Color sucker ) => Get( "octopus", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.45f,
+			Outer = GibKit.Paint( skin, 0.4f ),
+			Inner = GibKit.Paint( new Color( 0.95f, 0.85f, 0.85f ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( skin.Lerp( Colors.White, 0.35f ), 0.45f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.4f ), 0.3f, wet: true ),
+		};
+		var cup = GibKit.Paint( sucker, 0.35f );
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Limb( p, Vector3.Zero, new Vector3( 0f, 0f, s * 1.5f ), s * 0.32f, s * 0.2f, r.Outer, "Arm Piece" );
+			for ( var k = 0; k < 4; k++ )
+				Sculpt.Blob( p, new Vector3( 0f, -s * 0.24f, (0.2f + k * 0.32f) * s ), new Vector3( s * 0.22f, s * 0.08f, s * 0.22f ), cup, null, "Sucker" );
+		} );
+		return r;
+	} );
+
+	/// <summary> The puffer bomber: spotted sandy hide over a white belly, pale meat, and scraps of skin still bristling with spines. </summary>
+	public static GibRecipe Puffer( Color goo, Color back, Color belly ) => Get( "puffer", () =>
+	{
+		var r = new GibRecipe
+		{
+			Kind = GibKind.Flesh, Goo = goo, SpecialShare = 0.45f,
+			Outer = GibKit.Paint( back, 0.55f ),
+			Inner = GibKit.Paint( Meat( goo ), 0.4f, wet: true ),
+			Layer = GibKit.Paint( belly, 0.45f ),
+			Bone = GibKit.Paint( Bone, 0.4f ),
+			Sinew = GibKit.Paint( goo.Lerp( Colors.White, 0.35f ), 0.3f, wet: true ),
+		};
+		var spine = GibKit.Paint( belly.Lerp( back, 0.35f ), 0.45f );
+		r.Specials.Add( ( random, p, s ) =>
+		{
+			Sculpt.Blob( p, Vector3.Zero, new Vector3( s * 1.2f, s * 0.25f, s * 1f ), r.Outer, null, "Spiny Hide" );
+			for ( var k = 0; k < 4; k++ )
+			{
+				var at = new Vector3( R( random, -0.4f, 0.4f ) * s, s * 0.1f, R( random, -0.35f, 0.35f ) * s );
+				Sculpt.Cone( p, at, at + new Vector3( R( random, -0.2f, 0.2f ), 1f, R( random, -0.2f, 0.2f ) ).Normalized() * s * 0.8f, s * 0.07f, spine, 5, "Spine" );
+			}
+		} );
+		return r;
+	} );
+
 	/// <summary> The sting ray: a sand camouflaged hide over a pale belly, cartilage, torn wing scraps and its glowing barb. </summary>
 	public static GibRecipe Stingray( Color goo, Color sand, Color belly ) => Get( "stingray", () =>
 	{

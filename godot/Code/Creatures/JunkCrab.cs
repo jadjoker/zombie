@@ -28,7 +28,7 @@ public partial class JunkCrab : PartCreature
 
 	public static readonly List<JunkCrab> All = new();
 
-	const int Body = 0, Barrel = 1, EyeL = 2, EyeR = 3, ArmL = 4, PincerL = 5, ArmR = 6, PincerR = 7, FirstLeg = 8, LegCount = 6;
+	protected const int Body = 0, Barrel = 1, EyeL = 2, EyeR = 3, ArmL = 4, PincerL = 5, ArmR = 6, PincerR = 7, FirstLeg = 8, LegCount = 6;
 	/// <summary> The third eye: on its own stalk between the two, set back, so the three make a triangle. </summary>
 	const int EyeM = FirstLeg + LegCount;
 	static bool IsEye( int index ) => index is EyeL or EyeR or EyeM;
@@ -117,9 +117,18 @@ public partial class JunkCrab : PartCreature
 		Trigger( body, new Vector3( -7, -8, -1 ), new Vector3( -7, 8, -1 ), 8f );
 		Trigger( body, new Vector3( 5, -8, -1 ), new Vector3( 5, 8, -1 ), 8f );
 
-		if ( WearsBarrel ) BuildBarrel( body, hue );
+		BuildArmour( body, hue );
 		BuildLimbs( body );
 	}
+
+	/// <summary> What it wears on its back: the waste barrel (if `WearsBarrel`); the hermit crab's shell. </summary>
+	protected virtual void BuildArmour( Part body, float hue ) { if ( WearsBarrel ) BuildBarrel( body, hue ); }
+
+	/// <summary> Its soft body is open to shots: the armour it wore is gone. </summary>
+	protected virtual bool Exposed => WearsBarrel && !Has( Barrel );
+
+	/// <summary> Running away in a panic until then (the hermit crab when its shell falls apart). </summary>
+	protected double PanicUntil;
 
 	void BuildBarrel( Part body, float hue )
 	{
@@ -337,7 +346,7 @@ public partial class JunkCrab : PartCreature
 		}
 	}
 
-	void Sphere( Node3D parent, Part part, Vector3 at, Vector3 radii, Color color )
+	protected void Sphere( Node3D parent, Part part, Vector3 at, Vector3 radii, Color color )
 	{
 		var skin = color == shellColor || color == bellyColor ? "chitin" : null;
 		var mesh = Shapes.Part( parent, "Shape", at, Shapes.Ellipsoid( radii.X, radii.Y, radii.Z ), color, skin: skin );
@@ -458,6 +467,20 @@ public partial class JunkCrab : PartCreature
 		agent.MaxSpeed = MoveSpeed * MathF.Max( 0.2f, speedScale ) * Size * U.In;
 
 		Snapping = false;
+		if ( target is not null && Clock.Now < PanicUntil )
+		{
+			// Panicking: scuttling away from the player, zigzagging.
+			if ( timeSinceRepath > 0.25f )
+			{
+				timeSinceRepath = 0f;
+				var away = (GlobalPosition - target.WorldPosition).Flat().SafeNormal();
+				agent.MoveTo( GlobalPosition + (away + Rng.OnSphere().Flat() * 0.7f).SafeNormal() * 4f );
+			}
+			var fleeing = agent.Velocity.Flat();
+			if ( fleeing.Length() > 10f * U.In ) Face( fleeing, 9f, dt );
+			agent.Update( dt );
+			return;
+		}
 		if ( target is not null )
 		{
 			var toTarget = (target.WorldPosition - GlobalPosition).Flat();
@@ -533,7 +556,7 @@ public partial class JunkCrab : PartCreature
 		var crit = IsEye( index );
 		var multiplier = index switch
 		{
-			Body => WearsBarrel && !Has( Barrel ) ? SoftMultiplier : 1f,
+			Body => Exposed ? SoftMultiplier : 1f,
 			Barrel => 0.25f,
 			EyeL or EyeR or EyeM => EyeMultiplier,
 			_ => LimbMultiplier,

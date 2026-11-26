@@ -58,6 +58,28 @@ void fragment() {
 }",
 	};
 
+	/// <summary>
+	/// The figure is solid where it is drawn: a hull for each of its bigger pieces (robe, body, arms, head), so a robot
+	/// that climbs the base can't walk into it.
+	/// </summary>
+	static void FigureSolid( Node3D figure, StaticBody3D body )
+	{
+		foreach ( var m in figure.FindChildren( "*", "MeshInstance3D", true, false ).OfType<MeshInstance3D>() )
+		{
+			if ( m.Mesh is null || m.Skin is not null ) continue;
+			// Its place in the body's space (the body sits at the statue's root), baked into the points: shapes can't be
+			// scaled unevenly.
+			var to = Transform3D.Identity;
+			for ( Node n = m; n is not null && n != body.GetParent(); n = n.GetParent() )
+				if ( n is Node3D n3 ) to = n3.Transform * to;
+			var size = m.GetAabb().Size * to.Basis.Scale;
+			if ( MathF.Max( size.X, MathF.Max( size.Y, size.Z ) ) < 0.35f ) continue;
+			if ( m.Mesh.CreateConvexShape( true, true ) is not ConvexPolygonShape3D hull ) continue;
+			var points = hull.Points.Select( p => to * p ).ToArray();
+			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = points } } );
+		}
+	}
+
 	public static void Build( Node3D parent )
 	{
 		Root = new Node3D { Name = "Abyss Statue" };
@@ -94,6 +116,7 @@ void fragment() {
 		Root.AddChild( figure );
 		figure.Position = new Vector3( 0f, BaseHeight, 0f );
 		BuildFigure( figure, crust );
+		FigureSolid( figure, body );
 		var face = Abyss.Arrival.Flat().Normalized();
 		Root.Rotation = new Vector3( 0f, MathF.Atan2( face.X, face.Z ), 0f );
 		body.AddChild( new CollisionShape3D { Shape = new CylinderShape3D { Radius = 0.3f * Scale, Height = 1.5f * Scale }, Position = new Vector3( 0f, BaseHeight + 0.75f * Scale, 0f ) } );

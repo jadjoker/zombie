@@ -11,12 +11,15 @@ public static class AbyssProps
 {
 	public static readonly Color MossColour = new( 0.25f, 0.75f, 1f );
 	public static int Chests, Mimics, Skeletons, Anchors, Boats, BonePiles, MossPatches, MossLights;
+	/// <summary> What stands solid in the caves (stalagmites and props): a name, its middle on the floor, its drawn reach (for tests). </summary>
+	public static readonly List<(string Name, Vector3 Centre, float Reach, float Height)> Solids = new();
 
 	static StandardMaterial3D bone, brass, glassDark, rust, plank;
 
 	public static void Dress( Node3D root, bool joiner )
 	{
 		Chests = Mimics = Skeletons = Anchors = Boats = BonePiles = MossPatches = MossLights = 0;
+		Solids.Clear();
 		bone = new StandardMaterial3D { AlbedoColor = new Color( 0.82f, 0.78f, 0.66f ), Roughness = 0.8f };
 		brass = new StandardMaterial3D { AlbedoColor = new Color( 0.62f, 0.45f, 0.2f ), Roughness = 0.45f, Metallic = 0.8f };
 		glassDark = new StandardMaterial3D { AlbedoColor = new Color( 0.05f, 0.08f, 0.08f ), Roughness = 0.1f, Metallic = 0.3f };
@@ -189,8 +192,11 @@ public static class AbyssProps
 				q.Y = SeaTerrain.HeightAt( q ) - 0.3f;
 				var height = (0.8f + (float)random.NextDouble() * 2.6f) * (k == 0 ? 1f : 0.6f);
 				var width = height * (0.22f + (float)random.NextDouble() * 0.1f);
-				Abyss.Spike( st, q, Vector3.Up, height, width, random );
-				if ( height > 1.2f ) solid.AddChild( new CollisionShape3D { Shape = new CylinderShape3D { Radius = width * 0.7f, Height = height * 0.7f }, Position = q + Vector3.Up * height * 0.35f } );
+				// Solid as drawn, every one (small ones are stepped over).
+				var hull = new List<Vector3>();
+				Abyss.Spike( st, q, Vector3.Up, height, width, random, -1f, hull );
+				if ( height > 0.8f ) Solids.Add( ("stalagmite", q, width * 1.2f, height) );
+				solid.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = hull.ToArray() } } );
 				made++;
 			}
 		}
@@ -227,12 +233,14 @@ public static class AbyssProps
 						continue;
 					}
 					TreasureChest.Place( root, p, yaw );
+					Solids.Add( ("chest", p, 0.6f, 0.8f) );
 					Chests++;
 				}
 				else if ( roll < 0.6 )
 				{
 					if ( Spot( random, c, 0.3f, 3f ) is not { } p ) continue;
-					DiverSkeleton( root, p, YawToWall( p ), random );
+					DiverSkeleton( root, solid, p, YawToWall( p ), random );
+					Solids.Add( ("skeleton", p, 0.6f, 1.2f) );
 					Skeletons++;
 				}
 				else if ( roll < 0.8 )
@@ -245,12 +253,14 @@ public static class AbyssProps
 				{
 					if ( Spot( random, c, 1.2f, 4f ) is not { } p ) continue;
 					Anchor( root, solid, p, (float)random.NextDouble() * MathF.Tau, random );
+					Solids.Add( ("anchor", p, 1.1f, 0.8f) );
 					Anchors++;
 				}
 				else if ( boats < 3 && c.Flat().Length() > Abyss.Rings[1] )
 				{
 					if ( Spot( random, c, 2.5f, 6f ) is not { } p ) continue;
 					Rowboat( root, solid, p, (float)random.NextDouble() * MathF.Tau );
+					Solids.Add( ("rowboat", p, 1.2f, 0.9f) );
 					boats++;
 					Boats++;
 				}
@@ -259,7 +269,7 @@ public static class AbyssProps
 	}
 
 	/// <summary> A diver's skeleton in an old brass helmet, sat slumped against the rock, legs out, hands in its lap. </summary>
-	static void DiverSkeleton( Node3D root, Vector3 at, float yawToWall, Random random )
+	static void DiverSkeleton( Node3D root, StaticBody3D solid, Vector3 at, float yawToWall, Random random )
 	{
 		var s = new Node3D { Name = "Diver Skeleton", Scale = Vector3.One * 1.2f };
 		root.AddChild( s );
@@ -338,6 +348,10 @@ public static class AbyssProps
 			SmoothKit.Ball( s, foot + new Vector3( side * 0.02f, 0.03f, 0.06f ), new Vector3( 0.14f, 0.13f, 0.27f ), plank, boot, "Boot" );
 			SmoothKit.Ball( s, foot + new Vector3( side * 0.02f, 0.02f, 0.17f ), new Vector3( 0.12f, 0.09f, 0.09f ), brass, boot, "Toe Cap" );
 		}
+		// Solid: the slumped body and helmet, and the legs out in front (low, so it can be stepped over).
+		var turn = s.GlobalBasis.Orthonormalized();
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 0.9f, 1.25f, 0.75f ) }, Transform = new Transform3D( turn, s.ToGlobal( new Vector3( 0f, 0.52f, 0f ) ) ) } );
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 0.75f, 0.32f, 1.05f ) }, Transform = new Transform3D( turn, s.ToGlobal( new Vector3( 0f, 0.12f, 0.6f ) ) ) } );
 		// The air hose, perished, coiling off the helmet across the floor.
 		var hose = GunKit.Paint( new Color( 0.15f, 0.13f, 0.11f ), 0.8f );
 		var last = s.ToGlobal( spineTop + new Vector3( 0.15f, 0.1f, -0.1f ) );
@@ -397,7 +411,7 @@ public static class AbyssProps
 			SmoothKit.Tube( lie, new Vector3( side * 0.45f, -0.85f, 0f ), tip, 0.08f, 0.05f, rust, "Arm" );
 			SmoothKit.Ball( lie, tip, new Vector3( 0.22f, 0.3f, 0.06f ), rust, new Basis( Vector3.Back, -side * 0.5f ), "Fluke" );
 		}
-		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 2.2f, 0.5f, 1.6f ) }, Transform = new Transform3D( new Basis( Vector3.Up, yaw ), at + Vector3.Up * 0.2f ) } );
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 2.6f, 0.75f, 1.8f ) }, Transform = new Transform3D( new Basis( Vector3.Up, yaw ), at + Vector3.Up * 0.35f ) } );
 		_ = random;
 	}
 
@@ -469,6 +483,6 @@ public static class AbyssProps
 		}
 		SmoothKit.Tube( b, new Vector3( 0.4f, depth * 0.85f, -1.3f ), new Vector3( 1.6f, 0.1f, 0.9f ), 0.035f, 0.035f, plank, "Oar" );
 		GunKit.Part( b, new BoxMesh { Size = new Vector3( 0.16f, 0.03f, 0.5f ) }, plank, new Vector3( 1.75f, 0.06f, 1.15f ), new Basis( Vector3.Up, 0.5f ), "Oar Blade" );
-		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 1.4f, 0.8f, 3.8f ) }, Transform = new Transform3D( new Basis( Vector3.Up, yaw ), at + Vector3.Up * 0.3f ) } );
+		solid.AddChild( new CollisionShape3D { Shape = new BoxShape3D { Size = new Vector3( 1.7f, 0.9f, 4.3f ) }, Transform = new Transform3D( new Basis( Vector3.Up, yaw ), at + Vector3.Up * 0.3f ) } );
 	}
 }

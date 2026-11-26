@@ -304,6 +304,7 @@ public static class Abyss
 		if ( Root is not null && GodotObject.IsInstanceValid( Root ) ) { Root.GetParent()?.RemoveChild( Root ); Root.Free(); }
 		Root = null;
 		walls.Clear();
+		stalactiteHulls.Clear();
 		CellCentres.Clear();
 		SpawnSpots.Clear();
 	}
@@ -314,10 +315,15 @@ public static class Abyss
 		if ( roofMesh is null || Root is null ) return;
 		var body = new StaticBody3D { Name = "Roof Solid", CollisionLayer = Layers.World, CollisionMask = 0 };
 		body.AddChild( new CollisionShape3D { Shape = roofMesh.CreateTrimeshShape() } );
+		// The stalactites stop players and shots too (a floating robot can't drift into one). Not rock to the
+		// swimmers: lifting one "out over the top" of a stalactite would push it into the roof.
+		foreach ( var hull in stalactiteHulls )
+			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = hull } } );
 		Root.AddChild( body );
 	}
 
 	static ArrayMesh roofMesh;
+	static readonly List<Vector3[]> stalactiteHulls = new();
 
 	public static readonly StandardMaterial3D RockPaint = new()
 	{
@@ -390,7 +396,9 @@ public static class Abyss
 				var top = RoofAt( px, pz ) + 0.5f;
 				var length = R( 1.5f, 7.5f ) * (c == 0 ? 1f : 0.55f);
 				var width = length * R( 0.14f, 0.22f );
-				Spike( drip, new Vector3( px, top, pz ), Vector3.Down, length, width, random );
+				var hull = new List<Vector3>();
+				Spike( drip, new Vector3( px, top, pz ), Vector3.Down, length, width, random, -1f, hull );
+				stalactiteHulls.Add( hull.ToArray() );
 				made++;
 			}
 		}
@@ -414,7 +422,7 @@ public static class Abyss
 	}
 
 	/// <summary> A rough six-sided spike (a stalactite or stalagmite) from `root` along `dir`, faces outward. </summary>
-	public static void Spike( SurfaceTool st, Vector3 root, Vector3 dir, float length, float width, Random random, float shade = -1f )
+	public static void Spike( SurfaceTool st, Vector3 root, Vector3 dir, float length, float width, Random random, float shade = -1f, List<Vector3> hull = null )
 	{
 		const int sides = 6;
 		var y = dir.Normalized();
@@ -430,6 +438,7 @@ public static class Abyss
 				points[k, s] = root + y * (rings[k].Item1 * length) + (x * MathF.Cos( a ) + z * MathF.Sin( a )) * w;
 			}
 		var tip = root + y * length;
+		if ( hull is not null ) { foreach ( var p in points ) hull.Add( p ); hull.Add( tip ); }
 		var v = shade >= 0f ? shade : 0.3f + (float)random.NextDouble() * 0.12f;
 		var colour = new Color( v * 0.95f, v * 0.95f, v * 1.05f );
 		void Out( Vector3 a, Vector3 b, Vector3 c )
@@ -463,7 +472,7 @@ public static class Abyss
 		readonly StaticBody3D body;
 		public int Chunks;
 		static Vector3[] unit;
-		static int[] faces, coarse;
+		static int[] faces;
 
 		public RockBuilder( Node3D root )
 		{
@@ -505,13 +514,6 @@ public static class Abyss
 			}
 			unit = verts.ToArray();
 			faces = tris.ToArray();
-			// The collider's points: each face's corners, edge middles and centre (a 3 by 3 grid of the 5 by 5).
-			var keep = new List<int>();
-			for ( var f = 0; f < 6; f++ )
-				for ( var j = 0; j <= n; j += 2 )
-					for ( var i = 0; i <= n; i += 2 )
-						keep.Add( f * (n + 1) * (n + 1) + j * (n + 1) + i );
-			coarse = keep.ToArray();
 		}
 
 		/// <summary> A wall of boulders along a line of floor plan points. </summary>
@@ -610,11 +612,9 @@ public static class Abyss
 				var colour = new Color( v * 0.9f, v * 0.94f, v * 1.06f );
 				Tri( st, a, b, c, colour );
 			}
-			// The collider: every other point of its own (a simpler shape, so the navmesh along the walls has fewer,
-			// bigger polygons), pulled in toward its middle a touch.
-			var hull = new Vector3[coarse.Length];
-			for ( var i = 0; i < coarse.Length; i++ ) hull[i] = centre + (points[coarse[i]] - centre) * 0.96f;
-			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = hull } } );
+			// The collider: the hull of every point it is drawn with, so nothing drawn sticks out past it (a coarser,
+			// pulled-in hull let a robot walking into a wall get its view into the rock).
+			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = points } } );
 			Chunks++;
 		}
 

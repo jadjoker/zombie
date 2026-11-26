@@ -164,6 +164,9 @@ public partial class AutoTest
 		mimic.Health.OnDamage( new DamageInfo { Damage = 100000f } );
 		DevFlags.FreezeEnemies = true;
 
+		// Nothing to get inside: the walls, stalagmites and props are solid where they are drawn.
+		await AbyssSolid();
+
 		GD.Print( "[autotest] done" );
 		GetTree().Quit();
 	}

@@ -396,18 +396,30 @@ public partial class TridentBolt : Node3D
 		return best ?? spare;
 	}
 
-	/// <summary> Where to fly at an enemy: the middle of its hit shapes (the parts' colliders), else a little above its origin. </summary>
+	/// <summary>
+	/// Where to fly at an enemy: the nearest of its hit shapes (each collision shape on its parts). The middle of all of
+	/// them, or the creature's origin when its parts keep no Collider (the Rocky Shark, built from capsules on a curving
+	/// body), could be open water beside it, and the trident circled that spot (playtest).
+	/// </summary>
 	static Vector3 AimAt( Creature c, Vector3 from )
 	{
-		var sum = Vector3.Zero;
-		var count = 0;
+		var best = Vector3.Zero;
+		var bestDistance = float.MaxValue;
 		foreach ( var part in CreaturePart.All )
 		{
-			if ( part.ShotOwner != c || !IsInstanceValid( part ) || part.Collider is null ) continue;
-			sum += part.Collider.GlobalPosition;
-			count++;
+			if ( !IsInstanceValid( part ) || part.ShotOwner != c ) continue;
+			if ( part.Collider is { } collider ) Nearer( collider.GlobalPosition );
+			else
+				foreach ( var child in part.GetChildren() )
+					if ( child is CollisionShape3D shape && !shape.Disabled ) Nearer( shape.GlobalPosition );
 		}
-		return count > 0 ? sum / count : c.GlobalPosition + Vector3.Up * 0.5f;
+		return bestDistance < float.MaxValue ? best : c.GlobalPosition + Vector3.Up * 0.5f;
+
+		void Nearer( Vector3 at )
+		{
+			var d = at.DistanceSquaredTo( from );
+			if ( d < bestDistance ) { bestDistance = d; best = at; }
+		}
 	}
 
 	/// <summary> Stays where it hit, points sunk in, carried along by what it hit if that moves (a creature, a piece). </summary>

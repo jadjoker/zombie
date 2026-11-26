@@ -177,10 +177,16 @@ public partial class AutoTest
 			var riseBefore = trap?.TargetRise ?? 0f;
 			var inflated = BubbleTrap.Inflated;
 			await Wait( 0.45f );
-			Stand();
-			LookAt( held[0].GlobalPosition + Vector3.Up * 0.3f );
-			cannon.TestFire();
-			for ( var t = 0f; t < 1.5f && BubbleTrap.Inflated == inflated; t += 0.05f ) await Wait( 0.05f );
+			// Up to three tries, aimed afresh each time: the crab is still rising and a slow runner can miss with one.
+			for ( var tries = 0; tries < 3 && BubbleTrap.Inflated == inflated && IsInstanceValid( held[0] ) && held[0].Bubbled; tries++ )
+			{
+				Stand();
+				LookAt( held[0].GlobalPosition + Vector3.Up * 0.3f );
+				await Wait( 0.1f );
+				cannon.TestFire();
+				for ( var t = 0f; t < 1.5f && BubbleTrap.Inflated == inflated; t += 0.05f ) await Wait( 0.05f );
+				if ( BubbleTrap.Inflated == inflated ) GD.Print( $"[autotest] classes: inflate try {tries + 1} missed (crab at {held[0].GlobalPosition}, bubbled {held[0].Bubbled}, ammo {cannon.Ammo})" );
+			}
 			// (It may land on the crab beside it, also in a bubble: either one swelling counts.)
 			Check( BubbleTrap.Inflated > inflated && BubbleTrap.Live.Any( l => l.TargetRise > BubbleTrap.MegaRise ), "a bubble fired into a trapped crab didn't inflate its bubble" );
 		}

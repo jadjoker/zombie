@@ -5,7 +5,7 @@ using Godot;
 /// a deep navy, the caustics and the open sea's light shafts and leviathans go. Light comes from the shaft onto the
 /// statue, the glowing moss down the main tunnels, the glow bulbs, the ally spider's headlamp and each robot's hip
 /// lantern (<see cref="HipLantern"/>, kept on every player while this node is in the level). <see cref="Leave"/>
-/// puts the open sea's light back (Atlantis).
+/// puts the open sea's light back (Atlantis). <see cref="Darken"/> also sets the wreck site's half-way gloom.
 /// </summary>
 public partial class AbyssMood : Node
 {
@@ -17,6 +17,13 @@ public partial class AbyssMood : Node
 	public const float MurkEnd = 46f;
 	public const float SunShare = 0.02f;
 
+	/// <summary> How far toward the Abyss's darkness the wreck site goes (user's ask: half as dark, deeper each stage). </summary>
+	public const float WreckDepth = 0.5f;
+	/// <summary> The volumetric murk at full depth. </summary>
+	const float MurkDensity = 0.03f;
+	static readonly Color MurkAlbedo = new( 0.3f, 0.42f, 0.55f );
+	static readonly Color MurkEmission = new( 0.002f, 0.004f, 0.009f );
+
 	sealed class Saved
 	{
 		public Color Ambient, FogColour, VolAlbedo, VolEmission;
@@ -24,21 +31,28 @@ public partial class AbyssMood : Node
 		public Godot.Environment.BGMode Background;
 		public Color BackgroundColour;
 	}
-	static Saved saved;
+	/// <summary> The open sea's light (the shore's), taken the first time a stage darkens it. </summary>
+	static Saved shore;
 
 	static Godot.Environment Env( Node level ) =>
 		level.FindChildren( "*", "WorldEnvironment", true, false ).OfType<WorldEnvironment>().FirstOrDefault()?.Environment;
 	static DirectionalLight3D Sun( Node level ) => level.FindChildren( "*", "DirectionalLight3D", true, false ).OfType<DirectionalLight3D>().FirstOrDefault();
 
-	public static void Enter( Node3D level )
+	/// <summary> A new level load starts in the open sea's light. </summary>
+	public static void Reset() => shore = null;
+
+	/// <summary>
+	/// Sets how deep the light feels: 0 is the shore's, 1 the Abyss's, in between a mix (the wreck site is
+	/// <see cref="WreckDepth"/>). Ambient, murk, sun and caustics all go the same share of the way.
+	/// </summary>
+	public static void Darken( Node3D level, float depth )
 	{
-		if ( Current is not null && IsInstanceValid( Current ) ) return;
 		var env = Env( level );
 		var sun = Sun( level );
-		if ( env is not null )
+		if ( shore is null && env is not null )
 		{
 			var dock = DockHouse.Current;
-			saved = new Saved
+			shore = new Saved
 			{
 				Ambient = dock?.SeaAmbient?.Colour ?? env.AmbientLightColor,
 				AmbientEnergy = dock?.SeaAmbient?.Energy ?? env.AmbientLightEnergy,
@@ -46,52 +60,50 @@ public partial class AbyssMood : Node
 				VolDensity = env.VolumetricFogDensity, VolAlbedo = env.VolumetricFogAlbedo, VolEmission = env.VolumetricFogEmission,
 				SunEnergy = sun?.LightEnergy ?? 1f, Background = env.BackgroundMode, BackgroundColour = env.BackgroundColor,
 			};
-			if ( dock is not null ) dock.SeaAmbient = (Ambient, AmbientEnergy);
-			env.AmbientLightColor = Ambient;
-			env.AmbientLightEnergy = AmbientEnergy;
-			env.FogLightColor = Murk;
-			env.FogDepthBegin = 1f;
-			env.FogDepthEnd = MurkEnd;
-			// Thicker murk that the lamps light up in cones and halos, and no glow of its own.
-			env.VolumetricFogDensity = 0.03f;
-			env.VolumetricFogAlbedo = new Color( 0.3f, 0.42f, 0.55f );
-			env.VolumetricFogEmission = new Color( 0.002f, 0.004f, 0.009f );
-			env.BackgroundMode = Godot.Environment.BGMode.Color;
-			env.BackgroundColor = Murk;
 		}
-		if ( sun is not null ) sun.LightEnergy = saved.SunEnergy * SunShare;
-		Caustics.SetStrength( 0f );
+		if ( shore is null ) return;
+		var t = Mathf.Clamp( depth, 0f, 1f );
+		if ( env is not null )
+		{
+			var ambient = shore.Ambient.Lerp( Ambient, t );
+			var energy = Mathf.Lerp( shore.AmbientEnergy, AmbientEnergy, t );
+			if ( DockHouse.Current is { } dock ) dock.SeaAmbient = (ambient, energy);
+			env.AmbientLightColor = ambient;
+			env.AmbientLightEnergy = energy;
+			env.FogLightColor = shore.FogColour.Lerp( Murk, t );
+			env.FogDepthBegin = Mathf.Lerp( shore.FogBegin, 1f, t );
+			env.FogDepthEnd = Mathf.Lerp( shore.FogEnd, MurkEnd, t );
+			// Thicker murk that the lamps light up in cones and halos, and no glow of its own.
+			env.VolumetricFogDensity = Mathf.Lerp( shore.VolDensity, MurkDensity, t );
+			env.VolumetricFogAlbedo = shore.VolAlbedo.Lerp( MurkAlbedo, t );
+			env.VolumetricFogEmission = shore.VolEmission.Lerp( MurkEmission, t );
+			// The sky only goes once it is fully dark.
+			env.BackgroundMode = t >= 1f ? Godot.Environment.BGMode.Color : shore.Background;
+			env.BackgroundColor = t >= 1f ? Murk : shore.BackgroundColour;
+		}
+		if ( sun is not null ) sun.LightEnergy = shore.SunEnergy * Mathf.Lerp( 1f, SunShare, t );
+		Caustics.SetStrength( Caustics.DefaultStrength * ( 1f - t ) );
+	}
+
+	public static void Enter( Node3D level )
+	{
+		if ( Current is not null && IsInstanceValid( Current ) ) return;
+		Darken( level, 1f );
 		if ( level.GetNodeOrNull<Node3D>( "Backdrop" ) is { } backdrop ) backdrop.Visible = false;
 		Current = new AbyssMood { Name = "Abyss Mood" };
 		level.AddChild( Current );
 	}
 
+	/// <summary> Out of the Abyss (to Atlantis): the open sea's light comes back, the lanterns go. </summary>
 	public static void Leave( Node3D level )
 	{
 		// Held in a local: leaving the tree clears Current.
 		if ( Current is { } mood && IsInstanceValid( mood ) ) { mood.GetParent()?.RemoveChild( mood ); mood.Free(); }
 		Current = null;
 		HipLantern.RemoveAll();
-		if ( saved is null ) return;
-		var env = Env( level );
-		if ( env is not null )
-		{
-			if ( DockHouse.Current is { } dock ) dock.SeaAmbient = (saved.Ambient, saved.AmbientEnergy);
-			env.AmbientLightColor = saved.Ambient;
-			env.AmbientLightEnergy = saved.AmbientEnergy;
-			env.FogLightColor = saved.FogColour;
-			env.FogDepthBegin = saved.FogBegin;
-			env.FogDepthEnd = saved.FogEnd;
-			env.VolumetricFogDensity = saved.VolDensity;
-			env.VolumetricFogAlbedo = saved.VolAlbedo;
-			env.VolumetricFogEmission = saved.VolEmission;
-			env.BackgroundMode = saved.Background;
-			env.BackgroundColor = saved.BackgroundColour;
-		}
-		if ( Sun( level ) is { } sun ) sun.LightEnergy = saved.SunEnergy;
-		Caustics.SetStrength( Caustics.DefaultStrength );
+		if ( shore is null ) return;
+		Darken( level, 0f );
 		if ( level.GetNodeOrNull<Node3D>( "Backdrop" ) is { } backdrop ) backdrop.Visible = true;
-		saved = null;
 	}
 
 	public override void _ExitTree()

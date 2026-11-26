@@ -61,6 +61,8 @@ public static class AreaTwo
 		ShipWreck.Build( level );
 		// No glow bulbs inside the ship: they burst when walked up to, and the rooms are too tight to step back.
 		Caustics.AddTo( level );
+		// Deeper than the shore: half way to the Abyss's darkness (user's ask).
+		AbyssMood.Darken( level, AbyssMood.WreckDepth );
 		PlaceStations( level, new Dictionary<BuyStationKind, Vector3>
 		{
 			[BuyStationKind.Ammo] = new( -6f, 0f, -27f ),

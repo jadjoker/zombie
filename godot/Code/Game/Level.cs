@@ -55,6 +55,7 @@ public partial class Level : Node3D
 		// Every load starts on the near side of the teleporter.
 		SeaTerrain.Area = 1;
 		Caustics.SetStrength( Caustics.DefaultStrength );   // a game over in the Abyss left them off
+		AbyssMood.Reset();
 		ShipWreck.Clear();
 		// The water level's sea floor is rolling terrain (issue #35): built, and the level fitted to it, before the
 		// dressing and the navmesh.

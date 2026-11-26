@@ -4029,6 +4029,7 @@ public partial class AutoTest : Node
 		DockHouse.Current?.SkipDive();
 		await Wait( 0.5f );
 		var director = WaveDirector.Current;
+		director.SuitMalfunctionEvery = 0;   // wave 32 would float the player off the arch and porch checks
 		var use = player.GetNode<PlayerUse>( "PlayerUse" );
 		var level = GetTree().CurrentScene as Node3D;
 		AreaTwo.Go( level, player );   // the --teleport and --abyss tests cover the first two trips

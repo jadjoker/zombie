@@ -114,7 +114,7 @@ void fragment() {
 		parent.AddChild( spill );
 		spill.Position = new Vector3( 0f, 9f, 0f );
 		var beam = new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/fx_light_shaft.gdshader" ) };
-		beam.SetShaderParameter( "strength", 0.34f );
+		beam.SetShaderParameter( "strength", 0.22f );
 		beam.SetShaderParameter( "color", new Color( 0.7f, 0.88f, 1f ) );
 		beam.SetMeta( "no_caustics", true );
 		var shaftHeight = Abyss.RoofHeight + 8f;

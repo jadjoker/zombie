@@ -68,7 +68,8 @@ public partial class AbyssMood : Node
 
 	public static void Leave( Node3D level )
 	{
-		if ( Current is not null && IsInstanceValid( Current ) ) { Current.GetParent()?.RemoveChild( Current ); Current.Free(); }
+		// Held in a local: leaving the tree clears Current.
+		if ( Current is { } mood && IsInstanceValid( mood ) ) { mood.GetParent()?.RemoveChild( mood ); mood.Free(); }
 		Current = null;
 		HipLantern.RemoveAll();
 		if ( saved is null ) return;

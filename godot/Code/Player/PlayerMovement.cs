@@ -308,7 +308,7 @@ public partial class PlayerMovement : Node, ICameraModifier
 	/// <summary> A little dust kicked up at the feet (stands in for the stock impact.generic particle). </summary>
 	static void Puff( Vector3 at, float scale )
 	{
-		var dust = new Color( 0.62f, 0.58f, 0.5f, 0.7f );
+		var dust = SeaStir.SiltColour( at );
 		for ( var i = 0; i < (int)(10 * scale); i++ )
 		{
 			var dir = (Rng.OnSphere().Flat() + Vector3.Up * 0.4f).SafeNormal();
@@ -610,6 +610,12 @@ public partial class PlayerMovement : Node, ICameraModifier
 		if ( hardness > 0.1f ) Sfx.Play( "land", Controller.GlobalPosition, hardness );
 		landDip = MathF.Max( landDip, hardness * 6f );
 		if ( hardness > 0.25f ) Juice?.Shake( hardness * 0.3f );
+		// A hard landing kicks up the sea bed and shoves the plants about.
+		if ( hardness > 0.15f )
+		{
+			SeaStir.SiltRing( Controller.GlobalPosition, 0.3f + 0.8f * hardness );
+			SeaStir.Push( Controller.GlobalPosition, 2.5f + 2f * hardness, 0.35f * hardness );
+		}
 	}
 
 	public void PostCameraSetup( Camera3D cam )

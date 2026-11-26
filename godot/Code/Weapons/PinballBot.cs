@@ -713,6 +713,7 @@ public partial class HumanPinball : Node3D
 
 	void Land()
 	{
+		if ( Alive() ) SeaStir.SiltRing( Centre with { Y = SeaStir.GroundBelow( Centre ) }, 0.6f );
 		if ( Alive() )
 		{
 			var centre = Centre;

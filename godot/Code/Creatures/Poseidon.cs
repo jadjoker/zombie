@@ -15,6 +15,7 @@ using static SmoothKit;
 /// </summary>
 public partial class Poseidon : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<Poseidon> All = new();
 
 	public float Size = 1.5f;              // times the built model (about 5.5 m tall, so over 8 m)

@@ -14,6 +14,7 @@ using Godot;
 /// </summary>
 public partial class Kraken : PartCreature
 {
+	public override bool CanScare => false;
 	const int Head = 0, Helmet = 1, Brain = 2, Tentacle0 = 3;
 	public const int Tentacles = 8;
 	// Shared with kraken.py.

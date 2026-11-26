@@ -40,7 +40,13 @@ public partial class AlienFloaters : Node3D
 		public OmniLight3D Light;
 		/// <summary> Where it was put last frame (read back from here, not from the engine, every frame). </summary>
 		public Vector3? At;
+		/// <summary> Shoved off its drift by a stir (SeaStir), drawn back on a soft spring. </summary>
+		public Vector3 Push, PushVelocity;
 	}
+
+	int seenStir = SeaStir.Seq;
+	/// <summary> Tests: the furthest any bulb is shoved from its drift. </summary>
+	public float MaxPush { get { var m = 0f; foreach ( var f in all ) m = MathF.Max( m, f.Push.Length() ); return m; } }
 
 	readonly List<Floater> all = new();
 	public int Count => all.Count;
@@ -269,9 +275,34 @@ public partial class AlienFloaters : Node3D
 			var at = p.Controller.GlobalPosition;
 			chests.Add( at + Vector3.Up * 1f );
 		}
+		var dt = (float)delta;
+		var stirs = SeaStir.Recent;
+		if ( stirs.Count > 0 && stirs[^1].Seq > seenStir )
+		{
+			foreach ( var st in stirs )
+			{
+				if ( st.Seq <= seenStir || st.Strength <= 0f ) continue;
+				foreach ( var f in all )
+				{
+					if ( f.IsPopped || f.At is not { } p ) continue;
+					var away = p - st.At;
+					var d = away.Length();
+					if ( d > st.Radius ) continue;
+					f.PushVelocity += (d > 0.01f ? away / d : Vector3.Up) * st.Strength * (1f - d / st.Radius) * 3f;
+				}
+			}
+			seenStir = stirs[^1].Seq;
+		}
 		for ( var i = 0; i < all.Count; i++ )
 		{
 			var f = all[i];
+			var shoved = f.Push != Vector3.Zero || f.PushVelocity != Vector3.Zero;
+			if ( shoved )
+			{
+				f.PushVelocity += (-f.Push * 0.8f - f.PushVelocity * 1.6f) * dt;
+				f.Push += f.PushVelocity * dt;
+				if ( f.Push.LengthSquared() < 0.0004f && f.PushVelocity.LengthSquared() < 0.0004f ) f.Push = f.PushVelocity = Vector3.Zero;
+			}
 			if ( f.IsPopped )
 			{
 				if ( f.SincePopped < RegrowAfter ) continue;
@@ -289,12 +320,12 @@ public partial class AlienFloaters : Node3D
 			var drift = new Vector3( MathF.Cos( a ) * s.Wander, MathF.Sin( a * 1.7f ) * 0.4f, MathF.Sin( a * 0.8f ) * s.Wander );
 			var b = t * f.Rate + f.Phase;
 			var bob = new Vector3( MathF.Cos( b ) * 0.3f, MathF.Sin( b * 2.1f ) * f.Bob, MathF.Sin( b * 0.9f ) * 0.3f );
-			var at = s.Home + drift + f.Offset + bob;
+			var at = s.Home + drift + f.Offset + bob + f.Push;
 
 			// A player too close sets it off: it swells and flashes, faster and faster, then bursts.
 			f.At ??= f.Node.GlobalPosition;
 			var nearest = Nearest( chests, f.At.Value );
-			if ( !f.Puffing && nearest > FarAway && ((frames + (ulong)i) & 3) != 0 ) continue;   // far ones drift in turns (every 4th frame)
+			if ( !f.Puffing && !shoved && nearest > FarAway && ((frames + (ulong)i) & 3) != 0 ) continue;   // far ones drift in turns (every 4th frame)
 			if ( !f.Puffing && nearest < PuffRadius )
 			{
 				f.Puffing = true;

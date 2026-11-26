@@ -73,6 +73,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--padmenus" ) ) { await PadMenusTest(); return; }
 		if ( args.Contains( "--clarity" ) ) { await ClarityTest(); return; }
 		if ( args.Contains( "--bulbs" ) ) { await BulbTest(); return; }
+		if ( args.Contains( "--alive" ) ) { await AliveTest(); return; }
 		if ( args.Contains( "--jelly" ) ) { await JellyTest(); return; }
 		if ( args.Contains( "--angler" ) ) { await AnglerTest(); return; }
 		if ( args.Contains( "--stingray" ) ) { await StingrayTest(); return; }

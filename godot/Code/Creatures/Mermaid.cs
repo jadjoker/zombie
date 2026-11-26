@@ -11,9 +11,13 @@ using Godot;
 /// </summary>
 public partial class Mermaid : Creature
 {
+	public override string Voice => "spot_mermaid";
 	Blinker blinks;
 
 	public static readonly List<Mermaid> All = new();
+	Mermaid glanceAt;
+	double nextGlance = Clock.Now + Rng.Float( 2f, 6f ), glanceUntil;
+	public static int Glances;
 
 	/// <summary> Metres per model unit (Poseidon's units): about 2.2 m from the crown to the tip of the tail. </summary>
 	public const float Scale = 0.345f;
@@ -289,11 +293,20 @@ void fragment() {
 		var wish = Vector3.Zero;
 		if ( prey is not null )
 		{
-			var chestAt = prey.WorldPosition + Vector3.Up * 1.1f;
+			var chestAt = Seen( prey ) + Vector3.Up * 1.1f;
 			var to = (chestAt - GlobalPosition).Flat();
 			var distance = to.Length();
 			var dir = to / MathF.Max( 0.01f, distance );
 			lookAt = prey.WorldPosition + Vector3.Up * 1.5f;
+			// Far off, now and then a glance at another mermaid nearby, as if signalling (user's ask: idle moments).
+			if ( distance > 10f && Clock.Now > nextGlance )
+			{
+				nextGlance = Clock.Now + Rng.Float( 5f, 9f );
+				glanceAt = null;
+				foreach ( var m in All )
+					if ( m != this && IsInstanceValid( m ) && !m.IsDead && m.GlobalPosition.DistanceTo( GlobalPosition ) < 14f ) { glanceAt = m; glanceUntil = Clock.Now + Rng.Float( 0.8f, 1.4f ); Glances++; break; }
+			}
+			if ( glanceAt is not null && IsInstanceValid( glanceAt ) && Clock.Now < glanceUntil && distance > 6f ) lookAt = glanceAt.GlobalPosition + Vector3.Up * 1.4f;
 			if ( Archer )
 			{
 				// Circle at a distance, closing or backing off to keep it.

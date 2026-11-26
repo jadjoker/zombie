@@ -166,6 +166,15 @@ public static class GibRecipes
 		return r;
 	} );
 
+	/// <summary> Rubble off the Abyss's roof: dark cave rock, paler where it broke. </summary>
+	public static GibRecipe CaveRock() => Get( "caverock", () => new GibRecipe
+	{
+		Kind = GibKind.Rock, Goo = new Color( 0.2f, 0.2f, 0.22f ),
+		Outer = GibKit.Paint( new Color( 0.2f, 0.21f, 0.24f ), 0.95f ),
+		Inner = GibKit.Paint( new Color( 0.42f, 0.42f, 0.45f ), 0.95f ),
+		Layer = GibKit.Paint( new Color( 0.3f, 0.3f, 0.33f ), 0.9f ),
+	} );
+
 	/// <summary> The shark's belly: the same stone, white. </summary>
 	public static GibRecipe RockyBelly( Color goo ) => Get( "rockybelly", () =>
 	{

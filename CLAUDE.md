@@ -553,6 +553,20 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 Wave-survival FPS in s&box, published as `jadjoker.risk_of_copyright`. Repo: github.com/jadjoker/zombie, branch `main`.
 Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part chunking and gore.
 
+- The world feels alive (user's ask, test `--alive`). `Game/SeaStir.cs`: blasts (`AlienBlast.Spawn` calls `SeaStir.Blast`),
+  gunshots (`PlayerWeapon.Shoot`), hard landings and dropped enemies are "stirs" in `SeaStir.Recent`; the glow bulbs
+  are shoved off their drift, Atlantis's fish schools burst apart and gather (`FishScatter`), swaying plants are shoved
+  over and spring back (`Sway` lean) and lean toward the Gore Vac's nozzle (`SeaStir.Pull`); silt rings roll off the
+  sea bed (`SiltRing`, `SiltColour` by area); a kill of 500+ health leaves a `GooHaze` in its `Creature.Blood`.
+  Enemies: `Creature.Voice` (`spot_*` sounds) cries out on spotting a player and calls now and then (`EnemyVoices`,
+  spaced across all enemies); hurt below `FearAt` one may lose its nerve (`Creature.Scare`, `Seen` gives the flee point
+  while `Scared`; crabs use their panic; bosses, kamikazes, swarms and scenery have `CanScare` false); the last enemy of
+  a wave panics once (`WaveDirector.LastOnePanics`); crabs far off forage (`JunkCrab.Foraging`, synced), mermaids glance
+  at each other. `Game/AreaLife.cs`: `Tension` 0 to 1 over an area's ten waves; the shore's leviathans circle closer and
+  lower, the wreck's hull groans (`hull_groan`), the Abyss's moss lamps flicker and go out (`AbyssProps.MossLamps`), big
+  blasts shake rubble off its roof (`GibRecipes.CaveRock`, `rock_crumble`), a `SkylightPass` leviathan crosses the
+  skylight on boss waves and sometimes late on (`leviathan_moan`, the statue's light dims), and Atlantis's heart beats
+  faster (`AtlantisHeart.BeatRate`).
 - Performance (`--perf`, a window: frame times idle, in a gore-heavy fight, with the Gore Vac sucking and in a
   shot barrage, plus per-label code times from `Core/Perf.cs`; `--perfsplit` shows what each big subtree and the
   per-frame nodes cost). Patterns kept on purpose: goo drops are one `GooDroplet` system drawn as a MultiMesh (no node

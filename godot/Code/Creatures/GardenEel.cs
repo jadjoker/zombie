@@ -10,6 +10,7 @@ using Godot;
 /// </summary>
 public partial class GardenEel : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<GardenEel> All = new();
 
 	public const int Joints = 8;

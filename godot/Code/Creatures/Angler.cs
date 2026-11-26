@@ -11,6 +11,7 @@ using Godot;
 /// </summary>
 public partial class Angler : Creature
 {
+	public override string Voice => "spot_angler";
 	public static readonly List<Angler> All = new();
 
 	public float Speed = 3.14f;            // m/s: slow and steady (8% up from 2.91)
@@ -519,7 +520,7 @@ void fragment() {
 		var wish = Vector3.Zero;
 		if ( prey is not null )
 		{
-			var chest = prey.WorldPosition + Vector3.Up * 1.1f;
+			var chest = Seen( prey ) + Vector3.Up * 1.1f;
 			var fromMouth = chest - MouthAt;
 			var distance = fromMouth.Length();
 			var dir = (chest - GlobalPosition).SafeNormal();

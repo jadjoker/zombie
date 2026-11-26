@@ -13,6 +13,8 @@ public static class AbyssProps
 	public static int Chests, Mimics, Skeletons, Anchors, Boats, BonePiles, MossPatches, MossLights;
 	/// <summary> What stands solid in the caves (stalagmites and props): a name, its middle on the floor, its drawn reach (for tests). </summary>
 	public static readonly List<(string Name, Vector3 Centre, float Reach, float Height)> Solids = new();
+	/// <summary> The moss lamps and their steady energy (AreaLife makes them flicker as the waves climb). </summary>
+	public static readonly List<(OmniLight3D Light, float Energy)> MossLamps = new();
 
 	static StandardMaterial3D bone, brass, glassDark, rust, plank;
 
@@ -20,6 +22,7 @@ public static class AbyssProps
 	{
 		Chests = Mimics = Skeletons = Anchors = Boats = BonePiles = MossPatches = MossLights = 0;
 		Solids.Clear();
+		MossLamps.Clear();
 		bone = new StandardMaterial3D { AlbedoColor = new Color( 0.82f, 0.78f, 0.66f ), Roughness = 0.8f };
 		brass = new StandardMaterial3D { AlbedoColor = new Color( 0.62f, 0.45f, 0.2f ), Roughness = 0.45f, Metallic = 0.8f };
 		glassDark = new StandardMaterial3D { AlbedoColor = new Color( 0.05f, 0.08f, 0.08f ), Roughness = 0.1f, Metallic = 0.3f };
@@ -114,6 +117,7 @@ public static class AbyssProps
 					root.AddChild( light );
 					var at = dir * r + side * s * 6f;
 					light.GlobalPosition = at with { Y = SeaTerrain.HeightAt( at ) + 0.6f };
+					MossLamps.Add( (light, light.LightEnergy) );
 					MossLights++;
 				}
 			}

@@ -408,6 +408,7 @@ public partial class GrabbedBody : Node3D
 	void Land( float speed, Vector3? at )
 	{
 		HookFx.Landings++;
+		if ( Alive() ) { SeaStir.SiltRing( Centre with { Y = SeaStir.GroundBelow( Centre ) }, 0.4f + MathF.Min( 0.8f, speed * 0.06f ) ); SeaStir.Push( Centre, 4f, 0.5f ); }
 		if ( Alive() )
 		{
 			// Set down on the floor below, upright again, a moment dazed.

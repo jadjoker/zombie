@@ -10,6 +10,7 @@ using Godot;
 /// </summary>
 public partial class FishSwarm : Creature
 {
+	public override bool CanScare => false;
 	public const float FishHealth = 9f, AggroRange = 12f, LeashRange = 34f, Speed = 5.5f, BiteRange = 1.7f, BiteEvery = 0.55f, BiteDamage = 3f;
 	public const float RespawnMin = 50f, RespawnMax = 90f;
 	/// <summary> The swarm's fish are drawn this much smaller than the sea's decorative schools (user's ask: tiny). </summary>

@@ -17,6 +17,44 @@ public abstract partial class Creature : Node3D, ICreature
 	public virtual bool IsEnemy => true;
 	/// <summary> What it comes apart into (the chunking pass: <see cref="GibRecipes"/>); null keeps the old round blobs. </summary>
 	public virtual GibRecipe Gibs => null;
+
+	// Fear (user's ask: enemies that feel like animals). Badly hurt it may break off for a moment; the last one of a
+	// wave panics (WaveDirector). While scared, Seen gives the point it runs to instead of the player.
+	public const float FearAt = 0.3f, FearChance = 0.6f;
+	bool feared;
+	Vector3 fleeTo;
+	public double ScaredUntil;
+	public bool Scared => Clock.Now < ScaredUntil;
+	public static int Scares;
+	/// <summary> Its cry when it spots a player and its call while it hunts (EnemyVoices); null for none. </summary>
+	public virtual string Voice => null;
+	public virtual float VoicePitch => 1f;
+	public virtual float VoiceVolume => 1f;
+	/// <summary> Bosses, kamikazes, scenery and swarms don't run. </summary>
+	public virtual bool CanScare => IsEnemy;
+
+	/// <summary> Runs from the nearest player for a while (a point well away, inside the map). </summary>
+	public void Scare( float seconds )
+	{
+		if ( Puppet || IsDead || !CanScare ) return;
+		var p = PlayerSurvivor.FindNearestAlive( GlobalPosition );
+		if ( p is null ) return;
+		var away = (GlobalPosition - p.WorldPosition).Flat().SafeNormal();
+		if ( away == Vector3.Zero ) away = Rng.OnSphere().Flat().SafeNormal();
+		away = (away + Rng.OnSphere().Flat() * 0.4f).SafeNormal();
+		fleeTo = Sculpt.InBounds( GlobalPosition + away * 14f ) with { Y = p.WorldPosition.Y };
+		ScaredUntil = Clock.Now + seconds;
+		Scares++;
+		OnScared( seconds );
+	}
+
+	/// <summary> Creatures with their own way of fleeing (the crabs' panic) take it here. </summary>
+	protected virtual void OnScared( float seconds ) { }
+
+	/// <summary> Where it sees this player: the player, or while scared the point it is running to. </summary>
+	protected Vector3 Seen( PlayerSurvivor p ) => Scared ? fleeTo : p.WorldPosition;
+	/// <summary> The colour of its goo (the haze a big one leaves when it dies). </summary>
+	public virtual Color Blood => new( 0.35f, 0.8f, 0.3f );
 	/// <summary>
 	/// How much of a blast or shock (pickups, straight to health) gets through: 1 for most, less for armoured ones.
 	/// </summary>
@@ -162,6 +200,13 @@ public abstract partial class Creature : Node3D, ICreature
 		health = GetNodeOrNull<Health>( "Health" );
 		if ( health is null ) { health = new Health(); health.ResetTo( defaultHealth ); AddChild( health ); }
 		gore = GoreSystem.Get();
+		health.Damaged += _ =>
+		{
+			// Badly hurt, it loses its nerve for a moment (user's ask: feel like animals).
+			if ( feared || IsDead || Puppet || !CanScare || health.MaxHealth <= 0f || health.Current > health.MaxHealth * FearAt ) return;
+			feared = true;
+			if ( Rng.Float() < FearChance ) Scare( Rng.Float( 1.4f, 2.2f ) );
+		};
 		health.Died += () =>
 		{
 			timeSinceDeath = 0f;
@@ -204,7 +249,7 @@ public abstract partial class Creature : Node3D, ICreature
 	protected bool Lethal( float dealt ) => health is not null && !health.Invulnerable && !DevFlags.OneShot && dealt >= health.Current;
 
 	bool killedRaised;
-	protected void RaiseKilled() { if ( killedRaised ) return; killedRaised = true; Killed?.Invoke( this ); }
+	protected void RaiseKilled() { if ( killedRaised ) return; killedRaised = true; SeaStir.Died( this ); Killed?.Invoke( this ); }
 
 	/// <summary> Remembers where the last shot came from (the death uses it to throw the pieces). </summary>
 	protected void NoteShot( Vector3 direction, Vector3 position, Vector3 origin )
@@ -264,6 +309,7 @@ public abstract partial class PartCreature : Creature
 	protected virtual uint PartLayer => Layers.Creature;
 	/// <summary> The colour of what's inside. </summary>
 	protected abstract Color GibGoo { get; }
+	public override Color Blood => GibGoo;
 
 	protected override void Cleanup()
 	{

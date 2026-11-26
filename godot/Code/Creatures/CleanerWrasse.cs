@@ -10,6 +10,7 @@ using Godot;
 /// </summary>
 public partial class CleanerWrasse : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<CleanerWrasse> All = new();
 
 	/// <summary> What the patient heals a second, of its full health (user's pick: 7%). </summary>

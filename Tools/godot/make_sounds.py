@@ -474,6 +474,40 @@ def build():
         return x * env(n, 0.03, seconds * 0.9, seconds * 0.4)
     notes = [(293.7, 0.0, 0.42, 0.0), (277.2, 0.5, 0.42, 0.0), (261.6, 1.0, 0.42, 0.0), (246.9, 1.5, 1.3, 0.025)]
     s["death_womp"] = reverb(mix(*[(womp(f, d, w), st, 1.0) for f, st, d, w in notes]), room=0.5, wet=0.25)
+    # Enemy calls (kept last, as above): each kind's cry when it spots a player, also its call now and then.
+    def warble(seconds, f0, f1, rate, depth, shape="saw"):
+        n = int(SR * seconds)
+        tt = t(seconds)
+        freq = np.exp(np.linspace(np.log(f0), np.log(f1), n)) * (1 + depth * np.sin(2 * np.pi * rate * tt))
+        ph = 2 * np.pi * np.cumsum(freq) / SR
+        x = np.sin(ph) if shape == "sine" else 2 * ((ph / (2 * np.pi)) % 1) - 1
+        return x
+    chit = mix(*[(click(rng.uniform(2600, 4200), 0.025, 0.006), i * 0.034 + rng.uniform(0, 0.008), rng.uniform(0.6, 1.0)) for i in range(11)])
+    s["spot_crab"] = reverb(mix((chit, 0, 1.0), (spectral(noise(0.4), lo=1500, hi=5000) * bell(int(SR * 0.4), 0.3) * 0.25, 0, 1.0)), room=0.25, wet=0.2)
+    hiss = spectral(noise(0.7), lo=2500, hi=9000) * env(int(SR * 0.7), 0.06, 0.55, 0.15)
+    s["spot_spider"] = reverb(mix((hiss, 0, 1.0), (chit, 0.02, 0.5)), room=0.3, wet=0.2)
+    gurgle = sweep_lp(warble(0.7, 160, 260, 14, 0.25), 900, 500) * bell(int(SR * 0.7), 0.35)
+    s["spot_bloober"] = reverb(mix((gurgle, 0, 1.0), (squelch(0.4, 250, 900, 0.8), 0.1, 0.5), (blub(200, 500, 0.08), 0.35, 0.5)), room=0.4, wet=0.3)
+    squeal = sweep_lp(warble(0.55, 700, 1500, 9, 0.06), 4000, 2500) * bell(int(SR * 0.55), 0.6)
+    s["spot_squid"] = reverb(mix((squeal, 0, 0.8), (blub(300, 1100, 0.09), 0.48, 0.5)), room=0.45, wet=0.35)
+    growl = sweep_lp(warble(0.9, 70, 55, 23, 0.18) * (0.6 + 0.4 * np.abs(np.sin(2 * np.pi * 11 * t(0.9)))), 500, 260) * env(int(SR * 0.9), 0.08, 0.7, 0.25)
+    s["spot_shark"] = reverb(drive(mix((growl, 0, 1.0), (thump(0.3, 90, 40, 0.15), 0, 0.5)), 2.5), room=0.45, wet=0.3)
+    croak = sweep_lp(warble(0.6, 95, 70, 31, 0.3), 700, 300) * env(int(SR * 0.6), 0.02, 0.45, 0.1)
+    s["spot_angler"] = reverb(drive(mix((croak, 0, 1.0), (croak[: int(SR * 0.3)], 0.42, 0.6), (blub(150, 400, 0.12), 0.05, 0.4)), 2.0), room=0.55, wet=0.4)
+    s["spot_ray"] = reverb(mix((zap(0.35, 220, 420, 0.6), 0, 0.6), (crackle[: int(SR * 0.3)], 0, 0.6), (whoosh(0.5, 800, 300, 0.5, 0.5), 0, 0.5)), room=0.35, wet=0.25)
+    trill = warble(0.75, 900, 650, 17, 0.05, "sine") * bell(int(SR * 0.75), 0.3) + 0.4 * warble(0.75, 1350, 975, 17, 0.05, "sine") * bell(int(SR * 0.75), 0.5)
+    s["spot_mermaid"] = reverb(mix((trill, 0, 0.7),), room=0.7, wet=0.5)
+    s["spot_seahorse"] = reverb(mix(*[(click(rng.uniform(1200, 1900), 0.05, 0.02), i * 0.11, 0.9) for i in range(4)], (blub(500, 1400, 0.06), 0.45, 0.5)), room=0.3, wet=0.25)
+    # Areas changing over a run (kept last): the wreck's hull settling, a leviathan's moan over the Abyss, rubble.
+    n = int(SR * 2.6)
+    creak = warble(2.6, 58, 44, 0.7, 0.08) * (0.5 + 0.5 * np.abs(np.sin(2 * np.pi * 7 * t(2.6))) ** 3)
+    scrape = bandsweep(noise(2.6), 900, 400, 0.4) * 0.25
+    s["hull_groan"] = reverb(drive(sweep_lp(mix((creak, 0, 1.0), (scrape, 0, 1.0)), 700, 350) * env(n, 0.4, 2.2, 1.0), 1.8), room=0.8, wet=0.5)
+    n = int(SR * 4.0)
+    moan = warble(4.0, 70, 52, 0.5, 0.06, "sine") + 0.5 * warble(4.0, 140, 104, 0.5, 0.06, "sine") + 0.25 * warble(4.0, 212, 160, 0.5, 0.05, "sine")
+    s["leviathan_moan"] = reverb(moan * bell(n, 0.35) ** 0.8, room=0.95, wet=0.6)
+    rocks = mix(*[(thump(0.12, rng.uniform(180, 320), 80, 0.05), rng.uniform(0, 0.6), rng.uniform(0.4, 1.0)) for _ in range(9)])
+    s["rock_crumble"] = reverb(mix((rocks, 0, 1.0), (spectral(noise(0.9), lo=300, hi=3000) * bell(int(SR * 0.9), 0.2) * 0.4, 0, 1.0)), room=0.6, wet=0.35)
     return s
 
 

@@ -1379,7 +1379,11 @@ void fragment() {
 /// <summary> The heart of Atlantis: a giant green crystal turning slowly over the temple, glowing over the whole city. </summary>
 public partial class AtlantisHeart : Node3D
 {
-	float time;
+	float time, beat;
+	OmniLight3D glow;
+	StandardMaterial3D coreLook, crystalLook;
+	/// <summary> How fast it beats now (beats a second), for tests. </summary>
+	public static float BeatRate;
 
 	public override void _Ready()
 	{
@@ -1395,12 +1399,27 @@ public partial class AtlantisHeart : Node3D
 		AddChild( new MeshInstance3D { Mesh = new CylinderMesh { BottomRadius = 2.4f, TopRadius = 0f, Height = 6f, RadialSegments = 6, Rings = 1 }, MaterialOverride = crystal, Position = Vector3.Up * 3f, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
 		AddChild( new MeshInstance3D { Mesh = new CylinderMesh { BottomRadius = 0f, TopRadius = 2.4f, Height = 3.5f, RadialSegments = 6, Rings = 1 }, MaterialOverride = crystal, Position = Vector3.Down * 1.75f, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
 		AddChild( new MeshInstance3D { Mesh = new SphereMesh { Radius = 1f, Height = 2f, RadialSegments = 16, Rings = 8 }, MaterialOverride = core, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off } );
-		AddChild( new OmniLight3D { LightColor = new Color( 0.45f, 1f, 0.4f ), LightEnergy = 3f, OmniRange = 60f, OmniAttenuation = 1.4f, ShadowEnabled = false } );
+		glow = new OmniLight3D { LightColor = new Color( 0.45f, 1f, 0.4f ), LightEnergy = 3f, OmniRange = 60f, OmniAttenuation = 1.4f, ShadowEnabled = false };
+		AddChild( glow );
+		coreLook = core;
+		crystalLook = crystal;
 	}
 
 	public override void _Process( double delta )
 	{
-		time += (float)delta;
+		var dt = (float)delta;
+		// It beats like a heart, faster and harder as the waves climb (AreaLife.Tension), and turns faster.
+		var tension = AreaLife.Tension;
+		BeatRate = MathX.Lerp( 0.45f, 1.6f, tension );
+		beat += dt * BeatRate;
+		var phase = beat % 1f;
+		var pulse = MathF.Exp( -phase * 9f ) + 0.6f * MathF.Exp( -MathF.Max( 0f, phase - 0.18f ) * 11f ) * (phase > 0.18f ? 1f : 0f);
+		var depth = MathX.Lerp( 0.25f, 0.8f, tension );
+		glow.LightEnergy = 3f * (1f + depth * pulse);
+		coreLook.EmissionEnergyMultiplier = 5f * (1f + depth * 1.2f * pulse);
+		crystalLook.EmissionEnergyMultiplier = 2f * (1f + depth * pulse);
+		Scale = Vector3.One * (1f + 0.04f * depth * pulse);
+		time += dt * (1f + tension * 1.5f);
 		Rotation = new Vector3( 0f, time * 0.35f, MathF.Sin( time * 0.4f ) * 0.06f );
 		Position = Position with { Y = Atlantis.IslandHeight + 21f + MathF.Sin( time * 0.7f ) * 0.6f };
 	}
@@ -1413,6 +1432,10 @@ public partial class AtlantisFish : MultiMeshInstance3D
 	float radius, height, speed, wobble;
 	readonly float phase;
 	readonly Vector3[] offsets = new Vector3[Count];
+	FishScatter scatter;
+	public FishScatter Scatter => scatter;
+	/// <summary> Where the school is now (world). </summary>
+	public Vector3 Centre { get; private set; }
 
 	/// <summary> Circles this tight round the map's middle at this height instead (the Abyss's statue). </summary>
 	public void Around( float r, float h )
@@ -1437,6 +1460,7 @@ public partial class AtlantisFish : MultiMeshInstance3D
 		phase = R( 0f, MathF.Tau );
 		wobble = R( 2f, 6f );
 		for ( var i = 0; i < Count; i++ ) offsets[i] = new Vector3( R( -1.6f, 1.6f ), R( -0.8f, 0.8f ), R( -2.2f, 2.2f ) );
+		scatter = new FishScatter( Count, random );
 		var colours = new[] { new Color( 0.35f, 1f, 0.3f ), new Color( 0.66f, 0.22f, 1f ), new Color( 0.2f, 1f, 0.85f ), new Color( 1f, 0.75f, 0.25f ) };
 		var c = colours[seed % colours.Length];
 		var material = new StandardMaterial3D { AlbedoColor = c, EmissionEnabled = true, Emission = c, EmissionEnergyMultiplier = 2.2f, Roughness = 0.4f };
@@ -1448,17 +1472,23 @@ public partial class AtlantisFish : MultiMeshInstance3D
 
 	public override void _Process( double delta )
 	{
-		time += (float)delta;
+		var dt = (float)delta;
+		// A startled school swims faster for a while (SeaStir).
+		time += dt * (1f + scatter.Panic * 2f);
 		var a = phase + time * speed;
 		var centre = new Vector3( MathF.Cos( a ) * radius, height + MathF.Sin( time * 0.3f + phase ) * wobble * 0.4f, MathF.Sin( a ) * radius );
 		var heading = new Vector3( -MathF.Sin( a ), 0f, MathF.Cos( a ) ) * MathF.Sign( speed );
 		var turn = Basis.LookingAt( heading, Vector3.Up );
+		scatter.Step( this, centre, dt );
+		Centre = ToGlobal( centre );
+		var schoolVelocity = heading * MathF.Abs( speed ) * radius * (1f + scatter.Panic * 2f);
 		for ( var i = 0; i < Count; i++ )
 		{
 			var o = offsets[i];
 			var weave = new Vector3( MathF.Sin( time * 2.3f + i ) * 0.3f, MathF.Sin( time * 1.7f + i * 1.3f ) * 0.2f, 0f );
 			var wag = new Basis( Vector3.Up, MathF.Sin( time * 9f + i * 0.7f ) * 0.25f );
-			Multimesh.SetInstanceTransform( i, new Transform3D( turn * wag, centre + turn * (o + weave) ) );
+			var face = scatter.Calm ? turn : Basis.LookingAt( scatter.Heading( i, schoolVelocity ), Vector3.Up );
+			Multimesh.SetInstanceTransform( i, new Transform3D( face * wag, centre + turn * (o + weave) + scatter.Offset( i ) ) );
 		}
 	}
 }

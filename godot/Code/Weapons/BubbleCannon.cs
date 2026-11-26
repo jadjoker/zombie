@@ -414,6 +414,8 @@ public partial class BubbleTrap : Node3D
 		part?.ReceiveShot( LandDamage * height, part, Vector3.Down, part.GlobalPosition, part.GlobalPosition + Vector3.Up, owner, false );
 		Splash( at, LandRadius, LandDamage * 0.4f * height, owner, Victim );
 		Jetpack.SlamBubbles( at, Vector3.Up, 0.35f * MathF.Min( 2f, height ) );
+		SeaStir.SiltRing( at with { Y = SeaStir.GroundBelow( at ) }, 0.5f + 0.3f * MathF.Min( 2f, height ) );
+		SeaStir.Push( at, 4f, 0.6f );
 		Sfx.Play( "land", at, 0.8f, 0.8f );
 		QueueFree();
 	}

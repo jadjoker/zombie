@@ -8,6 +8,7 @@ using Godot;
 /// </summary>
 public partial class Seahorse : Creature
 {
+	public override string Voice => "spot_seahorse";
 	public static readonly List<Seahorse> All = new();
 
 	public float Speed = 7.5f;           // m/s: the others swim about 3 to 5
@@ -128,7 +129,7 @@ public partial class Seahorse : Creature
 		var wish = Vector3.Zero;
 		if ( prey is not null )
 		{
-			var aim = prey.WorldPosition + Vector3.Up * 1.1f;
+			var aim = Seen( prey ) + Vector3.Up * 1.1f;
 			var to = aim - GlobalPosition;
 			var distance = to.Length();
 			var dir = to / MathF.Max( 0.01f, distance );

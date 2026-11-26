@@ -195,6 +195,7 @@ public partial class PlayerWeapon
 		using var perf = Perf.Time( "GoreVac suck" );
 		var gore = GoreSystem.Get( controller );
 		var pull = 1f - MathF.Exp( -7f * dt );
+		SeaStir.Pull( nozzle, forward, 16f );   // plants in the cone lean toward the nozzle
 		// Full or not, it keeps taking things in (when full, they are blown out the back: Vent).
 		{
 			// Pieces in the cone are caught, and stay caught while the trigger is held (sweep the gun and they follow).

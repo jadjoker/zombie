@@ -9,6 +9,7 @@ using Godot;
 /// </summary>
 public partial class HermitCrab : JunkCrab
 {
+	public override float VoicePitch => 1.2f;
 	/// <summary> The shell's health against the crab's. </summary>
 	public const float ShellShare = 1.1f;
 	/// <summary> The share of a hit on the shell that gets through to the crab. </summary>

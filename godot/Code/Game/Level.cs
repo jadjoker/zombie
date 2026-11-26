@@ -445,6 +445,16 @@ public partial class Sway : Node
 	bool started;
 	Node3D target;
 	Vector3 at;
+	// The lean from stirs (SeaStir): a flat world vector, its length the angle in radians, on a spring.
+	Vector2 lean, leanVelocity;
+	bool leaning;
+	static int seenStir = SeaStir.Seq;
+	const float MaxLean = 0.75f;
+	/// <summary> Tests: how far it leans from stirs (radians) and which way (flat, world). </summary>
+	public float Lean => lean.Length();
+	public Vector3 LeanDir => new Vector3( lean.X, 0f, lean.Y ).SafeNormal();
+	public Node3D Plant => target;
+	public static IReadOnlyList<Sway> Active => active;
 
 	// Every sway is driven from one place (there are a couple of hundred plants; each running its own per-frame
 	// callback cost more than the swaying itself). Same motion as before.
@@ -476,11 +486,15 @@ public partial class Sway : Node
 		var now = (float)Clock.Now;
 		// Near plants every frame; the slow sway of far ones in turns (every 3rd frame past 20 m, every 8th past 60 m).
 		var eye = GetViewport().GetCamera3D()?.GlobalPosition ?? Vector3.Zero;
+		var dt = (float)delta;
+		Stirred();
+		var pulling = SeaStir.Pulling;
 		for ( var i = active.Count - 1; i >= 0; i-- )
 		{
 			var s = active[i];
 			if ( !IsInstanceValid( s ) || !IsInstanceValid( s.target ) ) { active.RemoveAt( i ); continue; }
-			if ( s.started )
+			if ( s.started && (pulling || s.leaning) ) s.StepLean( dt, pulling );
+			if ( s.started && !s.leaning )
 			{
 				var d = s.at.DistanceSquaredTo( eye );
 				var every = d < 400f ? 1UL : d < 3600f ? 3UL : 8UL;
@@ -498,6 +512,74 @@ public partial class Sway : Node
 		var t = now * MathF.PI * 2f / MathF.Max( 0.5f, Period ) + phase;
 		var pitch = MathF.Sin( t ) * Amount;
 		var roll = MathF.Sin( t * 0.63f + 1.7f ) * Amount * 0.6f;
-		target.Basis = rest * new Angles( pitch, 0f, roll ).ToBasis();
+		var basis = rest * new Angles( pitch, 0f, roll ).ToBasis();
+		if ( leaning && lean.LengthSquared() > 1e-6f )
+		{
+			// Tip the top toward the lean: a turn about up x lean, given in the parent's space.
+			var amount = lean.Length();
+			var axis = Vector3.Up.Cross( new Vector3( lean.X, 0f, lean.Y ) / amount );
+			if ( target.GetParent() is Node3D parent ) axis = (parent.GlobalBasis.Inverse() * axis).SafeNormal();
+			if ( axis != Vector3.Zero ) basis = new Basis( axis, amount ) * basis;
+		}
+		target.Basis = basis;
+	}
+
+	/// <summary> New stirs shove the plants near them over (once for all plants). </summary>
+	static void Stirred()
+	{
+		var stirs = SeaStir.Recent;
+		if ( stirs.Count == 0 || stirs[^1].Seq <= seenStir ) return;
+		for ( var k = 0; k < stirs.Count; k++ )
+		{
+			var st = stirs[k];
+			if ( st.Seq <= seenStir || st.Strength <= 0f ) continue;
+			var r2 = st.Radius * st.Radius;
+			foreach ( var s in active )
+			{
+				if ( !s.started ) continue;
+				var d = s.at - st.At;
+				var flat = new Vector2( d.X, d.Z );
+				var dist2 = flat.LengthSquared() + d.Y * d.Y * 0.5f;
+				if ( dist2 > r2 ) continue;
+				var falloff = 1f - MathF.Sqrt( dist2 ) / st.Radius;
+				var dir = flat.LengthSquared() > 0.0001f ? flat.Normalized() : new Vector2( 1f, 0f );
+				s.leanVelocity += dir * st.Strength * falloff * Rng.Float( 3.5f, 5f );
+				s.leaning = true;
+			}
+		}
+		seenStir = stirs[^1].Seq;
+	}
+
+	/// <summary> The lean's spring: back upright with a wobble, or toward the Gore Vac's nozzle while it pulls. </summary>
+	void StepLean( float dt, bool pulling )
+	{
+		var goal = Vector2.Zero;
+		if ( pulling )
+		{
+			var to = SeaStir.PullFrom - at;
+			var dist = to.Length();
+			if ( dist > 0.3f && dist < SeaStir.PullReach )
+			{
+				var cone = (-to / dist).Dot( SeaStir.PullDir );
+				if ( cone > 0.8f )
+				{
+					var flat = new Vector2( to.X, to.Z );
+					if ( flat.LengthSquared() > 0.0001f )
+						goal = flat.Normalized() * 0.55f * (1f - dist / SeaStir.PullReach) * MathX.Clamp( (cone - 0.8f) / 0.15f, 0f, 1f );
+				}
+			}
+			if ( goal != Vector2.Zero ) leaning = true;
+		}
+		if ( !leaning ) return;
+		const float k = 11f, c = 2.6f;
+		leanVelocity += ((goal - lean) * k - leanVelocity * c) * dt;
+		lean += leanVelocity * dt;
+		if ( lean.Length() > MaxLean ) { lean = lean.Normalized() * MaxLean; leanVelocity *= 0.5f; }
+		if ( goal == Vector2.Zero && lean.LengthSquared() < 1e-5f && leanVelocity.LengthSquared() < 1e-4f )
+		{
+			lean = leanVelocity = Vector2.Zero;
+			leaning = false;
+			Pose( (float)Clock.Now );
+		}
 	}
 }

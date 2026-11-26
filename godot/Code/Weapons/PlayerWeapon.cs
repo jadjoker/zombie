@@ -514,6 +514,7 @@ public partial class PlayerWeapon : Node
 		var basis = camera.GlobalBasis;
 		var forward = -basis.Z;
 		var start = camera.GlobalPosition;
+		SeaStir.Shot( start, ModelName == "shotgun" ? 1.3f : 1f );   // nearby fish startle
 		var spread = MathF.Tan( MathX.Rad( SpreadDegrees * MathX.Lerp( 1f, AimSpreadScale, AimAmount ) ) );
 
 		var trailStart = start + forward * 24f * U.In - basis.Y * 7f * U.In + basis.X * 7f * U.In;

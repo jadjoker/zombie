@@ -54,6 +54,7 @@ public partial class CreaturePart : StaticBody3D, IShootable
 /// </summary>
 public partial class Bloober : Creature
 {
+	public override string Voice => "spot_bloober";
 	Blinker blinks;
 	/// <summary> The eyes' blinker, made when the first eye is built. </summary>
 	Blinker Blinks => blinks ??= Blinker.Add( this );
@@ -537,7 +538,7 @@ public partial class Bloober : Creature
 		if ( Puffed && timeSincePuff > PuffDuration ) Puffed = false;
 
 		var target = PlayerSurvivor.FindNearestAlive( GlobalPosition );
-		var aim = target is null ? GlobalPosition + heading * 200f * U.In : target.WorldPosition + Vector3.Up * AimHeight * U.In;
+		var aim = target is null ? GlobalPosition + heading * 200f * U.In : Seen( target ) + Vector3.Up * AimHeight * U.In;
 		var toAim = aim - GlobalPosition;
 		var lost = segments.Count( s => s.Gone );
 		var speed = MoveSpeed * (1f + 0.05f * lost) * (Puffed ? 0.7f : 1f) * U.In;

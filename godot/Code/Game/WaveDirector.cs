@@ -485,6 +485,8 @@ public partial class WaveDirector : Node3D
 
 	public override void _Process( double delta )
 	{
+		EnemyVoices.Step();
+		AreaLife.Step( this, (float)delta );
 		// Online, a joiner's director only shows the host's run (ApplyNet); the host's spawns and counts.
 		if ( Net.IsClient ) { alive.RemoveAll( n => !IsInstanceValid( n ) ); return; }
 		if ( State == WaveState.GameOver && Input.IsActionJustPressed( "jump" ) ) Restart();
@@ -492,6 +494,7 @@ public partial class WaveDirector : Node3D
 		alive.RemoveAll( n => !IsInstanceValid( n ) || (n is ICreature c && c.IsDead) );
 		ZombiesRemaining = toSpawn + alive.Count;
 		SecondsUntilNextWave = MathF.Max( 0f, nextWaveAt );
+		LastOnePanics();
 		if ( State == WaveState.GameOver ) return;
 
 		if ( PlayerSurvivor.All.Count > 0 && PlayerSurvivor.FindNearestAlive( GlobalPosition ) is null )
@@ -795,6 +798,19 @@ public partial class WaveDirector : Node3D
 	}
 
 	bool restarting;
+
+	/// <summary> The last enemy of a wave loses its nerve for a moment (once a wave), then comes back fighting. </summary>
+	public const float LastPanicTime = 2.5f;
+	int panickedWave = -1;
+	public static int LastPanics;
+	void LastOnePanics()
+	{
+		if ( State != WaveState.Fighting || toSpawn > 0 || alive.Count != 1 || panickedWave == Wave || BossWave ) return;
+		if ( alive[0] is not Creature last || !last.CanScare || TimeSinceWaveStarted < 8f ) return;
+		panickedWave = Wave;
+		last.Scare( LastPanicTime );
+		LastPanics++;
+	}
 
 	/// <summary> Online, a joiner: the host's wave state. The banners and sounds follow its changes. </summary>
 	public void ApplyNet( int wave, WaveState state, float nextIn, int remaining, int kills, bool boss, bool floatRound, bool waitingTeleport, bool kraken )

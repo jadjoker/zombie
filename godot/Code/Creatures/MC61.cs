@@ -9,6 +9,7 @@ using Godot;
 /// </summary>
 public partial class MC61 : PartCreature, MC61Marker
 {
+	public override bool CanScare => false;
 	public float Size = 1.62f;   // 1.35 at first; 20% bigger (playtest)
 	public float PreferredDistance = 600f;
 	public float HoverHeight = 110f;

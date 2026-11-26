@@ -11,6 +11,7 @@ using Godot;
 /// </summary>
 public partial class SeaSpider : PartCreature
 {
+	public override string Voice => IsEnemy ? "spot_spider" : null;
 	public float MoveSpeed = 230f;
 	public float AttackRange = 95f;
 	public float StabDamage = 12f;
@@ -705,6 +706,16 @@ public partial class SeaSpider : PartCreature
 		else dashing = false;
 		agent.MaxSpeed = MoveSpeed * MathF.Max( 0.15f, speedScale ) * S;
 		Stabbing = false;
+		if ( target is not null && Scared )
+		{
+			// Lost its nerve: backing off on its legs, facing the way it runs.
+			if ( timeSinceRepath > 0.3f ) { timeSinceRepath = 0f; agent.MoveTo( Seen( target ) ); }
+			var running = agent.Velocity.Flat();
+			if ( running.Length() > 10f * U.In ) Face( running, 8f, dt );
+			agent.Update( dt );
+			NetVelocity = agent.Velocity;
+			return;
+		}
 		if ( target is not null )
 		{
 			var toTarget = (target.WorldPosition - GlobalPosition).Flat();

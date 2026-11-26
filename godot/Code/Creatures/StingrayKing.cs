@@ -11,6 +11,9 @@ using Godot;
 /// </summary>
 public partial class KingRaymond : Stingray
 {
+	public override bool CanScare => false;
+	public override float VoicePitch => 0.6f;
+	public override float VoiceVolume => 1.4f;
 	public static new readonly List<KingRaymond> All = new();
 	public const float KingSize = 3f;
 

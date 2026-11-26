@@ -11,6 +11,7 @@ using Godot;
 /// </summary>
 public partial class PufferBomber : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<PufferBomber> All = new();
 
 	public float Speed = 2.3f;

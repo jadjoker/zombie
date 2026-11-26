@@ -193,6 +193,9 @@ public partial class FishSchool : MultiMeshInstance3D
 
 	Vector3[] offsets;
 	float[] phases, sizes;
+	FishScatter scatter;
+	public FishScatter Scatter => scatter;
+	float panicTurn;
 	static Mesh fishMesh;
 
 	/// <summary> The fish model in a school's colours (null if the model is missing). </summary>
@@ -243,6 +246,7 @@ public partial class FishSchool : MultiMeshInstance3D
 			Multimesh = new MultiMesh { TransformFormat = MultiMesh.TransformFormatEnum.Transform3D, Mesh = mesh, InstanceCount = count },
 			CustomAabb = new Aabb( -Vector3.One * 60f, Vector3.One * 120f ),
 			offsets = new Vector3[count], phases = new float[count], sizes = new float[count],
+			scatter = new FishScatter( count, random ),
 		};
 		for ( var i = 0; i < count; i++ )
 		{
@@ -256,19 +260,25 @@ public partial class FishSchool : MultiMeshInstance3D
 	public override void _Process( double delta )
 	{
 		var t = (float)Clock.Now;
-		var angle = Phase + t * Speed;
+		var dt = (float)delta;
+		// A startled school swims its loop faster for a while (SeaStir).
+		panicTurn += Speed * scatter.Panic * 2.5f * dt;
+		var angle = Phase + panicTurn + t * Speed;
 		Vector3 At( float a ) => Home + new Vector3( MathF.Cos( a ) * Radius, MathF.Sin( a * 2f ) * 0.7f, MathF.Sin( a ) * Radius * 0.7f );
 		var centre = At( angle );
 		var heading = (At( angle + 0.02f * MathF.Sign( Speed ) ) - centre).SafeNormal();
 		if ( heading == Vector3.Zero ) heading = Vector3.Forward;
+		scatter.Step( this, centre, dt );
+		var schoolVelocity = heading * MathF.Abs( Speed ) * Radius * (1f + scatter.Panic * 2.5f);
 		// The model's nose points down +Z: turn it to face the way it swims.
 		var facing = Shapes.LookAt( heading ) * new Basis( Vector3.Up, MathF.PI );
 		for ( var i = 0; i < offsets.Length; i++ )
 		{
 			var bob = new Vector3( 0f, MathF.Sin( t * 1.3f + phases[i] ) * 0.12f, MathF.Sin( t * 0.7f + phases[i] * 2f ) * 0.25f );
-			var wag = new Basis( Vector3.Up, MathF.Sin( t * 9f + phases[i] ) * 0.22f );
-			var basis = facing * wag * Basis.FromScale( Vector3.One * sizes[i] );
-			Multimesh.SetInstanceTransform( i, new Transform3D( basis, centre + facing * (offsets[i] + bob) ) );
+			var wag = new Basis( Vector3.Up, MathF.Sin( t * (9f + 9f * scatter.Panic) + phases[i] ) * 0.22f );
+			var face = scatter.Calm ? facing : Shapes.LookAt( scatter.Heading( i, schoolVelocity ) ) * new Basis( Vector3.Up, MathF.PI );
+			var basis = face * wag * Basis.FromScale( Vector3.One * sizes[i] );
+			Multimesh.SetInstanceTransform( i, new Transform3D( basis, centre + facing * (offsets[i] + bob) + scatter.Offset( i ) ) );
 		}
 	}
 }

@@ -8,6 +8,7 @@ using Godot;
 /// </summary>
 public partial class JunkCrab : PartCreature
 {
+	public override string Voice => "spot_crab";
 	public float MoveSpeed = 210f;
 	public float AttackRange = 70f;
 	/// <summary> Claws reach this high above the crab's feet (inches): standing over it is safe (playtest 11/11). </summary>
@@ -25,6 +26,11 @@ public partial class JunkCrab : PartCreature
 	public float Hue = -1f;
 	public float Size = 1f;
 	public bool Snapping;
+	/// <summary> Picking at the sand a moment while the player is far off (user's ask: idle moments). </summary>
+	public bool Foraging => Clock.Now < forageUntil;
+	double forageUntil, nextForage = Clock.Now + Rng.Float( 3f, 9f );
+	public const float ForageFrom = 14f, ForageTime = 1.1f;
+	public static int Forages;
 
 	public static readonly List<JunkCrab> All = new();
 
@@ -129,6 +135,7 @@ public partial class JunkCrab : PartCreature
 
 	/// <summary> Running away in a panic until then (the hermit crab when its shell falls apart). </summary>
 	protected double PanicUntil;
+	protected override void OnScared( float seconds ) => PanicUntil = Math.Max( PanicUntil, Clock.Now + seconds );
 
 	void BuildBarrel( Part body, float hue )
 	{
@@ -386,6 +393,8 @@ public partial class JunkCrab : PartCreature
 		rig.Visible = true;
 	}
 
+	float forage;
+
 	void Animate( float dt )
 	{
 		var velocity = agent.Velocity.Flat() / U.In;
@@ -398,7 +407,9 @@ public partial class JunkCrab : PartCreature
 		var list = 0f;
 		if ( Dragging ) list = (LegsLeft( 1f ) < LegsLeft( -1f ) ? 1f : -1f) * 14f;
 		body.Position = U.Sbox( 0, 0, 14f + MathF.Abs( MathF.Sin( gait ) ) * 2f * moving - (Dragging ? 5f : 0f) );
-		body.Basis = new Angles( MathF.Sin( gait * 0.5f ) * 3f * moving, 0, list + MathF.Sin( gait ) * 3f * moving ).ToBasis();
+		// Foraging: nose down over the sand, the claws taking turns to pick at it.
+		forage = MathX.Lerp( forage, Foraging ? 1f : 0f, MathX.Clamp( dt * 8f, 0f, 1f ) );
+		body.Basis = new Angles( MathF.Sin( gait * 0.5f ) * 3f * moving - forage * 9f, 0, list + MathF.Sin( gait ) * 3f * moving ).ToBasis();
 
 		for ( var i = 0; i < LegCount; i++ )
 		{
@@ -416,6 +427,12 @@ public partial class JunkCrab : PartCreature
 			if ( Has( arm ) )
 			{
 				var raise = snap ? -35f : -8f + MathF.Sin( gait * 0.5f + side ) * 6f;
+				if ( forage > 0.01f )
+				{
+					var pick = MathF.Max( 0f, MathF.Sin( now * 9f + (side > 0f ? 0f : MathF.PI) ) );
+					raise = MathX.Lerp( raise, 18f * pick - 4f, forage );
+					if ( Foraging && pick > 0.97f && Rng.Float() < 0.25f ) GpuFx.SandPuff( parts[arm].Go.GlobalPosition with { Y = GlobalPosition.Y + 0.05f }, Rng.InSphere( 0.3f ) + Vector3.Up * 0.3f, SeaStir.SiltColour( GlobalPosition ), Rng.Float( 3f, 6f ), 0.7f );
+				}
 				parts[arm].Go.Basis = parts[arm].Rest * new Angles( raise, 0, 0 ).ToBasis();
 			}
 			if ( jaw is not null && IsInstanceValid( jaw ) )
@@ -481,6 +498,23 @@ public partial class JunkCrab : PartCreature
 			agent.Update( dt );
 			return;
 		}
+		if ( target is not null && !Blind )
+		{
+			// Far from anyone it stops now and then to pick at the sand, then hurries on.
+			var far = (target.WorldPosition - GlobalPosition).Flat().Length() > ForageFrom;
+			if ( Foraging )
+			{
+				if ( !far ) forageUntil = 0;
+				else { agent.Stop(); agent.Update( dt ); return; }
+			}
+			else if ( far && Clock.Now > nextForage )
+			{
+				forageUntil = Clock.Now + ForageTime * Rng.Float( 0.8f, 1.3f );
+				nextForage = forageUntil + Rng.Float( 6f, 13f );
+				Forages++;
+			}
+			else if ( !far ) nextForage = Math.Max( nextForage, Clock.Now + 3f );
+		}
 		if ( target is not null )
 		{
 			var toTarget = (target.WorldPosition - GlobalPosition).Flat();
@@ -531,11 +565,12 @@ public partial class JunkCrab : PartCreature
 	protected override void PuppetMoved( Vector3 velocity ) => agent?.SetPuppetVelocity( velocity );
 
 	// Online: a joiner's copy snaps its claws when the host's does.
-	public override void NetWrite( List<float> s ) { s.Add( Snapping ? 1f : 0f ); s.Add( (float)timeSinceSnap ); }
+	public override void NetWrite( List<float> s ) { s.Add( Snapping ? 1f : 0f ); s.Add( (float)timeSinceSnap ); s.Add( Foraging ? 1f : 0f ); }
 	public override void NetRead( ReadOnlySpan<float> s )
 	{
 		if ( s.Length < 2 ) return;
 		Snapping = s[0] > 0.5f;
+		if ( s.Length > 2 ) forageUntil = s[2] > 0.5f ? Clock.Now + 0.3 : 0;
 		NetTimer( ref timeSinceSnap, s[1], s[1] < (float)timeSinceSnap - 0.05f );
 	}
 

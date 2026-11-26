@@ -11,6 +11,7 @@ using Godot;
 /// </summary>
 public partial class MimicOctopus : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<MimicOctopus> All = new();
 
 	/// <summary> The chance a sea mine or glow bulb is a mimic instead (user's number: 0.2%). </summary>

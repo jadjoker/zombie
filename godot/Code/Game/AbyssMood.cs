@@ -39,7 +39,10 @@ public partial class AbyssMood : Node
 	static DirectionalLight3D Sun( Node level ) => level.FindChildren( "*", "DirectionalLight3D", true, false ).OfType<DirectionalLight3D>().FirstOrDefault();
 
 	/// <summary> A new level load starts in the open sea's light. </summary>
-	public static void Reset() => shore = null;
+	public static void Reset() { shore = null; Depth = 0f; }
+
+	/// <summary> How deep the light is now (0 the shore's, 1 the Abyss's). </summary>
+	public static float Depth { get; private set; }
 
 	/// <summary>
 	/// Sets how deep the light feels: 0 is the shore's, 1 the Abyss's, in between a mix (the wreck site is
@@ -63,6 +66,7 @@ public partial class AbyssMood : Node
 		}
 		if ( shore is null ) return;
 		var t = Mathf.Clamp( depth, 0f, 1f );
+		Depth = t;
 		if ( env is not null )
 		{
 			var ambient = shore.Ambient.Lerp( Ambient, t );

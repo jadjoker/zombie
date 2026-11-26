@@ -10,6 +10,7 @@ using Godot;
 /// </summary>
 public partial class HomingMissile : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<HomingMissile> All = new();
 
 	public float RiseSpeed = 0.975f;   // 25% slower than the first cut (1.3)
@@ -288,6 +289,7 @@ public partial class AlienBlast : Node3D
 		var b = new AlienBlast { Name = "Alien Blast", size = size };
 		parent.AddChild( b );
 		b.GlobalPosition = at;
+		SeaStir.Blast( at, size );
 	}
 
 	static StandardMaterial3D Fire( Color c, float energy )

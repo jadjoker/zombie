@@ -13,6 +13,7 @@ using Godot;
 /// </summary>
 public partial class RockyShark : PartCreature
 {
+	public override string Voice => "spot_shark";
 	// ---- Tuning (s&box inches, speeds in inches per second) ----
 	public float MoveSpeed = 200f;
 	public float TurnRate = 2.2f;
@@ -466,7 +467,7 @@ public partial class RockyShark : PartCreature
 		if ( target is null ) desired = heading;
 		else
 		{
-			var aim = target.WorldPosition + Vector3.Up * AimHeight * U.In;
+			var aim = Seen( target ) + Vector3.Up * AimHeight * U.In;
 			desired = (aim - GlobalPosition).SafeNormal();
 			// Blind: it can still smell the player, but the aim wanders.
 			if ( Blind ) desired = (desired + Rng.InSphere( 0.45f )).SafeNormal();

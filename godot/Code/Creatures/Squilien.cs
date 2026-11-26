@@ -11,6 +11,7 @@ using Godot;
 /// </summary>
 public partial class Squilien : Creature
 {
+	public override string Voice => "spot_squid";
 	public float BellRadius = 22f;
 	public int Tentacles = 6;
 	public int TentacleSegments = 4;
@@ -405,10 +406,11 @@ public partial class Squilien : Creature
 			var goal = GlobalPosition + Vector3.Up * 30f * U.In;
 			if ( target is not null )
 			{
-				var flat = (GlobalPosition - target.WorldPosition).Flat();
+				var seen = Seen( target );
+				var flat = (GlobalPosition - seen).Flat();
 				if ( flat.IsNearlyZero() ) flat = Vector3.Forward;
 				var around = flat.Normalized().Rotated( Vector3.Up, MathX.Rad( orbitSign * OrbitSpeed * PulseInterval * 2f ) );
-				goal = target.WorldPosition + (around * PreferredDistance + Vector3.Up * HoverHeight) * U.In;
+				goal = seen + (around * PreferredDistance + Vector3.Up * HoverHeight) * U.In;
 			}
 			stroke = (goal - GlobalPosition).SafeNormal() * PulseThrust * strength;
 		}

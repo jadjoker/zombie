@@ -13,6 +13,7 @@ using Godot;
 /// </summary>
 public partial class Stingray : Creature
 {
+	public override string Voice => "spot_ray";
 	public static readonly List<Stingray> All = new();
 
 	public float Speed = 3.6f;              // m/s gliding
@@ -205,7 +206,7 @@ public partial class Stingray : Creature
 		if ( prey is null ) { watched = false; if ( act != Act.Prowl ) End(); }
 		else
 		{
-			var feet = prey.WorldPosition;
+			var feet = Seen( prey );
 			var chest = feet + Vector3.Up * 1.1f;
 			var flat = (feet - pos).Flat();
 			var dist = flat.Length();

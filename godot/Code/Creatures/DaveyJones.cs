@@ -16,6 +16,7 @@ using Godot;
 /// </summary>
 public partial class DaveyJones : Creature
 {
+	public override bool CanScare => false;
 	public static readonly List<DaveyJones> All = new();
 	/// <summary> A player is down in the locker room with him: spawning stops and every other enemy holds still. </summary>
 	public static bool InLocker => DaveyLocker.Active;

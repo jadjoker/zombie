@@ -101,9 +101,11 @@ public partial class AutoTest
 		Check( EnemyVoices.Spots - spots >= 3, "enemies in sight of the player did not cry out" );
 		var scares = Creature.Scares;
 		foreach ( var c in crabs ) c.Health.OnDamage( new DamageInfo { Damage = c.Health.MaxHealth * 0.8f } );
+		GD.Print( $"[autotest] alive: hurt to 20%, {Creature.Scares - scares} of {crabs.Count} ran (none should)" );
+		Check( Creature.Scares == scares, "a badly hurt enemy ran (fear when hurt was dropped)" );
+		// The last one of a wave panics: as WaveDirector.LastOnePanics does it.
+		crabs[0].Scare( WaveDirector.LastPanicTime );
 		var scared = crabs.Where( c => c.Scared ).ToList();
-		GD.Print( $"[autotest] alive: hurt to 20%, {Creature.Scares - scares} of {crabs.Count} lost their nerve" );
-		Check( Creature.Scares - scares >= 1, "no badly hurt enemy lost its nerve" );
 		DevFlags.FreezeEnemies = false;
 		if ( scared.Count > 0 )
 		{

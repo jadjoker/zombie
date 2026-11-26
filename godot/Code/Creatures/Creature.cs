@@ -18,10 +18,8 @@ public abstract partial class Creature : Node3D, ICreature
 	/// <summary> What it comes apart into (the chunking pass: <see cref="GibRecipes"/>); null keeps the old round blobs. </summary>
 	public virtual GibRecipe Gibs => null;
 
-	// Fear (user's ask: enemies that feel like animals). Badly hurt it may break off for a moment; the last one of a
-	// wave panics (WaveDirector). While scared, Seen gives the point it runs to instead of the player.
-	public const float FearAt = 0.3f, FearChance = 0.6f;
-	bool feared;
+	// Fear: the last one of a wave panics for a moment (WaveDirector.LastOnePanics). While scared, Seen gives the point
+	// it runs to instead of the player. (Running when badly hurt was tried and dropped, user's choice.)
 	Vector3 fleeTo;
 	public double ScaredUntil;
 	public bool Scared => Clock.Now < ScaredUntil;
@@ -200,13 +198,6 @@ public abstract partial class Creature : Node3D, ICreature
 		health = GetNodeOrNull<Health>( "Health" );
 		if ( health is null ) { health = new Health(); health.ResetTo( defaultHealth ); AddChild( health ); }
 		gore = GoreSystem.Get();
-		health.Damaged += _ =>
-		{
-			// Badly hurt, it loses its nerve for a moment (user's ask: feel like animals).
-			if ( feared || IsDead || Puppet || !CanScare || health.MaxHealth <= 0f || health.Current > health.MaxHealth * FearAt ) return;
-			feared = true;
-			if ( Rng.Float() < FearChance ) Scare( Rng.Float( 1.4f, 2.2f ) );
-		};
 		health.Died += () =>
 		{
 			timeSinceDeath = 0f;

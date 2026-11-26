@@ -559,9 +559,9 @@ Alien sea creatures (Bloober, Squilien, Junk Crab, MC61 boss) with part-by-part 
   over and spring back (`Sway` lean) and lean toward the Gore Vac's nozzle (`SeaStir.Pull`); silt rings roll off the
   sea bed (`SiltRing`, `SiltColour` by area); a kill of 500+ health leaves a `GooHaze` in its `Creature.Blood`.
   Enemies: `Creature.Voice` (`spot_*` sounds) cries out on spotting a player and calls now and then (`EnemyVoices`,
-  spaced across all enemies); hurt below `FearAt` one may lose its nerve (`Creature.Scare`, `Seen` gives the flee point
-  while `Scared`; crabs use their panic; bosses, kamikazes, swarms and scenery have `CanScare` false); the last enemy of
-  a wave panics once (`WaveDirector.LastOnePanics`); crabs far off forage (`JunkCrab.Foraging`, synced), mermaids glance
+  spaced across all enemies); the last enemy of a wave panics once (`WaveDirector.LastOnePanics`, `Creature.Scare`:
+  `Seen` gives the flee point while `Scared`; crabs use their panic; bosses, kamikazes, swarms and scenery have
+  `CanScare` false; running when badly hurt was dropped, user's choice); crabs far off forage (`JunkCrab.Foraging`, synced), mermaids glance
   at each other. `Game/AreaLife.cs`: `Tension` 0 to 1 over an area's ten waves; the shore's leviathans circle closer and
   lower, the wreck's hull groans (`hull_groan`), the Abyss's moss lamps flicker and go out (`AbyssProps.MossLamps`), big
   blasts shake rubble off its roof (`GibRecipes.CaveRock`, `rock_crumble`), a `SkylightPass` leviathan crosses the

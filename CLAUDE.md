@@ -170,6 +170,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `MimicOctopus.Disguise.Chest`), diver skeletons in brass helmets, bone piles, anchors, rowboats; glow bulbs drift in
   the corridors. No Kraken waves in the caves. Dev menu: World, Waves, Teleport to the Abyss. Test: `--abyss` (with
   `--shots`, a photo tour and a map view).
+  Solid as drawn (user's ask: nothing to get inside): each boulder's collider is the hull of every point it is drawn with,
+  stalagmites and stalactites have their own hulls (stalactites on the roof body, not `RockMeta`), skeletons boxes, the
+  statue figure hulls of its pieces (`FigureSolid`). After the bake `Nav.KeepConnected` drops navmesh not joined to the
+  floor (patches on wall tops and in pockets). `AbyssSolidTest.cs` (in `--abyss`): wall holes, walking into walls and
+  props (eye clear of the drawn rock), the statue, navmesh in rock, enemies chasing through the maze.
 - Atlantis, area 4 (waves 31 to 40): after wave 30 in the Abyss the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `ThirdTeleportAfterWave`) and `AtlantisArea.Go` (it also clears the Abyss and puts the light back, `AbyssMood.Leave`) rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor

@@ -34,6 +34,62 @@ public static class Nav
 		Region.BakeNavigationMesh( false );
 	}
 
+	/// <summary>
+	/// Drops every piece of the navmesh not joined by walkable edges to the piece under `seed` (the Abyss: patches
+	/// baked on the tops of the cave walls and in pockets between their boulders, which nothing can walk to, and where
+	/// a random or nearest navmesh point could otherwise land in or on the rock). Returns the polygons dropped.
+	/// </summary>
+	public static int KeepConnected( Vector3 seed )
+	{
+		if ( Region is null || Region.NavigationMesh is not { } mesh ) return 0;
+		var verts = mesh.GetVertices();
+		var count = mesh.GetPolygonCount();
+		var polys = new int[count][];
+		for ( var i = 0; i < count; i++ ) polys[i] = mesh.GetPolygon( i );
+		// Polygons sharing an edge (by its two corners' positions, rounded to a centimetre) are joined.
+		(long, long, long) Key( Vector3 v ) => ((long)MathF.Round( v.X * 100f ), (long)MathF.Round( v.Y * 100f ), (long)MathF.Round( v.Z * 100f ));
+		var byEdge = new Dictionary<((long, long, long), (long, long, long)), List<int>>();
+		for ( var i = 0; i < count; i++ )
+			for ( var j = 0; j < polys[i].Length; j++ )
+			{
+				var a = Key( verts[polys[i][j]] );
+				var b = Key( verts[polys[i][(j + 1) % polys[i].Length]] );
+				var edge = a.CompareTo( b ) < 0 ? (a, b) : (b, a);
+				if ( !byEdge.TryGetValue( edge, out var list ) ) byEdge[edge] = list = new List<int>();
+				list.Add( i );
+			}
+		var near = new List<int>[count];
+		for ( var i = 0; i < count; i++ ) near[i] = new List<int>();
+		foreach ( var list in byEdge.Values )
+			for ( var x = 0; x < list.Count; x++ )
+				for ( var y = x + 1; y < list.Count; y++ ) { near[list[x]].Add( list[y] ); near[list[y]].Add( list[x] ); }
+		// Start from the polygon nearest the seed.
+		var start = -1;
+		var best = float.MaxValue;
+		for ( var i = 0; i < count; i++ )
+		{
+			var c = Vector3.Zero;
+			foreach ( var k in polys[i] ) c += verts[k];
+			var d = (c / polys[i].Length).DistanceSquaredTo( seed );
+			if ( d < best ) { best = d; start = i; }
+		}
+		if ( start < 0 ) return 0;
+		var keep = new bool[count];
+		var queue = new Queue<int>();
+		keep[start] = true;
+		queue.Enqueue( start );
+		while ( queue.Count > 0 )
+			foreach ( var n in near[queue.Dequeue()] )
+				if ( !keep[n] ) { keep[n] = true; queue.Enqueue( n ); }
+		var dropped = keep.Count( k => !k );
+		if ( dropped == 0 ) return 0;
+		mesh.ClearPolygons();
+		for ( var i = 0; i < count; i++ ) if ( keep[i] ) mesh.AddPolygon( polys[i] );
+		Region.NavigationMesh = null;
+		Region.NavigationMesh = mesh;
+		return dropped;
+	}
+
 	public static Rid Map( Node3D any ) => any.GetWorld3D().NavigationMap;
 
 	static readonly NavigationPathQueryParameters3D query = new() { PathSearchMaxPolygons = SearchPolygons, PathPostprocessing = NavigationPathQueryParameters3D.PathPostProcessing.Corridorfunnel };

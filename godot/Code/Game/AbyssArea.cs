@@ -102,6 +102,9 @@ public static class AbyssArea
 
 		AbyssMood.Enter( level );
 		Nav.Bake( level );
+		// Only the cave floor everyone can walk to (not patches on the wall tops or in pockets in the rock).
+		var dropped = Nav.KeepConnected( arrival );
+		GD.Print( $"[area3] navmesh: {dropped} polygons not joined to the cave floor dropped" );
 		Abyss.AddRoofCollider();
 		SeaMine.Lay( level );
 		EelBed.Lay( level );

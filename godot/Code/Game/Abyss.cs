@@ -472,7 +472,7 @@ public static class Abyss
 		readonly StaticBody3D body;
 		public int Chunks;
 		static Vector3[] unit;
-		static int[] faces;
+		static int[] faces, distinct;
 
 		public RockBuilder( Node3D root )
 		{
@@ -514,6 +514,12 @@ public static class Abyss
 			}
 			unit = verts.ToArray();
 			faces = tris.ToArray();
+			// The cube's faces share their edge points: each place once, for the collider.
+			var seen = new HashSet<(int, int, int)>();
+			var keep = new List<int>();
+			for ( var i = 0; i < unit.Length; i++ )
+				if ( seen.Add( ((int)MathF.Round( unit[i].X * 1000f ), (int)MathF.Round( unit[i].Y * 1000f ), (int)MathF.Round( unit[i].Z * 1000f )) ) ) keep.Add( i );
+			distinct = keep.ToArray();
 		}
 
 		/// <summary> A wall of boulders along a line of floor plan points. </summary>
@@ -614,7 +620,7 @@ public static class Abyss
 			}
 			// The collider: the hull of every point it is drawn with, so nothing drawn sticks out past it (a coarser,
 			// pulled-in hull let a robot walking into a wall get its view into the rock).
-			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = points } } );
+			body.AddChild( new CollisionShape3D { Shape = new ConvexPolygonShape3D { Points = distinct.Select( i => points[i] ).ToArray() } } );
 			Chunks++;
 		}
 

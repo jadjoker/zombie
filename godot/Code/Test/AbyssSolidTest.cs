@@ -179,23 +179,9 @@ public partial class AutoTest
 		visual.GetParent().RemoveChild( visual );
 		visual.Free();
 
-		// Rock shapes the convex hull maker can't build (the navmesh baker skips those).
-		{
-			int shapes = 0, bad = 0;
-			foreach ( var body in Abyss.Root.FindChildren( "*", "StaticBody3D", true, false ).OfType<StaticBody3D>() )
-				foreach ( var cs in body.GetChildren().OfType<CollisionShape3D>() )
-					if ( cs.Shape is ConvexPolygonShape3D c )
-					{
-						shapes++;
-						var dm = c.GetDebugMesh();
-						if ( dm is null || dm.GetSurfaceCount() == 0 || dm.GetFaces().Length == 0 ) bad++;
-					}
-			GD.Print( $"[autotest] abyss solid: {bad} of {shapes} convex rock shapes have no hull" );
-		}
 		// 4. No navmesh in the rock.
 		var map = player.GetWorld3D().NavigationMap;
 		int navIn = 0, navShallow = 0;
-		var probeDeep = new List<Vector3>();
 		var navDeepest = 0f;
 		for ( var i = 0; i < 1500; i++ )
 		{
@@ -214,45 +200,11 @@ public partial class AutoTest
 				navDeepest = MathF.Max( navDeepest, depth );
 				if ( depth < 0.3f ) { navShallow++; continue; }
 				navIn++;
-				probeDeep.Add( p );
 				if ( navIn <= 6 )
 				{
 					var what = space.IntersectPoint( new PhysicsPointQueryParameters3D { Position = p + Vector3.Up * 0.35f, CollisionMask = Layers.World }, 8 ).Select( h => (h["collider"].AsGodotObject() as Node)?.Name.ToString() );
 					GD.Print( $"[autotest] abyss solid: navmesh {depth:0.00} m inside rock at {p} (ground {SeaTerrain.HeightAt( p ):0.00}, in at +0.05 {InCaveRock( p + Vector3.Up * 0.05f )}, +1 {InCaveRock( p + Vector3.Up * 1f )}, +1.6 {InCaveRock( p + Vector3.Up * 1.6f )}; {string.Join( ",", what )})" );
 				}
-			}
-		}
-		// PROBE (temporary): pictures of the navmesh round the deep points.
-		if ( !string.IsNullOrEmpty( shots ) )
-		{
-			var nm = Nav.Region.NavigationMesh;
-			var verts = nm.GetVertices();
-			var k2 = 0;
-			foreach ( var p in probeDeep.Take( 3 ) )
-			{
-				var im = new ImmediateMesh();
-				var mat = new StandardMaterial3D { ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded, AlbedoColor = new Color( 1f, 0.1f, 0.1f ), NoDepthTest = true };
-				im.SurfaceBegin( Mesh.PrimitiveType.Lines, mat );
-				for ( var i = 0; i < nm.GetPolygonCount(); i++ )
-				{
-					var poly = nm.GetPolygon( i );
-					if ( verts[poly[0]].DistanceTo( p ) > 10f ) continue;
-					for ( var j = 0; j < poly.Length; j++ ) { im.SurfaceAddVertex( verts[poly[j]] + Vector3.Up * 0.05f ); im.SurfaceAddVertex( verts[poly[(j + 1) % poly.Length]] + Vector3.Up * 0.05f ); }
-				}
-				im.SurfaceAddVertex( p ); im.SurfaceAddVertex( p + Vector3.Up * 3f );
-				im.SurfaceEnd();
-				var mi = new MeshInstance3D { Mesh = im };
-				Abyss.Root.AddChild( mi );
-				var lamp = new OmniLight3D { OmniRange = 30f, LightEnergy = 4f };
-				Abyss.Root.AddChild( lamp );
-				lamp.GlobalPosition = p + Vector3.Up * 12f;
-				var view = new Transform3D( Shapes.LookAt( Vector3.Down, Vector3.Forward ), p + Vector3.Up * 16f );
-				player.CameraOverride = _ => view;
-				await Wait( 0.3f );
-				await Shot( $"navprobe_{k2++}" );
-				player.CameraOverride = null;
-				mi.QueueFree();
-				lamp.QueueFree();
 			}
 		}
 		GD.Print( $"[autotest] abyss solid: {navIn} of 1500 navmesh points more than 0.3 m inside rock, {navShallow} less (deepest {navDeepest:0.00} m)" );

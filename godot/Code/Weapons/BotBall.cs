@@ -89,7 +89,8 @@ public abstract partial class BotBall : Node3D
 			if ( !tr.Hit ) { GlobalPosition = from + move; break; }
 			if ( tr.StartedSolid ) { GlobalPosition = from + Vector3.Up * 0.05f; break; }
 			var centre = from + move * tr.Fraction;
-			var normal = tr.Normal.LengthSquared() > 0.5f ? tr.Normal : (centre - tr.HitPosition).SafeNormal();
+			var normal = tr.Normal.LengthSquared() > 0.5f ? tr.Normal.Normalized() : (centre - tr.HitPosition).SafeNormal();
+			if ( normal.LengthSquared() < 0.5f ) normal = Velocity.LengthSquared() > 1e-6f ? -Velocity.Normalized() : Vector3.Up;   // Bounce throws on a normal that isn't unit length
 			GlobalPosition = centre + normal * 0.01f;
 			var speed = Velocity.Length();
 			var remaining = move * (1f - tr.Fraction);

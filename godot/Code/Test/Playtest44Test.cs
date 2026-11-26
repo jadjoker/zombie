@@ -2,7 +2,7 @@ using Godot;
 
 /// <summary>
 /// Playtest 11/12 notes (issue #44, --playtest44): MC-51 has 20% more health each time he comes back; the ally spider
-/// leaves an enemy held 2.6 m over it alone (stab and harpoon) but still stabs one beside it; dying plays the womp womp
+/// leaves an enemy held 5 m over it alone, harpoons one 3 m up and stabs one beside it; dying plays the womp womp
 /// and cuts the music, and a respawn brings the music back.
 /// </summary>
 public partial class AutoTest
@@ -35,19 +35,28 @@ public partial class AutoTest
 		await Wait( 1.5f );
 		Check( ally is not null && IsInstanceValid( ally ), "no ally spider" );
 		var ahead = new Angles( 0f, yaw, 0f ).Forward;
-		var swimmer = Bloober.Spawn( GetTree().CurrentScene, ally.GlobalPosition + Vector3.Up * 2.6f, 5000f );
+		var swimmer = Bloober.Spawn( GetTree().CurrentScene, ally.GlobalPosition + Vector3.Up * 5f, 5000f );
 		await Wait( 0.2f );
 		var full = swimmer.Health.Current;
 		for ( var t = 0f; t < 5f; t += 1f / 60f )
 		{
 			swimmer.StunnedUntil = Clock.Now + 1.0;
-			swimmer.GlobalPosition = ally.GlobalPosition + ahead * 0.4f + Vector3.Up * 2.6f;
+			swimmer.GlobalPosition = ally.GlobalPosition + ahead * 0.4f + Vector3.Up * 5f;
 			await ToSignal( GetTree(), SceneTree.SignalName.PhysicsFrame );
 		}
 		var lowest = CreaturePart.All.Where( p => IsInstanceValid( p ) && p.Creature == swimmer ).Select( p => p.GlobalPosition.Y ).DefaultIfEmpty( swimmer.GlobalPosition.Y ).Min() - ally.GlobalPosition.Y;
 		var above = full - swimmer.Health.Current;
 		GD.Print( $"[autotest] playtest44: ally spider hurt the Bloober over it (lowest part {lowest:0.0} m up) by {above:0}" );
 		Check( above <= 0f, $"the ally spider hit a Bloober {lowest:0.0} m above it ({above:0} damage)" );
+		var before = swimmer.Health.Current;
+		for ( var t = 0f; t < 5f && swimmer.Health.Current >= before; t += 1f / 60f )
+		{
+			swimmer.StunnedUntil = Clock.Now + 1.0;
+			swimmer.GlobalPosition = ally.GlobalPosition + ahead * 0.4f + Vector3.Up * 3f;
+			await ToSignal( GetTree(), SceneTree.SignalName.PhysicsFrame );
+		}
+		GD.Print( $"[autotest] playtest44: ally spider hurt the Bloober 3 m over it by {before - swimmer.Health.Current:0}" );
+		Check( swimmer.Health.Current < before, "the ally spider did not harpoon a Bloober 3 m above it" );
 		swimmer.QueueFree();
 		var crab = JunkCrab.Spawn( GetTree().CurrentScene, ally.GlobalPosition + ahead * 1.2f, 5000f );
 		await Wait( 0.2f );

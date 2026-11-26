@@ -23,9 +23,9 @@ public partial class SeaSpider : PartCreature
 	public float EyeMultiplier = 1.6f;
 	public float LimbMultiplier = 0.12f;
 	public float HarpoonRange = 650f;
-	/// <summary> The ally reaches no higher than this over its feet with the harpoon (metres, about the player's head;
+	/// <summary> The ally reaches no higher than this over its feet with the harpoon (metres, user's pick;
 	/// playtest 11/12: it hit swimmers far above it). Its stab reaches <see cref="ReachHeight"/>. </summary>
-	public float HarpoonRise = 2f;
+	public float HarpoonRise = 4f;
 	public float HarpoonCooldown = 1.4f;
 	public float HarpoonDamage = 0.85f;
 

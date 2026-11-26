@@ -162,7 +162,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   with stalactites and a skylight. Swimmers stay under `SwimCeiling` (`Abyss.KeepIn` via `Sculpt.InBounds`).
   `AbyssStatue.cs`: our own robed figure with raised arms on a stepped base (after the user's photo of a sunken
   statue, not a copy) wearing Poseidon's head (`Poseidon.StatueHead`, user's choice; eyes faintly lit), a coral crust shader, a spotlight and beam down the skylight, fish circling.
-  `AbyssMood.cs`: the darkness (ambient, murk, sun, no caustics, the backdrop hidden; `Leave` restores the shore's light; `Darken(level, depth)` mixes shore 0 to Abyss 1, and the wreck site is `WreckDepth` 0.5, user's ask: deeper each stage) and a
+  `AbyssMood.cs`: the darkness (ambient, murk, sun, no caustics, the backdrop hidden; `Leave` restores the shore's light; `Darken(level, depth)` mixes shore 0 to Abyss 1, and the wreck site and Atlantis are `WreckDepth` 0.5, user's ask: deeper each stage) and a
   `HipLantern` on every player (warm light at the right hip, the lantern model on the rig, `PlayerRigLantern.cs`).
   The ally spider has a white headlamp at its glow ball (`SeaSpider.Headlamp`); `Areas.BringAllies` brings it through
   teleporters. `AbyssProps.cs`: glowing moss clumps and lamps down the main tunnels (thicker toward the hub), stalagmites,

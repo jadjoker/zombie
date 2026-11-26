@@ -51,15 +51,16 @@ public static class SeaStir
 	// The Gore Vac's pull this frame: plants in the cone lean toward the nozzle.
 	public static Vector3 PullFrom, PullDir;
 	public static float PullReach;
-	public static double PullAt = -1.0;
-	public static bool Pulling => Clock.Now - PullAt < 0.12;
+	static ulong pullFrame;
+	/// <summary> Pulled this frame or the last (the Gore Vac calls it every frame it sucks). </summary>
+	public static bool Pulling => pullFrame > 0 && Engine.GetProcessFrames() - pullFrame <= 1;
 
 	public static void Pull( Vector3 nozzle, Vector3 direction, float reach )
 	{
 		PullFrom = nozzle;
 		PullDir = direction.SafeNormal();
 		PullReach = reach;
-		PullAt = Clock.Now;
+		pullFrame = Engine.GetProcessFrames();
 	}
 
 	/// <summary> The sea bed under a point (the terrain's height, or a ray down where there is no terrain). </summary>
@@ -190,7 +191,7 @@ public partial class GooHaze : Node3D
 	public static int Made;
 	static Texture2D puff;
 
-	float size;
+	float size, peak = 0.24f;
 	Color colour;
 	TimeSince age;
 	StandardMaterial3D material;
@@ -213,11 +214,14 @@ public partial class GooHaze : Node3D
 	{
 		age = 0f;
 		puff ??= ResourceLoader.Exists( "res://assets/textures/fx/puff.png" ) ? GD.Load<Texture2D>( "res://assets/textures/fx/puff.png" ) : null;
-		// Darker and thinner in deep water, where a glowing cloud would light the cave.
-		var dim = 1f - 0.5f * AbyssMood.Depth;
+		// A little brighter in deep water, where the murk would swallow it (it is unshaded, so it shows as a faint glow).
+		var dim = 1f + 0.3f * AbyssMood.Depth;
+		peak = 0.24f + 0.1f * AbyssMood.Depth;
+		// Thinned toward the water's own teal, so it reads as goo in the water, not a coloured wall.
+		var tint = colour.Lerp( new Color( 0.1f, 0.3f, 0.35f ), 0.4f );
 		material = new StandardMaterial3D
 		{
-			AlbedoColor = new Color( colour.R * 0.7f * dim, colour.G * 0.7f * dim, colour.B * 0.7f * dim, 0f ),
+			AlbedoColor = new Color( tint.R * 0.75f * dim, tint.G * 0.75f * dim, tint.B * 0.75f * dim, 0f ),
 			AlbedoTexture = puff,
 			Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
 			ShadingMode = BaseMaterial3D.ShadingModeEnum.Unshaded,
@@ -227,6 +231,10 @@ public partial class GooHaze : Node3D
 			CullMode = BaseMaterial3D.CullModeEnum.Disabled,
 			ProximityFadeEnabled = true,
 			ProximityFadeDistance = 1.2f,
+			// Fades away as the camera comes close, so it never blinds a player fighting in it.
+			DistanceFadeMode = BaseMaterial3D.DistanceFadeModeEnum.PixelAlpha,
+			DistanceFadeMinDistance = 1.5f,
+			DistanceFadeMaxDistance = 5f,
 		};
 		material.SetMeta( "no_caustics", true );
 		var quad = new QuadMesh { Size = Vector2.One };
@@ -234,7 +242,7 @@ public partial class GooHaze : Node3D
 		{
 			var mesh = new MeshInstance3D { Mesh = quad, MaterialOverride = material, CastShadow = GeometryInstance3D.ShadowCastingSetting.Off };
 			AddChild( mesh );
-			mesh.Position = Rng.InSphere( 0.9f * size );
+			mesh.Position = Rng.InSphere( 0.9f * size ) + Vector3.Up * 0.4f * size;
 			mesh.Scale = Vector3.One * Rng.Float( 1.2f, 2.2f ) * size;
 			puffs.Add( (mesh, Rng.InSphere( 0.25f ) + Vector3.Up * Rng.Float( 0.12f, 0.3f ), Rng.Float( 0.15f, 0.3f )) );
 		}
@@ -246,7 +254,7 @@ public partial class GooHaze : Node3D
 		var k = age / Life;
 		if ( k >= 1f ) { QueueFree(); return; }
 		// Swells in fast, hangs, then thins away.
-		var alpha = (k < 0.06f ? k / 0.06f : k > 0.55f ? 1f - (k - 0.55f) / 0.45f : 1f) * 0.42f;
+		var alpha = (k < 0.08f ? k / 0.08f : k > 0.45f ? 1f - (k - 0.45f) / 0.55f : 1f) * peak;
 		material.AlbedoColor = material.AlbedoColor with { A = alpha };
 		foreach ( var (mesh, drift, grow) in puffs )
 		{

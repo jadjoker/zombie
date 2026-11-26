@@ -86,7 +86,7 @@ public partial class AutoTest
 		big?.Health.ResetTo( 900f );
 		big?.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
 		await Wait( 0.3f );
-		if ( shots is not null ) { await Wait( 0.7f ); await Shot( "alive_haze" ); }
+		if ( shots is not null ) { await Wait( 0.4f ); await Shot( "alive_haze_1s" ); await Wait( 2f ); await Shot( "alive_haze_3s" ); await Wait( 3f ); await Shot( "alive_haze_6s" ); }
 		GD.Print( $"[autotest] alive: goo hazes from a small kill {afterSmall}, from a big one {GooHaze.Made - hazes - afterSmall}" );
 		Check( afterSmall == 0 && GooHaze.Made - hazes == 1, "a big kill did not leave a goo haze (or a small one did)" );
 
@@ -157,6 +157,22 @@ public partial class AutoTest
 		Check( lamps.Count > 0 && low > 0, "the Abyss's lamps did not flicker late in the stage" );
 		Check( AreaLife.Outages > outages, "no Abyss lamp went out late in the stage" );
 
+		if ( shots is not null )
+		{
+			// A big kill in the dark: the haze in lantern light.
+			var (cave, caveYaw) = OpenLane( 6f );
+			var caveAhead = new Vector3( -MathF.Sin( MathX.Rad( caveYaw ) ), 0f, -MathF.Cos( MathX.Rad( caveYaw ) ) );
+			player.GlobalPosition = cave + Vector3.Up * 0.1f;
+			player.Velocity = Vector3.Zero;
+			player.EyeAngles = new Angles( 0f, caveYaw, 0f );
+			await Wait( 0.5f );
+			var victim = d.SpawnAt( WaveDirector.EnemyKind.Crab, cave + caveAhead * 5f, cave ) as Creature;
+			await Wait( 0.3f );
+			victim?.Health.ResetTo( 900f );
+			victim?.Health.OnDamage( new DamageInfo { Damage = 1_000_000f } );
+			await Wait( 1.2f );
+			await Shot( "alive_haze_abyss" );
+		}
 		var rubble = AreaLife.Rubble;
 		SeaStir.Blast( Abyss.Arrival + Vector3.Up * 2f, 1.3f );
 		await Wait( 0.2f );

@@ -537,7 +537,7 @@ public partial class Sway : Node
 			foreach ( var s in active )
 			{
 				if ( !s.started ) continue;
-				var d = s.at - st.At;
+				var d = s.target.GlobalPosition - st.At;   // live: plants can be moved after their first pose
 				var flat = new Vector2( d.X, d.Z );
 				var dist2 = flat.LengthSquared() + d.Y * d.Y * 0.5f;
 				if ( dist2 > r2 ) continue;
@@ -556,7 +556,7 @@ public partial class Sway : Node
 		var goal = Vector2.Zero;
 		if ( pulling )
 		{
-			var to = SeaStir.PullFrom - at;
+			var to = SeaStir.PullFrom - target.GlobalPosition;
 			var dist = to.Length();
 			if ( dist > 0.3f && dist < SeaStir.PullReach )
 			{

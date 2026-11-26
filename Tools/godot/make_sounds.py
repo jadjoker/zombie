@@ -452,6 +452,28 @@ def build():
     s["octo_cut"] = reverb(mix((squelch(0.4, 350, 2200, 1.5), 0, 1.0), (click(2800, 0.03, 0.01), 0, 0.6), (blub(400, 1400, 0.08), 0.04, 0.6)), room=0.3, wet=0.2)
     crack = spectral(noise(0.3), lo=1500, hi=7000) * (rng.uniform(0, 1, int(SR * 0.3)) > 0.7) * env(int(SR * 0.3), 0.001, 0.12)
     s["shell_crack"] = reverb(mix((crack, 0, 1.0), (click(3200, 0.04, 0.02), 0, 0.8), (thump(0.12, 300, 120, 0.04), 0, 0.5)), room=0.3, wet=0.2)
+    # The death sound (playtest 11/12): a sad muted trombone, womp womp womp wommmp, each note sagging flat at its
+    # end, the last long and wobbling.
+    def womp(f, seconds, wobble=0.0):
+        n = int(SR * seconds)
+        tt = t(seconds)
+        sag = np.where(tt > seconds * 0.6, 1.0 - 0.06 * ((tt - seconds * 0.6) / (seconds * 0.4)) ** 2, 1.0)
+        freq = f * sag * (1.0 + wobble * np.sin(2 * np.pi * 5.5 * tt) * np.clip(tt / 0.4, 0, 1))
+        ph = 2 * np.pi * np.cumsum(freq) / SR
+        x = 2 * ((ph / (2 * np.pi)) % 1) - 1
+        wah = 300 + 1500 * bell(n, 0.25) ** 1.5
+        y = np.zeros(n)
+        a = 0.0
+        for k in range(3):
+            out = np.empty(n)
+            for i in range(n):
+                g = 1 - np.exp(-2 * np.pi * wah[i] / SR)
+                a += g * (x[i] - a)
+                out[i] = a
+            x = out
+        return x * env(n, 0.03, seconds * 0.9, seconds * 0.4)
+    notes = [(293.7, 0.0, 0.42, 0.0), (277.2, 0.5, 0.42, 0.0), (261.6, 1.0, 0.42, 0.0), (246.9, 1.5, 1.3, 0.025)]
+    s["death_womp"] = reverb(mix(*[(womp(f, d, w), st, 1.0) for f, st, d, w in notes]), room=0.5, wet=0.25)
     return s
 
 

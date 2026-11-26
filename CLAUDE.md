@@ -495,6 +495,10 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   for joiners, `CleanerWard.FromHost`). The enemy bars show it as a teal bar. Aimed at for `AimReact` (0.5 s) or shot, it darts
   aside within `LinkRange` (8 m), drops the link, then comes back; at most once every `DartEvery`. Dev menu: Enemies, Spawn an
   enemy, Cleaner wrasse. Test: `--cleaner` (shots need a window).
+- Playtest 11/12 (issue #44, test `--playtest44`): dying plays `death_womp` (a sad trombone, `make_sounds.py`) and cuts the
+  music (`Radio.WatchDeath`); it comes back with the next run or a respawn. MC-51 has 20% more health each visit on top
+  of the flat `BossHealthPerVisit` (`WaveDirector.BossHealthAt`, `BossHealthGrowth`). The ally spider only stabs an
+  enemy whose lowest part is within `ReachHeight` over its feet and harpoons no higher than `HarpoonRise` (2 m).
 - The mimic octopus (`Creatures/MimicOctopus.cs`, `MimicLook.cs`, user's pick): scenery like the garden eels (never in the
   round). Each sea mine (`SeaMine.PlaceRandom`, respawns too) and glow bulb (`AlienFloaters.AddBulb`) laid is a mimic
   `MimicOctopus.Chance` (0.2%) of the time, host and offline only, disguised with the mine's own ball and chain

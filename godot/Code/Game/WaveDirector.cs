@@ -52,6 +52,8 @@ public partial class WaveDirector : Node3D
 	public int BossEvery = 5;
 	public float BossBaseHealth = 2000f;
 	public float BossHealthPerVisit = 1500f;
+	/// <summary> Each time MC-51 comes back he also has this much more health than the last time (playtest 11/12: +20%). </summary>
+	public float BossHealthGrowth = 1.2f;
 	public float BossSpawnHeight = 160f;
 	public float KrakenBaseHealth = 8000f;
 	/// <summary> Its dome (shield) at the first visit, and how much tougher each return is (playtest 11/11). </summary>
@@ -448,6 +450,13 @@ public partial class WaveDirector : Node3D
 	Vector3 origin;
 	int lastDanger;
 
+	/// <summary> MC-51's health on a boss wave: the base, a flat amount a visit, and 20% more each visit on top. </summary>
+	public float BossHealthAt( int wave )
+	{
+		var visits = Math.Max( 0, wave / Math.Max( 1, BossEvery ) - 1 );
+		return (BossBaseHealth + BossHealthPerVisit * visits) * MathF.Pow( BossHealthGrowth, visits );
+	}
+
 	public int NextBossWave => BossEvery > 0 ? (Wave / BossEvery + 1) * BossEvery : 0;
 
 	/// <summary> Who comes on this boss wave: King Raymond IV on 15, Davey on 20, Poseidon on 30, MC-51 on the rest. </summary>
@@ -702,7 +711,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.KingRaymond => KingRaymondHealth,
-			EnemyKind.Boss => BossBaseHealth + BossHealthPerVisit * Math.Max( 0, Wave / Math.Max( 1, BossEvery ) - 1 ),
+			EnemyKind.Boss => BossHealthAt( Wave ),
 			_ => 100f,
 		};
 		var node = make( this, position, health );

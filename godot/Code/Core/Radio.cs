@@ -104,8 +104,33 @@ public partial class Radio : Node
 		Changes++;
 	}
 
+	bool wasDead, cutForDeath;
+	/// <summary> Tests: womp womps played. </summary>
+	public static int DeathSounds;
+
+	/// <summary> Dying (playtest 11/12): a sad womp womp and the music cuts out; it comes back with the next run
+	/// (space on the game over screen) or a respawn. </summary>
+	void WatchDeath()
+	{
+		var dead = PlayerSurvivor.LocalDead;
+		if ( dead == wasDead ) return;
+		wasDead = dead;
+		if ( dead )
+		{
+			Sfx.Play2D( "death_womp", 0.9f );
+			DeathSounds++;
+			if ( Playing ) { player.Stop(); cutForDeath = true; }
+		}
+		else if ( cutForDeath )
+		{
+			cutForDeath = false;
+			Start();
+		}
+	}
+
 	public override void _Process( double delta )
 	{
+		WatchDeath();
 		// Up on the dock it fades with distance from the radio; after the dive it is steady.
 		var target = 1f;
 		if ( DockHouse.WeaponsHeld && Spot is { } spot && PlayerSurvivor.Local is { } p )

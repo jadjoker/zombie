@@ -81,6 +81,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--hermit" ) ) { await HermitTest(); return; }
 		if ( args.Contains( "--mimic" ) ) { await MimicTest(); return; }
 		if ( args.Contains( "--cleaner" ) ) { await CleanerTest(); return; }
+		if ( args.Contains( "--playtest44" ) ) { await Playtest44Test(); return; }
 		if ( args.Contains( "--rocks" ) ) { await RockTest(); return; }
 		if ( args.Contains( "--tridentseek" ) ) { await TridentSeekTest(); return; }
 		if ( args.Contains( "--gibgallery" ) ) { await GibGalleryTest(); return; }

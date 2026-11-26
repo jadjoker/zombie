@@ -23,6 +23,9 @@ public partial class SeaSpider : PartCreature
 	public float EyeMultiplier = 1.6f;
 	public float LimbMultiplier = 0.12f;
 	public float HarpoonRange = 650f;
+	/// <summary> The ally reaches no higher than this over its feet with the harpoon (metres, about the player's head;
+	/// playtest 11/12: it hit swimmers far above it). Its stab reaches <see cref="ReachHeight"/>. </summary>
+	public float HarpoonRise = 2f;
 	public float HarpoonCooldown = 1.4f;
 	public float HarpoonDamage = 0.85f;
 
@@ -734,13 +737,14 @@ public partial class SeaSpider : PartCreature
 
 	static IEnumerable<Node3D> Enemies() => CreatureRegistry.Alive();
 
-	Node3D FindEnemy( Vector3 around, float range, Vector3? alsoNear = null, float nearRange = 0f, bool flat = true )
+	Node3D FindEnemy( Vector3 around, float range, Vector3? alsoNear = null, float nearRange = 0f, bool flat = true, float maxRise = float.MaxValue )
 	{
 		Node3D best = null;
 		var bestDistance = range * U.In;
 		foreach ( var c in Enemies() )
 		{
 			if ( EnemyDead( c ) ) continue;
+			if ( maxRise < float.MaxValue && LowestRise( c ) > maxRise ) continue;
 			var d = flat ? (c.GlobalPosition - around).Flat().Length() : (c.GlobalPosition - around).Length();
 			if ( d >= bestDistance ) continue;
 			if ( alsoNear is { } n && (c.GlobalPosition - n).Flat().Length() > nearRange * U.In ) continue;
@@ -753,6 +757,7 @@ public partial class SeaSpider : PartCreature
 	void Harpoon( Node3D enemy, PlayerSurvivor owner )
 	{
 		if ( timeSinceHarpoon < HarpoonCooldown || enemy is null ) return;
+		if ( IsAlly && LowestRise( enemy ) > HarpoonRise ) return;
 		var from = LureTip;
 		var to = enemy.GlobalPosition + Vector3.Up * 6f * U.In;   // low: close to the floor (playtest 11/11)
 		if ( (to - from).Length() > HarpoonRange * U.In ) return;
@@ -894,7 +899,7 @@ public partial class SeaSpider : PartCreature
 				if ( climbPhase == ClimbPhase.Perch && nextHarpoonScan <= 0f )
 				{
 					nextHarpoonScan = 0.4f;
-					if ( FindEnemy( GlobalPosition, HarpoonRange, flat: false ) is { } target ) Harpoon( target, owner );
+					if ( FindEnemy( GlobalPosition, HarpoonRange, flat: false, maxRise: HarpoonRise ) is { } target ) Harpoon( target, owner );
 				}
 				return true;
 			}
@@ -925,7 +930,7 @@ public partial class SeaSpider : PartCreature
 		if ( AllyMode != ModeAttack && nextScan <= 0f )
 		{
 			nextScan = 0.25f;
-			currentEnemy = AllyMode == ModeHold ? FindEnemy( HoldPoint, 380f ) : FindEnemy( GlobalPosition, 460f, ownerPos, 800f );
+			currentEnemy = AllyMode == ModeHold ? FindEnemy( HoldPoint, 380f, maxRise: HarpoonRise ) : FindEnemy( GlobalPosition, 460f, ownerPos, 800f, maxRise: HarpoonRise );
 		}
 		if ( currentEnemy is not null && EnemyDead( currentEnemy ) ) currentEnemy = null;
 
@@ -934,7 +939,7 @@ public partial class SeaSpider : PartCreature
 		else if ( currentEnemy is null && nextHarpoonScan <= 0f )
 		{
 			nextHarpoonScan = 0.4f;
-			if ( FindEnemy( GlobalPosition + Vector3.Up * 200f * U.In, HarpoonRange, flat: false ) is { } high && (high.GlobalPosition.Y - GlobalPosition.Y) / U.In > 70f )
+			if ( FindEnemy( GlobalPosition + Vector3.Up * 200f * U.In, HarpoonRange, flat: false, maxRise: HarpoonRise ) is { } high && (high.GlobalPosition.Y - GlobalPosition.Y) / U.In > 70f )
 				Harpoon( high, owner );
 		}
 
@@ -942,7 +947,7 @@ public partial class SeaSpider : PartCreature
 		if ( currentEnemy is not null )
 		{
 			var toEnemy = (currentEnemy.GlobalPosition - GlobalPosition).Flat();
-			if ( toEnemy.Length() <= AttackRange * S * 0.9f )
+			if ( toEnemy.Length() <= AttackRange * S * 0.9f && LowestRise( currentEnemy ) <= ReachHeight * S )
 			{
 				agent.Stop();
 				Face( toEnemy, 10f, dt );
@@ -988,6 +993,15 @@ public partial class SeaSpider : PartCreature
 		}
 		agent.MaxSpeed = MoveSpeed * speedScale * S;
 		NetVelocity = agent.Velocity;
+	}
+
+	/// <summary> How far the enemy's lowest hit part is above this spider's feet (m). </summary>
+	float LowestRise( Node3D enemy )
+	{
+		var low = enemy.GlobalPosition.Y;
+		foreach ( var p in CreaturePart.All )
+			if ( IsInstanceValid( p ) && p.Creature == enemy && !p.IsDead ) low = MathF.Min( low, p.GlobalPosition.Y );
+		return low - GlobalPosition.Y;
 	}
 
 	void Strike( Node3D enemy, PlayerSurvivor owner, float scale = 1f )

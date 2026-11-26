@@ -194,6 +194,12 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `AreaLife` skylight pass is skipped. Sounds `warden_*`, `leviathan_*`, `stomach_gurgle` (`make_sounds.py`). Dev menu:
   Enemies (spawn both; their moves), World, Waves (Blind Warden wave, Leviathan wave). Tests: `--warden`, `--leviathan`
   (shots need a window).
+- Spare boss ideas (from the wave 30 list, not built; the user may swap one in): the Lantern Mother (giant angler queen:
+  snuffs the moss lamps, a hypnotising lure, swallow lunge, brood of anglers, a hook volley; shoot the lure to blind her),
+  the Stalagmaw (the cave is the creature: a mouth in the hub floor, stalactite tongues, rock spit, cave-ins; eyes open in
+  the tunnel walls), the Statue Wakes (the hub statue: stomp rings, boulder throws, a regrowing coral crust over glowing
+  veins, a stone trident sweep, eye beams), the Eel King (five moray heads from the cave mouths, each with its own health;
+  the body bursts out when four are down).
 - Atlantis, area 4 (waves 31 to 40): after wave 30 in the Abyss the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `ThirdTeleportAfterWave`) and `AtlantisArea.Go` (it also clears the Abyss and puts the light back, `AbyssMood.Leave`) rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor

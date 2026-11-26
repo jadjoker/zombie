@@ -113,21 +113,20 @@ void fragment() {
 		var spill = new OmniLight3D { Name = "Hub Glow", LightColor = new Color( 0.45f, 0.62f, 0.9f ), LightEnergy = 0.5f, OmniRange = 30f, OmniAttenuation = 1.4f, ShadowEnabled = false, LightVolumetricFogEnergy = 0.2f };
 		parent.AddChild( spill );
 		spill.Position = new Vector3( 0f, 9f, 0f );
-		var beam = new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/fx_light_shaft.gdshader" ) };
-		beam.SetShaderParameter( "strength", 0.22f );
-		beam.SetShaderParameter( "color", new Color( 0.7f, 0.88f, 1f ) );
+		var beam = new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/fx_statue_beam.gdshader" ) };
+		beam.SetShaderParameter( "strength", 0.2f );
 		beam.SetMeta( "no_caustics", true );
-		var shaftHeight = Abyss.RoofHeight + 8f;
+		// From the floor up through the skylight.
+		var shaftHeight = Abyss.RoofHeight + 6f;
 		var shaft = new MeshInstance3D
 		{
 			Name = "Light Beam",
-			Mesh = new CylinderMesh { TopRadius = Abyss.SkylightRadius * 0.7f, BottomRadius = 6.5f, Height = shaftHeight * 1.6f, RadialSegments = 24, Rings = 1, CapTop = false, CapBottom = false },
+			Mesh = new CylinderMesh { TopRadius = Abyss.SkylightRadius * 0.7f, BottomRadius = 6.5f, Height = shaftHeight, RadialSegments = 24, Rings = 1, CapTop = false, CapBottom = false },
 			MaterialOverride = beam,
 			CastShadow = GeometryInstance3D.ShadowCastingSetting.Off,
 		};
 		parent.AddChild( shaft );
-		// The shader fades out over the lower part of its height: stretched below the floor so it reaches the base.
-		shaft.Position = new Vector3( 0f, shaftHeight - shaftHeight * 0.8f, 0f );
+		shaft.Position = new Vector3( 0f, shaftHeight * 0.5f, 0f );
 
 		// Small fish circling the figure in the light.
 		var fish = new AtlantisFish( 78 ) { Name = "Statue Fish" };

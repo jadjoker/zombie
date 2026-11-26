@@ -216,7 +216,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab, Cleaner }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab, Cleaner, Warden, Leviathan }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -286,6 +286,12 @@ public partial class WaveDirector : Node3D
 	/// first Kraken's 8000. Half of it is fought topside with the wave still coming, half alone in his locker.
 	/// </summary>
 	public float DaveyHealth = 11000f;
+
+	/// <summary> The Abyss's bosses (user's picks): the Blind Warden in the middle (wave 25), the Leviathan last (wave 30). </summary>
+	public int WardenWave = 25;
+	public float WardenHealth = 15000f;
+	public int LeviathanWave = 30;
+	public float LeviathanHealth = 24000f;
 
 	/// <summary> The boss wave Poseidon takes from MC61: the last in Atlantis (Atlantis is waves 31 to 40 since the Abyss came in at 21 to 30). </summary>
 	public int PoseidonWave = 40;
@@ -362,6 +368,20 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
 			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return r;
+		},
+		[EnemyKind.Warden] = ( d, at, health ) =>
+		{
+			var w = BlindWarden.Spawn( d.GetTree().CurrentScene, at, health );
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) w.GlobalBasis = Shapes.LookAt( toPlayer );
+			w.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return w;
+		},
+		[EnemyKind.Leviathan] = ( d, at, health ) =>
+		{
+			var l = Leviathan.Spawn( d.GetTree().CurrentScene, Leviathan.EntryPoint, health );
+			l.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return l;
 		},
 		[EnemyKind.Puffer] = ( d, at, health ) =>
 		{
@@ -464,8 +484,8 @@ public partial class WaveDirector : Node3D
 
 	public int NextBossWave => BossEvery > 0 ? (Wave / BossEvery + 1) * BossEvery : 0;
 
-	/// <summary> Who comes on this boss wave: King Raymond IV on 15, Davey on 20, Poseidon on 30, MC-51 on the rest. </summary>
-	public EnemyKind BossKind => Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : Wave == KingRaymondWave ? EnemyKind.KingRaymond : EnemyKind.Boss;
+	/// <summary> Who comes on this boss wave: King Raymond IV on 15, Davey on 20, the Blind Warden on 25, the Leviathan on 30 (in the Abyss), Poseidon on 40, MC-51 on the rest. </summary>
+	public EnemyKind BossKind => Wave == WardenWave ? EnemyKind.Warden : SeaTerrain.Area == SeaTerrain.Caves && Wave == LeviathanWave ? EnemyKind.Leviathan : Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : Wave == KingRaymondWave ? EnemyKind.KingRaymond : EnemyKind.Boss;
 
 	public float DangerProgress => DangerBy == DangerSource.Time
 		? (SurvivalSeconds % MathF.Max( 1f, SecondsPerLevel )) / MathF.Max( 1f, SecondsPerLevel )
@@ -719,6 +739,8 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.KingRaymond => KingRaymondHealth,
+			EnemyKind.Warden => WardenHealth,
+			EnemyKind.Leviathan => LeviathanHealth,
 			EnemyKind.Boss => BossHealthAt( Wave ),
 			_ => 100f,
 		};

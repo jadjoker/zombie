@@ -650,6 +650,8 @@ public partial class GameHud : Control
 		WaveDirector.EnemyKind.KingRaymond => "KING RAYMOND IV glides in. Bow down",
 		WaveDirector.EnemyKind.Davey => "DAVEY JONES has come for your soul",
 		WaveDirector.EnemyKind.Poseidon => "POSEIDON rises to defend his city",
+		WaveDirector.EnemyKind.Warden => "THE BLIND WARDEN hunts by sound. Stay quiet",
+		WaveDirector.EnemyKind.Leviathan => "THE LEVIATHAN is coming down through the skylight",
 		_ => "MC-51 has entered the arena",
 	};
 }

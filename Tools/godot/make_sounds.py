@@ -508,6 +508,25 @@ def build():
     s["leviathan_moan"] = reverb(moan * bell(n, 0.35) ** 0.8, room=0.95, wet=0.6)
     rocks = mix(*[(thump(0.12, rng.uniform(180, 320), 80, 0.05), rng.uniform(0, 0.6), rng.uniform(0.4, 1.0)) for _ in range(9)])
     s["rock_crumble"] = reverb(mix((rocks, 0, 1.0), (spectral(noise(0.9), lo=300, hi=3000) * bell(int(SR * 0.9), 0.2) * 0.4, 0, 1.0)), room=0.6, wet=0.35)
+    # The Abyss bosses (kept last): the Blind Warden and the Leviathan.
+    n = int(SR * 1.6)
+    shriek = warble(1.6, 520, 380, 23, 0.12) + 0.6 * warble(1.6, 1240, 900, 29, 0.1) + 0.3 * spectral(noise(1.6), lo=2000, hi=7000)
+    s["warden_scream"] = reverb(drive(sweep_lp(shriek, 6000, 2200) * env(n, 0.05, 1.3, 0.5), 2.2), room=0.85, wet=0.5)
+    s["warden_clap"] = reverb(drive(mix((click(1800, 0.06, 0.03), 0, 1.0), (thump(0.5, 140, 40, 0.3), 0, 1.0), (spectral(noise(0.4), lo=200, hi=2500) * env(int(SR * 0.4), 0.002, 0.3), 0, 0.6)), 2.0), room=0.7, wet=0.4)
+    n = int(SR * 1.2)
+    s["warden_charge"] = reverb(drive(mix((sweep_lp(noise(1.2), 300, 900) * env(n, 0.1, 1.0, 0.2), 0, 1.0), (warble(1.2, 60, 90, 9, 0.2) * env(n, 0.1, 1.0, 0.2) * 0.5, 0, 1.0)), 2.0), room=0.6, wet=0.35)
+    clicks = mix(*[(click(rng.uniform(900, 1600), 0.04, 0.015), i * 0.09 + rng.uniform(0, 0.02), rng.uniform(0.5, 1.0)) for i in range(14)])
+    s["warden_listen"] = reverb(clicks, room=0.8, wet=0.5)
+    n = int(SR * 3.0)
+    roar = warble(3.0, 48, 36, 6, 0.15) + 0.6 * warble(3.0, 96, 72, 6, 0.12) + 0.4 * sweep_lp(noise(3.0), 600, 200)
+    s["leviathan_roar"] = reverb(drive(sweep_lp(roar, 900, 400) * env(n, 0.2, 2.4, 0.8), 2.5), room=0.95, wet=0.55)
+    n = int(SR * 2.2)
+    song = warble(2.2, 180, 90, 3, 0.2, "sine") + 0.5 * warble(2.2, 360, 180, 3, 0.2, "sine") + 0.25 * warble(2.2, 540, 270, 4, 0.2, "sine")
+    s["leviathan_song"] = reverb(drive(song * env(n, 0.05, 1.8, 0.4), 1.6), room=0.95, wet=0.6)
+    s["leviathan_crash"] = reverb(drive(mix((thump(1.2, 90, 25, 0.9), 0, 1.0), (rocks, 0.05, 1.0), (spectral(noise(1.5), lo=80, hi=1800) * env(int(SR * 1.5), 0.005, 1.2), 0, 0.8)), 2.5), room=0.9, wet=0.45)
+    n = int(SR * 2.0)
+    s["leviathan_gulp"] = reverb(mix((squelch(0.6, 120, 500, 1.0), 0, 1.0), (blub(90, 260, 0.2), 0.4, 0.8), (sweep_lp(noise(2.0), 400, 150) * bell(n, 0.4) * 0.5, 0, 1.0)), room=0.5, wet=0.4)
+    s["stomach_gurgle"] = reverb(mix(*[(blub(rng.uniform(80, 200), rng.uniform(300, 700), rng.uniform(0.08, 0.2)), rng.uniform(0, 1.6), rng.uniform(0.4, 1.0)) for _ in range(12)]), room=0.4, wet=0.4)
     return s
 
 

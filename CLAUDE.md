@@ -175,6 +175,25 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   statue figure hulls of its pieces (`FigureSolid`). After the bake `Nav.KeepConnected` drops navmesh not joined to the
   floor (patches on wall tops and in pockets). `AbyssSolidTest.cs` (in `--abyss`): wall holes, walking into walls and
   props (eye clear of the drawn rock), the statue, navmesh in rock, enemies chasing through the maze.
+- The Abyss's bosses (user's picks): the Blind Warden on wave 25 and the Leviathan on wave 30 (`WaveDirector.WardenWave`,
+  `LeviathanWave`, `BossKind`; health `WardenHealth` 15000, `LeviathanHealth` 24000). The Blind Warden
+  (`Creatures/BlindWarden.cs`): a pale blind cave lobster that hunts by sound (`Hear`: `SeaStir` stirs such as shots,
+  blasts and landings; sprinting, the jetpack and dashes; anyone within `FeelRange`). It listens with its gill vents open
+  (weak spot, triple damage; shut half, shell 0.4). On a noise a ripple marks the spot and it charges there; a charge into
+  rock (a wall or the statue) crashes and dazes it with its gills wide. Claw clap (a `ShockRing` that stuns, jump it),
+  tail flick (`WardenRubble` thrown at a player behind), echo scream (marks players for `MarkTime`, the HUD says IT HEARS
+  YOU). Maze walls are baked rock meshes, so it crashes into them rather than breaking them. The Leviathan
+  (`Creatures/Leviathan.cs`): its body is `Segments` following its head's trail. It aims from above the roof (a mark that
+  follows, then locks `LockBefore`) and rams down through the skylight (a shock ring, `FallingStalactite`s on the same
+  seed on every machine, a glowing crack and a light in the roof each ram), rests with eyes and blowholes open, then does
+  two of the coil sweep (half buried round the hub at `SweepRadius`, its back under 1 m so you can jump it), the whale
+  song (`SongWave` cone: shove, Slow and Ink curses), the swallow (pulled to the mouth, held `Scripted` in a stomach room at
+  `StomachAt` far under the map; its wall and ulcers are weak spots and `StomachEscapeShare` of its health shot off, or
+  `StomachTime`, spits you out) and the brood (barnacles burst into puffers and an angler, `WaveDirector.SpawnAt`), then
+  withdraws and rams again. Dead, it slumps across the hub (`LeviathanCarcass`, kept in `Abyss.Root`). On boss wave 30 the
+  `AreaLife` skylight pass is skipped. Sounds `warden_*`, `leviathan_*`, `stomach_gurgle` (`make_sounds.py`). Dev menu:
+  Enemies (spawn both; their moves), World, Waves (Blind Warden wave, Leviathan wave). Tests: `--warden`, `--leviathan`
+  (shots need a window).
 - Atlantis, area 4 (waves 31 to 40): after wave 30 in the Abyss the teleporter comes again (`WaveDirector.NextTeleportWave`,
   `ThirdTeleportAfterWave`) and `AtlantisArea.Go` (it also clears the Abyss and puts the light back, `AbyssMood.Leave`) rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor

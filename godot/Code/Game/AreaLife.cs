@@ -37,7 +37,7 @@ public static class AreaLife
 			lastWave = d.Wave;
 			lastArea = area;
 			nextPass = double.MaxValue;
-			if ( area == SeaTerrain.Caves && d.Wave >= 21 && (d.BossWave || Rng.Float() < Tension * 0.5f) ) nextPass = Clock.Now + Rng.Float( 6f, 14f );
+			if ( area == SeaTerrain.Caves && d.Wave >= 21 && (d.BossWave || Rng.Float() < Tension * 0.5f) && d.BossKind != WaveDirector.EnemyKind.Leviathan ) nextPass = Clock.Now + Rng.Float( 6f, 14f );
 		}
 		if ( area == SeaTerrain.Caves )
 		{

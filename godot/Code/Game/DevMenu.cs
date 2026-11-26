@@ -497,6 +497,10 @@ public partial class DevMenu : CanvasLayer
 			Action( "Davey to half (his locker)", () => { foreach ( var davey in DaveyJones.All ) if ( !davey.IsDead && davey.Health is { } h ) h.OnDamage( new DamageInfo { Damage = h.MaxHealth } ); } );
 			foreach ( var attack in Stingray.KingAttacks )
 				Action( $"King Raymond: {attack}", () => { foreach ( var k in KingRaymond.All ) if ( !k.IsDead ) k.ForceAttack( attack ); } );
+			foreach ( var move in new[] { BlindWarden.Act.Charge, BlindWarden.Act.Clap, BlindWarden.Act.Scream, BlindWarden.Act.Flick } )
+				Action( $"Warden: {move}", () => { foreach ( var w in BlindWarden.All ) if ( !w.IsDead ) w.Force( move, PlayerSurvivor.Local?.RealPosition ); } );
+			foreach ( var move in new[] { Leviathan.Act.Dive, Leviathan.Act.Sweep, Leviathan.Act.Song, Leviathan.Act.Swallow, Leviathan.Act.Brood } )
+				Action( $"Leviathan: {move}", () => { foreach ( var l in Leviathan.All ) if ( !l.IsDead ) l.Force( move ); } );
 			foreach ( var attack in new[] { "trident", "whirlpool", "seahorses", "vanish" } )
 				Action( $"Poseidon: {attack}", () => { foreach ( var p in Poseidon.All ) p.ForceAttack( attack ); } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
@@ -651,6 +655,8 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
 			if ( d is { OpenWorld: false } ) Action( $"King Raymond wave ({d.KingRaymondWave})", () => d.JumpToWave( d.KingRaymondWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Davey wave ({d.DaveyWave})", () => d.JumpToWave( d.DaveyWave ) );
+			if ( d is { OpenWorld: false } ) Action( $"Blind Warden wave ({d.WardenWave})", () => d.JumpToWave( d.WardenWave ) );
+			if ( d is { OpenWorld: false } && SeaTerrain.Area == SeaTerrain.Caves ) Action( $"Leviathan wave ({d.LeviathanWave})", () => d.JumpToWave( d.LeviathanWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
 			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area < SeaTerrain.Caves ) Action( "Teleport to the Abyss (stage 3, wave 21)", () => d.DevGoToArea( Controller, SeaTerrain.Caves ) );
@@ -718,6 +724,8 @@ public partial class DevMenu : CanvasLayer
 		new( "Angler (deep sea)", WaveDirector.EnemyKind.Angler ),
 		new( "Sting ray", WaveDirector.EnemyKind.Stingray ),
 		new( "King Raymond IV (sting ray boss)", WaveDirector.EnemyKind.KingRaymond ),
+		new( "The Blind Warden (Abyss boss)", WaveDirector.EnemyKind.Warden ),
+		new( "The Leviathan (Abyss boss, in the Abyss)", WaveDirector.EnemyKind.Leviathan ),
 		new( "Fish swarm", WaveDirector.EnemyKind.FishSwarm ),
 		new( "Puffer bomber", WaveDirector.EnemyKind.Puffer ),
 		new( "Hermit crab (random shell)", WaveDirector.EnemyKind.HermitCrab ),

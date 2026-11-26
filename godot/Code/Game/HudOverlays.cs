@@ -184,6 +184,20 @@ public partial class HudOverlays : Control
 				lineAge = king.TimeSinceLine;
 				lineColour = KingGold;
 			}
+		foreach ( var w in BlindWarden.All )
+			if ( IsInstanceValid( w ) && !w.IsDead && !string.IsNullOrEmpty( w.Line ) && w.TimeSinceLine < lineAge )
+			{
+				line = w.Line;
+				lineAge = w.TimeSinceLine;
+				lineColour = WardenPale;
+			}
+		foreach ( var l in Leviathan.All )
+			if ( IsInstanceValid( l ) && !l.IsDead && !string.IsNullOrEmpty( l.Line ) && l.TimeSinceLine < lineAge )
+			{
+				line = l.Line;
+				lineAge = l.TimeSinceLine;
+				lineColour = LeviathanBlue;
+			}
 		if ( line is not null && lineAge < 2.4f )
 		{
 			speech.Visible = true;
@@ -302,6 +316,10 @@ public partial class HudOverlays : Control
 		if ( b is not null ) BossBar( 0f, "MC-51", b.HealthFraction, UiStyle.Pink, UiStyle.PinkTop );
 		else if ( KingRaymond.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } king )
 			BossBar( 0f, "KING RAYMOND", king.Health.Fraction, KingGold, new Color( "fff1b8" ), numeral: "IV" );
+		else if ( BlindWarden.All.FirstOrDefault( w => !w.IsDead ) is { Health: not null } warden )
+			BossBar( 0f, "THE BLIND WARDEN", warden.Health.Fraction, WardenPale, new Color( "f4fbff" ) );
+		else if ( Leviathan.All.FirstOrDefault( l => !l.IsDead ) is { Health: not null } leviathan )
+			BossBar( 0f, "THE LEVIATHAN", leviathan.Health.Fraction, LeviathanBlue, new Color( "c8f0ff" ) );
 		else if ( DaveyJones.All.FirstOrDefault( g => !g.IsDead ) is { Health: not null } davey )
 			BossBar( 0f, "DAVEY PHONE HOME", davey.HealthFraction, new Color( "5cff6e" ), new Color( "d4ffd0" ) );
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
@@ -322,6 +340,21 @@ public partial class HudOverlays : Control
 			DrawRect( mashBar.Grow( 3f ), new Color( 0f, 0f, 0f, 0.6f ) );
 			DrawRect( mashBar with { Size = mashBar.Size with { X = mashWidth * MathX.Clamp( sinker.Mashes / (float)Math.Max( 1, sinker.MashesNeeded ), 0f, 1f ) } }, new Color( "5cff6e" ) );
 			UiStyle.DrawTag( this, new Vector2( 0f, mashY + UiStyle.S( 46f ) ), $"{sinker.Mashes} / {sinker.MashesNeeded}", 18, UiStyle.Teal, HorizontalAlignment.Center, Size.X );
+		}
+
+		// Marked by the Blind Warden's scream: it hears you wherever you go for a few seconds.
+		if ( BlindWarden.LocalMarkedUntil > Clock.Now && !PlayerSurvivor.LocalDead )
+		{
+			var markLeft = (float)(BlindWarden.LocalMarkedUntil - Clock.Now);
+			var markPulse = 0.65f + 0.35f * MathF.Sin( now * 10f );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.24f ), "IT HEARS YOU", (int)UiStyle.S( 40f ), new Color( "ff5a5a" ) with { A = markPulse }, HorizontalAlignment.Center, Size.X );
+			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.24f + UiStyle.S( 32f ) ), $"MOVE  {markLeft:0}", 18, WardenPale, HorizontalAlignment.Center, Size.X );
+		}
+		// Swallowed by the Leviathan: shoot your way out.
+		if ( Leviathan.SwallowedLocal && !PlayerSurvivor.LocalDead )
+		{
+			var gutPulse = 0.7f + 0.3f * MathF.Sin( now * 8f );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.3f ), "SHOOT YOUR WAY OUT!", (int)UiStyle.S( 42f ), new Color( "ff7a5a" ) with { A = gutPulse }, HorizontalAlignment.Center, Size.X );
 		}
 
 		// Held by a mimic octopus: any melee strike cuts the arm off.
@@ -398,6 +431,8 @@ public partial class HudOverlays : Control
 	}
 
 	static readonly Color KingGold = new( "ffc935" );
+	static readonly Color WardenPale = new( "d8eaf5" );
+	static readonly Color LeviathanBlue = new( "4fc3ff" );
 
 	/// <summary>
 	/// A Roman numeral as carved on a monument (King Raymond's "IV"): gold capitals in the display font with a bar

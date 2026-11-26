@@ -37,17 +37,39 @@ public static class SeaTerrain
 		return t * t * (3f - 2f * t);
 	}
 
-	/// <summary> Which side of the teleporter (issue #35): 1 is the first area, 2 the wreck site from wave 11. </summary>
+	/// <summary> Which side of the teleporter (issue #35): 1 is the first area, 2 the wreck site from wave 11, 3 the
+	/// Abyss (the cave maze) from wave 21, 4 Atlantis from wave 31. </summary>
 	public static int Area { get; set; } = 1;
+	public const int Shore = 1, Wreck = 2, Caves = 3, Globe = 4;
+	/// <summary> The last area (no teleporter out of it). </summary>
+	public const int LastArea = Globe;
 	/// <summary> The wreck site's flat sand plain (area 2): its middle and half sizes (metres). </summary>
 	public static readonly Vector2 PlainCentre = new( 0f, -70f );
 	public static readonly Vector2 PlainHalf = new( 64f, 18f );
 	const float PlainFeather = 12f;
 
 	/// <summary> The height of the sea floor (metres) at a point. 0 in the middle, as the old arena floor was. </summary>
-	public static float HeightAt( float x, float z ) => Area switch { 2 => WreckSiteHeight( x, z ), 3 => GlobeSiteHeight( x, z ), _ => BaseHeight( x, z ) };
+	public static float HeightAt( float x, float z ) => Area switch { Wreck => WreckSiteHeight( x, z ), Caves => CaveHeight( x, z ), Globe => GlobeSiteHeight( x, z ), _ => BaseHeight( x, z ) };
 
-	/// <summary> Area 3: flat under the globe (Atlantis builds its own levels on it), rising back into the hills outside its base. </summary>
+	/// <summary>
+	/// Area 3, the Abyss: a flat hub in the middle (the statue), uneven rock floor through the cave maze (kept walkable),
+	/// and the ground climbing steeply into the cavern's edge past the cave mouths.
+	/// </summary>
+	static float CaveHeight( float x, float z )
+	{
+		Init();
+		var r = MathF.Sqrt( x * x + z * z );
+		var wx = x + warp.GetNoise2D( x, z ) * 8f;
+		var wz = z + warp.GetNoise2D( x + 400f, z - 300f ) * 8f;
+		var floor = hills.GetNoise2D( wx * 1.7f, wz * 1.7f ) * 2.6f + ridges.GetNoise2D( wx * 2.2f, wz * 2.2f ) * 0.9f + detail.GetNoise2D( x * 1.5f, z * 1.5f ) * 0.45f;
+		var hub = detail.GetNoise2D( x, z ) * 0.08f;
+		var height = MathX.Lerp( hub, floor, Smooth( Abyss.HubRadius - 1f, Abyss.HubRadius + 5f, r ) );
+		var edge = MathF.Max( MathF.Abs( x ), MathF.Abs( z ) ) + warp.GetNoise2D( x * 2f, z * 2f ) * 4f;
+		height += MathF.Max( Smooth( Abyss.PocketBack + 2f, Abyss.PocketBack + 16f, r ) * 26f, Smooth( HalfSize - 14f, HalfSize - 2f, edge ) * 26f );
+		return height;
+	}
+
+	/// <summary> Area 4: flat under the globe (Atlantis builds its own levels on it), rising back into the hills outside its base. </summary>
 	static float GlobeSiteHeight( float x, float z )
 	{
 		var r = MathF.Sqrt( x * x + z * z );
@@ -172,6 +194,8 @@ public static class SeaTerrain
 	static Color Shade( float h, Vector3 n )
 	{
 		var shade = MathX.Clamp( 0.86f + h * 0.018f, 0.62f, 1.08f ) * (0.82f + 0.18f * n.Y);
+		// The Abyss's floor is dark silt and rock, not sand.
+		if ( Area == Caves ) return new Color( shade * 0.42f, shade * 0.43f, shade * 0.48f );
 		return new Color( shade, shade * 0.99f, shade * 0.96f );
 	}
 

@@ -152,8 +152,26 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   (`LastKick`); a full tank slows you by `FullTankSlow` and sways the view. Lumps a burst throws are `Gib.Recycled`
   (worth 1 gunk), so there is no free ammo loop. It is Vac-Bot's only (no station sells it). Dev menu: Cheats, Give Gore Vac.
   Test: `--gorevac` (spawning paused, the level's mines cleared; with `--shots` for pictures).
-- Atlantis, area 3: after wave 20 on the wreck site the teleporter comes again (`WaveDirector.NextTeleportWave`,
-  `SecondTeleportAfterWave`) and `AreaThree.Go` rebuilds the site as Plato's ring city under a giant glass globe
+- The Abyss, area 3 (waves 21 to 30, user's design): after wave 20 on the wreck site the teleporter leads to
+  `AbyssArea.Go` (areas in order through `Areas.Next`; `SeaTerrain.Area` is `Shore`, `Wreck`, `Caves`, `Globe`). A dark
+  cavern (`Abyss.cs`): a flat hub (`HubRadius` 26 m) with the statue, a cave maze in three rings (`Rings`, `Sectors`; a
+  random spanning tree of openings plus loops, fixed seed) of rock walls built from rough boulders (`RockBuilder`, convex
+  colliders on World and Plant, `RockMeta`, so shots stop, the navmesh goes round and swimmers are lifted over), four
+  straight main tunnels kept clear (`MainTunnels`, `TunnelHalfWidth`) with rock arches, eight cave mouths at the edge
+  where the spawn points go (`Mouths`, `SpawnSpots`), a rock roof (`RoofAt`, solid after the navmesh, `AddRoofCollider`)
+  with stalactites and a skylight. Swimmers stay under `SwimCeiling` (`Abyss.KeepIn` via `Sculpt.InBounds`).
+  `AbyssStatue.cs`: our own robed figure with raised arms on a stepped base (after the user's photo of a sunken
+  statue of Christ, not a copy), a coral crust shader, a spotlight and beam down the skylight, fish circling.
+  `AbyssMood.cs`: the darkness (ambient, murk, sun, no caustics, the backdrop hidden; `Leave` restores it) and a
+  `HipLantern` on every player (warm light at the right hip, the lantern model on the rig, `PlayerRigLantern.cs`).
+  The ally spider has a white headlamp at its glow ball (`SeaSpider.Headlamp`); `Areas.BringAllies` brings it through
+  teleporters. `AbyssProps.cs`: glowing moss clumps and lamps down the main tunnels (thicker toward the hub), stalagmites,
+  treasure chests (`TreasureChest`: walk up, it opens, 400 points and an ammo box; `MimicShare` are mimic octopuses,
+  `MimicOctopus.Disguise.Chest`), diver skeletons in brass helmets, bone piles, anchors, rowboats; glow bulbs drift in
+  the corridors. No Kraken waves in the caves. Dev menu: World, Waves, Teleport to the Abyss. Test: `--abyss` (with
+  `--shots`, a photo tour and a map view).
+- Atlantis, area 4 (waves 31 to 40): after wave 30 in the Abyss the teleporter comes again (`WaveDirector.NextTeleportWave`,
+  `ThirdTeleportAfterWave`) and `AtlantisArea.Go` (it also clears the Abyss and puts the light back, `AbyssMood.Leave`) rebuilds the site as Plato's ring city under a giant glass globe
   (`Atlantis.cs`: island temple of Poseidon with a gold statue of Poseidon, dry canals a storey down (`CanalFloorY`, a lower floor
   dressed with rocks, coral, kelp and ruins; `SeaTerrain` sinks the ground under them), bridges, 8
   avenues, 116 marble/obsidian/crystal buildings, a turning green crystal heart, the globe on a black and gold base).
@@ -162,8 +180,9 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   The wreck is built at `ShipWreck.Scale` (1.2) through its frame.
   The island statue is Poseidon's own rig in gold (`Poseidon.BuildRig`, `BuildStatue`); the globe glass is a fresnel shader. Districts have their own roof colours, vines, banners, coral gardens and plazas
   (fountains, broken columns); arches span the avenues; `AtlantisFish` schools swim through. The canal floor has two market stands (one sells cheese), barrels and
-  sacks of gold (`MarketStand`, `Barrel`, `GoldBag`). Dev menu: World, Waves, Teleport to Atlantis.
-- Poseidon (wave 30 boss, `WaveDirector.PoseidonWave`, takes MC61's place that wave) and the seahorse: built in code
+  sacks of gold (`MarketStand`, `Barrel`, `GoldBag`). Dev menu: World, Waves, Teleport to Atlantis (stage 4).
+- Poseidon (wave 40 boss, `WaveDirector.PoseidonWave`, the last wave in Atlantis, health `PoseidonHealth` 37500 (+25% with
+  the move from wave 30, user's ask), takes MC61's place that wave) and the seahorse: built in code
   with `Sculpt` helpers (`Code/Creatures/Poseidon.cs`, `Seahorse.cs`). Poseidon floats and swims (tail wave), vanishes
   and reappears through whirlpools near the player inside the map (`Sculpt.InBounds`), throws tridents with the
   player trident's bubbles, throws a whirlpool that carries the player to him for a stab, and summons seahorses
@@ -458,7 +477,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   own ground need and `KeepOut` lifts the body after posing, so no part goes into the ground. Dev menu: Enemies, Spawn an enemy,
   King Raymond IV; Enemies, Kraken (the boss attacks); World, Waves, King Raymond wave. Test: `--kingray` (shots need a window).
 - Garden eels (`Creatures/GardenEel.cs`, `GardenEelLook.cs`, user's design after spotted garden eels): scenery, not the round
-  (never in the wave's `alive` list, no pickups). `EelBed.Lay` (from `AreaTwo.Go` and `AreaThree.Go`, host and offline only)
+  (never in the wave's `alive` list, no pickups). `EelBed.Lay` (from `AreaTwo.Go`, `AbyssArea.Go` and `AtlantisArea.Go`, host and offline only)
   puts 4 to 6 beds of 2 to 4 eels packed 0.45 to 0.75 m apart on open sand (Atlantis: the dry canals); a bed grows a new eel
   in a dead one's hole after 45 to 75 s. Hidden in the sand (`IsEnemy` false: no bar, no aim assist) until a player comes within
   `WakeRange`; then it digs out (a hole appears), stands swaying with its head on them, and nips anyone within `Reach` (bed mates never go through each other: each pose is checked against the neighbours' `Spine` and bent round or leant less, `Crowded`)

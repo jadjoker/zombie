@@ -165,7 +165,7 @@ public partial class AutoTest
 		Check( GardenEel.All.Any( e => e.GlobalPosition.DistanceTo( holeOf ) < 0.05f ), "the bed did not grow a new eel in the dead one's hole" );
 
 		// Atlantis: new beds down in the canals, the wreck site's gone.
-		AreaThree.Go( level, player );
+		AtlantisArea.Go( level, player );
 		await Wait( 1f );
 		var canal = GardenEel.All.All( e => MathF.Abs( e.GlobalPosition.Y - Atlantis.CanalFloorY ) < 0.3f );
 		GD.Print( $"[autotest] eels: Atlantis: {EelBed.All.Count} beds, {GardenEel.All.Count} eels, all in the canals {canal}" );

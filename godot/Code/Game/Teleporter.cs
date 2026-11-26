@@ -218,7 +218,7 @@ public partial class Teleporter : Node3D
 		var loading = new LoadingScreen
 		{
 			Name = "Loading",
-			Destination = SeaTerrain.Area == 1 ? "To the wreck site" : "To Atlantis",
+			Destination = Areas.NextName,
 			Modulate = new Color( 1f, 1f, 1f, 0f ),
 		};
 		layer.AddChild( loading );
@@ -232,8 +232,7 @@ public partial class Teleporter : Node3D
 		{
 			if ( !IsInstanceValid( this ) ) return;   // freed meanwhile (a restart): stay in this area
 			var level = GetTree().CurrentScene as Node3D;
-			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, controller );
-			else AreaThree.Go( level, controller );   // from the wreck site to Atlantis
+			Areas.Next( level, controller );
 			loading.Progress = 1f;
 			QueueFree();
 		} ) );

@@ -336,13 +336,13 @@ public partial class EelBed : Node3D
 	static float? OpenFloor( Node3D context, Vector3 at )
 	{
 		float sand;
-		if ( SeaTerrain.Area == 3 ) sand = Atlantis.CanalFloorY;
+		if ( SeaTerrain.Area == SeaTerrain.Globe ) sand = Atlantis.CanalFloorY;
 		else sand = SeaTerrain.HeightAt( at );
 		var floor = Sculpt.FloorBelow( context, at with { Y = sand + 3f }, 6f );
 		if ( MathF.Abs( floor - sand ) > 0.25f ) return null;
 		// Room to stand up: nothing over the hole, and the ground nearly level.
 		if ( Trace.Ray( context, at with { Y = floor + 0.2f }, at with { Y = floor + 2.2f }, Layers.World ).Hit ) return null;
-		if ( SeaTerrain.Area != 3 )
+		if ( SeaTerrain.Area != SeaTerrain.Globe )
 			foreach ( var d in new[] { Vector3.Right, Vector3.Back, Vector3.Left, Vector3.Forward } )
 				if ( MathF.Abs( SeaTerrain.HeightAt( at + d * 0.8f ) - sand ) > 0.35f ) return null;
 		return floor;
@@ -355,11 +355,11 @@ public partial class EelBed : Node3D
 		keepOff.AddRange( level.GetTree().GetNodesInGroup( "buy_station" ).OfType<Node3D>().Select( n => (n.GlobalPosition, 7f) ) );
 		keepOff.AddRange( others.Select( o => (o, 10f) ) );
 		if ( SeaTerrain.Area == 2 ) keepOff.Add( (AreaTwo.ArrivalFlat, 10f) );
-		if ( SeaTerrain.Area == 3 ) keepOff.Add( (Atlantis.Arrival, 10f) );
+		if ( SeaTerrain.Area == SeaTerrain.Globe ) keepOff.Add( (Atlantis.Arrival, 10f) );
 		for ( var tries = 0; tries < 120; tries++ )
 		{
 			Vector3 at;
-			if ( SeaTerrain.Area == 3 )
+			if ( SeaTerrain.Area == SeaTerrain.Globe )
 				at = Atlantis.Polar( Rng.Float() < 0.4f ? Rng.Float( 21f, 23f ) : Rng.Float( 48.5f, 51.5f ), Rng.Float( 0f, 360f ), Atlantis.CanalFloorY );
 			else
 			{

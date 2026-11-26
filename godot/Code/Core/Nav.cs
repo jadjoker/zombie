@@ -36,6 +36,25 @@ public static class Nav
 
 	public static Rid Map( Node3D any ) => any.GetWorld3D().NavigationMap;
 
+	static readonly NavigationPathQueryParameters3D query = new() { PathSearchMaxPolygons = SearchPolygons, PathPostprocessing = NavigationPathQueryParameters3D.PathPostProcessing.Corridorfunnel };
+	static readonly NavigationPathQueryResult3D answer = new();
+	/// <summary>
+	/// How many navmesh polygons a path search may look through. Godot's default (4096) gave up partway on long walks
+	/// through the Abyss's cave maze (its rough walls make many small polygons): the enemies' paths and the test's
+	/// "reachable" checks stopped short of places that were joined up.
+	/// </summary>
+	public const int SearchPolygons = 60000;
+
+	/// <summary> A path over the navmesh from one point to another (as MapGetPath with optimizing on, with a bigger search). </summary>
+	public static Vector3[] Path( Node3D any, Vector3 from, Vector3 to )
+	{
+		query.Map = Map( any );
+		query.StartPosition = from;
+		query.TargetPosition = to;
+		NavigationServer3D.QueryPath( query, answer );
+		return answer.Path;
+	}
+
 	/// <summary> The closest point on the navmesh. </summary>
 	public static Vector3 Closest( Node3D any, Vector3 point ) => NavigationServer3D.MapGetClosestPoint( Map( any ), point );
 
@@ -99,7 +118,7 @@ public sealed class NavAgent
 		pathAt = now - Rng.Float( 0f, RepathEvery * 0.3f );
 		pathGoal = target;
 		Planned++;
-		path = NavigationServer3D.MapGetPath( Nav.Map( owner ), owner.GlobalPosition, target, true );
+		path = Nav.Path( owner, owner.GlobalPosition, target );
 		index = 0;
 		if ( path.Length == 0 ) path = new[] { owner.GlobalPosition, target };
 	}

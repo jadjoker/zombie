@@ -393,7 +393,7 @@ public partial class Net : Node
 		if ( Teleporter.Current is { } pad && IsInstanceValid( pad ) ) pad.Take( local, fromHost: true );
 		else if ( GetTree().CurrentScene is Node3D level )
 		{
-			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, local ); else AreaThree.Go( level, local );
+			Areas.Next( level, local );
 		}
 	}
 

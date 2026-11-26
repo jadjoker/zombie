@@ -144,7 +144,7 @@ void fragment() {
 				}
 			st.GenerateNormals();
 			var m = new ShaderMaterial { Shader = HoleShader };
-			var canal = SeaTerrain.Area == 3;
+			var canal = SeaTerrain.Area == SeaTerrain.Globe;
 			if ( !canal && Stingray.Sand() is { } tex ) m.SetShaderParameter( "sand_tex", tex );
 			m.SetShaderParameter( "textured", canal ? 0f : 1f );
 			m.SetShaderParameter( "tint", canal ? Atlantis.CanalSand : SeaTerrain.ShadeAt( centre ) );

@@ -228,7 +228,7 @@ public partial class AutoTest
 		await View( "a2_basin", new Vector3( 10f, 0f, 0f ), new Vector3( -20f, 0f, 20f ) );
 
 		// Area 3: Atlantis, from the arrival up the avenue.
-		AreaThree.Go( level, player );
+		AtlantisArea.Go( level, player );
 		await Wait( 1f );
 		await View( "a3_arrival", Atlantis.Arrival, Vector3.Zero );
 

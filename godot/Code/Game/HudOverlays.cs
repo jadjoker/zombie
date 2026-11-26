@@ -209,9 +209,7 @@ public partial class HudOverlays : Control
 		if ( station is null && (use?.AtTeleporter ?? false) )
 		{
 			promptTitle.Show( "Teleport" );
-			promptDesc.Show( SeaTerrain.Area >= 2
-				? $"To Atlantis, the third stage. Wave {WaveDirector.Current?.Wave + 1 ?? 21} starts there"
-				: "To the wreck site, the second stage. Wave 11 starts there" );
+			promptDesc.Show( Areas.NextPrompt( WaveDirector.Current?.Wave + 1 ?? 21 ) );
 			promptTitle.FontColour( new Color( 0.5f, 1f, 0.55f ) );
 		}
 		if ( station is not null )

@@ -194,6 +194,9 @@ public partial class SeaSpider : PartCreature
 	readonly MeshInstance3D[] lureJoint = new MeshInstance3D[LureNodes - 1];
 	MeshInstance3D lureBulb;
 	OmniLight3D lureLight;
+	SpotLight3D headlamp;
+	public const float HeadlampEnergy = 5f;
+	public SpotLight3D Headlamp => headlamp;
 	StandardMaterial3D lureBulbMaterial;
 	bool lureReady;
 	Vector3 lureKick, lureAnchor;
@@ -214,7 +217,20 @@ public partial class SeaSpider : PartCreature
 		rig.AddChild( lureBulb );
 		lureLight = new OmniLight3D { LightColor = glowColor, LightEnergy = 2.5f, OmniRange = 380f * U.In, OmniAttenuation = 1.1f, ShadowEnabled = false };
 		lureBulb.AddChild( lureLight );
-		if ( IsAlly ) { lureLight.OmniRange = 220f * U.In; lureLight.LightColor = glowColor.Lerp( Colors.White, 0.35f ); }
+		if ( IsAlly )
+		{
+			lureLight.OmniRange = 220f * U.In;
+			lureLight.LightColor = glowColor.Lerp( Colors.White, 0.35f );
+			// The helper's headlamp (user's ask, for the Abyss): a bright white beam from its glow ball, ahead and down.
+			headlamp = new SpotLight3D
+			{
+				Name = "Headlamp", TopLevel = true, LightColor = new Color( 0.92f, 0.97f, 1f ), LightEnergy = HeadlampEnergy,
+				SpotRange = 26f, SpotAngle = 32f, SpotAngleAttenuation = 0.7f, SpotAttenuation = 0.6f,
+				ShadowEnabled = true, LightVolumetricFogEnergy = 1.6f,
+			};
+			rig.AddChild( headlamp );
+			lureBulbMaterial.AlbedoColor = lureBulbMaterial.Emission = glowColor.Lerp( Colors.White, 0.6f );
+		}
 		// Top-level pieces start at the spider (not the map origin) until the first lure update.
 		foreach ( var m in lureSeg.Concat( lureJoint ).Append( lureBulb ) )
 			if ( m is not null ) m.GlobalTransform = new Transform3D( Basis.FromScale( Vector3.One * 0.001f ), rig.GlobalPosition );
@@ -300,6 +316,18 @@ public partial class SeaSpider : PartCreature
 		lureBulbMaterial.EmissionEnergyMultiplier = 1.7f * glow * 1.6f;
 		// The ally's lure is a soft companion glow: at full strength it flooded small rooms (the dock hut) green.
 		lureLight.LightEnergy = (IsAlly ? 0.8f : 2.6f) * glow;
+		if ( headlamp is not null )
+		{
+			// Ahead of the body and a little down, eased so the beam doesn't jitter with each step.
+			var facing = parts[Body].Go.GlobalBasis.Orthonormalized();
+			var ahead = (facing * U.Sbox( new Vector3( 1f, 0f, 0f ) )).Flat().SafeNormal();
+			if ( ahead.LengthSquared() < 0.5f ) ahead = -headlamp.GlobalBasis.Z;
+			var want = (ahead + Vector3.Down * 0.35f).Normalized();
+			var now2 = headlamp.GlobalBasis.Z.LengthSquared() > 0.5f ? -headlamp.GlobalBasis.Z : want;
+			var dir = now2.Lerp( want, 1f - MathF.Exp( -6f * frameDt ) ).Normalized();
+			headlamp.GlobalTransform = new Transform3D( Shapes.LookAt( dir ), tip + dir * 0.15f );
+			headlamp.LightEnergy = HeadlampEnergy * (IsDead ? 0f : 1f);
+		}
 	}
 
 	// ---- The eye ----

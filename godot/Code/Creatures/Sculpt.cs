@@ -80,7 +80,7 @@ public static class Sculpt
 	/// </summary>
 	public static float GroundAt( Vector3 p )
 	{
-		if ( SeaTerrain.Area == 3 && Atlantis.Inside( p, 0f ) ) return Atlantis.SurfaceAt( p );
+		if ( SeaTerrain.Area == SeaTerrain.Globe && Atlantis.Inside( p, 0f ) ) return Atlantis.SurfaceAt( p );
 		return SeaTerrain.Active ? SeaTerrain.HeightAt( p ) : float.MinValue;
 	}
 
@@ -92,7 +92,8 @@ public static class Sculpt
 
 	public static Vector3 InBounds( Vector3 p )
 	{
-		if ( SeaTerrain.Area == 3 )
+		if ( SeaTerrain.Area == SeaTerrain.Caves ) return OutOfRock( Abyss.KeepIn( p ) );
+		if ( SeaTerrain.Area == SeaTerrain.Globe )
 		{
 			var flat = p.Flat();
 			var limit = Atlantis.BaseInner - 8f;

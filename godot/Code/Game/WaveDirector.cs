@@ -100,6 +100,8 @@ public partial class WaveDirector : Node3D
 	{
 		KrakenWave = false;
 		if ( OpenWorld || (!krakenForced && (!SpawnKrakenWaves || Wave < KrakenFirstWave)) ) return;
+		// Not in the Abyss: its fight ring and whirlpool need open ground, and the caves are a maze.
+		if ( SeaTerrain.Area == SeaTerrain.Caves && !krakenForced ) return;
 		float chance;
 		if ( KrakenVisits == 0 && Wave == KrakenFirstWave )
 		{
@@ -132,7 +134,7 @@ public partial class WaveDirector : Node3D
 		var height = players.Count > 0 ? players[0].Y : GlobalPosition.Y;
 		var avoid = GetTree().Root.FindChildren( "*", "", true, false ).OfType<BuyStation>().Select( s => s.GetParent() ).OfType<Node3D>().Select( n => n.GlobalPosition ).ToList();
 		// Atlantis (area 3) keeps an open plaza for it on the west avenue; elsewhere it is the map's middle.
-		var centre = SeaTerrain.Area == 3 ? Atlantis.KrakenCentre.Flat() : Vector3.Zero;
+		var centre = SeaTerrain.Area == SeaTerrain.Globe ? Atlantis.KrakenCentre.Flat() : Vector3.Zero;
 		var best = Nav.Closest( this, centre with { Y = height } );
 		var bestScore = float.MinValue;
 		foreach ( var radius in new[] { 0f, 5f, 9f, 13f } )
@@ -178,10 +180,12 @@ public partial class WaveDirector : Node3D
 	public WaveState State = WaveState.Intermission;
 	/// <summary> After this wave the teleporter zaps in, and the next wave waits until the player takes it (issue #35). </summary>
 	public int TeleportAfterWave = 10;
-	/// <summary> After this wave, on the wreck site, the teleporter to Atlantis (area 3) zaps in the same way. </summary>
+	/// <summary> After this wave, on the wreck site, the teleporter to the Abyss (area 3) zaps in the same way. </summary>
 	public int SecondTeleportAfterWave = 20;
+	/// <summary> After this wave, in the Abyss, the teleporter to Atlantis (area 4). </summary>
+	public int ThirdTeleportAfterWave = 30;
 	/// <summary> The wave after which the teleporter out of the current area comes (0: none, Atlantis is the last). </summary>
-	public int NextTeleportWave => SeaTerrain.Area switch { 1 => TeleportAfterWave, 2 => SecondTeleportAfterWave, _ => 0 };
+	public int NextTeleportWave => SeaTerrain.Area switch { SeaTerrain.Shore => TeleportAfterWave, SeaTerrain.Wreck => SecondTeleportAfterWave, SeaTerrain.Caves => ThirdTeleportAfterWave, _ => 0 };
 	/// <summary> The player has gone through the teleporter to the wreck site. </summary>
 	public bool Teleported;
 	/// <summary> Waiting for the player to take the teleporter (the HUD says so instead of counting down). </summary>
@@ -283,9 +287,10 @@ public partial class WaveDirector : Node3D
 	/// </summary>
 	public float DaveyHealth = 11000f;
 
-	/// <summary> The boss wave Poseidon takes from MC61 (in Atlantis, ten rounds after arriving). </summary>
-	public int PoseidonWave = 30;
-	public float PoseidonHealth = 30000f;
+	/// <summary> The boss wave Poseidon takes from MC61: the last in Atlantis (Atlantis is waves 31 to 40 since the Abyss came in at 21 to 30). </summary>
+	public int PoseidonWave = 40;
+	/// <summary> 25% more than his first 30000 (user's ask, with the move to wave 40). </summary>
+	public float PoseidonHealth = 37500f;
 	/// <summary> Seahorses (Poseidon's summons): weak, so a hit or two kills one. </summary>
 	public float SeahorseBaseHealth = 20f;
 	public float SeahorseHealthPerWave = 0.5f;
@@ -752,19 +757,18 @@ public partial class WaveDirector : Node3D
 	}
 
 	/// <summary>
-	/// Dev menu: straight to Atlantis (the third stage) from wherever the run is, as if both teleporters had been
-	/// taken: the wave is cleared, the wreck site is passed through, and wave 21 starts there.
+	/// Dev menu: straight to an area (the Abyss or Atlantis) from wherever the run is, as if the teleporters had been
+	/// taken: the wave is cleared, the areas before it are passed through, and its first wave starts there.
 	/// </summary>
-	public void DevGoToAtlantis( PlayerController controller )
+	public void DevGoToArea( PlayerController controller, int area )
 	{
-		if ( OpenWorld || SeaTerrain.Area == 3 || !SeaTerrain.Active || GetTree().CurrentScene is not Node3D level ) return;
+		if ( OpenWorld || SeaTerrain.Area >= area || !SeaTerrain.Active || GetTree().CurrentScene is not Node3D level ) return;
 		SkipWave();
 		if ( Teleporter.Current is { } pad && IsInstanceValid( pad ) ) { pad.GetParent()?.RemoveChild( pad ); pad.QueueFree(); }
-		Wave = SecondTeleportAfterWave;
+		Wave = area == SeaTerrain.Globe ? ThirdTeleportAfterWave : SecondTeleportAfterWave;
 		State = WaveState.Intermission;
 		WaitingForTeleport = false;
-		if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, controller );
-		AreaThree.Go( level, controller );
+		while ( SeaTerrain.Area < area ) Areas.Next( level, controller );
 	}
 
 	public void JumpToWave( int wave )
@@ -814,12 +818,13 @@ public partial class WaveDirector : Node3D
 
 	/// <summary> Where the Nth survivor comes back: around the director's spot, 90 units apart. </summary>
 	Vector3 RespawnPosition( int index ) =>
-		(SeaTerrain.Area == 3 ? Atlantis.Arrival : GlobalPosition) + new Vector3( (index % 4) * 90f, 0f, (index / 4) * 90f ) * U.In;   // the map's middle is the temple there
+		(SeaTerrain.Area == SeaTerrain.Globe ? Atlantis.Arrival : SeaTerrain.Area == SeaTerrain.Caves ? Abyss.Arrival : GlobalPosition) + new Vector3( (index % 4) * 90f, 0f, (index / 4) * 90f ) * U.In;   // the map's middle is the temple there
 
 	/// <summary> Where the teleporter out of this area zaps in: by the dive's landing spot, or on the wreck site's old basin. </summary>
 	Vector3 TeleporterNear()
 	{
-		if ( SeaTerrain.Area == 2 ) return AreaTwo.TeleporterNear with { Y = SeaTerrain.HeightAt( AreaTwo.TeleporterNear ) };
+		if ( SeaTerrain.Area == SeaTerrain.Wreck ) return AreaTwo.TeleporterNear with { Y = SeaTerrain.HeightAt( AreaTwo.TeleporterNear ) };
+		if ( SeaTerrain.Area == SeaTerrain.Caves ) return Abyss.TeleporterNear;
 		return DockHouse.Current?.BoardTip is { } tip ? tip with { Y = SeaTerrain.HeightAt( tip ) } : Vector3.Zero;
 	}
 
@@ -868,7 +873,7 @@ public partial class WaveDirector : Node3D
 		var roll = Rng.Float();
 		var has = ( EnemyKind k ) => Spawners.TryGetValue( k, out var f ) && f is not null;
 		// Atlantis: a share of every wave are mermaids, the rest the usual mix.
-		if ( SpawnMermaids && SeaTerrain.Area == 3 && has( EnemyKind.Mermaid ) )
+		if ( SpawnMermaids && SeaTerrain.Area == SeaTerrain.Globe && has( EnemyKind.Mermaid ) )
 		{
 			if ( roll < MermaidChance ) return Spawn( EnemyKind.Mermaid );
 			roll = (roll - MermaidChance) / (1f - MermaidChance);

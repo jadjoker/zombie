@@ -161,7 +161,7 @@ public partial class Stingray
 	/// <summary> Sea bed sand here (not Atlantis's paving, not the old flat floor) with nothing standing on it and open water above. </summary>
 	bool OpenSand( Vector3 at )
 	{
-		if ( !SeaTerrain.Active || (SeaTerrain.Area == 3 && Atlantis.Inside( at, 0f )) ) return false;
+		if ( !SeaTerrain.Active || (SeaTerrain.Area == SeaTerrain.Globe && Atlantis.Inside( at, 0f )) ) return false;
 		var sand = Sculpt.GroundAt( at );
 		if ( sand == float.MinValue ) return false;
 		var top = Sculpt.FloorBelow( this, at with { Y = sand + 4f * Size }, 5f * Size );

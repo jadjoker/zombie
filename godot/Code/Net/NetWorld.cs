@@ -36,10 +36,7 @@ public static class NetWorld
 		if ( s is null || s.Length < 10 || WaveDirector.Current is not { } d ) return;
 		// Joined a run that is already further on: through to the host's area.
 		if ( (int)s[9] > SeaTerrain.Area && SeaTerrain.Active && PlayerSurvivor.Local?.Controller is { } me && me.GetTree().CurrentScene is Node3D level )
-		{
-			if ( SeaTerrain.Area == 1 ) AreaTwo.Go( level, me );
-			else AreaThree.Go( level, me );
-		}
+			while ( SeaTerrain.Area < (int)s[9] && SeaTerrain.Area < SeaTerrain.LastArea ) Areas.Next( level, me );
 		d.ApplyNet( (int)s[0], (WaveState)(int)s[1], s[2], (int)s[3], (int)s[4], s[5] > 0.5f, s[6] > 0.5f, s[7] > 0.5f, s[8] > 0.5f );
 	}
 

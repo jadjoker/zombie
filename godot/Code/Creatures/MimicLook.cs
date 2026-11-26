@@ -206,6 +206,13 @@ void fragment() {
 			links.AddRange( SeaMine.MakeChain( this, DisguiseHeight ) );
 			disguisePart = CreaturePart.Create( this, 3, "Mimic Disguise", SeaMine.Radius + 0.12f );
 		}
+		else if ( Look == Disguise.Chest )
+		{
+			// A treasure chest in the Abyss's caves, the same model as the real ones (it gives itself away the same way).
+			TreasureChest.Model( disguise ).Rotation = new Vector3( -0.04f, 0f, 0f );
+			disguisePart = CreaturePart.Create( this, 3, "Mimic Disguise", 0.55f );
+			disguisePart.Position = Vector3.Up * 0.35f;
+		}
 		else
 		{
 			var c = new Color( 0.62f, 0.38f, 1f );
@@ -296,8 +303,12 @@ void fragment() {
 			if ( act == Act.Disguised )
 			{
 				var sway = new Vector3( MathF.Sin( now * 0.35f ) * 0.3f, MathF.Sin( now * 0.45f ) * 0.18f, MathF.Sin( now * 0.3f + 1f ) * 0.3f );
-				disguise.Position = Vector3.Up * DisguiseHeight + (Look == Disguise.Mine ? sway : sway * 0.5f);
-				disguise.Rotation = new Vector3( sway.Z * 0.25f, now * 0.08f, -sway.X * 0.25f );
+				if ( Look == Disguise.Chest ) { disguise.Position = Vector3.Up * DisguiseHeight; disguise.Rotation = Vector3.Zero; }
+				else
+				{
+					disguise.Position = Vector3.Up * DisguiseHeight + (Look == Disguise.Mine ? sway : sway * 0.5f);
+					disguise.Rotation = new Vector3( sway.Z * 0.25f, now * 0.08f, -sway.X * 0.25f );
+				}
 				if ( Look == Disguise.Mine ) SeaMine.LayChain( links, disguise.Position + Vector3.Down * (SeaMine.Radius + 0.08f) );
 			}
 			else

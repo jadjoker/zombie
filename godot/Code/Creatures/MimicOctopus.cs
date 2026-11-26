@@ -17,7 +17,7 @@ public partial class MimicOctopus : Creature
 	public static float Chance = 0.002f;
 	public static bool Roll() => Rng.Float() < Chance;
 
-	public enum Disguise { Mine, Bulb }
+	public enum Disguise { Mine, Bulb, Chest }
 	public const float BaseHealth = 360f;
 	public const int Arms = 8;
 	public float RevealRange = 3.4f;
@@ -69,7 +69,7 @@ public partial class MimicOctopus : Creature
 		m.Look = look;
 		m.DisguiseHeight = height;
 		m.RotationDegrees = new Vector3( 0f, Rng.Float( 0f, 360f ), 0f );
-		GD.Print( $"[mimic] a mimic octopus is hiding as a {(look == Disguise.Mine ? "sea mine" : "glow bulb")}" );
+		GD.Print( $"[mimic] a mimic octopus is hiding as a {look switch { Disguise.Mine => "sea mine", Disguise.Bulb => "glow bulb", _ => "treasure chest" }}" );
 		return m;
 	}
 
@@ -268,7 +268,7 @@ public partial class MimicOctopus : Creature
 		var next = Sculpt.InBounds( p + velocity.Flat() * dt );
 		if ( sinceFloor > 0.2f || !floorSet ) { sinceFloor = 0f; floorY = Sculpt.FloorBelow( this, next + Vector3.Up * 1.2f, 8f ); floorSet = true; }
 		var ground = Sculpt.GroundAt( next );
-		var floor = SeaTerrain.Area == 3 || ground == float.MinValue ? floorY : MathF.Max( ground, floorY - 0.05f );
+		var floor = SeaTerrain.Area == SeaTerrain.Globe || ground == float.MinValue ? floorY : MathF.Max( ground, floorY - 0.05f );
 		next.Y = MathX.Lerp( p.Y, floor, 1f - MathF.Exp( -10f * dt ) );
 		GlobalPosition = next;
 	}

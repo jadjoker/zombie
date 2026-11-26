@@ -71,11 +71,11 @@ jobs:
           cp Tools/PLAYTEST_README.txt ../build/linux/README.txt
           printf '[[actions]]\nname = "play"\npath = "RiskOfCopyright.x86_64"\n' > ../build/linux/.itch.toml
 
-      - name: Tests (the dive and first waves, the teleporters, Atlantis, Poseidon, mermaids)
+      - name: Tests (the dive and first waves, the teleporters, the Abyss, Atlantis, Poseidon, mermaids)
         run: |
           chmod +x build/linux/RiskOfCopyright.x86_64
           failed=0
-          for flags in "--waves --waveflow" "--teleport" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51" "--terrain" "--shark" "--stations" "--pad" "--padmenus" "--slam" "--bite" "--sea" "--bulbs" "--clarity" "--gibs" "--classes" "--tridentbot" "--davey" "--jelly" "--angler" "--stingray" "--kingray" "--eels" "--puffer" "--hermit" "--mimic" "--cleaner" "--rocks" "--tridentseek" "--playtest44" "--skills" "--hookbot" "--coralbot" "--emotes" "--goobot" "--plungerbot" "--pinballbot" "--moveposes"; do
+          for flags in "--waves --waveflow" "--teleport" "--abyss" "--atlantis" "--poseidon" "--mermaids" "--missiles" "--pickups" "--crab" "--mc51" "--terrain" "--shark" "--stations" "--pad" "--padmenus" "--slam" "--bite" "--sea" "--bulbs" "--clarity" "--gibs" "--classes" "--tridentbot" "--davey" "--jelly" "--angler" "--stingray" "--kingray" "--eels" "--puffer" "--hermit" "--mimic" "--cleaner" "--rocks" "--tridentseek" "--playtest44" "--skills" "--hookbot" "--coralbot" "--emotes" "--goobot" "--plungerbot" "--pinballbot" "--moveposes"; do
             name=$(echo "$flags" | tr -d '-' | tr ' ' '_')
             log="$PWD/build/test_$name.log"
             timeout 300 build/linux/RiskOfCopyright.x86_64 --headless --log-file "$log" -- --autotest $flags > "$log.out" 2>&1 || true
@@ -140,7 +140,7 @@ jobs:
         run: |
           sudo apt-get install -y -qq xvfb libgl1-mesa-dri > /dev/null
           mkdir -p build/shots
-          for test in poseidon atlantis mermaids missiles pickups crab mc51 tridentbot davey jelly angler stingray kingray eels puffer hermit mimic cleaner; do
+          for test in abyss poseidon atlantis mermaids missiles pickups crab mc51 tridentbot davey jelly angler stingray kingray eels puffer hermit mimic cleaner; do
             timeout 300 xvfb-run -a -s "-screen 0 1600x900x24" build/linux/RiskOfCopyright.x86_64 --rendering-method gl_compatibility \
               --log-file "$PWD/build/shots_$test.log" -- --autotest --$test --shots "$PWD/build/shots" > /dev/null 2>&1 || true
             # A run that crashed before its pictures gets one more go.

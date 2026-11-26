@@ -653,7 +653,8 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { OpenWorld: false } ) Action( $"Davey wave ({d.DaveyWave})", () => d.JumpToWave( d.DaveyWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
-			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area != 3 ) Action( "Teleport to Atlantis (stage 3, wave 21)", () => d.DevGoToAtlantis( Controller ) );
+			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area < SeaTerrain.Caves ) Action( "Teleport to the Abyss (stage 3, wave 21)", () => d.DevGoToArea( Controller, SeaTerrain.Caves ) );
+			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area < SeaTerrain.Globe ) Action( "Teleport to Atlantis (stage 4, wave 31)", () => d.DevGoToArea( Controller, SeaTerrain.Globe ) );
 			Info( $"Wave {wave}    Kills {d?.Kills ?? 0}    Enemies left {d?.ZombiesRemaining ?? 0}    Phase {d?.State.ToString() ?? "-"}" );
 		}
 

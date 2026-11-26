@@ -1410,8 +1410,19 @@ public partial class AtlantisHeart : Node3D
 public partial class AtlantisFish : MultiMeshInstance3D
 {
 	const int Count = 14;
-	readonly float radius, height, speed, phase, wobble;
+	float radius, height, speed, wobble;
+	readonly float phase;
 	readonly Vector3[] offsets = new Vector3[Count];
+
+	/// <summary> Circles this tight round the map's middle at this height instead (the Abyss's statue). </summary>
+	public void Around( float r, float h )
+	{
+		var pace = MathF.Abs( speed * radius ) * 0.6f;
+		radius = r;
+		height = h;
+		speed = MathF.Sign( speed ) * pace / r;
+		wobble = 1.5f;
+	}
 	float time;
 
 	public AtlantisFish() : this( 0 ) { }

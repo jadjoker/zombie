@@ -61,6 +61,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--terrain" ) ) { await TerrainTest(); return; }
 		if ( args.Contains( "--teleport" ) ) { await TeleportTest(); return; }
 		if ( args.Contains( "--atlantis" ) ) { await AtlantisTest(); return; }
+		if ( args.Contains( "--abyss" ) ) { await AbyssTest(); return; }
 		if ( args.Contains( "--poseidon" ) ) { await PoseidonTest(); return; }
 		if ( args.Contains( "--davey" ) ) { await DaveyTest(); return; }
 		if ( args.Contains( "--mermaids" ) ) { await MermaidTest(); return; }
@@ -4018,8 +4019,8 @@ public partial class AutoTest : Node
 	}
 
 	/// <summary>
-	/// Area 3 (Atlantis): straight to the wreck site, clear wave 20, the teleporter must come and wave 21 wait for it;
-	/// through it to Atlantis, wave 21 starts, the buy stations stand by the arrival, the spawn points are inside the
+	/// Area 4 (Atlantis): straight through the wreck site to the Abyss, clear wave 30, the teleporter must come and wave 31 wait for it;
+	/// through it to Atlantis (the Abyss and its darkness gone), wave 31 starts, the buy stations stand by the arrival, the spawn points are inside the
 	/// globe, and every place in Atlantis.Places can be stood on and reached on foot from the arrival.
 	/// </summary>
 	async Task AtlantisTest()
@@ -4030,32 +4031,34 @@ public partial class AutoTest : Node
 		var director = WaveDirector.Current;
 		var use = player.GetNode<PlayerUse>( "PlayerUse" );
 		var level = GetTree().CurrentScene as Node3D;
-		AreaTwo.Go( level, player );   // the --teleport test covers the first trip
+		AreaTwo.Go( level, player );   // the --teleport and --abyss tests cover the first two trips
+		AbyssArea.Go( level, player );
 		await Wait( 1f );
-		Check( SeaTerrain.Area == 2, "did not get to the wreck site" );
-		director.JumpToWave( 20 );
+		Check( SeaTerrain.Area == SeaTerrain.Caves, "did not get to the Abyss" );
+		director.JumpToWave( 30 );
 		await Wait( 0.5f );
-		Check( director.Wave == 20 && director.State == WaveState.Fighting, $"did not get to wave 20 (wave {director.Wave}, {director.State})" );
+		Check( director.Wave == 30 && director.State == WaveState.Fighting, $"did not get to wave 30 (wave {director.Wave}, {director.State})" );
 		director.SkipWave();
 		await Wait( 4f );
 		var tp = Teleporter.Current;
-		Check( tp is not null && director.WaitingForTeleport, "no teleporter after wave 20, or wave 21 did not wait for it" );
+		Check( tp is not null && director.WaitingForTeleport, "no teleporter after wave 30, or wave 31 did not wait for it" );
 		if ( tp is null ) { GD.Print( "[autotest] done" ); GetTree().Quit(); return; }
 		GD.Print( $"[autotest] atlantis: teleporter at {tp.GlobalPosition}" );
 		player.GlobalPosition = Nav.Closest( player, tp.GlobalPosition + new Vector3( 0.6f, 0f, 0.3f ) ) + Vector3.Up * 0.1f;
 		player.Velocity = Vector3.Zero;
 		await Wait( 0.4f );
-		Check( use.AtTeleporter, "standing on the wreck site's teleporter does not offer it" );
+		Check( use.AtTeleporter, "standing on the Abyss's teleporter does not offer it" );
 		use.PressUse();
 		await Wait( 0.75f );
 		await Shot( "loading_screen" );   // the teleporter's loading screen, up before the build
 		await Wait( 2.25f );
-		Check( SeaTerrain.Area == 3 && Atlantis.Root is not null && IsInstanceValid( Atlantis.Root ) && !ShipWreck.Placed, "the teleporter did not take the player to Atlantis" );
+		Check( SeaTerrain.Area == SeaTerrain.Globe && Atlantis.Root is not null && IsInstanceValid( Atlantis.Root ) && !ShipWreck.Placed && Abyss.Root is null && AbyssMood.Current is null && HipLantern.All.Count == 0, "the teleporter did not take the player to Atlantis" );
 		var arrival = Atlantis.Arrival;
 		GD.Print( $"[autotest] atlantis: player at {player.GlobalPosition}, {player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ):0.0} m from the arrival" );
 		Check( player.GlobalPosition.Flat().DistanceTo( arrival.Flat() ) < 5f, "the player did not arrive at Atlantis's arrival pad" );
 		await Wait( 6f );
-		Check( director.Wave == 21 && director.State == WaveState.Fighting, $"wave 21 did not begin in Atlantis (wave {director.Wave}, {director.State})" );
+		Check( director.Wave == 31 && director.State == WaveState.Fighting, $"wave 31 did not begin in Atlantis (wave {director.Wave}, {director.State})" );
+		Check( director.PoseidonWave == 40 && director.PoseidonHealth == 37500f, "Poseidon is not wave 40's boss with 37500 health" );
 		director.SkipWave();
 		director.SpawningPaused = true;
 

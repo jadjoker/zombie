@@ -69,7 +69,7 @@ public partial class SeaMine : Node3D
 		for ( var tries = 0; tries < 80; tries++ )
 		{
 			Vector3 at;
-			if ( SeaTerrain.Area == 3 )
+			if ( SeaTerrain.Area == SeaTerrain.Globe )
 			{
 				// Atlantis: down in the dry canals (inner or outer).
 				at = Atlantis.Polar( random.NextDouble() < 0.35 ? R( 20.5f, 23.5f ) : R( 47.5f, 52.5f ), R( 0f, 360f ), Atlantis.CanalFloorY );

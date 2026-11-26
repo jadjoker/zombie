@@ -431,6 +431,13 @@ public partial class DockHouse : Node3D
 	Color seaAmbient;
 	float seaAmbientEnergy, inHut, inAir;
 
+	/// <summary> The ambient light under the water, now (the Abyss darkens it, Atlantis puts it back). </summary>
+	public (Color Colour, float Energy)? SeaAmbient
+	{
+		get => env is null ? null : (seaAmbient, seaAmbientEnergy);
+		set { if ( value is { } v ) { seaAmbient = v.Colour; seaAmbientEnergy = v.Energy; } }
+	}
+
 	/// <summary>
 	/// The level's ambient is tuned for underwater (a strong teal fill). Above the surface it gives way to a dim cool
 	/// moonlight fill, and inside the hut to a low warm one, so the lamp does the lighting. Eases between them.

@@ -133,14 +133,14 @@ public partial class PlayerRig
 	/// A node on a bone, placed `offset` inches from the bone in character space at rest and turned to character space,
 	/// so what is built under it in character inches (X ahead, Y left, Z up) sits there and moves with the bone.
 	/// </summary>
-	Node3D OnBone( string bone, Vector3 offset )
+	Node3D OnBone( string bone, Vector3 offset, List<Node> into = null )
 	{
 		var b = skeleton.FindBone( bone );
 		if ( b < 0 ) return null;
 		// A bone attachment only follows its bone as a direct child of the skeleton.
 		var attach = new BoneAttachment3D { Name = $"Goo {bone}", BoneName = bone };
 		skeleton.AddChild( attach );
-		gooAttachments.Add( attach );
+		(into ?? gooAttachments).Add( attach );
 		var rest = skeleton.GetBoneGlobalRest( b );
 		// Rig root space: the bone at rest, and where the gear should be (character inches turned into Godot metres).
 		var restRig = K * rest;

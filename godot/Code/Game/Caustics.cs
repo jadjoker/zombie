@@ -10,6 +10,10 @@ public static class Caustics
 {
 	static ShaderMaterial pass;
 
+	/// <summary> How strong the caustics are (none in the Abyss: no sun gets down there). </summary>
+	public static void SetStrength( float strength ) => pass?.SetShaderParameter( "strength", strength );
+	public const float DefaultStrength = 0.42f;
+
 	public static void AddTo( Node level )
 	{
 		pass ??= new ShaderMaterial { Shader = GD.Load<Shader>( "res://assets/shaders/caustics_pass.gdshader" ) };

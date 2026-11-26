@@ -8,9 +8,9 @@ using Godot;
 /// spawn points move to the city's outer ring street, the floating plants drift high over the rooftops, the marine
 /// snow stops (a snow globe without the snow), the navmesh is baked again and wave 21 starts.
 /// </summary>
-public static class AreaThree
+public static class AtlantisArea
 {
-	public static bool Active => SeaTerrain.Area == 3;
+	public static bool Active => SeaTerrain.Area == SeaTerrain.Globe;
 
 	public static void Go( Node3D level, PlayerController controller )
 	{
@@ -27,8 +27,12 @@ public static class AreaThree
 				settled.Add( (n, n.GlobalPosition.Y - SeaTerrain.HeightAt( n.GlobalPosition )) );
 		}
 
-		SeaTerrain.Area = 3;
+		SeaTerrain.Area = SeaTerrain.Globe;
 		ShipWreck.Clear();
+		// Out of the Abyss: its caves, its lanterns and darkness, and the mimics still hiding as chests go.
+		Abyss.Clear();
+		AbyssMood.Leave( level );
+		foreach ( var m in MimicOctopus.All.Where( m => m.Hidden && m.Look == MimicOctopus.Disguise.Chest ).ToList() ) m.QueueFree();
 		// The wreck site's arrival pad goes (not the teleporter being used: it frees itself when the trip is done).
 		foreach ( var pad in level.FindChildren( "*", "Node3D", true, false ).OfType<Teleporter>().Where( t => t.Arrival ).ToList() )
 		{

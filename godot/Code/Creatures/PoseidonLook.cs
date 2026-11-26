@@ -439,6 +439,26 @@ void fragment() {
 	}
 
 	/// <summary>
+	/// Just his head (face, brows, moustache, beard and hair locks, fin ears, crown) carved in `stone`, the eyes' irises in
+	/// `eyes`, under `parent` with the head joint at its origin facing -Z (the Abyss's sunken statue wears it).
+	/// </summary>
+	public static Node3D StatueHead( Node3D parent, Material stone, Material eyes )
+	{
+		var look = new Look
+		{
+			Skin = stone, Hands = stone, Vein = stone, Scales = stone, Hair = stone, Armour = stone, Fins = stone, EyeBlack = stone,
+			EyeWhite = stone, Dark = stone, Purple = stone, Green = stone, Yellow = stone, Pupil = eyes,
+		};
+		var rig = new Rig();
+		// BuildHead puts the head joint up off its chest node: this holder sits that far below.
+		var holder = new Node3D { Name = "Poseidon Head", Position = new Vector3( 0f, -1.42f, 0.02f ) };
+		parent.AddChild( holder );
+		BuildHead( holder, look, rig );
+		rig.Pose();
+		return rig.Head;
+	}
+
+	/// <summary>
 	/// The statue of him that stands on Atlantis's island: his own body all in gold (the jewels still glowing), standing
 	/// on the tip of his tail with the trident upright like a staff and his fist out, facing `facing`. `feet` is where
 	/// the tail's tip rests; `size` scales the whole statue (1 is the boss's model before his own Size). `marble` carves him in

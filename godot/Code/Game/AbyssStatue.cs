@@ -134,6 +134,9 @@ void fragment() {
 		parent.AddChild( fish );
 	}
 
+	/// <summary> Poseidon's head is drawn this much of his size on the statue. </summary>
+	public const float HeadScale = 0.42f;
+
 	static void BuildFigure( Node3D f, Material m )
 	{
 		// The robe: a long flaring loft with folds, from the feet to the waist.
@@ -148,25 +151,12 @@ void fragment() {
 		// A sash at the waist where the robe gathers.
 		SmoothKit.Ball( f, new Vector3( 0f, 0.95f, 0f ), new Vector3( 0.36f, 0.06f, 0.27f ), m, null, "Sash" );
 
-		// The head, turned up to the light: face, nose, brow, long hair and a full beard.
+		// The head, turned up to the light: Poseidon's own (user's choice), in the same crusted stone, his eyes faintly lit.
 		var head = new Node3D { Name = "Head", Position = new Vector3( 0f, 1.6f, 0.01f ), Rotation = new Vector3( -0.42f, 0f, 0f ) };
 		f.AddChild( head );
-		SmoothKit.Ball( head, new Vector3( 0f, 0.07f, 0.01f ), new Vector3( 0.19f, 0.24f, 0.21f ), m, null, "Skull" );
-		SmoothKit.Ball( head, new Vector3( 0f, 0.075f, 0.105f ), new Vector3( 0.035f, 0.065f, 0.05f ), m, null, "Nose" );
-		SmoothKit.Ball( head, new Vector3( 0f, 0.12f, 0.085f ), new Vector3( 0.16f, 0.035f, 0.06f ), m, null, "Brow" );
-		foreach ( var side in new[] { -1f, 1f } )
-		{
-			SmoothKit.Ball( head, new Vector3( side * 0.045f, 0.1f, 0.098f ), new Vector3( 0.04f, 0.022f, 0.02f ), m, null, "Eye" );
-			SmoothKit.Ball( head, new Vector3( side * 0.06f, 0.035f, 0.075f ), new Vector3( 0.06f, 0.05f, 0.05f ), m, null, "Cheek" );
-		}
-		SmoothKit.Ball( head, new Vector3( 0f, -0.04f, 0.06f ), new Vector3( 0.15f, 0.16f, 0.12f ), m, null, "Beard" );
-		SmoothKit.Ball( head, new Vector3( 0f, -0.1f, 0.055f ), new Vector3( 0.09f, 0.12f, 0.08f ), m, null, "Beard Tip" );
-		SmoothKit.Ball( head, new Vector3( 0f, 0.13f, -0.03f ), new Vector3( 0.21f, 0.16f, 0.22f ), m, null, "Hair" );
-		foreach ( var side in new[] { -1f, 1f } )
-		{
-			SmoothKit.Tube( head, new Vector3( side * 0.085f, 0.1f, -0.02f ), new Vector3( side * 0.11f, -0.15f, -0.07f ), 0.06f, 0.045f, m, "Hair Lock" );
-			SmoothKit.Tube( head, new Vector3( side * 0.04f, 0.12f, -0.09f ), new Vector3( side * 0.07f, -0.17f, -0.12f ), 0.06f, 0.05f, m, "Hair Back" );
-		}
+		var face = new Node3D { Name = "Face", Rotation = new Vector3( 0f, MathF.PI, 0f ), Scale = Vector3.One * HeadScale };
+		head.AddChild( face );
+		Poseidon.StatueHead( face, m, Sculpt.Glow( new Color( 0.35f, 1f, 0.3f ), 1.2f ) );
 
 		// The arms, raised up and out to the light, in wide sleeves, the hands open.
 		foreach ( var side in new[] { -1f, 1f } )

@@ -161,7 +161,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   where the spawn points go (`Mouths`, `SpawnSpots`), a rock roof (`RoofAt`, solid after the navmesh, `AddRoofCollider`)
   with stalactites and a skylight. Swimmers stay under `SwimCeiling` (`Abyss.KeepIn` via `Sculpt.InBounds`).
   `AbyssStatue.cs`: our own robed figure with raised arms on a stepped base (after the user's photo of a sunken
-  statue of Christ, not a copy), a coral crust shader, a spotlight and beam down the skylight, fish circling.
+  statue, not a copy) wearing Poseidon's head (`Poseidon.StatueHead`, user's choice; eyes faintly lit), a coral crust shader, a spotlight and beam down the skylight, fish circling.
   `AbyssMood.cs`: the darkness (ambient, murk, sun, no caustics, the backdrop hidden; `Leave` restores it) and a
   `HipLantern` on every player (warm light at the right hip, the lantern model on the rig, `PlayerRigLantern.cs`).
   The ally spider has a white headlamp at its glow ball (`SeaSpider.Headlamp`); `Areas.BringAllies` brings it through

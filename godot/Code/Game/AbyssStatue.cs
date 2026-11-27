@@ -99,13 +99,14 @@ void fragment() {
 			var (r, h) = Tiers[i];
 			if ( i == 0 )
 			{
-				SmoothKit.Put( Root, SectorMesh( r, h, 40f, 330f ), baseCrust, "Base Step" ).Position = new Vector3( 0f, y - 0.3f, 0f );
-				SmoothKit.Put( Root, SectorMesh( r, h * 0.45f, 330f, 400f ), baseCrust, "Base Ledge" ).Position = new Vector3( 0f, y - 0.3f, 0f );
+				// Each step is drawn down into the sand (they used to stop short, so a step hung in the air over the worn ledge).
+				SmoothKit.Put( Root, SectorMesh( r, h + 0.3f, 40f, 330f ), baseCrust, "Base Step" ).Position = new Vector3( 0f, y - 0.3f, 0f );
+				SmoothKit.Put( Root, SectorMesh( r, h * 0.45f + 0.3f, 330f, 400f ), baseCrust, "Base Ledge" ).Position = new Vector3( 0f, y - 0.3f, 0f );
 				body.AddChild( new CollisionShape3D { Shape = new CylinderShape3D { Radius = r, Height = h + 0.3f }, Position = new Vector3( 0f, y + (h - 0.3f) * 0.5f, 0f ) } );
 			}
 			else
 			{
-				SmoothKit.Put( Root, SectorMesh( r, h, 0f, 360f ), baseCrust, "Base Step" ).Position = new Vector3( 0f, y, 0f );
+				SmoothKit.Put( Root, SectorMesh( r, y + h + 0.3f, 0f, 360f ), baseCrust, "Base Step" ).Position = new Vector3( 0f, -0.3f, 0f );
 				body.AddChild( new CollisionShape3D { Shape = new CylinderShape3D { Radius = r, Height = h }, Position = new Vector3( 0f, y + h * 0.5f, 0f ) } );
 			}
 			y += h;
@@ -269,9 +270,10 @@ void fragment() {
 		return st.Commit();
 	}
 
+	/// <summary> Wound clockwise from outside (Godot's front faces); the other way round, the steps were drawn inside out. </summary>
 	static void Quad( SurfaceTool st, Vector3 a, Vector3 b, Vector3 c, Vector3 d )
 	{
-		st.AddVertex( a ); st.AddVertex( b ); st.AddVertex( c );
-		st.AddVertex( a ); st.AddVertex( c ); st.AddVertex( d );
+		st.AddVertex( a ); st.AddVertex( c ); st.AddVertex( b );
+		st.AddVertex( a ); st.AddVertex( d ); st.AddVertex( c );
 	}
 }

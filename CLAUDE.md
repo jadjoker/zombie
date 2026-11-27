@@ -172,7 +172,7 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   `--shots`, a photo tour and a map view).
   Solid as drawn (user's ask: nothing to get inside): each boulder's collider is the hull of every point it is drawn with,
   stalagmites and stalactites have their own hulls (stalactites on the roof body, not `RockMeta`), skeletons boxes, the
-  statue figure hulls of its pieces (`FigureSolid`). After the bake `Nav.KeepConnected` drops navmesh not joined to the
+  statue figure hulls of its pieces (`FigureSolid`); the base steps are wound clockwise and drawn down into the sand (`--statue`: pictures of it from round the hub). After the bake `Nav.KeepConnected` drops navmesh not joined to the
   floor (patches on wall tops and in pockets). `AbyssSolidTest.cs` (in `--abyss`): wall holes, walking into walls and
   props (eye clear of the drawn rock), the statue, navmesh in rock, enemies chasing through the maze.
 - The Abyss's bosses (user's picks): the Blind Warden on wave 25 and the Leviathan on wave 30 (`WaveDirector.WardenWave`,

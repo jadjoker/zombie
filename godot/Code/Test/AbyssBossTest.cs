@@ -64,6 +64,27 @@ public partial class AutoTest
 		return boss;
 	}
 
+	/// <summary> --statue: the Abyss's statue from round the hub, close and low, to see how it sits on the floor (needs a window). </summary>
+	async Task StatueShots()
+	{
+		if ( !await ToAbyss() ) { Done(); return; }
+		var root = AbyssStatue.Root;
+		Check( root is not null, "no statue in the Abyss" );
+		if ( root is not null )
+		{
+			var floor = SeaTerrain.HeightAt( 0f, 0f );
+			GD.Print( $"[autotest] statue: base at y {root.GlobalPosition.Y:0.00}, floor under it {floor:0.00}, floor at the base's edge {SeaTerrain.HeightAt( 5.6f, 0f ):0.00}" );
+		}
+		foreach ( var (r, a, h) in new[] { (9f, 146.25f, 1.2f), (9f, 236f, 1.2f), (16f, 326f, 4f), (7f, 56f, 0.6f) } )
+		{
+			StandAt( Hub( r, a ), Vector3.Zero );
+			Face( new Vector3( 0f, h, 0f ) );
+			await Wait( 0.4f );
+			await Shot( $"statue_{(int)a}" );
+		}
+		Done();
+	}
+
 	async Task WardenTest()
 	{
 		if ( !await ToAbyss() ) { Done(); return; }

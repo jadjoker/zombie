@@ -173,6 +173,7 @@ void fragment() { ALBEDO = COLOR.rgb * COLOR.a; }",
 			width = MathX.Lerp( 3.4f, 0.7f, k );
 			sweepYaw = MathF.Atan2( dir.X, dir.Z );
 		}
+		from += dir * 1.2f;   // out through the glass, clear of the gallery deck
 		var far = from + dir * 34f;
 		var hit = Trace.Ray( this, from, far, Layers.World );
 		var end = hit.Hit ? hit.HitPosition : far;
@@ -280,7 +281,8 @@ public partial class FogBank : Node3D
 
 	public override void _Process( double delta )
 	{
-		var dt = MathF.Min( (float)delta, 0.1f );
+		// Real game time (not capped per frame), so a slow frame never makes the fog outstay its time.
+		var dt = (float)delta;
 		age += dt;
 		if ( lifted >= 0f ) lifted += dt;
 		if ( age >= life || lifted >= 1.5f ) { QueueFree(); return; }

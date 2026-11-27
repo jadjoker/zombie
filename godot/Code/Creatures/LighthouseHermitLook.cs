@@ -22,7 +22,7 @@ public partial class LighthouseHermit
 	float flash, dying;
 
 	/// <summary> How far the tower leans back over his shell (radians). </summary>
-	const float TowerTilt = 0.42f;
+	const float TowerTilt = 0.2f;
 	const float SectionHeight = 1.8f;
 	const int SectionCount = 4;
 	const float TowerTop = SectionHeight * SectionCount;
@@ -30,6 +30,8 @@ public partial class LighthouseHermit
 	const float CrabScale = 1.45f;
 	/// <summary> Where the tower's foot sits on him (body space). </summary>
 	static readonly Vector3 TowerBase = new( 0f, 1.5f, 2.25f );
+	/// <summary> The belly inside the tower's foot (from TowerBase), and its size: narrower than the tower so the walls hide it. </summary>
+	static readonly Vector3 BellyRest = new( 0f, 0.7f, 0f ), BellySize = new( 3f, 1.5f, 3f );
 	static float TowerRadius( float y ) => MathX.Lerp( 1.8f, 1.2f, MathX.Clamp( y / TowerTop, 0f, 1f ) );
 
 	static readonly Color Purple = new( 0.36f, 0.16f, 0.5f );
@@ -397,27 +399,12 @@ void fragment() {
 				index++;
 			}
 
-		// ---- The abdomen: soft and curled up and back into the tower ----
-		abdomen = Sculpt.Joint( crab, new Vector3( 0f, 1.45f, 0.35f ), "Abdomen" );
-		var curl = Sculpt.Joint( abdomen, Vector3.Zero, "Curl" );
-		curl.Basis = new Basis( Vector3.Right, 0.95f );   // its Y runs up and back
-		var ab = new List<(float, float, float, float)>
-		{
-			(0f, 0.72f, 0.6f, 0f),
-			(0.5f, 0.95f, 0.82f, 0.05f),
-			(1.1f, 1.15f, 1.0f, 0.12f),
-			(1.7f, 1.2f, 1.05f, 0.18f),
-			(2.3f, 1.05f, 0.95f, 0.2f),
-		};
-		Put( curl, Cached( "hermit abdomen", () => Loft( Smooth( ab ), 0f, 1f, 28 ) ), softSkin, "Abdomen" );
-		// The belly that bulges out under the tower's lip (bared when he rears up for the beam).
-		bellyBulge = Ball( abdomen, new Vector3( 0f, -0.15f, 0.95f ), new Vector3( 1.9f, 1.15f, 1.6f ), softSkin, null, "Belly" );
-		bellyPart = CreaturePart.Create( this, BellyIndex, "Hermit Belly", 0.85f );
+		// ---- The abdomen: a soft belly tucked up inside the tower's foot (the tower covers it; it shows when he rears up) ----
+		abdomen = Sculpt.Joint( body, TowerBase + BellyRest, "Abdomen" );
+		bellyBulge = Ball( abdomen, Vector3.Zero, BellySize, softSkin, null, "Belly" );
+		bellyPart = CreaturePart.Create( this, BellyIndex, "Hermit Belly", 1.2f );
 		abdomen.AddChild( bellyPart );
-		bellyPart.Position = new Vector3( 0f, -0.15f, 0.95f );
 		bellyPart.Collider.Disabled = true;
-		// Little swimmerets under it.
-		for ( var k = 0; k < 4; k++ ) Fin( abdomen, new Vector3( (k - 1.5f) * 0.32f, -0.55f, 0.6f ), new Basis( Vector3.Right, 0.5f ), 0.45f, 0.22f, FinMaterial( BellyPink, EyeGreen, 0.8f, 0.25f ), 0.1f );
 
 		// ---- The lighthouse: four banded sections leant back over him ----
 		tower = Sculpt.Joint( body, TowerBase, "Tower" );
@@ -465,6 +452,9 @@ void fragment() {
 					Sculpt.Block( section, new Vector3( MathF.Sin( a ) * (r + 0.02f), y - 0.32f, MathF.Cos( a ) * (r + 0.02f) ), new Vector3( 0.46f, 0.08f, 0.16f ), stone, turn, "Sill" );
 				}
 		}
+		var inside = new MeshInstance3D { Name = "Tower Inside", Mesh = new CylinderMesh { TopRadius = 1.72f, BottomRadius = 1.72f, Height = 0.06f, RadialSegments = 32 }, MaterialOverride = Sculpt.Paint( new Color( 0.06f, 0.04f, 0.05f ), 0.9f ) };
+		tower.AddChild( inside );
+		inside.Position = Vector3.Up * 1.6f;
 		// A stone lip round the bottom where he went in, and an arched door on the back.
 		var lip = new MeshInstance3D { Name = "Tower Lip", Mesh = new TorusMesh { InnerRadius = 1.6f, OuterRadius = 2.0f, Rings = 40, RingSegments = 10 }, MaterialOverride = stone };
 		tower.AddChild( lip );

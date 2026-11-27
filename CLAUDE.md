@@ -256,8 +256,8 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
 - The Lighthouse Hermit (wave 10 boss, user's pick; `WaveDirector.LighthouseWave`, `LighthouseHealth` 6000, `EnemyKind.Lighthouse`, takes
   MC-51's place on the shore's last wave; MC-51 keeps wave 5 at 2500, set in `levels/*.json` too, which override the code):
   `Creatures/LighthouseHermit.cs` (brain, attacks, hits, burst), `LighthouseHermitLook.cs` (built in code: a red and purple crab at
-  `CrabScale`, alien eyes on stalks, one huge warty claw, legs that step on their own, a soft pink abdomen with green veins curled
-  into a banded brick lighthouse leant back `TowerTilt`, barnacles, glowing cracks (`TowerShader`), lit windows, gallery, a glass
+  `CrabScale`, alien eyes on stalks, one huge warty claw, legs that step on their own,
+  a soft pink belly tucked inside the foot of a banded brick lighthouse leant back a little (`TowerTilt`, `BellyRest`), barnacles, glowing cracks (`TowerShader`), lit windows, gallery, a glass
   lamp room with an alien eye for a lamp (`LampShader`, fog_disabled), a brass foghorn), `LighthouseHermitMotion.cs`,
   `LighthouseHermitFx.cs` (the sweeping lamp cone and spotlight, the Lantern Beam, the erupt cue; `FogBank`: pulls the level's
   depth fog in for a player inside it and puts it back; `LampTrail`), `LighthouseHermitNet.cs`. He scuttles sideways round the

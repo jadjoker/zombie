@@ -52,7 +52,7 @@ public partial class LighthouseHermit
 			{
 				var up = a < BeamRear + BeamCharge + BeamTime ? Ease( a / BeamRear ) : 1f - Ease( (a - (BeamRear + BeamCharge + BeamTime)) / 0.7f );
 				liftTo = 1.25f * up;
-				leanTo = 0.32f * up;
+				leanTo = 0.1f * up;
 				spreadTo = 0.55f * up;
 				bigTo = smallTo = 0.5f * up;
 				open = 0.8f;
@@ -93,8 +93,8 @@ public partial class LighthouseHermit
 		tower.Position = TowerBase + new Vector3( 0f, lift, lift * 0.35f );
 		tower.Basis = new Basis( Vector3.Back, roll + MathF.Sin( t * 0.7f ) * 0.015f ) * new Basis( Vector3.Right, TowerTilt + lean );
 		var bulge = 1f + (BellyOpen ? 0.12f + 0.05f * MathF.Sin( t * 6f ) : 0f);
-		bellyBulge.Scale = new Vector3( 1.9f, 1.15f, 1.6f ) * bulge;
-		abdomen.Position = new Vector3( 0f, 1.45f + lift * 0.4f / CrabScale, 0.35f );
+		bellyBulge.Scale = BellySize * bulge;
+		abdomen.Position = TowerBase + BellyRest + new Vector3( 0f, lift * 0.25f, 0f );
 		// Eye stalks and antennae: on the nearest player, swaying.
 		var prey = Nearest;
 		for ( var i = 0; i < stalks.Count; i++ )

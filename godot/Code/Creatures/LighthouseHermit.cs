@@ -623,6 +623,7 @@ public partial class LighthouseHermit : Creature
 	{
 		var from = LampAt;
 		var dir = (beamAt + Vector3.Up * 0.3f - from).SafeNormal();
+		from += dir * 1.2f;   // out through the lamp room's glass, clear of the gallery deck
 		var far = from + dir * 80f;
 		var hit = Trace.Ray( this, from, far, Layers.World );
 		return (from, hit.Hit ? hit.HitPosition : far);

@@ -199,7 +199,7 @@ void fragment() {
 		rig = new Node3D { Name = "Leviathan Body" };
 		GetTree().CurrentScene.AddChild( rig );
 
-		// The head: a long whale skull and a hinged lower jaw full of teeth (the user kept these over a flower mouth), six
+		// The head: a long whale skull and a hinged lower jaw full of teeth (the user kept these over a flower mouth), eight
 		// black almond alien eyes down the sides and lure whiskers hanging off the jaw.
 		head = new Node3D { Name = "Head" };
 		rig.AddChild( head );
@@ -217,19 +217,19 @@ void fragment() {
 			var length = (i % 2 == 0 ? 0.75f : 0.45f) * (1.1f - 0.3f * MathF.Abs( s ));
 			Sculpt.Cone( head, at, at + new Vector3( 0f, -length, -0.1f ), 0.12f, tooth, 6, "Tooth" );
 		}
-		// Brow ridges of bone, and the eyes: three a side, the biggest at the front, the classic alien eye (a glossy black
+		// The eyes: four a side, a big pair on top, the classic alien eye (a glossy black
 		// almond slanted out at the top on a glowing green rim) set in a bulb of hide. They track the prey and blink in turn.
 		var eyeBlack = new StandardMaterial3D { AlbedoColor = new Color( 0.01f, 0.01f, 0.015f ), Roughness = 0.06f, ClearcoatEnabled = true, Clearcoat = 1f, ClearcoatRoughness = 0.04f, Metallic = 0.2f };
 		foreach ( var x in new[] { -1f, 1f } )
 		{
-			SmoothKit.Ball( head, new Vector3( x * 1.3f, 1.15f, -1.7f ), new Vector3( 1.0f, 0.45f, 2.6f ), bone, null, "Brow" );
-			var spots = new[] { (new Vector3( 1.55f, 0.55f, -2.6f ), 1.15f), (new Vector3( 1.85f, 0.7f, -1.2f ), 0.95f), (new Vector3( 1.95f, 0.55f, 0.2f ), 0.75f) };
-			foreach ( var (spot0, size) in spots )
+			// The big pair on top (where the old pale brows were) looks up and ahead; three more run down each side.
+			var spots = new[] { (new Vector3( 1.05f, 1.45f, -1.7f ), 1.35f, new Vector3( 0.4f, 0.8f, -0.45f )), (new Vector3( 1.55f, 0.55f, -2.6f ), 1.15f, new Vector3( 0.85f, 0.2f, -0.45f )), (new Vector3( 1.85f, 0.7f, -1.2f ), 0.95f, new Vector3( 0.85f, 0.2f, -0.45f )), (new Vector3( 1.95f, 0.55f, 0.2f ), 0.75f, new Vector3( 0.85f, 0.2f, -0.45f )) };
+			foreach ( var (spot0, size, look0) in spots )
 			{
 				var at = new Vector3( spot0.X * x, spot0.Y, spot0.Z );
 				var eye = new Node3D { Name = "Alien Eye", Position = at };
 				head.AddChild( eye );
-				var look = new Vector3( x * 0.85f, 0.2f, -0.45f ).Normalized();
+				var look = new Vector3( look0.X * x, look0.Y, look0.Z ).Normalized();
 				eye.Basis = new Basis( new Quaternion( Vector3.Back, look ) ) * new Basis( Vector3.Back, -x * MathX.Rad( 38f ) );
 				SmoothKit.Ball( eye, new Vector3( 0f, 0f, -0.08f ), new Vector3( 0.7f, 0.95f, 0.6f ) * size, skin, null, "Eye Bulb" );
 				var almond = new Node3D { Name = "Almond", Position = new Vector3( 0f, 0f, 0.2f * size ) };
@@ -474,7 +474,7 @@ void fragment() {
 		HoldSwallowed( dt );
 	}
 
-	/// <summary> The six eyes: narrowed while it moves, wide and bright while it rests open, each turning a little toward
+	/// <summary> The eight eyes: narrowed while it moves, wide and bright while it rests open, each turning a little toward
 	/// the nearest player, and one at a time blinking. </summary>
 	void Eyes( float t, float dt )
 	{

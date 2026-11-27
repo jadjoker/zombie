@@ -75,14 +75,12 @@ public partial class Leviathan : Creature
 
 	// The body: a trail of where the head has been, newest last.
 	readonly List<Vector3> trail = new();
-	Node3D rig, head;
-	readonly List<Node3D> flaps = new();
+	Node3D rig, head, jaw;
 	readonly List<(Node3D Eye, Node3D Almond, Basis Home)> eyes = new();
 	readonly List<List<Node3D>> whiskers = new();
 	StandardMaterial3D eyeRim, lureGlow;
 	int blinking = -1;
 	float blinkT, nextBlink = 1f, charge, chargeVel;
-	const float MouthZ = 3.8f;
 	static readonly Color LureGreen = new( 0.4f, 1f, 0.45f );
 	readonly Node3D[] segs = new Node3D[Segments];
 	readonly float[] radius = new float[Segments];
@@ -173,12 +171,12 @@ void fragment() {
 	// wave runs down them from the head to the tail.
 	float v1 = 1.0 - abs(noise(m * 0.8 + 5.0) * 2.0 - 1.0);
 	float v2 = 1.0 - abs(noise(m * 2.0 + 9.0) * 2.0 - 1.0);
-	float veins = smoothstep(0.95, 0.985, v1) + smoothstep(0.96, 0.99, v2) * 0.5;
+	float veins = smoothstep(0.972, 0.99, v1) + smoothstep(0.98, 0.995, v2) * 0.3;
 	float rate = 1.4 + hurt * 3.0;
 	float pulse = 0.55 + 0.45 * sin(TIME * rate - seg * 0.6);
 	float wave = pow(0.5 + 0.5 * sin(seg * 0.8 - TIME * 9.0), 8.0);
-	float lit = veins * (pulse * 0.6 + charge * (0.6 + wave * 5.0));
-	c = mix(c, c * 0.6, veins * 0.4);
+	float lit = veins * (pulse * 0.35 + charge * (0.4 + wave * 3.5));
+	c = mix(c, c * 0.7, veins * 0.3);
 	float rim = pow(1.0 - clamp(dot(NORMAL, VIEW), 0.0, 1.0), 3.0);
 	ALBEDO = mix(c, vec3(2.0), flash);
 	ROUGHNESS = 0.45;
@@ -201,51 +199,23 @@ void fragment() {
 		rig = new Node3D { Name = "Leviathan Body" };
 		GetTree().CurrentScene.AddChild( rig );
 
-		// The head (the alien pass, user's picks): a blunt skull ending in a round mouth that opens in four flaps like a
-		// flower, rings of teeth down the throat, six black almond alien eyes down the sides and lure whiskers below.
+		// The head: a long whale skull and a hinged lower jaw full of teeth (the user kept these over a flower mouth), six
+		// black almond alien eyes down the sides and lure whiskers hanging off the jaw.
 		head = new Node3D { Name = "Head" };
 		rig.AddChild( head );
 		var skull = SmoothKit.Smooth( new List<(float, float, float, float)>
 		{
-			(-2.2f, 1.9f, 1.7f, 0f), (-1f, 2.15f, 1.75f, 0.1f), (1f, 2f, 1.55f, 0.2f), (2.6f, 1.7f, 1.4f, 0.2f), (3.5f, 1.45f, 1.3f, 0.1f), (MouthZ, 1.3f, 1.25f, 0f),
+			(-2.2f, 1.9f, 1.7f, 0f), (-1f, 2.15f, 1.75f, 0.1f), (1f, 2f, 1.5f, 0.25f), (2.8f, 1.6f, 1.05f, 0.35f), (4.2f, 1.0f, 0.65f, 0.3f), (4.8f, 0.35f, 0.3f, 0.2f),
 		}, 4 );
-		SmoothKit.Put( head, SmoothKit.Cached( "leviathan skull 2", () => SmoothKit.Loft( skull, 0f, 1f, 32 ) ), skin, "Skull" ).Basis = new Basis( Vector3.Right, -MathF.PI / 2f );
-		// The throat: a dark hole with three rings of teeth closing in toward it, and a red lip round the rim.
-		Sculpt.Blob( head, new Vector3( 0f, 0f, -MouthZ - 0.02f ), new Vector3( 2.3f, 2.3f, 0.2f ), throat, name: "Throat" );
-		var lip = new MeshInstance3D { Name = "Lip", Mesh = new TorusMesh { InnerRadius = 1.05f, OuterRadius = 1.35f, Rings = 32, RingSegments = 10 }, MaterialOverride = mouth };
-		head.AddChild( lip );
-		lip.Transform = new Transform3D( new Basis( Vector3.Right, MathF.PI / 2f ), new Vector3( 0f, 0f, -MouthZ ) );
-		for ( var ring = 0; ring < 3; ring++ )
+		SmoothKit.Put( head, SmoothKit.Cached( "leviathan skull", () => SmoothKit.Loft( skull, 0f, 1f, 32 ) ), skin, "Skull" ).Basis = new Basis( Vector3.Right, -MathF.PI / 2f );
+		Sculpt.Blob( head, new Vector3( 0f, -0.55f, -2.2f ), new Vector3( 3.4f, 1.2f, 4.6f ), mouth, name: "Palate" );
+		Sculpt.Blob( head, new Vector3( 0f, -0.6f, -1f ), new Vector3( 2.4f, 1.0f, 2.2f ), throat, name: "Throat" );
+		for ( var i = 0; i <= 16; i++ )
 		{
-			var r = 1.05f - ring * 0.3f;
-			var count = 14 - ring * 3;
-			for ( var i = 0; i < count; i++ )
-			{
-				var a = (i + ring * 0.5f) / count * MathF.Tau;
-				var at = new Vector3( MathF.Cos( a ) * r, MathF.Sin( a ) * r, -MouthZ - 0.05f + ring * 0.02f );
-				var inward = -new Vector3( MathF.Cos( a ), MathF.Sin( a ), 0f );
-				Sculpt.Cone( head, at, at + inward * (0.32f - ring * 0.06f) + Vector3.Forward * 0.12f, 0.08f - ring * 0.012f, tooth, 6, "Throat Tooth" );
-			}
-		}
-		// Four flaps on hinges round the rim: shut, their tips meet in a point; open, they peel back like petals.
-		for ( var k = 0; k < 4; k++ )
-		{
-			var turn = k * MathF.PI / 2f;
-			var radial = new Vector3( -MathF.Sin( turn ), MathF.Cos( turn ), 0f );
-			var hinge = new Node3D { Name = "Flap Hinge", Basis = new Basis( Vector3.Back, turn ) };
-			head.AddChild( hinge );
-			hinge.Position = radial * 1.15f + new Vector3( 0f, 0f, -MouthZ + 0.1f );
-			var flap = new Node3D { Name = "Flap" };
-			hinge.AddChild( flap );
-			SmoothKit.Ball( flap, new Vector3( 0f, 0f, -1.15f ), new Vector3( 1.75f, 0.42f, 2.5f ), skin, null, "Flap Hide" );
-			SmoothKit.Ball( flap, new Vector3( 0f, -0.1f, -1.1f ), new Vector3( 1.5f, 0.3f, 2.25f ), mouth, null, "Flap Inside" );
-			for ( var i = 0; i < 5; i++ )
-			{
-				var s = i / 2f - 1f;
-				var at = new Vector3( s * 0.5f, -0.2f, -0.45f - i % 2 * 0.25f - (1f - s * s) * 1.2f );
-				Sculpt.Cone( flap, at, at + new Vector3( 0f, -0.5f - (1f - s * s) * 0.25f, -0.15f ), 0.09f, tooth, 6, "Flap Tooth" );
-			}
-			flaps.Add( flap );
+			var s = i / 8f - 1f;
+			var at = new Vector3( 1.55f * s, -0.75f, -1.2f - 3.0f * (1f - s * s) );
+			var length = (i % 2 == 0 ? 0.75f : 0.45f) * (1.1f - 0.3f * MathF.Abs( s ));
+			Sculpt.Cone( head, at, at + new Vector3( 0f, -length, -0.1f ), 0.12f, tooth, 6, "Tooth" );
 		}
 		// Brow ridges of bone, and the eyes: three a side, the biggest at the front, the classic alien eye (a glossy black
 		// almond slanted out at the top on a glowing green rim) set in a bulb of hide. They track the prey and blink in turn.
@@ -275,14 +245,27 @@ void fragment() {
 		}
 		for ( var i = 0; i < 7; i++ )
 			Sculpt.Blob( head, new Vector3( ((i * 37) % 7 - 3) * 0.22f, 1.35f - i * 0.04f, -0.6f - i * 0.38f ), Vector3.One * (0.25f + (i % 3) * 0.08f), bone, name: "Knob" );
-		// Whiskers: jointed feelers hanging from the chin and under the mouth, each ending in a glowing lure.
+		jaw = Sculpt.Joint( head, new Vector3( 0f, -0.6f, 1.4f ), "Jaw" );
+		var jawRings = SmoothKit.Smooth( new List<(float, float, float, float)>
+		{
+			(0f, 1.8f, 0.55f, -0.2f), (2.5f, 1.75f, 0.6f, -0.45f), (4.6f, 1.2f, 0.5f, -0.4f), (5.9f, 0.4f, 0.3f, -0.25f),
+		}, 4 );
+		SmoothKit.Put( jaw, SmoothKit.Cached( "leviathan jaw", () => SmoothKit.Loft( jawRings, 0f, 1f, 28 ) ), skin, "Lower Jaw" ).Basis = new Basis( Vector3.Right, -MathF.PI / 2f );
+		Sculpt.Blob( jaw, new Vector3( 0f, 0.05f, -3f ), new Vector3( 2.8f, 0.4f, 4.4f ), mouth, name: "Tongue" );
+		for ( var i = 0; i <= 14; i++ )
+		{
+			var s = i / 7f - 1f;
+			var at = new Vector3( 1.5f * s, 0.15f, -2.4f - 2.6f * (1f - s * s) );
+			Sculpt.Cone( jaw, at, at + new Vector3( 0f, 0.55f + (i % 2) * 0.3f, -0.05f ), 0.11f, tooth, 6, "Jaw Tooth" );
+		}
+		// Whiskers: jointed feelers hanging off the lower jaw, each ending in a glowing lure.
 		var feeler = Sculpt.Paint( SkinColour.Lightened( 0.15f ), 0.6f );
 		lureGlow = new StandardMaterial3D { AlbedoColor = LureGreen, EmissionEnabled = true, Emission = LureGreen, EmissionEnergyMultiplier = 3f };
-		var whiskerAt = new[] { new Vector3( -1.0f, -1.05f, -3.3f ), new Vector3( 1.0f, -1.05f, -3.3f ), new Vector3( -1.5f, -1.1f, -1.9f ), new Vector3( 1.5f, -1.1f, -1.9f ), new Vector3( -0.6f, -1.4f, -0.6f ), new Vector3( 0.6f, -1.4f, -0.6f ) };
+		var whiskerAt = new[] { new Vector3( -0.9f, -0.75f, -4.2f ), new Vector3( 0.9f, -0.75f, -4.2f ), new Vector3( -1.45f, -0.75f, -2.8f ), new Vector3( 1.45f, -0.75f, -2.8f ), new Vector3( -0.7f, -0.9f, -1.5f ), new Vector3( 0.7f, -0.9f, -1.5f ) };
 		for ( var w = 0; w < whiskerAt.Length; w++ )
 		{
 			var chain = new List<Node3D>();
-			var parent = (Node3D)head;
+			var parent = jaw;
 			var at = whiskerAt[w];
 			var length = w < 2 ? 1.2f : 0.95f;
 			for ( var j = 0; j < 4; j++ )
@@ -435,7 +418,7 @@ void fragment() {
 	public Vector3 Spot => spot;
 	public bool Locked => locked;
 	public bool Open => act is Act.Rest or Act.Gulp;
-	public Vector3 MouthAt => head.GlobalTransform * new Vector3( 0f, 0f, -MouthZ - 0.8f );
+	public Vector3 MouthAt => head.GlobalTransform * new Vector3( 0f, -0.4f, -4.6f );
 	public int SwallowedCount => swallowed.Count;
 	public Vector3 SegmentAt( int i ) => segs[i].GlobalPosition;
 	public float SegmentRadius( int i ) => radius[i];
@@ -464,8 +447,7 @@ void fragment() {
 		SmoothKit.Spring( ref jawOpen, ref jawVel, jawWant, 2f, 0.6f, dt );
 		SmoothKit.Spring( ref blow, ref blowVel, Open ? 1f : 0f, 1.5f, 0.7f, dt );
 		SmoothKit.Spring( ref swell, ref swellVel, act == Act.Song && a < 1.3f ? 1f : 0f, 2f, 0.5f, dt );
-		for ( var k = 0; k < flaps.Count; k++ )
-			flaps[k].Rotation = new Vector3( -0.5f + jawOpen * 1.35f + MathF.Sin( t * 3f + k * 1.7f ) * 0.04f * (0.3f + jawOpen), 0f, 0f );
+		jaw.Rotation = new Vector3( -jawOpen * 0.55f, 0f, 0f );
 		blowGlow.EmissionEnergyMultiplier = 0.2f + blow * (3.5f + MathF.Sin( t * 7f ));
 		foreach ( var core in blowCores ) core.Scale = new Vector3( 1f, 0.4f + blow * 0.8f, 1f );
 		barnacleGlow.EmissionEnergyMultiplier = act == Act.Brood ? 2f + 2f * MathF.Sin( t * 14f ) : 0f;

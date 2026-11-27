@@ -261,6 +261,16 @@ public partial class AutoTest
 			var nose = -l.GlobalBasis.Z.Flat().SafeNormal();
 			var keepAt = player.GlobalPosition;
 			StandAt( l.GlobalPosition + nose * 9f + nose.Cross( Vector3.Up ) * 3f, l.GlobalPosition ); Face( l.GlobalPosition ); await Wait( 0.2f ); await Shot( "leviathan_face" );
+			// Close-ups of the eyes: from the side and from above, the head's own frame.
+			foreach ( var (name, offset) in new[] { ("leviathan_eyes_side", new Vector3( 7f, 1.5f, -1.5f )), ("leviathan_eyes_top", new Vector3( 2.5f, 7f, -2f )), ("leviathan_eyes_front", new Vector3( 1.5f, 2.5f, -8f )) } )
+			{
+				var h = l.HeadNode.GlobalTransform;
+				var centre = h * new Vector3( 0f, 0.8f, -1.4f );
+				var camAt = h * offset;
+				player.CameraOverride = _ => new Transform3D( Shapes.LookAt( centre - camAt ), camAt );
+				await Wait( 0.15f ); await Shot( name );
+			}
+			player.CameraOverride = null;
 			StandAt( keepAt, l.GlobalPosition ); await Wait( 0.2f ); }
 
 		// Open, the eyes take triple; the hide half.

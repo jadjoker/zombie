@@ -222,17 +222,19 @@ void fragment() {
 		var eyeBlack = new StandardMaterial3D { AlbedoColor = new Color( 0.01f, 0.01f, 0.015f ), Roughness = 0.06f, ClearcoatEnabled = true, Clearcoat = 1f, ClearcoatRoughness = 0.04f, Metallic = 0.2f };
 		foreach ( var x in new[] { -1f, 1f } )
 		{
-			// The big pair on top (where the old pale brows were) looks up and ahead; three more run down each side.
-			var spots = new[] { (new Vector3( 1.05f, 1.45f, -1.7f ), 1.35f, new Vector3( 0.4f, 0.8f, -0.45f )), (new Vector3( 1.55f, 0.55f, -2.6f ), 1.15f, new Vector3( 0.85f, 0.2f, -0.45f )), (new Vector3( 1.85f, 0.7f, -1.2f ), 0.95f, new Vector3( 0.85f, 0.2f, -0.45f )), (new Vector3( 1.95f, 0.55f, 0.2f ), 0.75f, new Vector3( 0.85f, 0.2f, -0.45f )) };
-			foreach ( var (spot0, size, look0) in spots )
+			// Set into the hide on the skull's own surface (no bulbs sticking out), spaced so none touch: a big pair on top
+			// (where the old pale brows were) looking up and ahead, three more down each side.
+			var spots = new[] { (-1.95f, 1.08f, 1.05f), (-3.05f, 0.18f, 1.0f), (-1.55f, 0.3f, 0.85f), (-0.05f, 0.22f, 0.7f) };
+			foreach ( var (z, angle, size) in spots )
 			{
-				var at = new Vector3( spot0.X * x, spot0.Y, spot0.Z );
+				var (surface, normal) = SkullSurface( skull, z, angle, x );
+				var at = surface - normal * 0.06f * size;
 				var eye = new Node3D { Name = "Alien Eye", Position = at };
 				head.AddChild( eye );
-				var look = new Vector3( look0.X * x, look0.Y, look0.Z ).Normalized();
+				var look = (normal + Vector3.Forward * 0.35f).Normalized();
 				eye.Basis = new Basis( new Quaternion( Vector3.Back, look ) ) * new Basis( Vector3.Back, -x * MathX.Rad( 38f ) );
-				SmoothKit.Ball( eye, new Vector3( 0f, 0f, -0.08f ), new Vector3( 0.7f, 0.95f, 0.6f ) * size, skin, null, "Eye Bulb" );
-				var almond = new Node3D { Name = "Almond", Position = new Vector3( 0f, 0f, 0.2f * size ) };
+				Sculpt.Blob( eye, new Vector3( 0f, 0f, -0.05f * size ), new Vector3( 0.62f, 1.12f, 0.16f ) * size, skin, name: "Eye Lid" );
+				var almond = new Node3D { Name = "Almond", Position = new Vector3( 0f, 0f, 0.02f * size ) };
 				eye.AddChild( almond );
 				Sculpt.Blob( almond, Vector3.Zero, new Vector3( 0.5f, 1.0f, 0.2f ) * size, eyeRim, name: "Eye Rim" );
 				Sculpt.Blob( almond, new Vector3( 0f, 0f, 0.02f * size ), new Vector3( 0.42f, 0.92f, 0.22f ) * size, eyeBlack, name: "Eye" );
@@ -243,8 +245,6 @@ void fragment() {
 				parts.Add( part );
 			}
 		}
-		for ( var i = 0; i < 7; i++ )
-			Sculpt.Blob( head, new Vector3( ((i * 37) % 7 - 3) * 0.22f, 1.35f - i * 0.04f, -0.6f - i * 0.38f ), Vector3.One * (0.25f + (i % 3) * 0.08f), bone, name: "Knob" );
 		jaw = Sculpt.Joint( head, new Vector3( 0f, -0.6f, 1.4f ), "Jaw" );
 		var jawRings = SmoothKit.Smooth( new List<(float, float, float, float)>
 		{
@@ -418,6 +418,29 @@ void fragment() {
 	public Vector3 Spot => spot;
 	public bool Locked => locked;
 	public bool Open => act is Act.Rest or Act.Gulp;
+	/// <summary> A point on the skull's loft at head z (looking down -Z) and an angle round it from the side (0) to the
+	/// top (pi/2), on side x (-1 or 1), with the surface's outward normal. Rings are (along, half width, half height, rise). </summary>
+	static (Vector3, Vector3) SkullSurface( List<(float, float, float, float)> rings, float z, float angle, float x )
+	{
+		var along = -z;
+		var (rx, rz, rise) = (rings[^1].Item2, rings[^1].Item3, rings[^1].Item4);
+		for ( var i = 0; i < rings.Count - 1; i++ )
+		{
+			var (a0, w0, h0, o0) = rings[i];
+			var (a1, w1, h1, o1) = rings[i + 1];
+			if ( along < a0 || along > a1 ) continue;
+			var k = (along - a0) / MathF.Max( a1 - a0, 0.0001f );
+			(rx, rz, rise) = (MathX.Lerp( w0, w1, k ), MathX.Lerp( h0, h1, k ), MathX.Lerp( o0, o1, k ));
+			break;
+		}
+		var (c, sn) = (MathF.Cos( angle ), MathF.Sin( angle ));
+		var point = new Vector3( x * rx * c, rise + rz * sn, z );
+		var normal = new Vector3( x * c / rx, sn / rz, 0f ).Normalized();
+		return (point, normal);
+	}
+
+	/// <summary> The head, for close-up test shots. </summary>
+	public Node3D HeadNode => head;
 	public Vector3 MouthAt => head.GlobalTransform * new Vector3( 0f, -0.4f, -4.6f );
 	public int SwallowedCount => swallowed.Count;
 	public Vector3 SegmentAt( int i ) => segs[i].GlobalPosition;

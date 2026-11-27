@@ -179,6 +179,26 @@ public partial class AutoTest
 		Check( BlindWarden.RubbleHits > rubble, "the Warden's tail flick did not hit a player behind it" );
 		await Wait( 1.5f );
 
+		if ( !string.IsNullOrEmpty( shots ) )
+		{
+			// Close up: the face splitting open in a scream, and the brain under its glass from above.
+			var nose = -w.GlobalBasis.Z.Flat().SafeNormal();
+			StandAt( w.GlobalPosition + nose * 10f + nose.Cross( Vector3.Up ) * 1.5f, w.GlobalPosition );
+			Face( w.GlobalPosition + Vector3.Up * 2.3f + nose * 2f );
+			w.Force( BlindWarden.Act.Scream );
+			await Wait( 0.75f );
+			await Shot( "warden_scream" );
+			player.Scripted = true;
+			var back = -w.GlobalBasis.Z.Flat().SafeNormal();
+			player.GlobalPosition = w.GlobalPosition + nose * 1.5f + nose.Cross( Vector3.Up ) * 3.5f + Vector3.Up * 3.5f;
+			player.Velocity = Vector3.Zero;
+			Face( w.GlobalPosition + Vector3.Up * 2.8f );
+			await Wait( 0.1f );
+			await Shot( "warden_brain" );
+			player.Scripted = false;
+			await Wait( 3f );
+		}
+
 		// The scream: a quiet player far off is marked and charged anyway.
 		var far = Hub( 15f, 200f );
 		StandAt( far, w.GlobalPosition );
@@ -237,7 +257,11 @@ public partial class AutoTest
 		Check( l.Doing == Leviathan.Act.Rest && l.Open, "the Leviathan does not rest open after a ram" );
 		var skylit = Enumerable.Range( 0, Leviathan.Segments ).Count( i => l.SegmentAt( i ).Y > Abyss.RoofAt( 0f, 0f ) - 2f );
 		Check( skylit > 2, "the Leviathan's body does not hang down through the skylight" );
-		if ( !string.IsNullOrEmpty( shots ) ) { StandAt( l.GlobalPosition + (l.GlobalPosition.Flat().Length() > 1f ? -l.GlobalPosition.Flat().Normalized() : Vector3.Forward) * 13f + Vector3.Right * 3f, l.GlobalPosition ); Face( l.GlobalPosition + Vector3.Up * 4f ); await Wait( 0.2f ); await Shot( "leviathan_resting" ); }
+		if ( !string.IsNullOrEmpty( shots ) ) { StandAt( l.GlobalPosition + (l.GlobalPosition.Flat().Length() > 1f ? -l.GlobalPosition.Flat().Normalized() : Vector3.Forward) * 13f + Vector3.Right * 3f, l.GlobalPosition ); Face( l.GlobalPosition + Vector3.Up * 4f ); await Wait( 0.2f ); await Shot( "leviathan_resting" );
+			var nose = -l.GlobalBasis.Z.Flat().SafeNormal();
+			var keepAt = player.GlobalPosition;
+			StandAt( l.GlobalPosition + nose * 9f + nose.Cross( Vector3.Up ) * 3f, l.GlobalPosition ); Face( l.GlobalPosition ); await Wait( 0.2f ); await Shot( "leviathan_face" );
+			StandAt( keepAt, l.GlobalPosition ); await Wait( 0.2f ); }
 
 		// Open, the eyes take triple; the hide half.
 		var h0 = l.Health.Current;

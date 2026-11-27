@@ -190,7 +190,11 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   song (`SongWave` cone: shove, Slow and Ink curses), the swallow (pulled to the mouth, held `Scripted` in a stomach room at
   `StomachAt` far under the map; its wall and ulcers are weak spots and `StomachEscapeShare` of its health shot off, or
   `StomachTime`, spits you out) and the brood (barnacles burst into puffers and an angler, `WaveDirector.SpawnAt`), then
-  withdraws and rams again. Dead, it slumps across the hub (`LeviathanCarcass`, kept in `Abyss.Root`). On boss wave 30 the
+  withdraws and rams again. The alien pass (user's picks): its mouth is four toothed flaps that close to a point and open like a
+  flower onto rings of throat teeth (`flaps`), six black almond alien eyes that track and blink one at a time (`Eyes`), whiskers
+  with glowing lures (`Whiskers`) and green veins in `SkinShader` (`seg` instance uniform; a wave runs down them before an attack,
+  `charge`). The Warden got four face plates that split into jaws on the scream (`facePlates`), sealed scarred alien eyes, a glowing
+  brain under glass in its back with cracks round it (`BrainShader`), and long feelers that glow and swing to a sound (`sense`). Dead, it slumps across the hub (`LeviathanCarcass`, kept in `Abyss.Root`). On boss wave 30 the
   `AreaLife` skylight pass is skipped. Sounds `warden_*`, `leviathan_*`, `stomach_gurgle` (`make_sounds.py`). Dev menu:
   Enemies (spawn both; their moves), World, Waves (Blind Warden wave, Leviathan wave). Tests: `--warden`, `--leviathan`
   (shots need a window).

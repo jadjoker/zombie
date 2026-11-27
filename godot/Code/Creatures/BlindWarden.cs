@@ -72,7 +72,14 @@ public partial class BlindWarden : Creature
 	readonly List<Node3D> gillFlaps = new();
 	Node3D[] shoulder = new Node3D[2], elbow = new Node3D[2], finger = new Node3D[2];
 	ShaderMaterial shell;
-	StandardMaterial3D gillGlow;
+	StandardMaterial3D gillGlow, feelerGlow, mawGlow, seamGlow, crackGlow;
+	ShaderMaterial brain;
+	Node3D brainNode;
+	OmniLight3D brainLight;
+	readonly List<Node3D> facePlates = new();
+	float split, splitVel, sense, senseVel;
+	const int FeelerPieces = 8;
+	static readonly Color SenseGreen = new( 0.35f, 1f, 0.45f );
 	OmniLight3D gillLight;
 
 	/// <summary> The move name the HUD shows. </summary>
@@ -127,6 +134,26 @@ void fragment() {
 }",
 	};
 
+	static readonly Shader BrainShader = new()
+	{
+		Code = @"shader_type spatial;
+uniform float beat = 0.0;
+uniform float sense = 0.0;
+varying vec3 lp;
+void vertex() { lp = VERTEX; VERTEX += NORMAL * beat * 0.04; }
+void fragment() {
+	// Winding folds as dark grooves, the glow brightest in the ridges.
+	vec2 q = vec2(lp.x * 3.0 + lp.y * 2.0, lp.z) * 26.0;
+	float w = sin(q.x + sin(q.y * 0.9) * 2.2) + sin(q.y * 1.1 + sin(q.x * 1.3) * 2.0);
+	float ridge = smoothstep(0.0, 0.6, abs(w));
+	vec3 c = mix(vec3(0.05, 0.25, 0.08), vec3(0.45, 1.0, 0.5), ridge);
+	ALBEDO = c * 0.5;
+	ROUGHNESS = 0.2;
+	SPECULAR = 0.7;
+	EMISSION = c * (0.5 + beat * 0.5 + sense * 0.9) * ridge;
+}",
+	};
+
 	void Build()
 	{
 		shell = new ShaderMaterial { Shader = ShellShader };
@@ -149,35 +176,126 @@ void fragment() {
 		Sculpt.Cone( body, new Vector3( 0f, 0.05f, -2.1f ), new Vector3( 0f, 0.3f, -3.1f ), 0.22f, shell, 8, "Rostrum" );
 		for ( var i = 0; i < 7; i++ )
 		{
+			if ( i is >= 3 and <= 5 ) continue;   // the brain window
 			var z = -1.6f + i * 0.45f;
 			Sculpt.Cone( body, new Vector3( 0f, 1.0f - MathF.Abs( z + 0.2f ) * 0.12f, z ), new Vector3( 0f, 1.32f - MathF.Abs( z + 0.2f ) * 0.12f, z + 0.15f ), 0.1f, shell, 6, "Ridge Spine" );
 		}
 		// The groove across the back where the head meets the body, and the belly plates underneath.
 		SmoothKit.Ball( body, new Vector3( 0f, -0.55f, -0.1f ), new Vector3( 1.9f, 0.8f, 3.2f ), belly, null, "Belly" );
 
-		// The head: blind milky stubs where its eyes would be, little mouth parts, the long feelers.
+		// The head (the alien pass, user's picks): long glowing feelers that swing to a sound, four plates over the face
+		// that split open into jaws when it screams, and down each side a row of small alien eyes sealed shut and scarred over.
 		head = Sculpt.Joint( body, new Vector3( 0f, 0f, -1.7f ), "Head" );
+		feelerGlow = new StandardMaterial3D { AlbedoColor = ShellColour, EmissionEnabled = true, Emission = SenseGreen, EmissionEnergyMultiplier = 0.4f, Roughness = 0.4f };
 		foreach ( var x in new[] { -1f, 1f } )
 		{
-			SmoothKit.Tube( head, new Vector3( x * 0.3f, 0.35f, -0.2f ), new Vector3( x * 0.42f, 0.6f, -0.45f ), 0.12f, 0.1f, shell, "Eye Stalk" );
-			SmoothKit.Ball( head, new Vector3( x * 0.44f, 0.64f, -0.48f ), new Vector3( 0.24f, 0.2f, 0.24f ), milk, null, "Blind Eye" );
 			var a = Sculpt.Joint( head, new Vector3( x * 0.22f, 0.2f, -0.6f ), x < 0f ? "Feeler L" : "Feeler R" );
 			antennae.Add( a );
 			var parent = a;
 			var dir = new Vector3( x * 0.6f, 0.3f, -0.8f ).Normalized();
-			for ( var k = 0; k < 5; k++ )
+			for ( var k = 0; k < FeelerPieces; k++ )
 			{
-				var step = dir * (1.15f - k * 0.12f);
-				SmoothKit.Tube( parent, Vector3.Zero, step, 0.05f - k * 0.007f, 0.043f - k * 0.007f, shell, "Feeler Piece" );
+				var step = dir * (1.3f - k * 0.08f);
+				SmoothKit.Tube( parent, Vector3.Zero, step, 0.055f - k * 0.0045f, 0.05f - k * 0.0045f, feelerGlow, "Feeler Piece" );
 				var next = Sculpt.Joint( parent, step, "Feeler Joint" );
 				antennae.Add( next );
 				parent = next;
-				dir = (dir + new Vector3( x * 0.15f, -0.08f, 0.1f )).Normalized();
+				dir = (dir + new Vector3( x * 0.1f, -0.06f, 0.06f )).Normalized();
 			}
+			SmoothKit.Ball( parent, Vector3.Zero, Vector3.One * 0.09f, feelerGlow, null, "Feeler Tip" );
 			for ( var k = 0; k < 3; k++ )
 				SmoothKit.Tube( head, new Vector3( x * (0.12f + k * 0.08f), -0.3f, -0.55f ), new Vector3( x * (0.14f + k * 0.1f), -0.75f, -0.75f - k * 0.05f ), 0.05f, 0.03f, belly, "Mouth Part" );
 		}
 		Sculpt.Blob( head, new Vector3( 0f, -0.25f, -0.55f ), new Vector3( 0.4f, 0.25f, 0.2f ), dark, name: "Mouth" );
+		// The face: a glowing green maw ringed with teeth behind four plates set in an X (the rostrum rides between the
+		// top two). Shut they close into a blunt point; screaming they split wide.
+		mawGlow = new StandardMaterial3D { AlbedoColor = new Color( 0.1f, 0.3f, 0.12f ), EmissionEnabled = true, Emission = SenseGreen, EmissionEnergyMultiplier = 0.6f };
+		var fang = Sculpt.Paint( new Color( 0.95f, 0.93f, 0.85f ), 0.3f );
+		Sculpt.Blob( head, new Vector3( 0f, 0.05f, -0.5f ), new Vector3( 0.6f, 0.55f, 0.2f ), mawGlow, name: "Maw" );
+		for ( var i = 0; i < 10; i++ )
+		{
+			var a = i / 10f * MathF.Tau;
+			var at = new Vector3( MathF.Cos( a ) * 0.3f, 0.05f + MathF.Sin( a ) * 0.28f, -0.55f );
+			Sculpt.Cone( head, at, at * new Vector3( 0.4f, 1f, 1f ) + new Vector3( 0f, 0.05f - MathF.Sin( a ) * 0.18f, -0.12f ), 0.04f, fang, 5, "Maw Tooth" );
+		}
+		for ( var k = 0; k < 4; k++ )
+		{
+			var turn = MathF.PI / 4f + k * MathF.PI / 2f;
+			var hinge = new Node3D { Name = "Face Plate Hinge", Basis = new Basis( Vector3.Back, turn ) };
+			head.AddChild( hinge );
+			hinge.Position = new Vector3( -MathF.Sin( turn ) * 0.36f, 0.05f + MathF.Cos( turn ) * 0.32f, -0.4f );
+			var plate = new Node3D { Name = "Face Plate" };
+			hinge.AddChild( plate );
+			SmoothKit.Ball( plate, new Vector3( 0f, 0f, -0.42f ), new Vector3( 0.5f, 0.16f, 0.95f ), shell, null, "Plate" );
+			for ( var i = 0; i < 3; i++ )
+				Sculpt.Cone( plate, new Vector3( (i - 1) * 0.13f, -0.06f, -0.3f - i % 2 * 0.2f ), new Vector3( (i - 1) * 0.1f, -0.3f, -0.42f - i % 2 * 0.2f ), 0.035f, fang, 5, "Plate Fang" );
+			facePlates.Add( plate );
+		}
+		// The sealed eyes: four a side on the front of the carapace, each a slanted almond under a lid of shell grown
+		// shut, a dark seam, pale scars across it and a faint green light leaking out that flares when it hears.
+		var scar = Sculpt.Paint( new Color( 0.85f, 0.5f, 0.52f ), 0.7f );
+		var black = new StandardMaterial3D { AlbedoColor = new Color( 0.01f, 0.01f, 0.015f ), Roughness = 0.06f, ClearcoatEnabled = true, Clearcoat = 1f };
+		seamGlow = new StandardMaterial3D { AlbedoColor = SenseGreen, EmissionEnabled = true, Emission = SenseGreen, EmissionEnergyMultiplier = 0.5f };
+		var rows = new[] { (-2.0f, 0.5f, 0.43f, -0.05f, 0.15f), (-1.78f, 0.66f, 0.57f, -0.02f, 0.18f), (-1.54f, 0.8f, 0.69f, 0f, 0.2f), (-1.3f, 0.92f, 0.79f, 0.03f, 0.22f) };
+		foreach ( var x in new[] { -1f, 1f } )
+			foreach ( var (z, rx, rz, lift, size) in rows )
+			{
+				var normal = new Vector3( x * 0.8f / rx, 0.6f / rz, 0f ).Normalized();
+				var eye = new Node3D { Name = "Sealed Eye", Position = new Vector3( x * rx * 0.8f, lift + rz * 0.6f, z ) + normal * size * 0.12f };
+				body.AddChild( eye );
+				eye.Basis = new Basis( new Quaternion( Vector3.Back, normal ) ) * new Basis( Vector3.Back, -x * MathX.Rad( 38f ) );
+				// The almond, then two lids of shell grown together over it, leaving a dark slit that leaks green.
+				Sculpt.Blob( eye, Vector3.Zero, new Vector3( 0.55f, 1.1f, 0.5f ) * size, black, name: "Almond" );
+				SmoothKit.Ball( eye, new Vector3( 0.03f, 0f, 0.04f ) * size, new Vector3( 0.42f, 1.15f, 0.48f ) * size, shell, null, "Lid" );
+				SmoothKit.Ball( eye, new Vector3( -0.03f, 0f, 0.04f ) * size, new Vector3( 0.42f, 1.15f, 0.48f ) * size, shell, null, "Lid" );
+				Sculpt.Blob( eye, new Vector3( 0f, 0f, 0.27f * size ), new Vector3( 0.07f, 0.95f, 0.06f ) * size, seamGlow, name: "Seam" );
+				Sculpt.Blob( eye, new Vector3( 0f, 0.1f * size, 0.27f * size ), new Vector3( 0.6f, 0.07f, 0.06f ) * size, scar, Basis.FromEuler( new Vector3( 0f, 0f, 0.5f ) ), "Scar" );
+				Sculpt.Blob( eye, new Vector3( 0f, -0.2f * size, 0.26f * size ), new Vector3( 0.45f, 0.06f, 0.05f ) * size, scar, Basis.FromEuler( new Vector3( 0f, 0f, -0.3f ) ), "Scar" );
+			}
+
+		// The brain: a glowing green lump of folds under see-through plates in a window in the back of the shell,
+		// showing through. It throbs, and quickens when it hears.
+		brain = new ShaderMaterial { Shader = BrainShader };
+		var glass = new StandardMaterial3D
+		{
+			AlbedoColor = new Color( 0.75f, 0.9f, 0.95f, 0.22f ), Transparency = BaseMaterial3D.TransparencyEnum.Alpha, Roughness = 0.05f,
+			Metallic = 0.3f, RimEnabled = true, Rim = 0.6f, CullMode = BaseMaterial3D.CullModeEnum.Back,
+		};
+		brainNode = new Node3D { Name = "Brain", Position = new Vector3( 0f, 1.17f, 0.2f ) };
+		body.AddChild( brainNode );
+		SmoothKit.Ball( brainNode, new Vector3( -0.17f, 0f, 0f ), new Vector3( 0.45f, 0.4f, 1.25f ), brain, null, "Brain Lobe" );
+		SmoothKit.Ball( brainNode, new Vector3( 0.17f, 0f, 0f ), new Vector3( 0.45f, 0.4f, 1.25f ), brain, null, "Brain Lobe" );
+		SmoothKit.Ball( brainNode, new Vector3( 0f, -0.05f, 0.55f ), new Vector3( 0.4f, 0.3f, 0.4f ), brain, null, "Brain Stem" );
+		for ( var k = 0; k < 3; k++ )
+		{
+			var z = -0.4f + k * 0.42f;
+			var pane = SmoothKit.Ball( body, new Vector3( 0f, 1.25f - MathF.Abs( z - 0.2f ) * 0.08f, z + 0.2f ), new Vector3( 1.0f, 0.42f, 0.5f ), glass, null, "Brain Pane" );
+			pane.CastShadow = GeometryInstance3D.ShadowCastingSetting.Off;
+		}
+		// Cracks in the shell running out from the window, glowing with the same light.
+		crackGlow = new StandardMaterial3D { AlbedoColor = new Color( 0.1f, 0.35f, 0.15f ), EmissionEnabled = true, Emission = SenseGreen, EmissionEnergyMultiplier = 0.3f };
+		var crackRandom = new Random( 25 );
+		for ( var k = 0; k < 9; k++ )
+		{
+			var a = k / 9f * MathF.Tau + (float)crackRandom.NextDouble() * 0.4f;
+			var from = new Vector2( MathF.Cos( a ) * 0.5f, MathF.Sin( a ) * 0.75f );
+			for ( var j = 0; j < 3; j++ )
+			{
+				var bend = a + ((float)crackRandom.NextDouble() - 0.5f) * 0.9f;
+				var len = 0.22f + (float)crackRandom.NextDouble() * 0.2f;
+				var to = from + new Vector2( MathF.Cos( bend ), MathF.Sin( bend ) * 1.4f ) * len;
+				var mid = (from + to) / 2f;
+				var r = new Vector2( mid.X / 1.28f, mid.Y / 1.6f ).Length();
+				if ( r > 0.85f ) break;
+				var y = 0.1f + 1.06f * MathF.Sqrt( MathF.Max( 0.05f, 1f - r * r ) );
+				var dir = to - from;
+				Sculpt.Blob( body, new Vector3( mid.X, y, mid.Y + 0.2f ), new Vector3( 0.025f, 0.03f, dir.Length() + 0.03f ), crackGlow,
+					new Basis( Vector3.Up, MathF.Atan2( dir.X, dir.Y ) ) * new Basis( Vector3.Right, -mid.Y * 0.5f ) * Basis.FromEuler( new Vector3( 0f, 0f, -mid.X * 0.7f ) ), "Crack" );
+				from = to;
+			}
+		}
+		brainLight = new OmniLight3D { Name = "Brain Light", LightColor = SenseGreen, LightEnergy = 0.2f, OmniRange = 2.2f, ShadowEnabled = false, Position = new Vector3( 0f, 1.35f, 0.2f ) };
+		body.AddChild( brainLight );
 
 		// The gill vents: three glowing slits down each side, each under a flap of shell that lifts while it listens.
 		foreach ( var x in new[] { -1f, 1f } )
@@ -297,6 +415,10 @@ void fragment() {
 		SmoothKit.Spring( ref rear, ref rearVel, rearWant, 1.5f, 0.6f, dt );
 		SmoothKit.Spring( ref curl, ref curlVel, curlWant, act == Act.Flick && a >= 0.45f ? 5f : 1.8f, 0.45f, dt );
 		SmoothKit.Spring( ref slump, ref slumpVel, slumpWant, 1.2f, 0.7f, dt );
+		var splitWant = act switch { Act.Scream => a < 1.6f ? 1f : 0f, Act.Clap => a < 0.7f ? 0.3f : 0f, Act.Charge => 0.15f, Act.Daze => 0.45f, _ => 0f };
+		SmoothKit.Spring( ref split, ref splitVel, splitWant, act == Act.Scream ? 3.5f : 2f, 0.45f, dt );
+		var heard = (float)sinceHeard;
+		SmoothKit.Spring( ref sense, ref senseVel, heard < 1.2f ? 1f : act == Act.Listen ? 0.25f : 0f, 3f, 0.7f, dt );
 
 		Pose( t, dt );
 		var flash = MathX.Clamp( 1f - (float)sinceHit / 0.1f, 0f, 1f );
@@ -305,6 +427,15 @@ void fragment() {
 		var glow = MathX.Clamp( gill, 0f, 1.5f );
 		gillGlow.EmissionEnergyMultiplier = 0.3f + glow * (3.2f + 0.8f * MathF.Sin( t * 6f ));
 		gillLight.LightEnergy = 0.2f + glow * 1.8f;
+		var heardGlow = MathX.Clamp( sense, 0f, 1.2f );
+		feelerGlow.EmissionEnergyMultiplier = 0.2f + heardGlow * (1f + MathF.Sin( t * 18f ) * 0.3f);
+		seamGlow.EmissionEnergyMultiplier = 0.3f + heardGlow * 2.5f;
+		mawGlow.EmissionEnergyMultiplier = 0.3f + split * 3.5f;
+		var beat = MathF.Pow( MathF.Max( 0f, MathF.Sin( t * (2.2f + heardGlow * 5f) ) ), 6f );
+		brain.SetShaderParameter( "beat", beat );
+		crackGlow.EmissionEnergyMultiplier = 0.25f + beat * 0.3f + heardGlow * 0.6f;
+		brain.SetShaderParameter( "sense", heardGlow );
+		brainLight.LightEnergy = 0.15f + beat * 0.2f + heardGlow * 0.4f;
 
 		if ( IsDead ) return;
 		if ( Puppet ) { PuppetFeet( dt ); return; }
@@ -336,15 +467,29 @@ void fragment() {
 			elbow[s].Rotation = new Vector3( 0f, x * spread * 0.5f, 0f );
 			finger[s].Rotation = new Vector3( 0f, -x * clawOpen * 0.55f, 0f );
 		}
-		// The feelers sweep for sound while it listens, trail back in a charge.
+		// The feelers sweep for sound while it listens and swing to point at a sound it hears; they trail back in a charge.
+		var per = antennae.Count / 2;
 		for ( var i = 0; i < antennae.Count; i++ )
 		{
-			var side = i < antennae.Count / 2 ? -1f : 1f;
-			var k = i % (antennae.Count / 2);
-			var sweep = act == Act.Listen ? MathF.Sin( t * 1.3f + side ) * 0.25f : 0.05f * MathF.Sin( t * 2f + k );
+			var side = i < per ? -1f : 1f;
+			var k = i % per;
+			var sweep = act == Act.Listen ? MathF.Sin( t * 1.3f + side ) * 0.3f : 0.05f * MathF.Sin( t * 2f + k );
 			var back = act == Act.Charge ? 0.25f : 0f;
-			antennae[i].Rotation = new Vector3( MathF.Sin( t * 1.7f - k * 0.7f ) * 0.06f + back * (k == 0 ? 3f : 0.3f), (k == 0 ? sweep : sweep * 0.3f) + side * back, 0f );
+			var pitch = 0f;
+			if ( k == 0 && sense > 0.05f )
+			{
+				var local = head.GlobalTransform.AffineInverse() * target;
+				var yaw = MathF.Atan2( -local.X, -local.Z ) - MathF.Atan2( -side * 0.6f, 0.8f );
+				sweep = MathX.Lerp( sweep, MathX.Clamp( yaw, -0.7f, 0.7f ), MathX.Clamp( sense, 0f, 1f ) );
+				pitch = -0.25f * sense;
+			}
+			var quiver = sense * 0.05f * MathF.Sin( t * 23f + i );
+			antennae[i].Rotation = new Vector3( MathF.Sin( t * 1.7f - k * 0.7f ) * 0.05f + back * (k == 0 ? 3f : 0.3f) + pitch + quiver, (k == 0 ? sweep : sweep * 0.12f) + side * back + quiver, 0f );
 		}
+		// The face plates split open into four jaws.
+		for ( var k = 0; k < facePlates.Count; k++ )
+			facePlates[k].Rotation = new Vector3( -0.42f + split * 1.25f + MathF.Sin( t * 30f + k ) * 0.04f * split, 0f, 0f );
+		brainNode.Scale = Vector3.One * (1f + MathF.Pow( MathF.Max( 0f, MathF.Sin( t * (2.2f + sense * 5f) ) ), 6f ) * 0.06f);
 		foreach ( var flap in gillFlaps )
 		{
 			var side = (float)flap.GetMeta( "side" );

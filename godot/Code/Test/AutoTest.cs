@@ -2093,7 +2093,7 @@ public partial class AutoTest : Node
 		var second = Kraken.All.Last();
 		await Wait( 0.5f );
 		GD.Print( $"[autotest] round11: second visit health {second.Health.MaxHealth:0}, dome {second.HelmetHealth:0} (visits {director.KrakenVisits})" );
-		Check( second.Health.MaxHealth > 6999f * 1.2f - 1f && second.HelmetHealth > 1199f * 1.2f - 1f, "the Kraken is not 20% tougher on its second visit" );
+		Check( second.Health.MaxHealth > 6999f * director.KrakenReturnScale - 1f && second.HelmetHealth > 1199f * director.KrakenReturnScale - 1f, "the Kraken is not tougher by KrakenReturnScale on its second visit" );
 		foreach ( var k in Kraken.All.ToList() ) k.QueueFree();
 		director.ClearEnemies();
 		await Wait( 0.4f );

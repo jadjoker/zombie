@@ -50,14 +50,15 @@ public partial class WaveDirector : Node3D
 	public float SharkSpawnHeight = 120f;
 
 	public int BossEvery = 5;
-	public float BossBaseHealth = 2000f;
+	/// <summary> 2500 on his first visit (user's ask: 500 over the old 2000). </summary>
+	public float BossBaseHealth = 2500f;
 	public float BossHealthPerVisit = 1500f;
 	/// <summary> Each time MC-51 comes back he also has this much more health than the last time (playtest 11/12: +20%). </summary>
 	public float BossHealthGrowth = 1.2f;
 	public float BossSpawnHeight = 160f;
 	public float KrakenBaseHealth = 8000f;
-	/// <summary> Its dome (shield) at the first visit, and how much tougher each return is (playtest 11/11). </summary>
-	public float KrakenDomeHealth = 1500f, KrakenReturnScale = 1.2f;
+	/// <summary> Its dome (shield) at the first visit, and how much tougher each return is (playtest 11/11; 1.5x a return, user's ask). </summary>
+	public float KrakenDomeHealth = 1500f, KrakenReturnScale = 1.5f;
 	float KrakenScale => MathF.Pow( KrakenReturnScale, Math.Max( 0, KrakenVisits - 1 ) );
 
 	// ---- The Kraken event (issue #30, stage 5): it turns up on waves of its own choosing ----

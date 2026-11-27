@@ -369,7 +369,7 @@ public partial class MermaidQueen : Creature
 		var next = GlobalPosition + velocity * dt;
 		var ahead = velocity.Flat().SafeNormal();
 		if ( ahead != Vector3.Zero )
-			foreach ( var drop in new[] { 0f, 2.2f } )
+			foreach ( var drop in new[] { 0f, 2.5f, 5f } )   // her waist, and down her tail
 			{
 				var from = GlobalPosition + Vector3.Down * drop;
 				var hit = Trace.Ray( this, from, from + ahead * 3f, Layers.World );
@@ -445,7 +445,7 @@ public partial class MermaidQueen : Creature
 			var d = to.Length();
 			if ( d < BiteRange ) { bitten = p; Begin( Act.Bite ); return; }
 			// Drawn in, harder the nearer they are (a pull they can fight by running, but not for long).
-			c.Velocity += to / MathF.Max( d, 0.01f ) * pull * (0.6f + 0.6f * (1f - d / SongRange)) * dt * 6f;
+			NetPlayer.Push( c, to / MathF.Max( d, 0.01f ) * pull * (0.6f + 0.6f * (1f - d / SongRange)) * dt * 6f );
 		}
 		if ( a >= SongWindUp + length ) Done();
 	}

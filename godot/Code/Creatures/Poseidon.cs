@@ -705,7 +705,7 @@ public partial class PoseidonVortex : Node3D
 			var d = offset.Length();
 			if ( d > PullRadius ) continue;
 			// Dragged in, harder the closer they are; caught at the middle.
-			c.Velocity += offset.SafeNormal() * (1f - d / PullRadius) * 22f * dt;
+			NetPlayer.Push( c, offset.SafeNormal() * (1f - d / PullRadius) * 22f * dt );
 			// Swept up: the whirlpool turns back to Poseidon with the player inside (he moves it from here).
 			if ( d < CatchRadius && MathF.Abs( c.GlobalPosition.Y - GlobalPosition.Y ) < 4f && owner is not null && IsInstanceValid( owner ) && owner.Grab( player, this ) )
 			{

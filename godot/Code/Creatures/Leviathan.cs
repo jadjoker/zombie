@@ -910,7 +910,7 @@ void fragment() {
 			var d = to.Length();
 			if ( d > SuckRange || to.Normalized().Dot( forward ) < 0.5f ) continue;
 			if ( d < 3.2f ) { Swallow( p ); continue; }
-			c.Velocity += -to.Normalized() * SuckStrength * (1.4f - d / SuckRange) * dt * 6f;
+			NetPlayer.Push( c, -to.Normalized() * SuckStrength * (1.4f - d / SuckRange) * dt * 6f );
 		}
 	}
 

@@ -132,6 +132,8 @@ public partial class PlayerSurvivor : Node
 		}
 		Controller.UseInputControls = true;
 		Controller.UseLookControls = true;
+		// Never come back held: a creature that grabbed them as they died may not think again to let go (frozen, bubbled, stunned).
+		Controller.Scripted = false;
 		Controller.Velocity = Vector3.Zero;
 		Controller.GlobalPosition = position;
 	}

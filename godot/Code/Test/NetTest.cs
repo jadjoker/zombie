@@ -343,6 +343,9 @@ public partial class AutoTest
 			await Wait( 4f );
 			queen.Force( "riptide" );
 			await Wait( 3f );
+			// Her song draws the joiner in on its own machine (each frame's pull is small: NetPlayer.Push).
+			queen.Force( "song" );
+			await Wait( 5.5f );
 			GD.Print( $"[autotest] net: host queen pearls {MermaidQueen.PearlsThrown}, riptides {MermaidQueen.Riptides}" );
 			if ( IsInstanceValid( queen ) ) queen.QueueFree();
 			DevFlags.FreezeEnemies = true;
@@ -354,7 +357,8 @@ public partial class AutoTest
 			bool hook = false, beam = false, slam = false, cannons = false, rings = false;
 			var tridents = Poseidon.PuppetTridents;
 			int pearls = MermaidQueen.PuppetPearls, waves = MermaidQueen.PuppetWaves;
-			bool QueenShown() => MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves;
+			float songStart = -1f, songNearest = 999f;
+			bool QueenShown() => MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves && songStart - songNearest > 0.8f;
 			for ( var t = 0f; t < 100f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents && QueenShown()); t += 0.05f )
 			{
 				await Wait( 0.05f );
@@ -363,6 +367,12 @@ public partial class AutoTest
 				slam |= Kraken.All.Any( k => k.Puppet && k.Attacking is Kraken.Attack.Raise or Kraken.Attack.Slam );
 				cannons |= DaveyCannon.All.Count > 0;
 				rings |= ShockRing.All.Count > 0 && KingRaymond.All.Any( k => k.Puppet );
+				if ( MermaidQueen.LocalCharmed && MermaidQueen.All.FirstOrDefault( q => q.Puppet ) is { } singer )
+				{
+					var gap = player.GlobalPosition.Flat().DistanceTo( singer.GlobalPosition.Flat() );
+					if ( songStart < 0f ) songStart = gap;
+					songNearest = MathF.Min( songNearest, gap );
+				}
 			}
 			GD.Print( $"[autotest] net: shown here: angler hook {hook}, MC-51 beam {beam}, Kraken slam {slam}, Poseidon tridents {Poseidon.PuppetTridents - tridents}, Davey cannons {cannons}, King Raymond rings {rings}" );
 			Check( hook, "the host's angler hook never showed on the joiner" );
@@ -371,8 +381,9 @@ public partial class AutoTest
 			Check( Poseidon.PuppetTridents > tridents, "the host's Poseidon trident never showed on the joiner" );
 			Check( cannons, "the host's Davey cannons never showed on the joiner" );
 			Check( rings, "the host's King Raymond shock rings never showed on the joiner" );
-			GD.Print( $"[autotest] net: queen pearls {MermaidQueen.PuppetPearls - pearls}, riptides {MermaidQueen.PuppetWaves - waves}" );
-			Check( QueenShown(), "the host's Mermaid Queen pearls and riptide never showed on the joiner" );
+			GD.Print( $"[autotest] net: queen pearls {MermaidQueen.PuppetPearls - pearls}, riptides {MermaidQueen.PuppetWaves - waves}, song drew the joiner from {songStart:0.0} to {songNearest:0.0} m" );
+			Check( MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves, "the host's Mermaid Queen pearls and riptide never showed on the joiner" );
+			Check( songStart - songNearest > 0.8f, "the host's Mermaid Queen song never drew the joiner in" );
 		}
 	}
 

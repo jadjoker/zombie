@@ -191,6 +191,22 @@ public partial class NetPlayer : Node
 		return false;
 	}
 
+	/// <summary>
+	/// A creature's pull or shove on a player, a little every frame (a whirlpool's drag, a song, a suck). On the host a
+	/// remote robot's share goes to its owner: each frame's piece is too small for <see cref="HostSide"/> to tell from
+	/// the robot's own motion, so it was lost and joiners never felt these pulls.
+	/// </summary>
+	public static void Push( PlayerController c, Vector3 change )
+	{
+		if ( c is null || !GodotObject.IsInstanceValid( c ) ) return;
+		c.Velocity += change;
+		if ( Net.IsHost && c.IsRemote && c.GetNodeOrNull<NetPlayer>( "NetPlayer" ) is { } n )
+		{
+			n.lastSetVelocity += change;
+			n.pendingImpulse += change;
+		}
+	}
+
 	/// <summary> The robot's own code (its gun, moves) changed its speed: that isn't a shove from a creature. </summary>
 	public void AbsorbOwnMotion( Vector3 change ) => lastSetVelocity += change;
 

@@ -179,7 +179,7 @@ public partial class Kraken
 			var to = (mouth - player.RealPosition).Flat();
 			var distance = to.Length();
 			if ( distance > FightRadius * 1.25f || distance < 5f ) continue;
-			controller.Velocity += to / distance * SuckPull * dt;
+			NetPlayer.Push( controller, to / distance * SuckPull * dt );
 			controller.GetNodeOrNull<CameraJuice>( "CameraJuice" )?.Shake( 0.35f * dt );
 		}
 	}

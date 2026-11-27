@@ -688,7 +688,7 @@ void fragment() {
 			if ( !p.IsAlive || p.Controller is not { } c ) continue;
 			var away = (p.RealPosition - GlobalPosition).Flat();
 			var d = away.Length();
-			if ( d < 2.2f && d > 0.01f && p.RealPosition.Y < GlobalPosition.Y + 3.2f ) c.Velocity += away / d * (2.2f - d) * 12f * dt;
+			if ( d < 2.2f && d > 0.01f && p.RealPosition.Y < GlobalPosition.Y + 3.2f ) NetPlayer.Push( c, away / d * (2.2f - d) * 12f * dt );
 		}
 	}
 

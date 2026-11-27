@@ -348,6 +348,18 @@ public partial class AutoTest
 			await Wait( 5.5f );
 			GD.Print( $"[autotest] net: host queen pearls {MermaidQueen.PearlsThrown}, riptides {MermaidQueen.Riptides}" );
 			if ( IsInstanceValid( queen ) ) queen.QueueFree();
+			// The Lighthouse Hermit's slam and foghorn.
+			var hermitAt = at + new Vector3( 9f, 0f, 9f );
+			var hermit = LighthouseHermit.Spawn( scene, hermitAt with { Y = Sculpt.GroundAt( hermitAt ) is var g && g != float.MinValue ? g : hermitAt.Y }, 6000f );
+			hermit.OnlyWhenTold = true;
+			await Wait( 3.2f );
+			hermit.Force( "slam" );
+			await Wait( 2.5f );
+			hermit.FogTime = 6f;
+			hermit.Force( "horn" );
+			await Wait( hermit.HornWindUp + 2f );
+			GD.Print( $"[autotest] net: host hermit slams {LighthouseHermit.Slams}, fogs {LighthouseHermit.Fogs}" );
+			if ( IsInstanceValid( hermit ) ) hermit.QueueFree();
 			DevFlags.FreezeEnemies = true;
 			await Wait( 1f );
 		}
@@ -359,7 +371,10 @@ public partial class AutoTest
 			int pearls = MermaidQueen.PuppetPearls, waves = MermaidQueen.PuppetWaves;
 			float songStart = -1f, songNearest = 999f;
 			bool QueenShown() => MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves && songStart - songNearest > 0.8f;
-			for ( var t = 0f; t < 100f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents && QueenShown()); t += 0.05f )
+			int hermitSlams = LighthouseHermit.PuppetSlams, hermitFogs = LighthouseHermit.PuppetFogs;
+			var fogged = 0f;
+			bool HermitShown() => LighthouseHermit.PuppetSlams > hermitSlams && LighthouseHermit.PuppetFogs > hermitFogs && fogged > 0.3f;
+			for ( var t = 0f; t < 120f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents && QueenShown() && HermitShown()); t += 0.05f )
 			{
 				await Wait( 0.05f );
 				hook |= Angler.All.Any( a => a.Puppet && a.HookShown );
@@ -367,6 +382,7 @@ public partial class AutoTest
 				slam |= Kraken.All.Any( k => k.Puppet && k.Attacking is Kraken.Attack.Raise or Kraken.Attack.Slam );
 				cannons |= DaveyCannon.All.Count > 0;
 				rings |= ShockRing.All.Count > 0 && KingRaymond.All.Any( k => k.Puppet );
+				fogged = MathF.Max( fogged, FogBank.Local );
 				if ( MermaidQueen.LocalCharmed && MermaidQueen.All.FirstOrDefault( q => q.Puppet ) is { } singer )
 				{
 					var gap = player.GlobalPosition.Flat().DistanceTo( singer.GlobalPosition.Flat() );
@@ -384,6 +400,9 @@ public partial class AutoTest
 			GD.Print( $"[autotest] net: queen pearls {MermaidQueen.PuppetPearls - pearls}, riptides {MermaidQueen.PuppetWaves - waves}, song drew the joiner from {songStart:0.0} to {songNearest:0.0} m" );
 			Check( MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves, "the host's Mermaid Queen pearls and riptide never showed on the joiner" );
 			Check( songStart - songNearest > 0.8f, "the host's Mermaid Queen song never drew the joiner in" );
+			GD.Print( $"[autotest] net: hermit slams {LighthouseHermit.PuppetSlams - hermitSlams}, fogs {LighthouseHermit.PuppetFogs - hermitFogs}, fog on the joiner {fogged:0.00}" );
+			Check( LighthouseHermit.PuppetSlams > hermitSlams && LighthouseHermit.PuppetFogs > hermitFogs, "the host's Lighthouse Hermit slam and foghorn never showed on the joiner" );
+			Check( fogged > 0.3f, "the host's Lighthouse Hermit fog never closed in on the joiner" );
 		}
 	}
 

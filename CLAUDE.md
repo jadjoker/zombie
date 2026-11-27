@@ -253,6 +253,21 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   more pearls and crescents). Sounds `queen_*` (`make_sounds.py`). Dev menu: Enemies (spawn; her moves), World, Waves.
   Test: `--queen` (`--portrait` stops after the pictures; shots need a window); `--nettest` checks her pearls and riptide
   show on the joiner.
+- The Lighthouse Hermit (wave 10 boss, user's pick; `WaveDirector.LighthouseWave`, `LighthouseHealth` 6000, `EnemyKind.Lighthouse`, takes
+  MC-51's place on the shore's last wave; MC-51 keeps wave 5 at 2500, set in `levels/*.json` too, which override the code):
+  `Creatures/LighthouseHermit.cs` (brain, attacks, hits, burst), `LighthouseHermitLook.cs` (built in code: a red and purple crab at
+  `CrabScale`, alien eyes on stalks, one huge warty claw, legs that step on their own, a soft pink abdomen with green veins curled
+  into a banded brick lighthouse leant back `TowerTilt`, barnacles, glowing cracks (`TowerShader`), lit windows, gallery, a glass
+  lamp room with an alien eye for a lamp (`LampShader`, fog_disabled), a brass foghorn), `LighthouseHermitMotion.cs`,
+  `LighthouseHermitFx.cs` (the sweeping lamp cone and spotlight, the Lantern Beam, the erupt cue; `FogBank`: pulls the level's
+  depth fog in for a player inside it and puts it back; `LampTrail`), `LighthouseHermitNet.cs`. He scuttles sideways round the
+  player. Attacks (`Force`: slam, burrow, horn, beam): Claw Slam (hurts in front, `ShockRing` sand rings to jump), Burrow Ambush
+  (only the lamp room above the sand, a glowing ring, bursts up and throws the player), Foghorn Blast (shoot the horn, part 7,
+  `HornShare`, and it jams: he takes `JamMultiplier`; else fog over the basin, he hunts closer and faster, `FogCrabs` hermit crabs
+  join the wave), Lantern Beam (rears up baring his belly, part 1, a weak spot then; a beam that drags after the player, walls
+  stop it, a trail that burns; `BellyShare` shot into the belly puts it out). Enraged at half health. Sounds `foghorn_*`,
+  `hermit_*`, `lamp_focus`. Dev menu: Enemies (spawn; his moves), World, Waves. Test: `--lighthouse` (`--portrait` stops after
+  the pictures); `--nettest` checks his slam and fog on the joiner.
 - Davey ("Davey phone home", `Creatures/DaveyJones.cs`, `EnemyKind.Davey`): the wave 20 boss (`WaveDirector.DaveyWave`,
   takes MC61's place, the last wave on the wreck site; health `DaveyHealth` 11000), an alien ghost pirate built in code: smooth lofted alien head with black
   almond eyes and a shut mouth, a man's lofted torso, a full beard, a bicorne (`HatMesh`: teal, gold trim, skull and crossbones, red feather), belt and buckle, one skinned curling tail (`SmoothKit.SkinChain`), a cutlass and a hook, all in

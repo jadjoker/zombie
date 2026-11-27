@@ -50,7 +50,7 @@ public partial class WaveDirector : Node3D
 	public float SharkSpawnHeight = 120f;
 
 	public int BossEvery = 5;
-	/// <summary> 2500 on his first visit (user's ask: 500 over the old 2000). </summary>
+	/// <summary> 2500 on his first visit (user's ask: 500 over the old 2000). The level files set it too (levels/*.json wave_director). </summary>
 	public float BossBaseHealth = 2500f;
 	public float BossHealthPerVisit = 1500f;
 	/// <summary> Each time MC-51 comes back he also has this much more health than the last time (playtest 11/12: +20%). </summary>
@@ -217,7 +217,7 @@ public partial class WaveDirector : Node3D
 	public bool SpawnSharks = true;
 	public bool SpawnBossWaves = true;
 
-	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab, Cleaner, Warden, Leviathan, Queen }
+	public enum EnemyKind { Zombie, Bloober, Squilien, Crab, Boss, Spider, Kraken, RockyShark, Seahorse, Poseidon, Mermaid, Davey, Angler, FishSwarm, Stingray, KingRaymond, Puffer, HermitCrab, Cleaner, Warden, Leviathan, Queen, Lighthouse }
 
 	/// <summary> Mermaids: only in Atlantis (area 3), half of the mix there. Health about 30% over a Bloober's. </summary>
 	public bool SpawnMermaids = true;
@@ -274,6 +274,11 @@ public partial class WaveDirector : Node3D
 	public bool SpawnHermits = true;
 	public float HermitShare = 0.3f;
 	public int HermitFromWave = 2;
+
+	/// <summary> The boss wave the Lighthouse Hermit (user's pick) takes from MC-51: the last on the shore. </summary>
+	public int LighthouseWave = 10;
+	/// <summary> Between MC-51 (2500 on wave 5) and King Raymond (10000 on wave 15). </summary>
+	public float LighthouseHealth = 6000f;
 
 	/// <summary> The boss wave King Raymond IV (the sting ray king, user's design) takes from MC61: the middle of the wreck site. </summary>
 	public int KingRaymondWave = 15;
@@ -374,6 +379,15 @@ public partial class WaveDirector : Node3D
 			if ( !toPlayer.IsNearlyZero() ) r.GlobalBasis = Shapes.LookAt( toPlayer );
 			r.Killed += x => { d.alive.Remove( x ); d.Kills++; };
 			return r;
+		},
+		[EnemyKind.Lighthouse] = ( d, at, health ) =>
+		{
+			var h = LighthouseHermit.Spawn( d.GetTree().CurrentScene, at, health );
+			h.CrabHealth = d.CrabBaseHealth + d.CrabHealthPerWave * (d.Wave - 1);
+			var toPlayer = ((PlayerSurvivor.FindNearestAlive( at )?.WorldPosition ?? at + Vector3.Forward) - at).Flat();
+			if ( !toPlayer.IsNearlyZero() ) h.GlobalBasis = Shapes.LookAt( toPlayer );
+			h.Killed += x => { d.alive.Remove( x ); d.Kills++; };
+			return h;
 		},
 		[EnemyKind.Warden] = ( d, at, health ) =>
 		{
@@ -500,7 +514,7 @@ public partial class WaveDirector : Node3D
 	public int NextBossWave => BossEvery > 0 ? (Wave / BossEvery + 1) * BossEvery : 0;
 
 	/// <summary> Who comes on this boss wave: King Raymond IV on 15, Davey on 20, the Blind Warden on 25, the Leviathan on 30 (in the Abyss), Poseidon on 40, MC-51 on the rest. </summary>
-	public EnemyKind BossKind => Wave == QueenWave ? EnemyKind.Queen : Wave == WardenWave ? EnemyKind.Warden : SeaTerrain.Area == SeaTerrain.Caves && Wave == LeviathanWave ? EnemyKind.Leviathan : Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : Wave == KingRaymondWave ? EnemyKind.KingRaymond : EnemyKind.Boss;
+	public EnemyKind BossKind => Wave == QueenWave ? EnemyKind.Queen : Wave == WardenWave ? EnemyKind.Warden : SeaTerrain.Area == SeaTerrain.Caves && Wave == LeviathanWave ? EnemyKind.Leviathan : Wave == PoseidonWave ? EnemyKind.Poseidon : Wave == DaveyWave ? EnemyKind.Davey : Wave == KingRaymondWave ? EnemyKind.KingRaymond : SeaTerrain.Area == SeaTerrain.Shore && Wave == LighthouseWave ? EnemyKind.Lighthouse : EnemyKind.Boss;
 
 	public float DangerProgress => DangerBy == DangerSource.Time
 		? (SurvivalSeconds % MathF.Max( 1f, SecondsPerLevel )) / MathF.Max( 1f, SecondsPerLevel )
@@ -754,6 +768,7 @@ public partial class WaveDirector : Node3D
 			EnemyKind.Poseidon => PoseidonHealth,
 			EnemyKind.Davey => DaveyHealth,
 			EnemyKind.KingRaymond => KingRaymondHealth,
+			EnemyKind.Lighthouse => LighthouseHealth,
 			EnemyKind.Warden => WardenHealth,
 			EnemyKind.Leviathan => LeviathanHealth,
 			EnemyKind.Queen => QueenHealth,

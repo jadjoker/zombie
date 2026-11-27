@@ -198,6 +198,13 @@ public partial class HudOverlays : Control
 				lineAge = l.TimeSinceLine;
 				lineColour = LeviathanBlue;
 			}
+		foreach ( var h in LighthouseHermit.All )
+			if ( IsInstanceValid( h ) && !h.IsDead && !string.IsNullOrEmpty( h.Line ) && h.TimeSinceLine < lineAge )
+			{
+				line = h.Line;
+				lineAge = h.TimeSinceLine;
+				lineColour = LampGold;
+			}
 		foreach ( var q in MermaidQueen.All )
 			if ( IsInstanceValid( q ) && !q.IsDead && !string.IsNullOrEmpty( q.Line ) && q.TimeSinceLine < lineAge )
 			{
@@ -321,6 +328,8 @@ public partial class HudOverlays : Control
 		// Boss health bars: a suit frame across the top with TARGET and the name, the percentage, and a row of pills.
 		var b = Boss;
 		if ( b is not null ) BossBar( 0f, "MC-51", b.HealthFraction, UiStyle.Pink, UiStyle.PinkTop );
+		else if ( LighthouseHermit.All.FirstOrDefault( h => !h.IsDead ) is { Health: not null } hermit )
+			BossBar( 0f, "THE LIGHTHOUSE HERMIT", hermit.HealthFraction, LampGold, new Color( "fff0c0" ) );
 		else if ( KingRaymond.All.FirstOrDefault( k => !k.IsDead ) is { Health: not null } king )
 			BossBar( 0f, "KING RAYMOND", king.Health.Fraction, KingGold, new Color( "fff1b8" ), numeral: "IV" );
 		else if ( BlindWarden.All.FirstOrDefault( w => !w.IsDead ) is { Health: not null } warden )
@@ -372,6 +381,24 @@ public partial class HudOverlays : Control
 			DrawPolygon( new[] { new Vector2( Size.X - edge, 0f ), new Vector2( Size.X, 0f ), Size, new Vector2( Size.X - edge, Size.Y ) }, new[] { clear, pink, pink, clear } );
 			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.62f ), "SHOOT HER THROAT!", (int)UiStyle.S( 40f ), QueenPink with { A = 0.7f + 0.3f * songPulse }, HorizontalAlignment.Center, Size.X );
 			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.62f + UiStyle.S( 32f ) ), "OR GET OUT OF HER SIGHT", 18, UiStyle.Gold, HorizontalAlignment.Center, Size.X );
+		}
+		// The Lighthouse Hermit's counters: the horn winding up, his belly bared for the beam; and his fog.
+		if ( !PlayerSurvivor.LocalDead && LighthouseHermit.All.FirstOrDefault( h => !h.IsDead ) is { } lh )
+		{
+			var lampPulse = 0.65f + 0.35f * MathF.Sin( now * 9f );
+			if ( lh.HornWinding )
+				UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.62f ), "SHOOT THE FOGHORN!", (int)UiStyle.S( 38f ), LampGold with { A = lampPulse }, HorizontalAlignment.Center, Size.X );
+			else if ( lh.BellyOpen )
+				UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.62f ), "SHOOT HIS SOFT BELLY!", (int)UiStyle.S( 38f ), LampGold with { A = lampPulse }, HorizontalAlignment.Center, Size.X );
+		}
+		if ( FogBank.Local > 0.05f && !PlayerSurvivor.LocalDead )
+		{
+			var fog = FogBank.Local;
+			var edge = UiStyle.S( 140f );
+			var grey = new Color( 0.72f, 0.78f, 0.8f, 0.35f * fog );
+			var clear = grey with { A = 0f };
+			DrawPolygon( new[] { Vector2.Zero, new Vector2( edge, 0f ), new Vector2( edge, Size.Y ), new Vector2( 0f, Size.Y ) }, new[] { grey, clear, clear, grey } );
+			DrawPolygon( new[] { new Vector2( Size.X - edge, 0f ), new Vector2( Size.X, 0f ), Size, new Vector2( Size.X - edge, Size.Y ) }, new[] { clear, grey, grey, clear } );
 		}
 		// Swallowed by the Leviathan: shoot your way out.
 		if ( Leviathan.SwallowedLocal && !PlayerSurvivor.LocalDead )
@@ -457,6 +484,7 @@ public partial class HudOverlays : Control
 	static readonly Color WardenPale = new( "d8eaf5" );
 	static readonly Color LeviathanBlue = new( "4fc3ff" );
 	static readonly Color QueenPink = new( "ff6ae6" );
+	static readonly Color LampGold = new( "ffd36a" );
 
 	/// <summary>
 	/// A Roman numeral as carved on a monument (King Raymond's "IV"): gold capitals in the display font with a bar

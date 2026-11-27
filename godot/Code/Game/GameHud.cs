@@ -647,6 +647,7 @@ public partial class GameHud : Control
 	/// <summary> The boss wave's line under its banner: who is coming. </summary>
 	public static string BossArrives( WaveDirector.EnemyKind kind ) => kind switch
 	{
+		WaveDirector.EnemyKind.Lighthouse => "THE LIGHTHOUSE HERMIT comes ashore. Mind the light",
 		WaveDirector.EnemyKind.KingRaymond => "KING RAYMOND IV glides in. Bow down",
 		WaveDirector.EnemyKind.Davey => "DAVEY JONES has come for your soul",
 		WaveDirector.EnemyKind.Poseidon => "POSEIDON rises to defend his city",

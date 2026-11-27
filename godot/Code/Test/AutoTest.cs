@@ -82,6 +82,7 @@ public partial class AutoTest : Node
 		if ( args.Contains( "--statue" ) ) { await StatueShots(); return; }
 		if ( args.Contains( "--leviathan" ) ) { await LeviathanTest(); return; }
 		if ( args.Contains( "--queen" ) ) { await QueenTest(); return; }
+		if ( args.Contains( "--lighthouse" ) ) { await LighthouseTest(); return; }
 		if ( args.Contains( "--eels" ) ) { await GardenEelTest(); return; }
 		if ( args.Contains( "--puffer" ) ) { await PufferTest(); return; }
 		if ( args.Contains( "--hermit" ) ) { await HermitTest(); return; }

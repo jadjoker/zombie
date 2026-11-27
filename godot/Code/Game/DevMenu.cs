@@ -495,6 +495,8 @@ public partial class DevMenu : CanvasLayer
 			foreach ( var attack in new[] { "vanish", "cannons", "sink" } )
 				Action( $"Davey: {attack}", () => { foreach ( var davey in DaveyJones.All ) davey.ForceAttack( attack ); } );
 			Action( "Davey to half (his locker)", () => { foreach ( var davey in DaveyJones.All ) if ( !davey.IsDead && davey.Health is { } h ) h.OnDamage( new DamageInfo { Damage = h.MaxHealth } ); } );
+			foreach ( var attack in LighthouseHermit.Attacks )
+				Action( $"Lighthouse Hermit: {attack}", () => { foreach ( var h in LighthouseHermit.All ) if ( !h.IsDead ) h.Force( attack ); } );
 			foreach ( var attack in Stingray.KingAttacks )
 				Action( $"King Raymond: {attack}", () => { foreach ( var k in KingRaymond.All ) if ( !k.IsDead ) k.ForceAttack( attack ); } );
 			foreach ( var move in new[] { BlindWarden.Act.Charge, BlindWarden.Act.Clap, BlindWarden.Act.Scream, BlindWarden.Act.Flick } )
@@ -655,6 +657,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { NextBossWave: > 0 } ) Action( $"Boss wave ({d.NextBossWave})", () => d.JumpToWave( d.NextBossWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Kraken next wave (now {d.KrakenChanceNext * 100f:0}%)", () => d.ForceKrakenNextWave() );
 			if ( d is { OpenWorld: false } ) Action( "Wave 7 (first Kraken roll)", () => d.JumpToWave( 7 ) );
+			if ( d is { OpenWorld: false } && SeaTerrain.Area == SeaTerrain.Shore ) Action( $"Lighthouse Hermit wave ({d.LighthouseWave})", () => d.JumpToWave( d.LighthouseWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"King Raymond wave ({d.KingRaymondWave})", () => d.JumpToWave( d.KingRaymondWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Davey wave ({d.DaveyWave})", () => d.JumpToWave( d.DaveyWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Blind Warden wave ({d.WardenWave})", () => d.JumpToWave( d.WardenWave ) );
@@ -720,6 +723,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Rocky Shark", WaveDirector.EnemyKind.RockyShark ),
 		new( "MC-51 boss", WaveDirector.EnemyKind.Boss ),
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
+		new( "The Lighthouse Hermit (shore boss)", WaveDirector.EnemyKind.Lighthouse ),
 		new( "Seahorse", WaveDirector.EnemyKind.Seahorse ),
 		new( "Poseidon", WaveDirector.EnemyKind.Poseidon ),
 		new( "The Mermaid Queen (Atlantis boss)", WaveDirector.EnemyKind.Queen ),

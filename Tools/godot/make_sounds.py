@@ -555,6 +555,25 @@ def build():
     n = int(SR * 1.5)
     surf = sweep_lp(noise(1.5), 2600, 300) * bell(n, 0.2)
     s["queen_wave"] = reverb(drive(mix((surf, 0, 1.0), (thump(0.6, 110, 40, 0.4), 0, 0.9), (spectral(noise(1.5), lo=1500, hi=6000) * env(n, 0.05, 1.0) * 0.3, 0.1, 1.0)), 1.6), room=0.8, wet=0.45)
+    # The Lighthouse Hermit (kept last): the foghorn (a deep two-tone groan, the low note a ship's horn, a rattle in the
+    # brass), its wind-up, the claw slam, the lamp's hum as the beam focuses, his roar.
+    def horn(seconds, f, rough=0.15):
+        n = int(SR * seconds)
+        tt = t(seconds)
+        freq = f * (1 + 0.006 * np.sin(2 * np.pi * 4.2 * tt))
+        ph = 2 * np.pi * np.cumsum(freq) / SR
+        src = sum(np.sin(ph * k) / k ** 0.9 for k in range(1, 14))
+        src = bandsweep(src, 520, 380, 0.5) * 0.8 + np.sin(ph) * 0.6 + rough * sweep_lp(noise(seconds), 400, 200)
+        return src * env(n, 0.25, seconds * 0.7, 0.6)
+    s["foghorn_blast"] = reverb(drive(mix((horn(2.6, 73.4), 0, 1.0), (horn(1.6, 55.0, 0.25), 1.2, 1.0)), 1.8), room=0.97, wet=0.6)
+    n = int(SR * 2.2)
+    s["foghorn_wind"] = reverb(drive(warble(2.2, 38, 70, 5, 0.1) * env(n, 0.3, 1.8, 0.2) + 0.4 * sweep_lp(noise(2.2), 200, 900) * bell(n, 0.7), 2.0), room=0.9, wet=0.5)
+    s["hermit_slam"] = reverb(drive(mix((thump(1.0, 80, 22, 0.8), 0, 1.0), (rocks, 0.02, 0.9), (click(900, 0.08, 0.04), 0, 0.8), (spectral(noise(1.0), lo=100, hi=1500) * env(int(SR * 1.0), 0.003, 0.8), 0, 0.7)), 2.4), room=0.85, wet=0.45)
+    n = int(SR * 1.4)
+    s["lamp_focus"] = reverb(tone(1.4, 110, 880, "sine") * 0.5 * bell(n, 0.9) + tone(1.4, 165, 1320, "sine") * 0.25 * bell(n, 0.9) + 0.1 * spectral(noise(1.4), lo=3000, hi=9000) * bell(n, 0.9), room=0.7, wet=0.5)
+    n = int(SR * 1.8)
+    growl = warble(1.8, 70, 52, 11, 0.2) + 0.6 * warble(1.8, 140, 104, 13, 0.18) + 0.5 * sweep_lp(noise(1.8), 1200, 300)
+    s["hermit_roar"] = reverb(drive(growl * env(n, 0.08, 1.4, 0.5), 2.6), room=0.9, wet=0.5)
     return s
 
 

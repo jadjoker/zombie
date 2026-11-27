@@ -2010,7 +2010,7 @@
     "BlooberFromWave": 1,
     "BlooberHealthPerWave": 25,
     "BlooberSpawnHeight": 90,
-    "BossBaseHealth": 2000,
+    "BossBaseHealth": 2500,
     "BossEvery": 5,
     "BossHealthPerVisit": 800,
     "BossSpawnHeight": 160,

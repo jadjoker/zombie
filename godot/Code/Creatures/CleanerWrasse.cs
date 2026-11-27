@@ -55,7 +55,7 @@ public partial class CleanerWrasse : Creature
 	public static bool Treats( Creature c ) =>
 		c is not null && IsInstanceValid( c ) && !c.IsDead && c.IsEnemy && c.Health is not null
 		&& c is not (CleanerWrasse or HomingMissile or FishSwarm or MimicOctopus or GardenEel)
-		&& c is not (MC61 or Kraken or Poseidon or DaveyJones or KingRaymond or BlindWarden or Leviathan or MermaidQueen);
+		&& c is not (MC61 or Kraken or Poseidon or DaveyJones or KingRaymond or BlindWarden or Leviathan or MermaidQueen or LighthouseHermit);
 
 	protected override void Setup()
 	{

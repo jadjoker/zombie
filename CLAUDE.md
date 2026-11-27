@@ -235,6 +235,24 @@ itch.io. The s&box project (`Code/`, `Assets/`, the editor rules below) is the o
   Test: `--poseidongallery` (body, face, three-quarter, side; `--motion` adds throw, summon and swim frames; needs a window).
   `SmoothKit` lofts and skinned tubes wind clockwise from outside (Godot's front faces); before this fix they were
   inside out and the far wall showed through. The sea glows purple, blue and green (`water.gdshader` `alien_mix`, `veins`).
+- The Mermaid Queen (wave 35 boss, user's pick; `WaveDirector.QueenWave`, `QueenHealth` 28000, `EnemyKind.Queen`, takes MC-51's
+  place in the middle of Atlantis): `Creatures/MermaidQueen.cs` (brain, attacks, hits, burst), `MermaidQueenLook.cs` (the build on
+  `SmoothKit` at `Scale` 1.35 m a model unit, near 10 m long), `MermaidQueenMotion.cs` (springs, a pose per attack),
+  `MermaidQueenFx.cs` (`QueenPearl`, `QueenWave`, `SirenRing`, the gaze beam, `ScorchMark`), `MermaidQueenNet.cs`. Alien look:
+  an iridescent pearl hide with glowing green veins (`QueenSkin`), a swept-back skull, four black almond eyes on green rims, a
+  mouth of four petals over a glowing throat, a crown of violet crystal spires, tentacle hair with lit tips, a jellyfish ruff,
+  a gold shell collar and bodice with a glowing pearl heart, a tail with a line of lights down each side (`QueenTail`), a
+  sceptre with a pearl in a coral claw. Attacks (`Force`: song, pearls, riptide, guard, gaze, plus dash and ascend): Siren
+  Song (players who can see her are drawn in and their view turned to her, `LocalCharmed` drives the HUD's pink edges and
+  SHOOT HER THROAT!; one that reaches her `Lap` is bitten; `ChokeShare` of her health shot into the throat, part 7, open
+  only while she sings, or the heart, part 1, chokes it off and she takes `ChokeMultiplier`), Pearl Storm (pearls gather
+  round the sceptre and are flung, home gently, burst; a shot bursts one harmlessly, `PearlBody`), Riptide (crescents of
+  water roll out in a fan; jump them), Royal Guard (mermen through `WaveDirector.SpawnAt`, `Mermaid.Guard`, at most
+  `MaxGuards`), Abyssal Gaze (eyes charge, a line marks the spot, then a beam drags after the player at `BeamTrack`, walls
+  stop it). She dashes back to a player who runs. At half health she ascends (`Ascended`: crown grown, mouth split, faster,
+  more pearls and crescents). Sounds `queen_*` (`make_sounds.py`). Dev menu: Enemies (spawn; her moves), World, Waves.
+  Test: `--queen` (`--portrait` stops after the pictures; shots need a window); `--nettest` checks her pearls and riptide
+  show on the joiner.
 - Davey ("Davey phone home", `Creatures/DaveyJones.cs`, `EnemyKind.Davey`): the wave 20 boss (`WaveDirector.DaveyWave`,
   takes MC61's place, the last wave on the wreck site; health `DaveyHealth` 11000), an alien ghost pirate built in code: smooth lofted alien head with black
   almond eyes and a shut mouth, a man's lofted torso, a full beard, a bicorne (`HatMesh`: teal, gold trim, skull and crossbones, red feather), belt and buckle, one skinned curling tail (`SmoothKit.SkinChain`), a cutlass and a hook, all in

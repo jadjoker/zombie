@@ -503,6 +503,8 @@ public partial class DevMenu : CanvasLayer
 				Action( $"Leviathan: {move}", () => { foreach ( var l in Leviathan.All ) if ( !l.IsDead ) l.Force( move ); } );
 			foreach ( var attack in new[] { "trident", "whirlpool", "seahorses", "vanish" } )
 				Action( $"Poseidon: {attack}", () => { foreach ( var p in Poseidon.All ) p.ForceAttack( attack ); } );
+			foreach ( var attack in MermaidQueen.Attacks.Append( "dash" ).Append( "ascend" ) )
+				Action( $"Mermaid Queen: {attack}", () => { foreach ( var q in MermaidQueen.All ) if ( !q.IsDead ) q.Force( attack ); } );
 			Action( "Kraken to 10% HP", () => { foreach ( var k in Kraken.All ) if ( !k.IsDead && k.Health is { } h ) h.Current = h.MaxHealth * 0.1f; } );
 			Row( "Fight radius" );
 			foreach ( var r in new[] { 18f, 26f, 34f } ) { var radius = r; Pick( $"{r:0} m", Kraken.FightRadius == radius, () => Kraken.FightRadius = radius ); }
@@ -657,6 +659,7 @@ public partial class DevMenu : CanvasLayer
 			if ( d is { OpenWorld: false } ) Action( $"Davey wave ({d.DaveyWave})", () => d.JumpToWave( d.DaveyWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Blind Warden wave ({d.WardenWave})", () => d.JumpToWave( d.WardenWave ) );
 			if ( d is { OpenWorld: false } && SeaTerrain.Area == SeaTerrain.Caves ) Action( $"Leviathan wave ({d.LeviathanWave})", () => d.JumpToWave( d.LeviathanWave ) );
+			if ( d is { OpenWorld: false } ) Action( $"Mermaid Queen wave ({d.QueenWave})", () => d.JumpToWave( d.QueenWave ) );
 			if ( d is { OpenWorld: false } ) Action( $"Poseidon wave ({d.PoseidonWave})", () => d.JumpToWave( d.PoseidonWave ) );
 			if ( d is { OpenWorld: false, NextTeleportWave: > 0 } && SeaTerrain.Active ) Action( $"Clear wave {d.NextTeleportWave} (teleporter)", () => { d.JumpToWave( d.NextTeleportWave ); d.GetTree().CreateTimer( 0.5 ).Timeout += d.SkipWave; } );
 			if ( d is { OpenWorld: false } && SeaTerrain.Active && SeaTerrain.Area < SeaTerrain.Caves ) Action( "Teleport to the Abyss (stage 3, wave 21)", () => d.DevGoToArea( Controller, SeaTerrain.Caves ) );
@@ -719,6 +722,7 @@ public partial class DevMenu : CanvasLayer
 		new( "Kraken", WaveDirector.EnemyKind.Kraken ),
 		new( "Seahorse", WaveDirector.EnemyKind.Seahorse ),
 		new( "Poseidon", WaveDirector.EnemyKind.Poseidon ),
+		new( "The Mermaid Queen (Atlantis boss)", WaveDirector.EnemyKind.Queen ),
 		new( "Davey (ghost pirate)", WaveDirector.EnemyKind.Davey ),
 		new( "Mermaid", WaveDirector.EnemyKind.Mermaid ),
 		new( "Angler (deep sea)", WaveDirector.EnemyKind.Angler ),

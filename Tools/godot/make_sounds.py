@@ -527,6 +527,34 @@ def build():
     n = int(SR * 2.0)
     s["leviathan_gulp"] = reverb(mix((squelch(0.6, 120, 500, 1.0), 0, 1.0), (blub(90, 260, 0.2), 0.4, 0.8), (sweep_lp(noise(2.0), 400, 150) * bell(n, 0.4) * 0.5, 0, 1.0)), room=0.5, wet=0.4)
     s["stomach_gurgle"] = reverb(mix(*[(blub(rng.uniform(80, 200), rng.uniform(300, 700), rng.uniform(0.08, 0.2)), rng.uniform(0, 1.6), rng.uniform(0.4, 1.0)) for _ in range(12)]), room=0.4, wet=0.4)
+    # The Mermaid Queen (kept last): her siren song (a wordless voice through two vowel bands, an alien tritone in the
+    # line, a lower voice under it), the shimmer as she charges an attack, her scream, a pearl flung, the riptide.
+    def siren(notes, step, low=1.0):
+        parts = []
+        for i, f in enumerate(notes):
+            seg = step * 1.3
+            n = int(SR * seg)
+            tt = t(seg)
+            freq = f * low * (1 + 0.014 * np.sin(2 * np.pi * 5.5 * tt) * np.clip(tt / 0.25, 0, 1))
+            ph = 2 * np.pi * np.cumsum(freq) / SR
+            src = sum(np.sin(ph * k) / k ** 1.4 for k in range(1, 9))
+            voiced = bandsweep(src, 760, 620, 0.3) * 0.9 + bandsweep(src, 1250, 1050, 0.22) * 0.5 + np.sin(ph) * 0.4
+            parts.append((voiced * bell(n, 0.3), i * step, 1.0))
+        return mix(*parts)
+    line = [440.0, 523.3, 622.3, 587.3, 523.3, 739.9, 659.3, 440.0]
+    song = mix((siren(line, 0.42), 0, 1.0), (siren(line, 0.42, 0.5), 0.05, 0.45), (spectral(noise(3.6), lo=3000, hi=9000) * bell(int(SR * 3.6), 0.5) * 0.04, 0, 1.0))
+    s["queen_song"] = reverb(song, room=0.95, wet=0.65)
+    n = int(SR * 1.1)
+    shimmer = tone(1.1, 280, 1300, "sine") * 0.6 + tone(1.1, 420, 1950, "sine") * 0.3 + spectral(noise(1.1), lo=2500, hi=8000) * 0.15
+    s["queen_charge"] = reverb(mix((shimmer * bell(n, 0.8), 0, 1.0), (chime([1318.5, 1661.2, 1975.5], 0.09, 0.5), 0.55, 0.4)), room=0.7, wet=0.5)
+    n = int(SR * 1.8)
+    cry = warble(1.8, 760, 430, 7, 0.07, "sine") + 0.6 * warble(1.8, 1140, 650, 7, 0.07) * 0.5 + 0.35 * warble(1.8, 1610, 900, 9, 0.06)
+    cry = bandsweep(cry, 1400, 900, 0.6) + 0.3 * spectral(noise(1.8), lo=1800, hi=7000)
+    s["queen_scream"] = reverb(drive(cry * env(n, 0.04, 1.4, 0.5), 2.0), room=0.9, wet=0.55)
+    s["queen_pearl"] = reverb(mix((chime([1568.0, 2093.0], 0.03, 0.25), 0, 0.8), (whoosh(0.35, 2400, 700, 0.5), 0.02, 0.6)), room=0.4, wet=0.3)
+    n = int(SR * 1.5)
+    surf = sweep_lp(noise(1.5), 2600, 300) * bell(n, 0.2)
+    s["queen_wave"] = reverb(drive(mix((surf, 0, 1.0), (thump(0.6, 110, 40, 0.4), 0, 0.9), (spectral(noise(1.5), lo=1500, hi=6000) * env(n, 0.05, 1.0) * 0.3, 0.1, 1.0)), 1.6), room=0.8, wet=0.45)
     return s
 
 

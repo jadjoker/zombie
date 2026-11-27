@@ -198,6 +198,13 @@ public partial class HudOverlays : Control
 				lineAge = l.TimeSinceLine;
 				lineColour = LeviathanBlue;
 			}
+		foreach ( var q in MermaidQueen.All )
+			if ( IsInstanceValid( q ) && !q.IsDead && !string.IsNullOrEmpty( q.Line ) && q.TimeSinceLine < lineAge )
+			{
+				line = q.Line;
+				lineAge = q.TimeSinceLine;
+				lineColour = QueenPink;
+			}
 		if ( line is not null && lineAge < 2.4f )
 		{
 			speech.Visible = true;
@@ -320,6 +327,8 @@ public partial class HudOverlays : Control
 			BossBar( 0f, "THE BLIND WARDEN", warden.Health.Fraction, WardenPale, new Color( "f4fbff" ) );
 		else if ( Leviathan.All.FirstOrDefault( l => !l.IsDead ) is { Health: not null } leviathan )
 			BossBar( 0f, "THE LEVIATHAN", leviathan.Health.Fraction, LeviathanBlue, new Color( "c8f0ff" ) );
+		else if ( MermaidQueen.All.FirstOrDefault( q => !q.IsDead ) is { Health: not null } queen )
+			BossBar( 0f, "THE MERMAID QUEEN", queen.HealthFraction, QueenPink, new Color( "ffd6f6" ) );
 		else if ( DaveyJones.All.FirstOrDefault( g => !g.IsDead ) is { Health: not null } davey )
 			BossBar( 0f, "DAVEY PHONE HOME", davey.HealthFraction, new Color( "5cff6e" ), new Color( "d4ffd0" ) );
 		else if ( Poseidon.All.FirstOrDefault( p => !p.IsDead ) is { Health: not null } poseidon )
@@ -349,6 +358,20 @@ public partial class HudOverlays : Control
 			var markPulse = 0.65f + 0.35f * MathF.Sin( now * 10f );
 			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.24f ), "IT HEARS YOU", (int)UiStyle.S( 40f ), new Color( "ff5a5a" ) with { A = markPulse }, HorizontalAlignment.Center, Size.X );
 			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.24f + UiStyle.S( 32f ) ), $"MOVE  {markLeft:0}", 18, WardenPale, HorizontalAlignment.Center, Size.X );
+		}
+		// Under the Mermaid Queen's song: pink at the edges of the view, and how to stop it.
+		if ( MermaidQueen.LocalCharmed && !PlayerSurvivor.LocalDead )
+		{
+			var songPulse = 0.6f + 0.4f * MathF.Sin( now * 7f );
+			var edge = UiStyle.S( 90f );
+			var pink = QueenPink with { A = 0.22f * songPulse };
+			var clear = QueenPink with { A = 0f };
+			DrawPolygon( new[] { Vector2.Zero, new Vector2( Size.X, 0f ), new Vector2( Size.X, edge ), new Vector2( 0f, edge ) }, new[] { pink, pink, clear, clear } );
+			DrawPolygon( new[] { new Vector2( 0f, Size.Y - edge ), new Vector2( Size.X, Size.Y - edge ), Size, new Vector2( 0f, Size.Y ) }, new[] { clear, clear, pink, pink } );
+			DrawPolygon( new[] { Vector2.Zero, new Vector2( edge, 0f ), new Vector2( edge, Size.Y ), new Vector2( 0f, Size.Y ) }, new[] { pink, clear, clear, pink } );
+			DrawPolygon( new[] { new Vector2( Size.X - edge, 0f ), new Vector2( Size.X, 0f ), Size, new Vector2( Size.X - edge, Size.Y ) }, new[] { clear, pink, pink, clear } );
+			UiStyle.DrawBig( this, new Vector2( 0f, Size.Y * 0.62f ), "SHOOT HER THROAT!", (int)UiStyle.S( 40f ), QueenPink with { A = 0.7f + 0.3f * songPulse }, HorizontalAlignment.Center, Size.X );
+			UiStyle.DrawTag( this, new Vector2( 0f, Size.Y * 0.62f + UiStyle.S( 32f ) ), "OR GET OUT OF HER SIGHT", 18, UiStyle.Gold, HorizontalAlignment.Center, Size.X );
 		}
 		// Swallowed by the Leviathan: shoot your way out.
 		if ( Leviathan.SwallowedLocal && !PlayerSurvivor.LocalDead )
@@ -433,6 +456,7 @@ public partial class HudOverlays : Control
 	static readonly Color KingGold = new( "ffc935" );
 	static readonly Color WardenPale = new( "d8eaf5" );
 	static readonly Color LeviathanBlue = new( "4fc3ff" );
+	static readonly Color QueenPink = new( "ff6ae6" );
 
 	/// <summary>
 	/// A Roman numeral as carved on a monument (King Raymond's "IV"): gold capitals in the display font with a bar

@@ -335,6 +335,16 @@ public partial class AutoTest
 			await Wait( 4f );
 			GD.Print( $"[autotest] net: host King Raymond rings sent {Stingray.RingsSent}" );
 			if ( IsInstanceValid( king ) ) king.QueueFree();
+			// The Mermaid Queen's pearls and riptide.
+			var queen = MermaidQueen.Spawn( scene, at + new Vector3( -10f, 6f, 6f ), 28000f );
+			queen.OnlyWhenTold = true;
+			await Wait( 2.5f );
+			queen.Force( "pearls" );
+			await Wait( 4f );
+			queen.Force( "riptide" );
+			await Wait( 3f );
+			GD.Print( $"[autotest] net: host queen pearls {MermaidQueen.PearlsThrown}, riptides {MermaidQueen.Riptides}" );
+			if ( IsInstanceValid( queen ) ) queen.QueueFree();
 			DevFlags.FreezeEnemies = true;
 			await Wait( 1f );
 		}
@@ -343,7 +353,9 @@ public partial class AutoTest
 			player.GetNode<PlayerSurvivor>( "PlayerSurvivor" ).Health.Invulnerable = true;
 			bool hook = false, beam = false, slam = false, cannons = false, rings = false;
 			var tridents = Poseidon.PuppetTridents;
-			for ( var t = 0f; t < 90f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents); t += 0.05f )
+			int pearls = MermaidQueen.PuppetPearls, waves = MermaidQueen.PuppetWaves;
+			bool QueenShown() => MermaidQueen.PuppetPearls > pearls && MermaidQueen.PuppetWaves > waves;
+			for ( var t = 0f; t < 100f && !(hook && beam && slam && cannons && rings && Poseidon.PuppetTridents > tridents && QueenShown()); t += 0.05f )
 			{
 				await Wait( 0.05f );
 				hook |= Angler.All.Any( a => a.Puppet && a.HookShown );
@@ -359,6 +371,8 @@ public partial class AutoTest
 			Check( Poseidon.PuppetTridents > tridents, "the host's Poseidon trident never showed on the joiner" );
 			Check( cannons, "the host's Davey cannons never showed on the joiner" );
 			Check( rings, "the host's King Raymond shock rings never showed on the joiner" );
+			GD.Print( $"[autotest] net: queen pearls {MermaidQueen.PuppetPearls - pearls}, riptides {MermaidQueen.PuppetWaves - waves}" );
+			Check( QueenShown(), "the host's Mermaid Queen pearls and riptide never showed on the joiner" );
 		}
 	}
 

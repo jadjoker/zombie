@@ -94,6 +94,8 @@ void fragment() {
 	public bool Archer;
 	/// <summary> Women's hair: 0 red, 1 blonde, 2 black. </summary>
 	public int HairColour;
+	/// <summary> One of the Mermaid Queen's royal guard (she calls at most so many at once). </summary>
+	public MermaidQueen Guard;
 	/// <summary> Tests: how many times its trident or arrows have hurt a player. </summary>
 	public int Hits { get; private set; }
 	public int ArrowsShot { get; private set; }
